@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Actions\Logout;
+use App\Models\AppUpdate;
 use App\Models\SecurityAlert;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Volt\Component;
@@ -12,12 +13,17 @@ new class extends Component
     public function mount(): void
     {
         $userId = Auth::id();
-        $this->openAlerts = $userId
+        $securityCount = $userId
             ? SecurityAlert::query()
                 ->where('state', 'open')
                 ->whereHas('project', fn ($query) => $query->where('user_id', $userId))
                 ->count()
             : 0;
+
+        $latestUpdate = AppUpdate::query()->orderByDesc('started_at')->first();
+        $updateIssueCount = $latestUpdate && $latestUpdate->status === 'failed' ? 1 : 0;
+
+        $this->openAlerts = $securityCount + $updateIssueCount;
     }
     /**
      * Log the current user out of the application.
@@ -49,6 +55,9 @@ new class extends Component
                     </x-nav-link>
                     <x-nav-link :href="route('projects.index')" :active="request()->routeIs('projects.index', 'projects.show', 'projects.edit')" wire:navigate>
                         {{ __('Projects') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('app-updates.index')" :active="request()->routeIs('app-updates.index')" wire:navigate>
+                        {{ __('Update App') }}
                     </x-nav-link>
                     <x-nav-link :href="route('security.index')" :active="request()->routeIs('security.index')" wire:navigate>
                         <span class="flex items-center gap-2">
@@ -113,6 +122,9 @@ new class extends Component
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('projects.index')" :active="request()->routeIs('projects.index', 'projects.show', 'projects.edit')" wire:navigate>
                 {{ __('Projects') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('app-updates.index')" :active="request()->routeIs('app-updates.index')" wire:navigate>
+                {{ __('Update App') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('security.index')" :active="request()->routeIs('security.index')" wire:navigate>
                 <span class="flex items-center gap-2">

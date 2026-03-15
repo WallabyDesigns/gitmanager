@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Webhooks\GitHubWebhookController;
+use App\Livewire\AppUpdates\Index as AppUpdatesIndex;
 use App\Livewire\Projects\Create as ProjectsCreate;
 use App\Livewire\Projects\Edit as ProjectsEdit;
 use App\Livewire\Projects\Index as ProjectsIndex;
@@ -18,6 +19,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/projects/{project}/edit', ProjectsEdit::class)->name('projects.edit');
     Route::get('/projects/{project}', ProjectsShow::class)->name('projects.show');
     Route::get('/security', SecurityIndex::class)->name('security.index');
+    Route::get('/app-updates', AppUpdatesIndex::class)->name('app-updates.index');
 });
 
 Route::view('profile', 'profile')

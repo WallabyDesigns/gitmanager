@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Projects;
 
+use App\Services\RepositoryBootstrapper;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -40,9 +41,23 @@ class Create extends Component
     public function save(): void
     {
         $validated = $this->validate($this->rules());
-        Auth::user()->projects()->create($validated['form']);
+        $project = Auth::user()->projects()->create($validated['form']);
+        $message = 'Project created.';
 
-        $this->dispatch('notify', message: 'Project created.');
+        if (! empty($project->repo_url)) {
+            try {
+                $result = app(RepositoryBootstrapper::class)->bootstrap($project);
+                if ($result['status'] === 'bootstrapped') {
+                    $message = ! empty($result['dirty'])
+                        ? 'Project created. Repository linked, but existing files differ from origin; use force deploy to overwrite.'
+                        : 'Project created. Repository linked and ready to deploy.';
+                }
+            } catch (\Throwable $exception) {
+                $message = 'Project created, but repository setup failed: '.$exception->getMessage();
+            }
+        }
+
+        $this->dispatch('notify', message: $message);
         $this->redirectRoute('projects.index', navigate: true);
     }
 

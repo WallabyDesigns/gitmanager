@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Security;
 
+use App\Models\AppUpdate;
 use App\Models\SecurityAlert;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
@@ -23,6 +24,8 @@ class Index extends Component
             ? $query->where('state', '!=', 'open')
             : $query->where('state', 'open');
 
+        $latestUpdate = AppUpdate::query()->orderByDesc('started_at')->first();
+
         return view('livewire.security.index', [
             'alerts' => $alerts->orderByDesc('alert_created_at')->get(),
             'openCount' => SecurityAlert::query()
@@ -33,6 +36,8 @@ class Index extends Component
                 ->where('state', '!=', 'open')
                 ->whereHas('project', fn ($query) => $query->where('user_id', Auth::id()))
                 ->count(),
+            'appUpdateFailed' => $latestUpdate && $latestUpdate->status === 'failed',
+            'latestUpdate' => $latestUpdate,
         ])->layout('layouts.app', [
             'header' => view('livewire.security.partials.header'),
         ]);
