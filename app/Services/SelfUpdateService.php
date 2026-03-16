@@ -109,19 +109,29 @@ class SelfUpdateService
             if (is_file(base_path('package.json'))) {
                 if ($this->canRunNpm($output)) {
                     try {
-                        $this->runProcess($this->npmInstallCommand($repoPath), $output, $repoPath);
+                        $shouldInstall = $this->shouldRunNpmInstall($repoPath, $fromHash, $toHash, $output);
+                        if ($shouldInstall) {
+                            $this->runProcess($this->npmInstallCommand($repoPath), $output, $repoPath);
+                        } else {
+                            $output[] = 'Skipping npm install: no package changes detected.';
+                        }
+
                         if ($this->npmScriptExists('build')) {
-                            $this->prepareViteBuildDirectory($repoPath, $output);
-                            try {
-                                $this->runProcess(['npm', 'run', 'build'], $output, $repoPath);
-                            } catch (\Throwable $buildException) {
-                                if ($this->isBuildPermissionError($buildException)) {
-                                    $output[] = 'Build failed due to permissions; retrying after fixing build directory.';
-                                    $this->prepareViteBuildDirectory($repoPath, $output, true);
+                            if ($this->shouldRunNpmBuild($repoPath, $fromHash, $toHash, $output)) {
+                                $this->prepareViteBuildDirectory($repoPath, $output);
+                                try {
                                     $this->runProcess(['npm', 'run', 'build'], $output, $repoPath);
-                                } else {
-                                    throw $buildException;
+                                } catch (\Throwable $buildException) {
+                                    if ($this->isBuildPermissionError($buildException)) {
+                                        $output[] = 'Build failed due to permissions; retrying after fixing build directory.';
+                                        $this->prepareViteBuildDirectory($repoPath, $output, true);
+                                        $this->runProcess(['npm', 'run', 'build'], $output, $repoPath);
+                                    } else {
+                                        throw $buildException;
+                                    }
                                 }
+                            } else {
+                                $output[] = 'Skipping npm build: no frontend changes detected.';
                             }
                         }
                     } catch (\Throwable $exception) {
@@ -543,6 +553,55 @@ class SelfUpdateService
 
         $this->runProcess(['npm', '--version'], $output, null, false);
         $this->runProcess(['node', '--version'], $output, null, false);
+    }
+
+    private function shouldRunNpmInstall(string $repoPath, ?string $fromHash, ?string $toHash, array &$output): bool
+    {
+        $nodeModules = $repoPath.DIRECTORY_SEPARATOR.'node_modules';
+        if (! is_dir($nodeModules)) {
+            $output[] = 'npm install required: node_modules is missing.';
+            return true;
+        }
+
+        return $this->gitPathsChanged($repoPath, $fromHash, $toHash, [
+            'package.json',
+            'package-lock.json',
+            'pnpm-lock.yaml',
+            'yarn.lock',
+        ]);
+    }
+
+    private function shouldRunNpmBuild(string $repoPath, ?string $fromHash, ?string $toHash, array &$output): bool
+    {
+        return $this->gitPathsChanged($repoPath, $fromHash, $toHash, [
+            'resources',
+            'vite.config.js',
+            'tailwind.config.js',
+            'postcss.config.js',
+        ]);
+    }
+
+    /**
+     * @param array<int, string> $paths
+     */
+    private function gitPathsChanged(string $repoPath, ?string $fromHash, ?string $toHash, array $paths): bool
+    {
+        if (! $fromHash || ! $toHash) {
+            return true;
+        }
+
+        $command = ['git', '-C', $repoPath, 'diff', '--name-only', $fromHash.'..'.$toHash, '--'];
+        foreach ($paths as $path) {
+            $command[] = $path;
+        }
+
+        $output = [];
+        $process = $this->runProcess($command, $output, null, false);
+        if (! $process->isSuccessful()) {
+            return true;
+        }
+
+        return trim($process->getOutput()) !== '';
     }
 
     private function prepareViteBuildDirectory(string $repoPath, array &$output, bool $force = false): void

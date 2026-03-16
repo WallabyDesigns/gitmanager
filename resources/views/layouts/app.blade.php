@@ -12,10 +12,30 @@
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
         <!-- Scripts -->
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @php
+            $viteManifest = public_path('build/manifest.json');
+            $viteHot = public_path('hot');
+            $viteReady = file_exists($viteManifest) || file_exists($viteHot);
+        @endphp
+        @if ($viteReady)
+            @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @else
+            <style>
+                body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f172a; color: #e2e8f0; }
+                a { color: #fbbf24; text-decoration: underline; }
+                .gpm-fallback-alert { max-width: 72rem; margin: 1.5rem auto; padding: 0.75rem 1rem; border-radius: 0.75rem; background: #1f2937; border: 1px solid #334155; }
+                .gpm-fallback-alert strong { color: #f8fafc; }
+            </style>
+        @endif
     </head>
     <body class="font-sans antialiased h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
         <div class="min-h-screen">
+            @if (! $viteReady)
+                <div class="gpm-fallback-alert">
+                    <strong>Assets are not built.</strong> Run <code>npm run build</code> or fix the build permissions to restore the normal UI.
+                </div>
+            @endif
+
             <livewire:layout.navigation />
 
             <!-- Page Heading -->
