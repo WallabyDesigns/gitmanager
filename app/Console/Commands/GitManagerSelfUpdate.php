@@ -26,6 +26,11 @@ class GitManagerSelfUpdate extends Command
      */
     public function handle(SelfUpdateService $service): int
     {
+        if (! config('gitmanager.self_update.enabled')) {
+            $this->info('Self-update is disabled.');
+            return self::SUCCESS;
+        }
+
         $update = $service->update();
 
         return $update->status === 'failed' ? self::FAILURE : self::SUCCESS;
