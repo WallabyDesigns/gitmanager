@@ -3,14 +3,16 @@
 use App\Livewire\Actions\Logout;
 use App\Models\AppUpdate;
 use App\Models\SecurityAlert;
+use App\Services\SelfUpdateService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Volt\Component;
 
 new class extends Component
 {
     public int $openAlerts = 0;
+    public bool $updateAvailable = false;
 
-    public function mount(): void
+    public function mount(SelfUpdateService $selfUpdate): void
     {
         $userId = Auth::id();
         $securityCount = $userId
@@ -24,6 +26,9 @@ new class extends Component
         $updateIssueCount = $latestUpdate && $latestUpdate->status === 'failed' ? 1 : 0;
 
         $this->openAlerts = $securityCount + $updateIssueCount;
+
+        $status = $selfUpdate->getUpdateStatus();
+        $this->updateAvailable = ($status['status'] ?? '') === 'update-available';
     }
     /**
      * Log the current user out of the application.
@@ -62,7 +67,14 @@ new class extends Component
                         {{ __('Projects') }}
                     </x-nav-link>
                     <x-nav-link :href="route('app-updates.index')" :active="request()->routeIs('app-updates.index')">
-                        {{ __('Update App') }}
+                        <span class="flex items-center gap-2">
+                            {{ __('Update App') }}
+                            @if ($updateAvailable)
+                                <span class="inline-flex items-center justify-center rounded-full bg-amber-400/20 px-2 py-0.5 text-xs text-amber-200">
+                                    NEW
+                                </span>
+                            @endif
+                        </span>
                     </x-nav-link>
                     <x-nav-link :href="route('security.index')" :active="request()->routeIs('security.index')">
                         <span class="flex items-center gap-2">
@@ -129,7 +141,14 @@ new class extends Component
                 {{ __('Projects') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('app-updates.index')" :active="request()->routeIs('app-updates.index')">
-                {{ __('Update App') }}
+                <span class="flex items-center gap-2">
+                    {{ __('Update App') }}
+                    @if ($updateAvailable)
+                        <span class="inline-flex items-center justify-center rounded-full bg-amber-400/20 px-2 py-0.5 text-xs text-amber-200">
+                            NEW
+                        </span>
+                    @endif
+                </span>
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('security.index')" :active="request()->routeIs('security.index')">
                 <span class="flex items-center gap-2">

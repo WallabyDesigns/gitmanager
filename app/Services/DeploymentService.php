@@ -958,6 +958,11 @@ class DeploymentService
 
     private function runShellCommand(string $command, array &$output = [], ?string $workingDir = null): Process
     {
+        $trimmed = ltrim($command);
+        if (str_starts_with($trimmed, 'php ')) {
+            $command = $this->phpBinary().' '.substr($trimmed, 4);
+        }
+
         $process = Process::fromShellCommandline($command, $workingDir, array_merge($this->baseEnv(), $this->gitEnv()));
         $process->setTimeout(600);
         $process->run(function ($type, $buffer) use (&$output) {
@@ -1044,6 +1049,7 @@ class DeploymentService
         $env = is_array($env) ? $env : [];
 
         $extraPath = trim((string) config('gitmanager.process_path', env('GPM_PROCESS_PATH', '')));
+        $extraPath = trim($extraPath, "\"' ");
         if ($extraPath !== '') {
             $pathKey = array_key_exists('PATH', $env) ? 'PATH' : (array_key_exists('Path', $env) ? 'Path' : 'PATH');
             $current = $env[$pathKey] ?? '';

@@ -9,6 +9,13 @@ use Livewire\Component;
 
 class Index extends Component
 {
+    public array $updateStatus = [];
+
+    public function mount(SelfUpdateService $service): void
+    {
+        $this->updateStatus = $service->getUpdateStatus();
+    }
+
     public function render()
     {
         $updates = AppUpdate::query()->orderByDesc('started_at');
@@ -48,5 +55,18 @@ class Index extends Component
 
         $this->dispatch('notify', message: $message);
         $this->redirectRoute('app-updates.index', navigate: true);
+    }
+
+    public function refreshUpdateStatus(SelfUpdateService $service): void
+    {
+        $this->updateStatus = $service->getUpdateStatus(true);
+
+        $message = match ($this->updateStatus['status'] ?? 'unknown') {
+            'up-to-date' => 'Git Project Manager is up to date.',
+            'update-available' => 'A newer version is available.',
+            default => 'Unable to determine update status.',
+        };
+
+        $this->dispatch('notify', message: $message);
     }
 }

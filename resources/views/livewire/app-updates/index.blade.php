@@ -3,6 +3,52 @@
         <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
+                    <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Update Status</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Check whether this install is on the latest Git Project Manager version.</p>
+                </div>
+                <div class="flex flex-wrap gap-2 items-center">
+                    @php($status = $updateStatus['status'] ?? 'unknown')
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold {{ $status === 'up-to-date' ? 'bg-emerald-500/20 text-emerald-200' : ($status === 'update-available' ? 'bg-amber-500/20 text-amber-200' : 'bg-slate-500/20 text-slate-200') }}">
+                        {{ $status === 'up-to-date' ? 'UP TO DATE' : ($status === 'update-available' ? 'UPDATE AVAILABLE' : 'UNKNOWN') }}
+                    </span>
+                    <button
+                        type="button"
+                        wire:click="refreshUpdateStatus"
+                        wire:loading.attr="disabled"
+                        class="px-3 py-1.5 rounded-md border border-slate-300 text-slate-600 text-sm hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                        Check Now
+                    </button>
+                </div>
+            </div>
+            <div class="mt-4 grid gap-4 sm:grid-cols-2 text-sm">
+                <div>
+                    <div class="text-xs uppercase text-slate-400 dark:text-slate-500">Current</div>
+                    <div class="font-mono text-slate-700 dark:text-slate-200">{{ $updateStatus['current'] ?? '—' }}</div>
+                </div>
+                <div>
+                    <div class="text-xs uppercase text-slate-400 dark:text-slate-500">Latest</div>
+                    <div class="font-mono text-slate-700 dark:text-slate-200">{{ $updateStatus['latest'] ?? '—' }}</div>
+                </div>
+                <div>
+                    <div class="text-xs uppercase text-slate-400 dark:text-slate-500">Branch</div>
+                    <div class="text-slate-700 dark:text-slate-200">{{ $updateStatus['branch'] ?? '—' }}</div>
+                </div>
+                <div>
+                    <div class="text-xs uppercase text-slate-400 dark:text-slate-500">Checked</div>
+                    <div class="text-slate-700 dark:text-slate-200">{{ $updateStatus['checked_at'] ?? '—' }}</div>
+                </div>
+            </div>
+            @if (! empty($updateStatus['error']))
+                <div class="mt-3 text-xs text-rose-400">
+                    {{ $updateStatus['error'] }}
+                </div>
+            @endif
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
                     <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Run Update</h3>
                     <p class="text-sm text-slate-500 dark:text-slate-400">This will pull from the `Costigan-Stephen/gitmanager` repo and apply updates locally.</p>
                     @if (! $selfUpdateEnabled)

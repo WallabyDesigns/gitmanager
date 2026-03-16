@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AppUpdate;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 
@@ -11,6 +12,25 @@ class SelfUpdateService
 {
     private const REPO_URL = 'https://github.com/Costigan-Stephen/gitmanager.git';
     private const DEFAULT_BRANCH = 'main';
+    private const STATUS_CACHE_KEY = 'gpm_self_update_status';
+
+    /**
+     * @return array{status: string, current?: string|null, latest?: string|null, branch?: string|null, checked_at?: string|null, error?: string|null}
+     */
+    public function getUpdateStatus(bool $force = false): array
+    {
+        if (! $force) {
+            $cached = Cache::get(self::STATUS_CACHE_KEY);
+            if (is_array($cached)) {
+                return $cached;
+            }
+        }
+
+        $status = $this->computeUpdateStatus();
+        Cache::put(self::STATUS_CACHE_KEY, $status, now()->addMinutes(5));
+
+        return $status;
+    }
 
     public function update(?User $user = null, bool $allowDirty = false): AppUpdate
     {
@@ -88,9 +108,25 @@ class SelfUpdateService
 
             if (is_file(base_path('package.json'))) {
                 if ($this->canRunNpm($output)) {
-                    $this->runProcess($this->npmInstallCommand($repoPath), $output, $repoPath);
-                    if ($this->npmScriptExists('build')) {
-                        $this->runProcess(['npm', 'run', 'build'], $output, $repoPath);
+                    try {
+                        $this->runProcess($this->npmInstallCommand($repoPath), $output, $repoPath);
+                        if ($this->npmScriptExists('build')) {
+                            $this->prepareViteBuildDirectory($repoPath, $output);
+                            try {
+                                $this->runProcess(['npm', 'run', 'build'], $output, $repoPath);
+                            } catch (\Throwable $buildException) {
+                                if ($this->isBuildPermissionError($buildException)) {
+                                    $output[] = 'Build failed due to permissions; retrying after fixing build directory.';
+                                    $this->prepareViteBuildDirectory($repoPath, $output, true);
+                                    $this->runProcess(['npm', 'run', 'build'], $output, $repoPath);
+                                } else {
+                                    throw $buildException;
+                                }
+                            }
+                        }
+                    } catch (\Throwable $exception) {
+                        $this->logNpmDiagnostics($output);
+                        throw $exception;
                     }
                 } else {
                     $output[] = 'Skipping npm install: node/npm not available in PATH.';
@@ -147,6 +183,51 @@ class SelfUpdateService
         }
 
         return $update;
+    }
+
+    /**
+     * @return array{status: string, current?: string|null, latest?: string|null, branch?: string|null, checked_at?: string|null, error?: string|null}
+     */
+    private function computeUpdateStatus(): array
+    {
+        $repoPath = base_path();
+        $output = [];
+        $branch = null;
+
+        try {
+            $this->ensureGitRepository($repoPath);
+            $this->ensureOriginRemote($repoPath, $output);
+            $branch = $this->resolveBranch($repoPath, $output);
+            $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune'], $output);
+
+            $current = $this->tryRevParse($repoPath);
+            $latest = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'origin/'.$branch], $output)->getOutput());
+
+            if (! $current || $latest === '') {
+                return [
+                    'status' => 'unknown',
+                    'current' => $current,
+                    'latest' => $latest !== '' ? $latest : null,
+                    'branch' => $branch,
+                    'checked_at' => now()->toDateTimeString(),
+                ];
+            }
+
+            return [
+                'status' => $current === $latest ? 'up-to-date' : 'update-available',
+                'current' => $current,
+                'latest' => $latest,
+                'branch' => $branch,
+                'checked_at' => now()->toDateTimeString(),
+            ];
+        } catch (\Throwable $exception) {
+            return [
+                'status' => 'unknown',
+                'branch' => $branch,
+                'checked_at' => now()->toDateTimeString(),
+                'error' => $exception->getMessage(),
+            ];
+        }
     }
 
     /**
@@ -436,15 +517,126 @@ class SelfUpdateService
         $npm = $this->npmBinary();
         if (! $this->binaryAvailable($npm)) {
             $output[] = 'npm binary not found: '.$npm;
+            $this->logNpmDiagnostics($output);
             return false;
         }
 
         if (! $this->binaryAvailable('node')) {
             $output[] = 'node binary not found in PATH.';
+            $this->logNpmDiagnostics($output);
             return false;
         }
 
         return true;
+    }
+
+    private function logNpmDiagnostics(array &$output): void
+    {
+        $env = $this->baseEnv();
+        $pathKey = array_key_exists('PATH', $env) ? 'PATH' : (array_key_exists('Path', $env) ? 'Path' : 'PATH');
+        $output[] = 'npm diagnostic: PATH='.($env[$pathKey] ?? '');
+
+        $npmPath = $this->resolveBinaryPath('npm');
+        $nodePath = $this->resolveBinaryPath('node');
+        $output[] = 'npm diagnostic: npm='.($npmPath ?: 'not found');
+        $output[] = 'npm diagnostic: node='.($nodePath ?: 'not found');
+
+        $this->runProcess(['npm', '--version'], $output, null, false);
+        $this->runProcess(['node', '--version'], $output, null, false);
+    }
+
+    private function prepareViteBuildDirectory(string $repoPath, array &$output, bool $force = false): void
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            return;
+        }
+
+        $buildPath = $repoPath.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'build';
+        if (! is_dir($buildPath)) {
+            if (@mkdir($buildPath, 0775, true)) {
+                $output[] = 'Created build directory at '.$buildPath;
+            }
+            return;
+        }
+
+        if (! is_writable($buildPath) || $force) {
+            $output[] = 'Ensuring build directory is writable: '.$buildPath;
+            $this->chmodRecursive($buildPath, 0775);
+            if ($force && is_dir($buildPath)) {
+                $this->deleteDirectory($buildPath);
+                if (@mkdir($buildPath, 0775, true)) {
+                    $output[] = 'Recreated build directory at '.$buildPath;
+                }
+            }
+        }
+    }
+
+    private function isBuildPermissionError(\Throwable $exception): bool
+    {
+        $message = $exception->getMessage();
+        if ($message === '') {
+            return false;
+        }
+
+        $message = strtolower($message);
+        return str_contains($message, 'permission denied')
+            || str_contains($message, 'eacces')
+            || str_contains($message, 'public/build');
+    }
+
+    private function chmodRecursive(string $path, int $mode): void
+    {
+        if (! is_dir($path)) {
+            @chmod($path, $mode);
+            return;
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            @chmod($item->getPathname(), $mode);
+        }
+
+        @chmod($path, $mode);
+    }
+
+    private function deleteDirectory(string $path): void
+    {
+        if (! is_dir($path)) {
+            return;
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            if ($item->isDir()) {
+                @rmdir($item->getPathname());
+            } else {
+                @unlink($item->getPathname());
+            }
+        }
+
+        @rmdir($path);
+    }
+
+    private function resolveBinaryPath(string $binary): ?string
+    {
+        $command = PHP_OS_FAMILY === 'Windows' ? ['where', $binary] : ['which', $binary];
+        $process = new Process($command, null, $this->baseEnv());
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            return null;
+        }
+
+        $lines = array_filter(array_map('trim', explode("\n", $process->getOutput())));
+        return $lines[0] ?? null;
     }
 
     private function binaryAvailable(string $binary): bool
@@ -686,6 +878,7 @@ class SelfUpdateService
         $env = is_array($env) ? $env : [];
 
         $extraPath = trim((string) config('gitmanager.process_path', env('GPM_PROCESS_PATH', '')));
+        $extraPath = trim($extraPath, "\"' ");
         if ($extraPath !== '') {
             $pathKey = array_key_exists('PATH', $env) ? 'PATH' : (array_key_exists('Path', $env) ? 'Path' : 'PATH');
             $current = $env[$pathKey] ?? '';
