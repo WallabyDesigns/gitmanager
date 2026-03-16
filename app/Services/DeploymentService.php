@@ -6,6 +6,7 @@ use App\Models\Deployment;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 
@@ -16,7 +17,7 @@ class DeploymentService
         $repoPath = $this->resolveRepoPath($project);
 
         $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune']);
-        $head = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'])->getOutput());
+        $head = $this->tryRevParse($repoPath);
         $remote = trim($this->runProcess([
             'git',
             '-C',
@@ -49,13 +50,7 @@ class DeploymentService
         $toHash = null;
 
         try {
-            if ($allowDirty) {
-                $this->forceCleanWorkingTree($repoPath, $output);
-            } else {
-                $this->ensureCleanWorkingTree($repoPath, $output);
-            }
-
-            $fromHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
+            $fromHash = $this->tryRevParse($repoPath);
             $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune'], $output);
             $remoteHash = trim($this->runProcess([
                 'git',
@@ -65,7 +60,7 @@ class DeploymentService
                 'origin/'.$project->default_branch,
             ], $output)->getOutput());
 
-            if ($fromHash === $remoteHash) {
+            if ($fromHash && $fromHash === $remoteHash) {
                 $deployment->status = 'success';
                 $deployment->from_hash = $fromHash;
                 $deployment->to_hash = $fromHash;
@@ -79,14 +74,7 @@ class DeploymentService
                 return $deployment;
             }
 
-            $this->runProcess([
-                'git',
-                '-C',
-                $repoPath,
-                'merge',
-                '--ff-only',
-                'origin/'.$project->default_branch,
-            ], $output);
+            $this->resetToRemote($repoPath, $project->default_branch, $output, $allowDirty);
 
             $toHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
 
@@ -158,7 +146,7 @@ class DeploymentService
         $toHash = $targetHash;
 
         try {
-            $this->ensureCleanWorkingTree($repoPath, $output);
+            $this->ensureCleanWorkingTree($repoPath, $output, true);
             $fromHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
 
             if (! $toHash) {
@@ -237,7 +225,7 @@ class DeploymentService
         $toHash = null;
 
         try {
-            $this->ensureCleanWorkingTree($repoPath, $output);
+            $this->ensureCleanWorkingTree($repoPath, $output, true);
             $fromHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
 
             if (! $project->allow_dependency_updates) {
@@ -282,6 +270,153 @@ class DeploymentService
         return $deployment;
     }
 
+    public function composerInstall(Project $project, ?User $user = null): Deployment
+    {
+        return $this->runMaintenanceAction($project, $user, 'composer_install', function (string $path, array &$output): void {
+            $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $path);
+        }, true);
+    }
+
+    public function composerUpdate(Project $project, ?User $user = null): Deployment
+    {
+        return $this->runMaintenanceAction($project, $user, 'composer_update', function (string $path, array &$output): void {
+            $this->runProcess(['composer', 'update'], $output, $path);
+        }, true);
+    }
+
+    public function composerAudit(Project $project, ?User $user = null): Deployment
+    {
+        return $this->runMaintenanceAction($project, $user, 'composer_audit', function (string $path, array &$output): void {
+            $this->runProcess(['composer', 'audit'], $output, $path);
+        }, true);
+    }
+
+    public function appClearCache(Project $project, ?User $user = null): Deployment
+    {
+        return $this->runMaintenanceAction($project, $user, 'app_clear_cache', function (string $path, array &$output) use ($project): void {
+            $laravelRoot = $this->findLaravelRoot($project->local_path)
+                ?? $this->findLaravelRoot($path);
+
+            if (! $laravelRoot) {
+                throw new \RuntimeException('Laravel app not found for this project.');
+            }
+
+            if (! $this->artisanCommandExists($laravelRoot, 'app:clear-cache', $output)) {
+                throw new \RuntimeException('Command app:clear-cache not found.');
+            }
+
+            $this->runProcess(['php', 'artisan', 'app:clear-cache'], $output, $laravelRoot);
+        });
+    }
+
+    public function npmInstall(Project $project, ?User $user = null): Deployment
+    {
+        return $this->runMaintenanceAction($project, $user, 'npm_install', function (string $path, array &$output): void {
+            $this->runProcess(['npm', 'install'], $output, $path);
+        });
+    }
+
+    public function npmUpdate(Project $project, ?User $user = null): Deployment
+    {
+        return $this->runMaintenanceAction($project, $user, 'npm_update', function (string $path, array &$output): void {
+            $this->runProcess(['npm', 'update'], $output, $path);
+        });
+    }
+
+    public function npmAuditFix(Project $project, ?User $user = null, bool $force = false): Deployment
+    {
+        return $this->runMaintenanceAction($project, $user, $force ? 'npm_audit_fix_force' : 'npm_audit_fix', function (string $path, array &$output) use ($force): void {
+            $command = ['npm', 'audit', 'fix'];
+            if ($force) {
+                $command[] = '--force';
+            }
+            $this->runProcess($command, $output, $path);
+        });
+    }
+
+    public function runCustomCommand(Project $project, ?User $user = null, string $command = ''): Deployment
+    {
+        return $this->runMaintenanceAction($project, $user, 'custom_command', function (string $path, array &$output) use ($command): void {
+            $command = trim($command);
+            if ($command === '') {
+                throw new \RuntimeException('Command cannot be empty.');
+            }
+
+            $output[] = '$ '.$command;
+            $this->runShellCommand($command, $output, $path);
+        });
+    }
+
+    public function previewBuild(Project $project, ?User $user = null, string $commit = ''): Deployment
+    {
+        $repoPath = $this->resolveRepoPath($project);
+
+        $deployment = Deployment::create([
+            'project_id' => $project->id,
+            'triggered_by' => $user?->id,
+            'action' => 'preview_build',
+            'status' => 'running',
+            'started_at' => now(),
+        ]);
+
+        $output = [];
+
+        try {
+            $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune'], $output);
+
+            $target = trim($commit) !== '' ? trim($commit) : 'origin/'.$project->default_branch;
+            $hash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', $target], $output)->getOutput());
+            $short = substr($hash, 0, 7);
+
+            $slug = Str::slug($project->name) ?: 'project';
+            $basePath = rtrim((string) config('gitmanager.preview.path', storage_path('app/previews')), DIRECTORY_SEPARATOR);
+            $previewPath = $basePath.DIRECTORY_SEPARATOR.$slug.DIRECTORY_SEPARATOR.$short;
+
+            $this->ensurePath(dirname($previewPath));
+
+            if (is_dir($previewPath)) {
+                $this->runProcess(['git', '-C', $repoPath, 'worktree', 'remove', '--force', $previewPath], $output, null, false);
+                $this->deleteDirectory($previewPath);
+            }
+
+            $this->runProcess(['git', '-C', $repoPath, 'worktree', 'add', '--force', $previewPath, $hash], $output);
+            $output[] = 'Preview path: '.$previewPath;
+
+            $baseUrl = trim((string) config('gitmanager.preview.base_url', ''));
+            if ($baseUrl !== '') {
+                $output[] = 'Preview url: '.rtrim($baseUrl, '/').'/'.$slug.'/'.$short;
+            }
+
+            if ($project->run_composer_install && is_file($previewPath.DIRECTORY_SEPARATOR.'composer.json')) {
+                $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $previewPath);
+            }
+
+            if ($project->run_npm_install && is_file($previewPath.DIRECTORY_SEPARATOR.'package.json')) {
+                $this->runProcess(['npm', 'install'], $output, $previewPath);
+            }
+
+            if ($project->run_build_command && $project->build_command) {
+                $this->runShellCommand($project->build_command, $output, $previewPath);
+            }
+
+            if ($project->run_test_command && $project->test_command) {
+                $this->runShellCommand($project->test_command, $output, $previewPath);
+            }
+
+            $deployment->status = 'success';
+            $deployment->output_log = implode("\n", $output);
+            $deployment->finished_at = now();
+            $deployment->save();
+        } catch (\Throwable $exception) {
+            $deployment->status = 'failed';
+            $deployment->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
+            $deployment->finished_at = now();
+            $deployment->save();
+        }
+
+        return $deployment;
+    }
+
     public function checkHealth(Project $project): string
     {
         $healthUrl = $this->resolveHealthUrl($project);
@@ -310,7 +445,11 @@ class DeploymentService
 
     private function ensurePath(string $path): void
     {
-        if (! is_dir($path)) {
+        if (is_dir($path)) {
+            return;
+        }
+
+        if (! mkdir($path, 0775, true) && ! is_dir($path)) {
             throw new \RuntimeException('Project path not found: '.$path);
         }
     }
@@ -319,9 +458,17 @@ class DeploymentService
     {
         $this->ensurePath($project->local_path);
 
-        $repoPath = $this->findGitRoot($project->local_path);
-        if (! $repoPath) {
-            throw new \RuntimeException('No git repository found at or above: '.$project->local_path);
+        $repoPath = $project->local_path;
+        if (! is_dir($repoPath.DIRECTORY_SEPARATOR.'.git')) {
+            if (! $project->repo_url) {
+                throw new \RuntimeException('Repository URL is required to initialize git for this project.');
+            }
+
+            app(RepositoryBootstrapper::class)->bootstrap($project);
+        }
+
+        if (! is_dir($repoPath.DIRECTORY_SEPARATOR.'.git')) {
+            throw new \RuntimeException('No git repository found at: '.$project->local_path);
         }
 
         return $repoPath;
@@ -337,13 +484,34 @@ class DeploymentService
 
     private function findGitRoot(string $path): ?string
     {
-        return $this->walkUpForMarker($path, '.git');
+        $candidate = $path.DIRECTORY_SEPARATOR.'.git';
+        return is_dir($candidate) ? $path : null;
     }
 
-    private function ensureCleanWorkingTree(string $repoPath, array &$output): void
+    private function ensureCleanWorkingTree(string $repoPath, array &$output, bool $strict = false): void
     {
+        if (! $strict) {
+            return;
+        }
+
         if ($this->workingTreeDirty($repoPath, $output)) {
             throw new \RuntimeException('Working tree has uncommitted changes. Resolve them before deploying.');
+        }
+    }
+
+    private function resetToRemote(string $repoPath, string $branch, array &$output, bool $forceClean): void
+    {
+        $status = $this->getWorkingTreeStatus($repoPath, $output);
+        if ($status !== '') {
+            $output[] = $forceClean
+                ? 'Force deploy requested: tracked files will be reset and untracked files removed.'
+                : 'Local changes detected: tracked files will be reset, untracked files preserved.';
+        }
+
+        $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', 'origin/'.$branch], $output);
+
+        if ($forceClean) {
+            $this->runProcess(['git', '-C', $repoPath, 'clean', '-fd'], $output);
         }
     }
 
@@ -393,10 +561,146 @@ class DeploymentService
         return trim($process->getOutput());
     }
 
+    private function tryRevParse(string $repoPath): ?string
+    {
+        $output = [];
+        $process = $this->runProcess(['git', '-C', $repoPath, 'rev-parse', '--verify', 'HEAD'], $output, null, false);
+        if (! $process->isSuccessful()) {
+            return null;
+        }
+
+        $hash = trim($process->getOutput());
+        return $hash !== '' ? $hash : null;
+    }
+
+    private function runMaintenanceAction(Project $project, ?User $user, string $action, callable $callback, bool $runClearCache = false): Deployment
+    {
+        $repoPath = $this->resolveRepoPath($project);
+        $executionPath = $this->resolveExecutionPath($project, $repoPath);
+
+        $deployment = Deployment::create([
+            'project_id' => $project->id,
+            'triggered_by' => $user?->id,
+            'action' => $action,
+            'status' => 'running',
+            'started_at' => now(),
+        ]);
+
+        $output = [];
+
+        try {
+            $callback($executionPath, $output);
+            if ($runClearCache) {
+                $this->maybeRunLaravelClearCache($project, $output);
+            }
+
+            $deployment->status = 'success';
+            $deployment->output_log = implode("\n", $output);
+            $deployment->finished_at = now();
+            $deployment->save();
+
+            $project->last_error_message = null;
+            $project->save();
+        } catch (\Throwable $exception) {
+            $deployment->status = 'failed';
+            $deployment->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
+            $deployment->finished_at = now();
+            $deployment->save();
+
+            $project->last_error_message = $exception->getMessage();
+            $project->save();
+        }
+
+        return $deployment;
+    }
+
+    /**
+     * @return array<int, array{hash: string, short: string, author: string, date: string, message: string}>
+     */
+    public function getRecentCommits(Project $project, int $limit = 3): array
+    {
+        $repoPath = $this->getRepoPathIfExists($project);
+        if (! $repoPath) {
+            return [];
+        }
+
+        $output = [];
+        $process = $this->runProcess([
+            'git',
+            '-C',
+            $repoPath,
+            'log',
+            '-n',
+            (string) $limit,
+            '--pretty=format:%H|%h|%an|%ad|%s',
+            '--date=iso',
+        ], $output, null, false);
+
+        if (! $process->isSuccessful()) {
+            return [];
+        }
+
+        $lines = array_filter(array_map('trim', explode("\n", $process->getOutput())));
+        $commits = [];
+        foreach ($lines as $line) {
+            [$hash, $short, $author, $date, $message] = array_pad(explode('|', $line, 5), 5, '');
+            if ($hash === '') {
+                continue;
+            }
+            $commits[] = [
+                'hash' => $hash,
+                'short' => $short ?: substr($hash, 0, 7),
+                'author' => $author,
+                'date' => $date,
+                'message' => $message,
+            ];
+        }
+
+        return $commits;
+    }
+
+    public function getCurrentHead(Project $project): ?string
+    {
+        $repoPath = $this->getRepoPathIfExists($project);
+        if (! $repoPath) {
+            return null;
+        }
+
+        return $this->tryRevParse($repoPath);
+    }
+
+    private function getRepoPathIfExists(Project $project): ?string
+    {
+        $path = $project->local_path;
+        return is_dir($path.DIRECTORY_SEPARATOR.'.git') ? $path : null;
+    }
+
+    private function deleteDirectory(string $path): void
+    {
+        if (! is_dir($path)) {
+            return;
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            if ($item->isDir()) {
+                rmdir($item->getPathname());
+            } else {
+                unlink($item->getPathname());
+            }
+        }
+
+        rmdir($path);
+    }
+
     private function runProcess(array $command, array &$output = [], ?string $workingDir = null, bool $throwOnFailure = true): Process
     {
         $command = $this->normalizeGitCommand($command);
-        $process = new Process($command, $workingDir, array_merge($_SERVER, $_ENV, $this->gitEnv()));
+        $process = new Process($command, $workingDir, array_merge($this->baseEnv(), $this->gitEnv()));
         $process->setTimeout(600);
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
@@ -411,7 +715,7 @@ class DeploymentService
 
     private function runShellCommand(string $command, array &$output = [], ?string $workingDir = null): Process
     {
-        $process = Process::fromShellCommandline($command, $workingDir, array_merge($_SERVER, $_ENV, $this->gitEnv()));
+        $process = Process::fromShellCommandline($command, $workingDir, array_merge($this->baseEnv(), $this->gitEnv()));
         $process->setTimeout(600);
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
@@ -462,6 +766,13 @@ class DeploymentService
         }
 
         return $env;
+    }
+
+    private function baseEnv(): array
+    {
+        $env = getenv();
+
+        return is_array($env) ? $env : [];
     }
 
     private function ensureAskPassScript(): ?string

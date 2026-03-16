@@ -46,6 +46,11 @@ new class extends Component
                     <a href="{{ route('projects.index') }}" wire:navigate>
                         <x-application-logo class="block h-9 w-auto fill-current text-slate-800 dark:text-slate-100" />
                     </a>
+                    <div>
+                        <h2 class="text-xl px-2 font-semibold text-slate-900 dark:text-slate-100">
+                            Git Project Manager
+                        </h2>
+                    </div>
                 </div>
 
                 <!-- Navigation Links -->

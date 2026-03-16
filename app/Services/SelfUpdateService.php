@@ -157,7 +157,7 @@ class SelfUpdateService
     private function runProcess(array $command, array &$output = [], ?string $workingDir = null, bool $throwOnFailure = true): Process
     {
         $command = $this->normalizeGitCommand($command);
-        $process = new Process($command, $workingDir, array_merge($_SERVER, $_ENV, $this->gitEnv()));
+        $process = new Process($command, $workingDir, array_merge($this->baseEnv(), $this->gitEnv()));
         $process->setTimeout(900);
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
@@ -208,6 +208,13 @@ class SelfUpdateService
         }
 
         return $env;
+    }
+
+    private function baseEnv(): array
+    {
+        $env = getenv();
+
+        return is_array($env) ? $env : [];
     }
 
     private function ensureAskPassScript(): ?string

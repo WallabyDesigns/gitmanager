@@ -29,12 +29,18 @@ class RepositoryBootstrapper
 
         $output = [];
         $branch = $project->default_branch ?: 'main';
+        $repoUrl = $this->normalizeRepoUrl($project->repo_url);
 
         $this->runProcess(['git', 'init'], $output, $path);
-        $this->runProcess(['git', 'remote', 'add', 'origin', $project->repo_url], $output, $path);
+        $this->runProcess(['git', 'remote', 'add', 'origin', $repoUrl], $output, $path);
         $this->runProcess(['git', 'fetch', '--all', '--prune'], $output, $path);
-        $this->runProcess(['git', 'checkout', '-b', $branch], $output, $path);
-        $this->runProcess(['git', 'reset', '--mixed', 'origin/'.$branch], $output, $path);
+        $this->runProcess(['git', 'checkout', '-B', $branch], $output, $path);
+
+        if ($this->isDirectoryEmpty($path, ['.git'])) {
+            $this->runProcess(['git', 'reset', '--hard', 'origin/'.$branch], $output, $path);
+        } else {
+            $this->runProcess(['git', 'reset', '--mixed', 'origin/'.$branch], $output, $path);
+        }
 
         $status = trim($this->runProcess(['git', 'status', '--porcelain'], $output, $path, false)->getOutput());
 
@@ -45,28 +51,54 @@ class RepositoryBootstrapper
         ];
     }
 
+    private function isDirectoryEmpty(string $path, array $ignore = []): bool
+    {
+        $ignoreLookup = array_fill_keys($ignore, true);
+        $entries = scandir($path) ?: [];
+
+        foreach ($entries as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+
+            if (isset($ignoreLookup[$entry])) {
+                continue;
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private function normalizeRepoUrl(string $repoUrl): string
+    {
+        $repoUrl = trim($repoUrl);
+        if ($repoUrl === '') {
+            throw new \RuntimeException('Repository URL is required to initialize git for this project.');
+        }
+
+        if (str_starts_with($repoUrl, 'git@') || str_contains($repoUrl, '://')) {
+            return $repoUrl;
+        }
+
+        // Allow shorthand "owner/repo" by expanding to GitHub HTTPS URL.
+        if (substr_count($repoUrl, '/') === 1) {
+            return 'https://github.com/'.$repoUrl.(str_ends_with($repoUrl, '.git') ? '' : '.git');
+        }
+
+        return $repoUrl;
+    }
+
     private function findGitRoot(string $path): ?string
     {
-        $cursor = $path;
-
-        while (true) {
-            if (is_dir($cursor.DIRECTORY_SEPARATOR.'.git')) {
-                return $cursor;
-            }
-
-            $parent = dirname($cursor);
-            if (! $parent || $parent === $cursor) {
-                return null;
-            }
-
-            $cursor = $parent;
-        }
+        return is_dir($path.DIRECTORY_SEPARATOR.'.git') ? $path : null;
     }
 
     private function runProcess(array $command, array &$output = [], ?string $workingDir = null, bool $throwOnFailure = true): Process
     {
         $command = $this->normalizeGitCommand($command);
-        $process = new Process($command, $workingDir, array_merge($_SERVER, $_ENV, $this->gitEnv()));
+        $process = new Process($command, $workingDir, array_merge($this->baseEnv(), $this->gitEnv()));
         $process->setTimeout(600);
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
@@ -117,6 +149,13 @@ class RepositoryBootstrapper
         }
 
         return $env;
+    }
+
+    private function baseEnv(): array
+    {
+        $env = getenv();
+
+        return is_array($env) ? $env : [];
     }
 
     private function ensureAskPassScript(): ?string
