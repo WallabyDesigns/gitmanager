@@ -5,6 +5,7 @@ return [
     'composer_binary' => env('GPM_COMPOSER_BINARY', 'composer'),
     'npm_binary' => env('GPM_NPM_BINARY', 'npm'),
     'process_path' => env('GPM_PROCESS_PATH', ''),
+    'askpass_dir' => env('GPM_ASKPASS_DIR', ''),
 
     'self_update' => [
         // Disable by default outside production to avoid clobbering local dev changes.

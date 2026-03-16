@@ -160,13 +160,42 @@ class RepositoryBootstrapper
 
     private function ensureAskPassScript(): ?string
     {
-        $storage = storage_path('app');
-        if (! is_dir($storage)) {
-            mkdir($storage, 0775, true);
+        if (PHP_OS_FAMILY === 'Windows') {
+            foreach ($this->askPassDirectories() as $directory) {
+                $path = $this->writeAskPassScript($directory, 'bat');
+                if ($path !== '') {
+                    return $path;
+                }
+            }
+
+            return null;
         }
 
-        if (PHP_OS_FAMILY === 'Windows') {
-            $path = $storage.DIRECTORY_SEPARATOR.'git-askpass.bat';
+        foreach ($this->askPassDirectories() as $directory) {
+            $path = $this->writeAskPassScript($directory, 'sh', $directory === sys_get_temp_dir());
+            if ($this->isAskPassExecutable($path)) {
+                return $path;
+            }
+        }
+
+        return null;
+    }
+
+    private function writeAskPassScript(string $directory, string $extension, bool $unique = false): string
+    {
+        $directory = trim($directory);
+        if ($directory === '') {
+            return '';
+        }
+
+        if (! is_dir($directory)) {
+            mkdir($directory, 0775, true);
+        }
+
+        $filename = $unique ? 'git-askpass-'.uniqid('', true).'.'.$extension : 'git-askpass.'.$extension;
+        $path = rtrim($directory, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.$filename;
+
+        if ($extension === 'bat') {
             if (! file_exists($path)) {
                 file_put_contents($path, "@echo off\r\n"
                     ."echo %* | findstr /I \"Username\" >nul\r\n"
@@ -180,16 +209,56 @@ class RepositoryBootstrapper
             return $path;
         }
 
-        $path = $storage.DIRECTORY_SEPARATOR.'git-askpass.sh';
         if (! file_exists($path)) {
             file_put_contents($path, "#!/bin/sh\n"
                 ."case \"$1\" in\n"
-                ."  *Username*) echo \"$GIT_USERNAME\";;\n"
-                ."  *) echo \"$GIT_PASSWORD\";;\n"
+                .'  *Username*) echo "${GIT_USERNAME:-}";;'."\n"
+                .'  *) echo "${GIT_PASSWORD:-}";;'."\n"
                 ."esac\n");
-            @chmod($path, 0755);
         }
 
+        @chmod($path, 0700);
+
         return $path;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function askPassDirectories(): array
+    {
+        $paths = [];
+        $configured = trim((string) config('gitmanager.askpass_dir', env('GPM_ASKPASS_DIR', '')));
+        if ($configured !== '') {
+            $paths[] = $configured;
+        }
+
+        $paths[] = storage_path('app');
+        $paths[] = sys_get_temp_dir();
+
+        return array_values(array_unique(array_filter($paths)));
+    }
+
+    private function isAskPassExecutable(?string $path): bool
+    {
+        if (! $path || ! file_exists($path)) {
+            return false;
+        }
+
+        if (PHP_OS_FAMILY === 'Windows') {
+            return true;
+        }
+
+        if (! is_executable($path)) {
+            return false;
+        }
+
+        $process = new Process([$path, 'Username'], null, array_merge($this->baseEnv(), [
+            'GIT_USERNAME' => 'x-access-token',
+            'GIT_PASSWORD' => 'token',
+        ]));
+        $process->run();
+
+        return $process->isSuccessful();
     }
 }
