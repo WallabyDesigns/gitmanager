@@ -2,6 +2,9 @@
 
 return [
     'git_binary' => env('GPM_GIT_BINARY', 'git'),
+    'composer_binary' => env('GPM_COMPOSER_BINARY', 'composer'),
+    'npm_binary' => env('GPM_NPM_BINARY', 'npm'),
+    'process_path' => env('GPM_PROCESS_PATH', ''),
 
     'self_update' => [
         // Disable by default outside production to avoid clobbering local dev changes.

@@ -33,7 +33,7 @@ class SelfUpdateService
             $output[] = 'Update path: '.$repoPath;
             $this->ensureGitRepository($repoPath);
             $this->ensureOriginRemote($repoPath, $output);
-            $fromHash = $this->tryRevParse($repoPath, $output);
+            $fromHash = $this->tryRevParse($repoPath);
             if ($allowDirty) {
                 $stashed = $this->stashIfDirty($repoPath, $output);
                 if (! $fromHash) {
@@ -75,14 +75,14 @@ class SelfUpdateService
                 }
                 $this->runProcess($command, $output);
             }
-            $toHash = $this->tryRevParse($repoPath, $output);
+            $toHash = $this->tryRevParse($repoPath);
 
             if (is_file(base_path('composer.json'))) {
                 $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $repoPath);
             }
 
             if (is_file(base_path('package.json'))) {
-                $this->runProcess(['npm', 'install'], $output, $repoPath);
+                $this->runProcess($this->npmInstallCommand($repoPath), $output, $repoPath);
                 if ($this->npmScriptExists('build')) {
                     $this->runProcess(['npm', 'run', 'build'], $output, $repoPath);
                 }
@@ -172,7 +172,7 @@ class SelfUpdateService
             return false;
         }
 
-        if (! $this->tryRevParse($repoPath, $output)) {
+        if (! $this->tryRevParse($repoPath)) {
             $output[] = 'Local changes detected, but no initial commit exists. Skipping git stash.';
             return false;
         }
@@ -193,9 +193,10 @@ class SelfUpdateService
         return trim($process->getOutput());
     }
 
-    private function tryRevParse(string $repoPath, array &$output): ?string
+    private function tryRevParse(string $repoPath): ?string
     {
-        $process = $this->runProcess(['git', '-C', $repoPath, 'rev-parse', '--verify', 'HEAD'], $output, null, false);
+        $localOutput = [];
+        $process = $this->runProcess(['git', '-C', $repoPath, 'rev-parse', '--verify', 'HEAD'], $localOutput, null, false);
         if (! $process->isSuccessful()) {
             return null;
         }
@@ -218,6 +219,18 @@ class SelfUpdateService
 
         $scripts = $payload['scripts'] ?? [];
         return array_key_exists($script, $scripts);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function npmInstallCommand(string $path): array
+    {
+        if (is_file($path.DIRECTORY_SEPARATOR.'package-lock.json')) {
+            return ['npm', 'ci'];
+        }
+
+        return ['npm', 'install'];
     }
 
     private function backupWorkingTree(string $repoPath, array &$output, bool $includeDependencies): string
@@ -341,7 +354,7 @@ class SelfUpdateService
 
     private function runProcess(array $command, array &$output = [], ?string $workingDir = null, bool $throwOnFailure = true): Process
     {
-        $command = $this->normalizeGitCommand($command);
+        $command = $this->normalizeCommand($command);
         $process = new Process($command, $workingDir, array_merge($this->baseEnv(), $this->gitEnv()));
         $process->setTimeout(900);
         $process->run(function ($type, $buffer) use (&$output) {
@@ -355,13 +368,15 @@ class SelfUpdateService
         return $process;
     }
 
-    private function normalizeGitCommand(array $command): array
+    private function normalizeCommand(array $command): array
     {
-        if (($command[0] ?? '') !== 'git') {
-            return $command;
-        }
-
-        $command[0] = $this->gitBinary();
+        $binary = $command[0] ?? '';
+        $command[0] = match ($binary) {
+            'git' => $this->gitBinary(),
+            'composer' => $this->composerBinary(),
+            'npm' => $this->npmBinary(),
+            default => $binary,
+        };
 
         return $command;
     }
@@ -372,6 +387,22 @@ class SelfUpdateService
         $configured = trim($configured, "\"' ");
 
         return $configured !== '' ? $configured : 'git';
+    }
+
+    private function composerBinary(): string
+    {
+        $configured = trim((string) config('gitmanager.composer_binary', env('GPM_COMPOSER_BINARY', 'composer')));
+        $configured = trim($configured, "\"' ");
+
+        return $configured !== '' ? $configured : 'composer';
+    }
+
+    private function npmBinary(): string
+    {
+        $configured = trim((string) config('gitmanager.npm_binary', env('GPM_NPM_BINARY', 'npm')));
+        $configured = trim($configured, "\"' ");
+
+        return $configured !== '' ? $configured : 'npm';
     }
 
     private function gitEnv(): array
@@ -398,8 +429,16 @@ class SelfUpdateService
     private function baseEnv(): array
     {
         $env = getenv();
+        $env = is_array($env) ? $env : [];
 
-        return is_array($env) ? $env : [];
+        $extraPath = trim((string) config('gitmanager.process_path', env('GPM_PROCESS_PATH', '')));
+        if ($extraPath !== '') {
+            $pathKey = array_key_exists('PATH', $env) ? 'PATH' : (array_key_exists('Path', $env) ? 'Path' : 'PATH');
+            $current = $env[$pathKey] ?? '';
+            $env[$pathKey] = $extraPath.PATH_SEPARATOR.$current;
+        }
+
+        return $env;
     }
 
     private function ensureAskPassScript(): ?string

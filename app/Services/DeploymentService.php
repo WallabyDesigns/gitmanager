@@ -83,7 +83,7 @@ class DeploymentService
             }
 
             if ($project->run_npm_install) {
-                $this->runProcess(['npm', 'install'], $output, $executionPath);
+                $this->runProcess($this->npmInstallCommand($executionPath), $output, $executionPath);
             }
 
             if ($project->run_build_command && $project->build_command) {
@@ -165,14 +165,16 @@ class DeploymentService
                 $toHash = $previous->to_hash;
             }
 
+            $preservePath = $this->snapshotPreservePaths($project, $repoPath, $output);
             $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', $toHash], $output);
+            $this->restorePreservedPaths($repoPath, $preservePath, $output);
 
             if ($project->run_composer_install) {
                 $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $executionPath);
             }
 
             if ($project->run_npm_install) {
-                $this->runProcess(['npm', 'install'], $output, $executionPath);
+                $this->runProcess($this->npmInstallCommand($executionPath), $output, $executionPath);
             }
 
             if ($project->run_build_command && $project->build_command) {
@@ -392,7 +394,7 @@ class DeploymentService
             }
 
             if ($project->run_npm_install && is_file($previewPath.DIRECTORY_SEPARATOR.'package.json')) {
-                $this->runProcess(['npm', 'install'], $output, $previewPath);
+            $this->runProcess($this->npmInstallCommand($previewPath), $output, $previewPath);
             }
 
             if ($project->run_build_command && $project->build_command) {
@@ -508,11 +510,14 @@ class DeploymentService
                 : 'Local changes detected: tracked files will be reset, untracked files preserved.';
         }
 
+        $preservePath = $this->snapshotPreservePaths($project, $repoPath, $output);
         $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', 'origin/'.$branch], $output);
 
         if ($forceClean) {
             $this->runProcess($this->gitCleanCommand($project, $repoPath, false), $output);
         }
+
+        $this->restorePreservedPaths($repoPath, $preservePath, $output);
     }
 
     private function forceCleanWorkingTree(Project $project, string $repoPath, array &$output): void
@@ -553,7 +558,7 @@ class DeploymentService
     {
         $command = ['git', '-C', $repoPath, 'clean', $dryRun ? '-fdn' : '-fd'];
 
-        $excludePaths = array_merge(['storage'], $this->parseExcludePaths($project));
+        $excludePaths = array_merge(['storage', '.htaccess'], $this->parseExcludePaths($project));
         foreach (array_unique($excludePaths) as $path) {
             $path = trim($path);
             if ($path === '' || $path === '.' || $path === '..') {
@@ -570,6 +575,193 @@ class DeploymentService
         }
 
         return $command;
+    }
+
+    private function snapshotPreservePaths(Project $project, string $repoPath, array &$output): ?string
+    {
+        $preserve = $this->getPreservePaths($project);
+        if ($preserve === []) {
+            return null;
+        }
+
+        $base = storage_path('app/deploy-preserve/'.$project->id.'/'.now()->format('Ymd_His'));
+        if (! is_dir($base) && ! mkdir($base, 0775, true) && ! is_dir($base)) {
+            $output[] = 'Unable to create preserve directory: '.$base;
+            return null;
+        }
+
+        $matches = $this->collectPreserveTargets($repoPath, $preserve);
+        if ($matches === []) {
+            return null;
+        }
+
+        $output[] = 'Preserving '.count($matches).' path(s) before reset.';
+
+        foreach ($matches as $relative) {
+            $source = $repoPath.DIRECTORY_SEPARATOR.$relative;
+            $destination = $base.DIRECTORY_SEPARATOR.$relative;
+            $this->copyPath($source, $destination);
+        }
+
+        return $base;
+    }
+
+    private function restorePreservedPaths(string $repoPath, ?string $preservePath, array &$output): void
+    {
+        if (! $preservePath || ! is_dir($preservePath)) {
+            return;
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($preservePath, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            $relative = $iterator->getSubPathname();
+            $relative = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relative);
+            $target = $repoPath.DIRECTORY_SEPARATOR.$relative;
+
+            if ($item->isDir()) {
+                if (! is_dir($target)) {
+                    mkdir($target, 0775, true);
+                }
+                continue;
+            }
+
+            $targetDir = dirname($target);
+            if (! is_dir($targetDir)) {
+                mkdir($targetDir, 0775, true);
+            }
+            copy($item->getPathname(), $target);
+        }
+
+        $output[] = 'Restored preserved paths.';
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function getPreservePaths(Project $project): array
+    {
+        $paths = ['.htaccess'];
+
+        foreach ($this->parseExcludePaths($project) as $path) {
+            $paths[] = $path;
+        }
+
+        return array_values(array_unique(array_filter($paths, fn (string $path) => trim($path) !== '')));
+    }
+
+    /**
+     * @param array<int, string> $patterns
+     * @return array<int, string>
+     */
+    private function collectPreserveTargets(string $repoPath, array $patterns): array
+    {
+        $matches = [];
+        $hasWildcard = false;
+        foreach ($patterns as $pattern) {
+            if (str_contains($pattern, '*')) {
+                $hasWildcard = true;
+                break;
+            }
+        }
+
+        $normalizedPatterns = array_map(function (string $pattern): string {
+            $pattern = ltrim($pattern, '/\\');
+            return str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $pattern);
+        }, $patterns);
+
+        $direct = [];
+        foreach ($normalizedPatterns as $pattern) {
+            if (! str_contains($pattern, '*')) {
+                $direct[] = $pattern;
+            }
+        }
+
+        foreach ($direct as $path) {
+            $full = $repoPath.DIRECTORY_SEPARATOR.$path;
+            if (file_exists($full)) {
+                $matches[] = $path;
+            }
+        }
+
+        if (! $hasWildcard) {
+            return array_values(array_unique($matches));
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($repoPath, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            if ($item->isDir() || $item->isLink()) {
+                continue;
+            }
+
+            $relative = $iterator->getSubPathname();
+            $relative = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relative);
+
+            foreach ($normalizedPatterns as $pattern) {
+                if (str_contains($pattern, '*') && fnmatch($pattern, $relative)) {
+                    $matches[] = $relative;
+                    break;
+                }
+            }
+        }
+
+        return array_values(array_unique($matches));
+    }
+
+    private function copyPath(string $source, string $destination): void
+    {
+        if (is_link($source)) {
+            return;
+        }
+
+        if (is_dir($source)) {
+            if (! is_dir($destination)) {
+                mkdir($destination, 0775, true);
+            }
+
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($source, \FilesystemIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::SELF_FIRST
+            );
+
+            foreach ($iterator as $item) {
+                if ($item->isLink()) {
+                    continue;
+                }
+
+                $relative = $iterator->getSubPathname();
+                $relative = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relative);
+                $target = $destination.DIRECTORY_SEPARATOR.$relative;
+
+                if ($item->isDir()) {
+                    if (! is_dir($target)) {
+                        mkdir($target, 0775, true);
+                    }
+                    continue;
+                }
+
+                $targetDir = dirname($target);
+                if (! is_dir($targetDir)) {
+                    mkdir($targetDir, 0775, true);
+                }
+                copy($item->getPathname(), $target);
+            }
+
+            return;
+        }
+
+        $targetDir = dirname($destination);
+        if (! is_dir($targetDir)) {
+            mkdir($targetDir, 0775, true);
+        }
+        copy($source, $destination);
     }
 
     /**
@@ -750,7 +942,7 @@ class DeploymentService
 
     private function runProcess(array $command, array &$output = [], ?string $workingDir = null, bool $throwOnFailure = true): Process
     {
-        $command = $this->normalizeGitCommand($command);
+        $command = $this->normalizeCommand($command);
         $process = new Process($command, $workingDir, array_merge($this->baseEnv(), $this->gitEnv()));
         $process->setTimeout(600);
         $process->run(function ($type, $buffer) use (&$output) {
@@ -779,13 +971,15 @@ class DeploymentService
         return $process;
     }
 
-    private function normalizeGitCommand(array $command): array
+    private function normalizeCommand(array $command): array
     {
-        if (($command[0] ?? '') !== 'git') {
-            return $command;
-        }
-
-        $command[0] = $this->gitBinary();
+        $binary = $command[0] ?? '';
+        $command[0] = match ($binary) {
+            'git' => $this->gitBinary(),
+            'composer' => $this->composerBinary(),
+            'npm' => $this->npmBinary(),
+            default => $binary,
+        };
 
         return $command;
     }
@@ -796,6 +990,22 @@ class DeploymentService
         $configured = trim($configured, "\"' ");
 
         return $configured !== '' ? $configured : 'git';
+    }
+
+    private function composerBinary(): string
+    {
+        $configured = trim((string) config('gitmanager.composer_binary', env('GPM_COMPOSER_BINARY', 'composer')));
+        $configured = trim($configured, "\"' ");
+
+        return $configured !== '' ? $configured : 'composer';
+    }
+
+    private function npmBinary(): string
+    {
+        $configured = trim((string) config('gitmanager.npm_binary', env('GPM_NPM_BINARY', 'npm')));
+        $configured = trim($configured, "\"' ");
+
+        return $configured !== '' ? $configured : 'npm';
     }
 
     private function gitEnv(): array
@@ -822,8 +1032,28 @@ class DeploymentService
     private function baseEnv(): array
     {
         $env = getenv();
+        $env = is_array($env) ? $env : [];
 
-        return is_array($env) ? $env : [];
+        $extraPath = trim((string) config('gitmanager.process_path', env('GPM_PROCESS_PATH', '')));
+        if ($extraPath !== '') {
+            $pathKey = array_key_exists('PATH', $env) ? 'PATH' : (array_key_exists('Path', $env) ? 'Path' : 'PATH');
+            $current = $env[$pathKey] ?? '';
+            $env[$pathKey] = $extraPath.PATH_SEPARATOR.$current;
+        }
+
+        return $env;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function npmInstallCommand(string $path): array
+    {
+        if (is_file($path.DIRECTORY_SEPARATOR.'package-lock.json')) {
+            return ['npm', 'ci'];
+        }
+
+        return ['npm', 'install'];
     }
 
     private function ensureAskPassScript(): ?string
