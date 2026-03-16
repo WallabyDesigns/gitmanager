@@ -1,4 +1,4 @@
-<div class="py-10">
+<div class="py-10" wire:init="refreshHealth" wire:poll.60s="refreshHealth">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
         <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800">
             <div class="p-6">
@@ -26,7 +26,8 @@
                             </div>
                             <p class="text-sm text-slate-500 dark:text-slate-400">{{ $project->local_path }}</p>
                             <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
-                                Last deployed: {{ $project->last_deployed_at?->format('M j, Y g:i a') ?? 'Never' }}
+                                @php($lastDeploy = $project->last_deployed_at ?? ($project->last_successful_deploy_at ?? null))
+                                Last deployed: {{ $lastDeploy?->format('M j, Y g:i a') ?? 'Never' }}
                             </div>
                         </div>
                         <div class="text-xs text-slate-400 dark:text-slate-500">

@@ -1,4 +1,4 @@
-<div class="py-10" x-data="{ tab: 'overview', deleteOpen: false }">
+<div class="py-10" x-data="{ tab: 'overview', deleteOpen: false }" wire:init="refreshHealthStatus" wire:poll.60s="refreshHealthStatus">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
         <div class="flex flex-wrap gap-2">
             <button type="button" @click="tab = 'overview'" :class="tab === 'overview' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300'" class="px-3 py-2 text-sm rounded-md">
@@ -50,9 +50,12 @@
                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
                     <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Last Deploy</div>
                     <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                        {{ $project->last_deployed_at?->format('M j, Y g:i a') ?? 'Never' }}
+                        @php($lastDeploy = $project->last_deployed_at ?? ($lastSuccessfulDeploy?->started_at ?? null))
+                        {{ $lastDeploy?->format('M j, Y g:i a') ?? 'Never' }}
                     </div>
-                    <div class="text-xs text-slate-400 dark:text-slate-500">{{ $project->last_deployed_hash ?? 'No hash yet' }}</div>
+                    <div class="text-xs text-slate-400 dark:text-slate-500">
+                        {{ $project->last_deployed_hash ?? ($lastSuccessfulDeploy?->to_hash ?? 'No hash yet') }}
+                    </div>
                 </div>
                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
                     <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Auto Deploy</div>

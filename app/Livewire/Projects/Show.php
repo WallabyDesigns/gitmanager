@@ -35,6 +35,10 @@ class Show extends Component
         ];
 
         $deployments = $this->project->deployments()->orderByDesc('started_at');
+        $lastSuccessfulDeploy = (clone $deployments)
+            ->where('action', 'deploy')
+            ->where('status', 'success')
+            ->first();
         $dependencyLogs = (clone $deployments)->whereIn('action', $dependencyActions)->take(10)->get();
 
         $service = app(DeploymentService::class);
@@ -49,11 +53,20 @@ class Show extends Component
             'latestDependencyLog' => $dependencyLogs->first(),
             'commits' => $commits,
             'activeCommit' => $activeCommit,
+            'lastSuccessfulDeploy' => $lastSuccessfulDeploy,
         ])->layout('layouts.app', [
             'header' => view('livewire.projects.partials.show-header', [
                 'project' => $this->project,
             ]),
         ]);
+    }
+
+    public function refreshHealthStatus(DeploymentService $service): void
+    {
+        if (! $this->project->health_checked_at || $this->project->health_checked_at->lt(now()->subMinute())) {
+            $service->checkHealth($this->project);
+            $this->project->refresh();
+        }
     }
 
     public function deploy(DeploymentService $service): void
