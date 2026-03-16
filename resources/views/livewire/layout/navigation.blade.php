@@ -43,14 +43,14 @@ new class extends Component
             <div class="flex">
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
-                    <a href="{{ route('projects.index') }}" wire:navigate>
+                    <a href="{{ route('projects.index') }}" wire:navigate class="flex items-center">
                         <x-application-logo class="block h-9 w-auto fill-current text-slate-800 dark:text-slate-100" />
+                        <div>
+                            <h2 class="text-xl px-2 font-semibold text-slate-900 dark:text-slate-100">
+                                Git Project Manager
+                            </h2>
+                        </div>
                     </a>
-                    <div>
-                        <h2 class="text-xl px-2 font-semibold text-slate-900 dark:text-slate-100">
-                            Git Project Manager
-                        </h2>
-                    </div>
                 </div>
 
                 <!-- Navigation Links -->
