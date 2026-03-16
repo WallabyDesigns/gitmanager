@@ -12,7 +12,7 @@ class SelfUpdateService
     private const REPO_URL = 'https://github.com/Costigan-Stephen/gitmanager.git';
     private const DEFAULT_BRANCH = 'main';
 
-    public function update(?User $user = null): AppUpdate
+    public function update(?User $user = null, bool $allowDirty = false): AppUpdate
     {
         $repoPath = base_path();
 
@@ -25,11 +25,17 @@ class SelfUpdateService
         $output = [];
         $fromHash = null;
         $toHash = null;
+        $stashed = false;
+        $stashRestoreFailed = false;
 
         try {
             $this->ensureGitRepository($repoPath);
             $this->ensureOriginRemote($repoPath, $output);
-            $this->ensureCleanWorkingTree($repoPath, $output);
+            if ($allowDirty) {
+                $stashed = $this->stashIfDirty($repoPath, $output);
+            } else {
+                $this->ensureCleanWorkingTree($repoPath, $output);
+            }
 
             $branch = $this->resolveBranch($repoPath, $output);
 
@@ -66,6 +72,14 @@ class SelfUpdateService
                 $this->runProcess(['php', 'artisan', 'migrate', '--force'], $output, $repoPath);
             }
 
+            if ($stashed) {
+                $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
+                if (! $pop->isSuccessful()) {
+                    $stashRestoreFailed = true;
+                    throw new \RuntimeException('Update applied, but stashed changes could not be restored.');
+                }
+            }
+
             $update->status = 'success';
             $update->from_hash = $fromHash;
             $update->to_hash = $toHash;
@@ -73,7 +87,7 @@ class SelfUpdateService
             $update->finished_at = now();
             $update->save();
         } catch (\Throwable $exception) {
-            if ($fromHash) {
+            if ($fromHash && ! $stashRestoreFailed) {
                 $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', $fromHash], $output, null, false);
             }
 
@@ -126,6 +140,19 @@ class SelfUpdateService
         if ($status !== '') {
             throw new \RuntimeException('Working tree has uncommitted changes. Resolve them before updating.');
         }
+    }
+
+    private function stashIfDirty(string $repoPath, array &$output): bool
+    {
+        $status = $this->getWorkingTreeStatus($repoPath, $output);
+        if ($status === '') {
+            return false;
+        }
+
+        $output[] = 'Local changes detected: stashing before update.';
+        $this->runProcess(['git', '-C', $repoPath, 'stash', 'push', '-u', '-m', 'gpm-self-update'], $output);
+
+        return true;
     }
 
     private function getWorkingTreeStatus(string $repoPath, array &$output): string

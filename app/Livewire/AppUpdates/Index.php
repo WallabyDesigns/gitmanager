@@ -11,8 +11,12 @@ class Index extends Component
 {
     public function render()
     {
+        $updates = AppUpdate::query()->orderByDesc('started_at');
+
         return view('livewire.app-updates.index', [
-            'latest' => AppUpdate::query()->orderByDesc('started_at')->first(),
+            'latest' => $updates->first(),
+            'recent' => (clone $updates)->take(10)->get(),
+            'selfUpdateEnabled' => (bool) config('gitmanager.self_update.enabled', true),
         ])->layout('layouts.app', [
             'header' => view('livewire.app-updates.partials.header'),
         ]);
@@ -24,6 +28,20 @@ class Index extends Component
 
         $message = match ($update->status) {
             'success' => 'Git Project Manager updated successfully.',
+            'skipped' => 'Git Project Manager is already up to date.',
+            default => 'Update failed. Review the logs for details.',
+        };
+
+        $this->dispatch('notify', message: $message);
+        $this->redirectRoute('app-updates.index', navigate: true);
+    }
+
+    public function runUpdatePreserve(SelfUpdateService $service): void
+    {
+        $update = $service->update(Auth::user(), true);
+
+        $message = match ($update->status) {
+            'success' => 'Update completed. Local changes were preserved.',
             'skipped' => 'Git Project Manager is already up to date.',
             default => 'Update failed. Review the logs for details.',
         };
