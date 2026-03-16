@@ -42,6 +42,7 @@ class Project extends Model
         'health_checked_at' => 'datetime',
         'last_checked_at' => 'datetime',
         'last_deployed_at' => 'datetime',
+        'last_successful_deploy_at' => 'datetime',
     ];
 
     public function user(): BelongsTo
