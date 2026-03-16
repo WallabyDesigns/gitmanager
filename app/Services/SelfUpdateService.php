@@ -37,7 +37,7 @@ class SelfUpdateService
             $this->ensureOriginRemote($repoPath, $output);
             $fromHash = $this->tryRevParse($repoPath);
             if ($allowDirty) {
-                $stashed = $this->stashIfDirty($repoPath, $output);
+                $stashed = $this->stashIfDirty($repoPath, $output, $htaccessSnapshot);
                 if (! $fromHash) {
                     $includeDependencies = $this->shouldIncludeDependencyDirs($repoPath, $output);
                     $backupPath = $this->backupWorkingTree($repoPath, $output, $includeDependencies);
@@ -93,6 +93,8 @@ class SelfUpdateService
             if (is_file(base_path('artisan'))) {
                 $this->runProcess(['php', 'artisan', 'migrate', '--force'], $output, $repoPath);
             }
+
+            $this->applyPostUpdatePermissions($repoPath, $output);
 
             if ($stashed) {
                 $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
@@ -170,6 +172,31 @@ class SelfUpdateService
         $output[] = 'Restored '.$snapshot['relative'].'.';
     }
 
+    private function applyPostUpdatePermissions(string $repoPath, array &$output): void
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            return;
+        }
+
+        $paths = [
+            'storage',
+            'bootstrap/cache',
+            'node_modules',
+        ];
+
+        foreach ($paths as $path) {
+            $full = $repoPath.DIRECTORY_SEPARATOR.$path;
+            if (! is_dir($full)) {
+                continue;
+            }
+
+            $process = $this->runProcess(['chmod', '-R', 'ug+rwX', $path], $output, $repoPath, false);
+            if (! $process->isSuccessful()) {
+                $output[] = 'Warning: unable to chmod '.$path.'.';
+            }
+        }
+    }
+
     private function ensureGitRepository(string $repoPath): void
     {
         if (! is_dir($repoPath.DIRECTORY_SEPARATOR.'.git')) {
@@ -210,7 +237,7 @@ class SelfUpdateService
         }
     }
 
-    private function stashIfDirty(string $repoPath, array &$output): bool
+    private function stashIfDirty(string $repoPath, array &$output, ?array $htaccessSnapshot = null): bool
     {
         $status = $this->getWorkingTreeStatus($repoPath, $output);
         if ($status === '') {
@@ -222,8 +249,18 @@ class SelfUpdateService
             return false;
         }
 
+        $htaccessPath = $htaccessSnapshot ? $repoPath.DIRECTORY_SEPARATOR.$htaccessSnapshot['relative'] : null;
+        if ($htaccessPath && is_file($htaccessPath)) {
+            $output[] = 'Temporarily excluding .htaccess from stash.';
+            @unlink($htaccessPath);
+        }
+
         $output[] = 'Local changes detected: stashing before update.';
         $this->runProcess(['git', '-C', $repoPath, 'stash', 'push', '-u', '-m', 'gpm-self-update'], $output);
+
+        if ($htaccessSnapshot) {
+            $this->restoreSnapshot($repoPath, $htaccessSnapshot, $output);
+        }
 
         return true;
     }
