@@ -558,7 +558,7 @@ class DeploymentService
     {
         $command = ['git', '-C', $repoPath, 'clean', $dryRun ? '-fdn' : '-fd'];
 
-        $excludePaths = array_merge(['storage', '.htaccess'], $this->parseExcludePaths($project));
+        $excludePaths = array_merge(['storage', '.htaccess', 'public/.htaccess'], $this->parseExcludePaths($project));
         foreach (array_unique($excludePaths) as $path) {
             $path = trim($path);
             if ($path === '' || $path === '.' || $path === '..') {
@@ -644,7 +644,7 @@ class DeploymentService
      */
     private function getPreservePaths(Project $project): array
     {
-        $paths = ['.htaccess'];
+        $paths = ['.htaccess', 'public/.htaccess'];
 
         foreach ($this->parseExcludePaths($project) as $path) {
             $paths[] = $path;

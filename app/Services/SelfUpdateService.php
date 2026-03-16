@@ -28,16 +28,18 @@ class SelfUpdateService
         $stashed = false;
         $backupPath = null;
         $stashRestoreFailed = false;
-        $htaccessSnapshot = null;
+        $htaccessSnapshots = [];
+        $protectedHtaccess = null;
 
         try {
             $output[] = 'Update path: '.$repoPath;
-            $htaccessSnapshot = $this->snapshotFile($repoPath, '.htaccess');
+            $protectedHtaccess = $this->prepareProtectedHtaccess($repoPath, $output);
+            $htaccessSnapshots = $this->snapshotFiles($repoPath, ['.htaccess']);
             $this->ensureGitRepository($repoPath);
             $this->ensureOriginRemote($repoPath, $output);
             $fromHash = $this->tryRevParse($repoPath);
             if ($allowDirty) {
-                $stashed = $this->stashIfDirty($repoPath, $output, $htaccessSnapshot);
+                $stashed = $this->stashIfDirty($repoPath, $output, $htaccessSnapshots);
                 if (! $fromHash) {
                     $includeDependencies = $this->shouldIncludeDependencyDirs($repoPath, $output);
                     $backupPath = $this->backupWorkingTree($repoPath, $output, $includeDependencies);
@@ -51,6 +53,7 @@ class SelfUpdateService
 
             $branch = $this->resolveBranch($repoPath, $output);
 
+            $this->protectHtaccess($repoPath, $output);
             $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune'], $output);
             $remoteHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'origin/'.$branch], $output)->getOutput());
 
@@ -107,7 +110,8 @@ class SelfUpdateService
                 $output[] = 'Backup created at: '.$backupPath;
             }
 
-            $this->restoreSnapshot($repoPath, $htaccessSnapshot, $output);
+            $this->restoreSnapshots($repoPath, $htaccessSnapshots, $output);
+            $this->restoreProtectedHtaccess($repoPath, $protectedHtaccess, $output);
 
             $update->status = 'success';
             $update->from_hash = $fromHash;
@@ -127,7 +131,8 @@ class SelfUpdateService
                 }
             }
 
-            $this->restoreSnapshot($repoPath, $htaccessSnapshot, $output);
+            $this->restoreSnapshots($repoPath, $htaccessSnapshots, $output);
+            $this->restoreProtectedHtaccess($repoPath, $protectedHtaccess, $output);
 
             $update->status = 'failed';
             $update->from_hash = $fromHash;
@@ -140,36 +145,141 @@ class SelfUpdateService
         return $update;
     }
 
-    private function snapshotFile(string $repoPath, string $relative): ?array
+    /**
+     * @param array<int, string> $relatives
+     * @return array<int, array{relative: string, content: string, mode: int}>
+     */
+    private function snapshotFiles(string $repoPath, array $relatives): array
     {
-        $relative = ltrim($relative, '/\\');
-        $path = $repoPath.DIRECTORY_SEPARATOR.$relative;
-        if (! is_file($path)) {
+        $snapshots = [];
+        foreach ($relatives as $relative) {
+            $relative = ltrim($relative, '/\\');
+            $path = $repoPath.DIRECTORY_SEPARATOR.$relative;
+            if (! is_file($path)) {
+                continue;
+            }
+
+            $content = file_get_contents($path);
+            if ($content === false) {
+                continue;
+            }
+
+            $snapshots[] = [
+                'relative' => $relative,
+                'content' => $content,
+                'mode' => fileperms($path) & 0777,
+            ];
+        }
+
+        return $snapshots;
+    }
+
+    /**
+     * @param array<int, array{relative: string, content: string, mode: int}> $snapshots
+     */
+    private function restoreSnapshots(string $repoPath, array $snapshots, array &$output): void
+    {
+        foreach ($snapshots as $snapshot) {
+            $target = $repoPath.DIRECTORY_SEPARATOR.$snapshot['relative'];
+            $dir = dirname($target);
+            if (! is_dir($dir)) {
+                mkdir($dir, 0775, true);
+            }
+
+            $written = @file_put_contents($target, $snapshot['content']);
+            if ($written === false) {
+                $output[] = 'Warning: unable to restore '.$snapshot['relative'].'.';
+                continue;
+            }
+
+            @chmod($target, $snapshot['mode']);
+            $output[] = 'Restored '.$snapshot['relative'].'.';
+        }
+    }
+
+    private function protectHtaccess(string $repoPath, array &$output): void
+    {
+        $paths = ['.htaccess'];
+        foreach ($paths as $path) {
+            $full = $repoPath.DIRECTORY_SEPARATOR.$path;
+            if (! file_exists($full)) {
+                continue;
+            }
+
+            if (! $this->isPathTracked($repoPath, $path)) {
+                continue;
+            }
+
+            $process = $this->runProcess(['git', '-C', $repoPath, 'update-index', '--skip-worktree', $path], $output, null, false);
+            if ($process->isSuccessful()) {
+                $output[] = 'Protecting '.$path.' from git updates.';
+            }
+        }
+    }
+
+    private function prepareProtectedHtaccess(string $repoPath, array &$output): ?array
+    {
+        $relative = '.htaccess';
+        $source = $repoPath.DIRECTORY_SEPARATOR.$relative;
+        $backupDir = storage_path('app/protected-files');
+        $backupPath = $backupDir.DIRECTORY_SEPARATOR.'htaccess.root';
+        $metaPath = $backupPath.'.json';
+
+        if (! is_dir($backupDir)) {
+            mkdir($backupDir, 0775, true);
+        }
+
+        if (is_file($source)) {
+            $content = file_get_contents($source);
+            if ($content !== false) {
+                file_put_contents($backupPath, $content);
+                file_put_contents($metaPath, json_encode([
+                    'relative' => $relative,
+                    'mode' => fileperms($source) & 0777,
+                ]));
+                $output[] = 'Backed up .htaccess before update.';
+            }
+        }
+
+        if (! is_file($backupPath)) {
             return null;
         }
 
+        $meta = [];
+        if (is_file($metaPath)) {
+            $decoded = json_decode(file_get_contents($metaPath), true);
+            if (is_array($decoded)) {
+                $meta = $decoded;
+            }
+        }
+
         return [
-            'relative' => $relative,
-            'content' => file_get_contents($path),
-            'mode' => fileperms($path) & 0777,
+            'relative' => $meta['relative'] ?? $relative,
+            'mode' => (int) ($meta['mode'] ?? 0644),
+            'backup' => $backupPath,
         ];
     }
 
-    private function restoreSnapshot(string $repoPath, ?array $snapshot, array &$output): void
+    private function restoreProtectedHtaccess(string $repoPath, ?array $backup, array &$output): void
     {
-        if (! $snapshot) {
+        if (! $backup || ! is_file($backup['backup'] ?? '')) {
             return;
         }
 
-        $target = $repoPath.DIRECTORY_SEPARATOR.$snapshot['relative'];
+        $target = $repoPath.DIRECTORY_SEPARATOR.$backup['relative'];
         $dir = dirname($target);
         if (! is_dir($dir)) {
             mkdir($dir, 0775, true);
         }
 
-        file_put_contents($target, $snapshot['content']);
-        @chmod($target, $snapshot['mode']);
-        $output[] = 'Restored '.$snapshot['relative'].'.';
+        $content = file_get_contents($backup['backup']);
+        if ($content === false) {
+            return;
+        }
+
+        file_put_contents($target, $content);
+        @chmod($target, $backup['mode'] ?? 0644);
+        $output[] = 'Restored protected .htaccess.';
     }
 
     private function applyPostUpdatePermissions(string $repoPath, array &$output): void
@@ -237,7 +347,7 @@ class SelfUpdateService
         }
     }
 
-    private function stashIfDirty(string $repoPath, array &$output, ?array $htaccessSnapshot = null): bool
+    private function stashIfDirty(string $repoPath, array &$output, array $htaccessSnapshots = []): bool
     {
         $status = $this->getWorkingTreeStatus($repoPath, $output);
         if ($status === '') {
@@ -249,18 +359,19 @@ class SelfUpdateService
             return false;
         }
 
-        $htaccessPath = $htaccessSnapshot ? $repoPath.DIRECTORY_SEPARATOR.$htaccessSnapshot['relative'] : null;
-        if ($htaccessPath && is_file($htaccessPath)) {
-            $output[] = 'Temporarily excluding .htaccess from stash.';
-            @unlink($htaccessPath);
-        }
-
-        $output[] = 'Local changes detected: stashing before update.';
-        $this->runProcess(['git', '-C', $repoPath, 'stash', 'push', '-u', '-m', 'gpm-self-update'], $output);
-
-        if ($htaccessSnapshot) {
-            $this->restoreSnapshot($repoPath, $htaccessSnapshot, $output);
-        }
+        $output[] = 'Local changes detected: stashing tracked changes before update.';
+        $this->runProcess([
+            'git',
+            '-C',
+            $repoPath,
+            'stash',
+            'push',
+            '-m',
+            'gpm-self-update',
+            '--',
+            '.',
+            ':(exclude).htaccess',
+        ], $output);
 
         return true;
     }
@@ -285,6 +396,19 @@ class SelfUpdateService
 
         $hash = trim($process->getOutput());
         return $hash !== '' ? $hash : null;
+    }
+
+    private function isPathTracked(string $repoPath, string $path): bool
+    {
+        $localOutput = [];
+        $process = $this->runProcess(
+            ['git', '-C', $repoPath, 'ls-files', '--error-unmatch', $path],
+            $localOutput,
+            null,
+            false
+        );
+
+        return $process->isSuccessful();
     }
 
     private function npmScriptExists(string $script): bool
