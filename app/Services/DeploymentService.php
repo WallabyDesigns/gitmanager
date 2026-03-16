@@ -978,6 +978,7 @@ class DeploymentService
             'git' => $this->gitBinary(),
             'composer' => $this->composerBinary(),
             'npm' => $this->npmBinary(),
+            'php' => $this->phpBinary(),
             default => $binary,
         };
 
@@ -1006,6 +1007,14 @@ class DeploymentService
         $configured = trim($configured, "\"' ");
 
         return $configured !== '' ? $configured : 'npm';
+    }
+
+    private function phpBinary(): string
+    {
+        $configured = trim((string) config('gitmanager.php_binary', env('GPM_PHP_BINARY', env('GPM_PHP_PATH', 'php'))));
+        $configured = trim($configured, "\"' ");
+
+        return $configured !== '' ? $configured : 'php';
     }
 
     private function gitEnv(): array
@@ -1039,6 +1048,18 @@ class DeploymentService
             $pathKey = array_key_exists('PATH', $env) ? 'PATH' : (array_key_exists('Path', $env) ? 'Path' : 'PATH');
             $current = $env[$pathKey] ?? '';
             $env[$pathKey] = $extraPath.PATH_SEPARATOR.$current;
+        }
+
+        $phpBinary = $this->phpBinary();
+        if (str_contains($phpBinary, DIRECTORY_SEPARATOR) || str_contains($phpBinary, '/')) {
+            $phpDir = dirname($phpBinary);
+            if ($phpDir !== '' && $phpDir !== '.') {
+                $pathKey = array_key_exists('PATH', $env) ? 'PATH' : (array_key_exists('Path', $env) ? 'Path' : 'PATH');
+                $current = $env[$pathKey] ?? '';
+                if (! str_contains($current, $phpDir)) {
+                    $env[$pathKey] = $phpDir.PATH_SEPARATOR.$current;
+                }
+            }
         }
 
         return $env;

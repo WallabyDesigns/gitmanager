@@ -4,6 +4,7 @@ return [
     'git_binary' => env('GPM_GIT_BINARY', 'git'),
     'composer_binary' => env('GPM_COMPOSER_BINARY', 'composer'),
     'npm_binary' => env('GPM_NPM_BINARY', 'npm'),
+    'php_binary' => env('GPM_PHP_BINARY', env('GPM_PHP_PATH', 'php')),
     'process_path' => env('GPM_PROCESS_PATH', ''),
     'askpass_dir' => env('GPM_ASKPASS_DIR', ''),
 

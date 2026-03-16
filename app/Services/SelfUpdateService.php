@@ -87,9 +87,13 @@ class SelfUpdateService
             }
 
             if (is_file(base_path('package.json'))) {
-                $this->runProcess($this->npmInstallCommand($repoPath), $output, $repoPath);
-                if ($this->npmScriptExists('build')) {
-                    $this->runProcess(['npm', 'run', 'build'], $output, $repoPath);
+                if ($this->canRunNpm($output)) {
+                    $this->runProcess($this->npmInstallCommand($repoPath), $output, $repoPath);
+                    if ($this->npmScriptExists('build')) {
+                        $this->runProcess(['npm', 'run', 'build'], $output, $repoPath);
+                    }
+                } else {
+                    $output[] = 'Skipping npm install: node/npm not available in PATH.';
                 }
             }
 
@@ -427,6 +431,41 @@ class SelfUpdateService
         return array_key_exists($script, $scripts);
     }
 
+    private function canRunNpm(array &$output): bool
+    {
+        $npm = $this->npmBinary();
+        if (! $this->binaryAvailable($npm)) {
+            $output[] = 'npm binary not found: '.$npm;
+            return false;
+        }
+
+        if (! $this->binaryAvailable('node')) {
+            $output[] = 'node binary not found in PATH.';
+            return false;
+        }
+
+        return true;
+    }
+
+    private function binaryAvailable(string $binary): bool
+    {
+        $binary = trim($binary);
+        $binary = trim($binary, "\"' ");
+        if ($binary === '') {
+            return false;
+        }
+
+        if (str_contains($binary, DIRECTORY_SEPARATOR) || str_contains($binary, '/')) {
+            return is_file($binary) && is_executable($binary);
+        }
+
+        $command = PHP_OS_FAMILY === 'Windows' ? ['where', $binary] : ['which', $binary];
+        $process = new Process($command, null, $this->baseEnv());
+        $process->run();
+
+        return $process->isSuccessful();
+    }
+
     /**
      * @return array<int, string>
      */
@@ -581,6 +620,7 @@ class SelfUpdateService
             'git' => $this->gitBinary(),
             'composer' => $this->composerBinary(),
             'npm' => $this->npmBinary(),
+            'php' => $this->phpBinary(),
             default => $binary,
         };
 
@@ -609,6 +649,14 @@ class SelfUpdateService
         $configured = trim($configured, "\"' ");
 
         return $configured !== '' ? $configured : 'npm';
+    }
+
+    private function phpBinary(): string
+    {
+        $configured = trim((string) config('gitmanager.php_binary', env('GPM_PHP_BINARY', env('GPM_PHP_PATH', 'php'))));
+        $configured = trim($configured, "\"' ");
+
+        return $configured !== '' ? $configured : 'php';
     }
 
     private function gitEnv(): array
@@ -642,6 +690,18 @@ class SelfUpdateService
             $pathKey = array_key_exists('PATH', $env) ? 'PATH' : (array_key_exists('Path', $env) ? 'Path' : 'PATH');
             $current = $env[$pathKey] ?? '';
             $env[$pathKey] = $extraPath.PATH_SEPARATOR.$current;
+        }
+
+        $phpBinary = $this->phpBinary();
+        if (str_contains($phpBinary, DIRECTORY_SEPARATOR) || str_contains($phpBinary, '/')) {
+            $phpDir = dirname($phpBinary);
+            if ($phpDir !== '' && $phpDir !== '.') {
+                $pathKey = array_key_exists('PATH', $env) ? 'PATH' : (array_key_exists('Path', $env) ? 'Path' : 'PATH');
+                $current = $env[$pathKey] ?? '';
+                if (! str_contains($current, $phpDir)) {
+                    $env[$pathKey] = $phpDir.PATH_SEPARATOR.$current;
+                }
+            }
         }
 
         return $env;
