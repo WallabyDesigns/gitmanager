@@ -252,12 +252,6 @@
         <div x-show="tab === 'debug'" x-cloak class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
             <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Debug Logs</h3>
 
-            @if ($project->last_error_message)
-                <div class="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
-                    {{ $project->last_error_message }}
-                </div>
-            @endif
-
             <div class="mt-4 space-y-4">
                 @forelse ($deployments as $deployment)
                     <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
