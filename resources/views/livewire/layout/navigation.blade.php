@@ -43,7 +43,7 @@ new class extends Component
             <div class="flex">
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
-                    <a href="{{ route('projects.index') }}" wire:navigate class="flex items-center">
+                    <a href="{{ route('projects.index') }}" class="flex items-center">
                         <x-application-logo class="block h-9 w-auto fill-current text-slate-800 dark:text-slate-100" />
                         <div>
                             <h2 class="text-xl px-2 font-semibold text-slate-900 dark:text-slate-100">
@@ -55,16 +55,16 @@ new class extends Component
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    <x-nav-link :href="route('projects.create')" :active="request()->routeIs('projects.create')" wire:navigate>
+                    <x-nav-link :href="route('projects.create')" :active="request()->routeIs('projects.create')">
                         {{ __('New Project') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('projects.index')" :active="request()->routeIs('projects.index', 'projects.show', 'projects.edit')" wire:navigate>
+                    <x-nav-link :href="route('projects.index')" :active="request()->routeIs('projects.index', 'projects.show', 'projects.edit')">
                         {{ __('Projects') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('app-updates.index')" :active="request()->routeIs('app-updates.index')" wire:navigate>
+                    <x-nav-link :href="route('app-updates.index')" :active="request()->routeIs('app-updates.index')">
                         {{ __('Update App') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('security.index')" :active="request()->routeIs('security.index')" wire:navigate>
+                    <x-nav-link :href="route('security.index')" :active="request()->routeIs('security.index')">
                         <span class="flex items-center gap-2">
                             {{ __('Security') }}
                             @if ($openAlerts > 0)
@@ -93,7 +93,7 @@ new class extends Component
                     </x-slot>
 
                     <x-slot name="content">
-                        <x-dropdown-link :href="route('profile')" wire:navigate>
+                        <x-dropdown-link :href="route('profile')">
                             {{ __('Profile') }}
                         </x-dropdown-link>
 
@@ -122,16 +122,16 @@ new class extends Component
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-2">
-            <x-responsive-nav-link :href="route('projects.create')" :active="request()->routeIs('projects.create')" wire:navigate>
+            <x-responsive-nav-link :href="route('projects.create')" :active="request()->routeIs('projects.create')">
                 {{ __('New Project') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('projects.index')" :active="request()->routeIs('projects.index', 'projects.show', 'projects.edit')" wire:navigate>
+            <x-responsive-nav-link :href="route('projects.index')" :active="request()->routeIs('projects.index', 'projects.show', 'projects.edit')">
                 {{ __('Projects') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('app-updates.index')" :active="request()->routeIs('app-updates.index')" wire:navigate>
+            <x-responsive-nav-link :href="route('app-updates.index')" :active="request()->routeIs('app-updates.index')">
                 {{ __('Update App') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('security.index')" :active="request()->routeIs('security.index')" wire:navigate>
+            <x-responsive-nav-link :href="route('security.index')" :active="request()->routeIs('security.index')">
                 <span class="flex items-center gap-2">
                     {{ __('Security') }}
                     @if ($openAlerts > 0)
@@ -151,7 +151,7 @@ new class extends Component
             </div>
 
             <div class="mt-3 space-y-1">
-                <x-responsive-nav-link :href="route('profile')" wire:navigate>
+                <x-responsive-nav-link :href="route('profile')">
                     {{ __('Profile') }}
                 </x-responsive-nav-link>
 
@@ -165,3 +165,4 @@ new class extends Component
         </div>
     </div>
 </nav>
+

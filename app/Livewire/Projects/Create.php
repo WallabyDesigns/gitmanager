@@ -27,6 +27,7 @@ class Create extends Component
             'run_test_command' => true,
             'test_command' => 'php artisan test',
             'allow_dependency_updates' => true,
+            'exclude_paths' => '',
         ];
     }
 
@@ -87,6 +88,7 @@ class Create extends Component
                 Rule::requiredIf(fn () => (bool) ($this->form['run_test_command'] ?? false)),
             ],
             'form.allow_dependency_updates' => ['boolean'],
+            'form.exclude_paths' => ['nullable', 'string'],
         ];
     }
 }

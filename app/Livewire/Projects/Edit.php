@@ -30,6 +30,7 @@ class Edit extends Component
             'run_test_command' => $project->run_test_command,
             'test_command' => $project->test_command,
             'allow_dependency_updates' => $project->allow_dependency_updates,
+            'exclude_paths' => $project->exclude_paths,
         ];
     }
 
@@ -78,6 +79,7 @@ class Edit extends Component
                 Rule::requiredIf(fn () => (bool) ($this->form['run_test_command'] ?? false)),
             ],
             'form.allow_dependency_updates' => ['boolean'],
+            'form.exclude_paths' => ['nullable', 'string'],
         ];
     }
 }

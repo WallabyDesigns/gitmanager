@@ -29,6 +29,7 @@ class Project extends Model
         'run_test_command',
         'test_command',
         'allow_dependency_updates',
+        'exclude_paths',
     ];
 
     protected $casts = [

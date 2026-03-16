@@ -74,7 +74,7 @@ class DeploymentService
                 return $deployment;
             }
 
-            $this->resetToRemote($repoPath, $project->default_branch, $output, $allowDirty);
+            $this->resetToRemote($project, $repoPath, $project->default_branch, $output, $allowDirty);
 
             $toHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
 
@@ -499,7 +499,7 @@ class DeploymentService
         }
     }
 
-    private function resetToRemote(string $repoPath, string $branch, array &$output, bool $forceClean): void
+    private function resetToRemote(Project $project, string $repoPath, string $branch, array &$output, bool $forceClean): void
     {
         $status = $this->getWorkingTreeStatus($repoPath, $output);
         if ($status !== '') {
@@ -511,11 +511,11 @@ class DeploymentService
         $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', 'origin/'.$branch], $output);
 
         if ($forceClean) {
-            $this->runProcess(['git', '-C', $repoPath, 'clean', '-fd'], $output);
+            $this->runProcess($this->gitCleanCommand($project, $repoPath, false), $output);
         }
     }
 
-    private function forceCleanWorkingTree(string $repoPath, array &$output): void
+    private function forceCleanWorkingTree(Project $project, string $repoPath, array &$output): void
     {
         $status = $this->getWorkingTreeStatus($repoPath, $output);
         if ($status === '') {
@@ -531,7 +531,7 @@ class DeploymentService
             }
         }
 
-        $cleanPreview = $this->runProcess(['git', '-C', $repoPath, 'clean', '-fdn'], $output, null, false);
+        $cleanPreview = $this->runProcess($this->gitCleanCommand($project, $repoPath, true), $output, null, false);
         if ($cleanPreview->isSuccessful()) {
             $previewLines = array_filter(array_map('trim', explode("\n", $cleanPreview->getOutput())));
             if ($previewLines) {
@@ -543,7 +543,58 @@ class DeploymentService
         }
 
         $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard'], $output);
-        $this->runProcess(['git', '-C', $repoPath, 'clean', '-fd'], $output);
+        $this->runProcess($this->gitCleanCommand($project, $repoPath, false), $output);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function gitCleanCommand(Project $project, string $repoPath, bool $dryRun): array
+    {
+        $command = ['git', '-C', $repoPath, 'clean', $dryRun ? '-fdn' : '-fd'];
+
+        $excludePaths = array_merge(['storage'], $this->parseExcludePaths($project));
+        foreach (array_unique($excludePaths) as $path) {
+            $path = trim($path);
+            if ($path === '' || $path === '.' || $path === '..') {
+                continue;
+            }
+
+            $path = ltrim($path, '/\\');
+            if ($path === '') {
+                continue;
+            }
+
+            $command[] = '-e';
+            $command[] = $path;
+        }
+
+        return $command;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function parseExcludePaths(Project $project): array
+    {
+        $raw = (string) ($project->exclude_paths ?? '');
+        if ($raw === '') {
+            return [];
+        }
+
+        $normalized = str_replace(["\r\n", "\r"], "\n", $raw);
+        $normalized = str_replace(',', "\n", $normalized);
+
+        $paths = [];
+        foreach (explode("\n", $normalized) as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+            $paths[] = $line;
+        }
+
+        return $paths;
     }
 
     private function workingTreeDirty(string $repoPath, array &$output): bool

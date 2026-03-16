@@ -26,20 +26,29 @@ class SelfUpdateService
         $fromHash = null;
         $toHash = null;
         $stashed = false;
+        $backupPath = null;
         $stashRestoreFailed = false;
 
         try {
+            $output[] = 'Update path: '.$repoPath;
             $this->ensureGitRepository($repoPath);
             $this->ensureOriginRemote($repoPath, $output);
+            $fromHash = $this->tryRevParse($repoPath, $output);
             if ($allowDirty) {
                 $stashed = $this->stashIfDirty($repoPath, $output);
+                if (! $fromHash) {
+                    $includeDependencies = $this->shouldIncludeDependencyDirs($repoPath, $output);
+                    $backupPath = $this->backupWorkingTree($repoPath, $output, $includeDependencies);
+                }
             } else {
                 $this->ensureCleanWorkingTree($repoPath, $output);
+                if (! $fromHash) {
+                    throw new \RuntimeException('Repository has no commits. Use preserve update or initialize git before updating.');
+                }
             }
 
             $branch = $this->resolveBranch($repoPath, $output);
 
-            $fromHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
             $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune'], $output);
             $remoteHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'origin/'.$branch], $output)->getOutput());
 
@@ -54,8 +63,19 @@ class SelfUpdateService
                 return $update;
             }
 
-            $this->runProcess(['git', '-C', $repoPath, 'merge', '--ff-only', 'origin/'.$branch], $output);
-            $toHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
+            if ($fromHash) {
+                $this->runProcess(['git', '-C', $repoPath, 'merge', '--ff-only', 'origin/'.$branch], $output);
+            } else {
+                if ($backupPath) {
+                    $output[] = 'No initial commit detected; applying update with a forced checkout.';
+                }
+                $command = ['git', '-C', $repoPath, 'checkout', '-B', $branch, 'origin/'.$branch];
+                if ($backupPath) {
+                    $command[] = '--force';
+                }
+                $this->runProcess($command, $output);
+            }
+            $toHash = $this->tryRevParse($repoPath, $output);
 
             if (is_file(base_path('composer.json'))) {
                 $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $repoPath);
@@ -79,10 +99,13 @@ class SelfUpdateService
                     throw new \RuntimeException('Update applied, but stashed changes could not be restored.');
                 }
             }
+            if ($backupPath) {
+                $output[] = 'Backup created at: '.$backupPath;
+            }
 
             $update->status = 'success';
             $update->from_hash = $fromHash;
-            $update->to_hash = $toHash;
+            $update->to_hash = $toHash ?: $remoteHash;
             $update->output_log = implode("\n", $output);
             $update->finished_at = now();
             $update->save();
@@ -149,6 +172,11 @@ class SelfUpdateService
             return false;
         }
 
+        if (! $this->tryRevParse($repoPath, $output)) {
+            $output[] = 'Local changes detected, but no initial commit exists. Skipping git stash.';
+            return false;
+        }
+
         $output[] = 'Local changes detected: stashing before update.';
         $this->runProcess(['git', '-C', $repoPath, 'stash', 'push', '-u', '-m', 'gpm-self-update'], $output);
 
@@ -165,6 +193,17 @@ class SelfUpdateService
         return trim($process->getOutput());
     }
 
+    private function tryRevParse(string $repoPath, array &$output): ?string
+    {
+        $process = $this->runProcess(['git', '-C', $repoPath, 'rev-parse', '--verify', 'HEAD'], $output, null, false);
+        if (! $process->isSuccessful()) {
+            return null;
+        }
+
+        $hash = trim($process->getOutput());
+        return $hash !== '' ? $hash : null;
+    }
+
     private function npmScriptExists(string $script): bool
     {
         $packagePath = base_path('package.json');
@@ -179,6 +218,125 @@ class SelfUpdateService
 
         $scripts = $payload['scripts'] ?? [];
         return array_key_exists($script, $scripts);
+    }
+
+    private function backupWorkingTree(string $repoPath, array &$output, bool $includeDependencies): string
+    {
+        $base = storage_path('app/self-update-backups');
+        if (! is_dir($base)) {
+            mkdir($base, 0775, true);
+        }
+
+        $timestamp = now()->format('Ymd_His');
+        $target = $base.DIRECTORY_SEPARATOR.$timestamp;
+        if (! is_dir($target)) {
+            mkdir($target, 0775, true);
+        }
+
+        $output[] = 'Creating backup of working tree (excluding .git, storage/logs) at: '.$target;
+        if (! $includeDependencies) {
+            $output[] = 'Skipping node_modules and vendor in backup (no package file changes detected).';
+        }
+
+        $backupRootRelative = ltrim(str_replace($repoPath, '', $base), DIRECTORY_SEPARATOR);
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($repoPath, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            if ($item->isLink()) {
+                continue;
+            }
+
+            $relative = $iterator->getSubPathname();
+            $relative = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relative);
+
+            if ($this->shouldExcludeBackupPath($relative, $includeDependencies, $backupRootRelative)) {
+                continue;
+            }
+
+            $destination = $target.DIRECTORY_SEPARATOR.$relative;
+            if ($item->isDir()) {
+                if (! is_dir($destination)) {
+                    mkdir($destination, 0775, true);
+                }
+                continue;
+            }
+
+            $destinationDir = dirname($destination);
+            if (! is_dir($destinationDir)) {
+                mkdir($destinationDir, 0775, true);
+            }
+
+            copy($item->getPathname(), $destination);
+        }
+
+        return $target;
+    }
+
+    private function shouldExcludeBackupPath(string $relative, bool $includeDependencies, string $backupRootRelative): bool
+    {
+        $relative = ltrim($relative, DIRECTORY_SEPARATOR);
+        if ($relative === '.git' || str_starts_with($relative, '.git'.DIRECTORY_SEPARATOR)) {
+            return true;
+        }
+
+        if ($backupRootRelative !== '' && ($relative === $backupRootRelative || str_starts_with($relative, $backupRootRelative.DIRECTORY_SEPARATOR))) {
+            return true;
+        }
+
+        if (! $includeDependencies) {
+            if ($relative === 'node_modules' || str_starts_with($relative, 'node_modules'.DIRECTORY_SEPARATOR)) {
+                return true;
+            }
+            if ($relative === 'vendor' || str_starts_with($relative, 'vendor'.DIRECTORY_SEPARATOR)) {
+                return true;
+            }
+        }
+
+        if ($relative === 'storage'.DIRECTORY_SEPARATOR.'logs' || str_starts_with($relative, 'storage'.DIRECTORY_SEPARATOR.'logs'.DIRECTORY_SEPARATOR)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function shouldIncludeDependencyDirs(string $repoPath, array &$output): bool
+    {
+        $status = $this->getWorkingTreeStatus($repoPath, $output);
+        if ($status === '') {
+            return false;
+        }
+
+        $targets = [
+            'composer.json',
+            'composer.lock',
+            'package.json',
+            'package-lock.json',
+            'pnpm-lock.yaml',
+            'yarn.lock',
+        ];
+
+        foreach (explode("\n", $status) as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+
+            $path = trim(substr($line, 3));
+            if ($path === '') {
+                continue;
+            }
+
+            $basename = basename(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path));
+            if (in_array($basename, $targets, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function runProcess(array $command, array &$output = [], ?string $workingDir = null, bool $throwOnFailure = true): Process
