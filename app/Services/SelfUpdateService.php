@@ -117,6 +117,7 @@ class SelfUpdateService
                         }
 
                         if ($this->npmScriptExists('build')) {
+                            $manifestBackup = $this->backupBuildManifest($repoPath, $output);
                             if ($this->shouldRunNpmBuild($repoPath, $fromHash, $toHash, $output)) {
                                 $this->prepareViteBuildDirectory($repoPath, $output);
                                 try {
@@ -125,7 +126,16 @@ class SelfUpdateService
                                     if ($this->isBuildPermissionError($buildException)) {
                                         $output[] = 'Build failed due to permissions; retrying after fixing build directory.';
                                         $this->prepareViteBuildDirectory($repoPath, $output, true);
-                                        $this->runProcess(['npm', 'run', 'build'], $output, $repoPath);
+                                        try {
+                                            $this->runProcess(['npm', 'run', 'build'], $output, $repoPath);
+                                        } catch (\Throwable $retryException) {
+                                            if ($this->isBuildPermissionError($retryException)) {
+                                                $output[] = 'Build still failing due to permissions. Skipping build to allow update to complete.';
+                                                $this->restoreBuildManifest($repoPath, $manifestBackup, $output);
+                                            } else {
+                                                throw $retryException;
+                                            }
+                                        }
                                     } else {
                                         throw $buildException;
                                     }
@@ -627,6 +637,44 @@ class SelfUpdateService
                     $output[] = 'Recreated build directory at '.$buildPath;
                 }
             }
+        }
+    }
+
+    private function backupBuildManifest(string $repoPath, array &$output): ?string
+    {
+        $manifest = $repoPath.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'build'.DIRECTORY_SEPARATOR.'manifest.json';
+        if (! is_file($manifest)) {
+            return null;
+        }
+
+        $backupDir = storage_path('app/build-manifest-backups');
+        if (! is_dir($backupDir)) {
+            mkdir($backupDir, 0775, true);
+        }
+
+        $backupPath = $backupDir.DIRECTORY_SEPARATOR.'manifest-'.now()->format('Ymd_His').'.json';
+        if (@copy($manifest, $backupPath)) {
+            $output[] = 'Backed up build manifest.';
+            return $backupPath;
+        }
+
+        return null;
+    }
+
+    private function restoreBuildManifest(string $repoPath, ?string $backupPath, array &$output): void
+    {
+        if (! $backupPath || ! is_file($backupPath)) {
+            return;
+        }
+
+        $manifestDir = $repoPath.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'build';
+        if (! is_dir($manifestDir)) {
+            mkdir($manifestDir, 0775, true);
+        }
+
+        $manifest = $manifestDir.DIRECTORY_SEPARATOR.'manifest.json';
+        if (@copy($backupPath, $manifest)) {
+            $output[] = 'Restored build manifest from backup.';
         }
     }
 
