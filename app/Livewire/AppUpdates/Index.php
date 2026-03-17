@@ -34,8 +34,8 @@ class Index extends Component
         $update = $service->updateSmart(Auth::user());
 
         $message = match ($update->status) {
-            'success' => 'Git Project Manager updated successfully.',
-            'skipped' => 'Git Project Manager is already up to date.',
+            'success' => 'Git Web Manager updated successfully.',
+            'skipped' => 'Git Web Manager is already up to date.',
             default => 'Update failed. Review the logs for details.',
         };
 
@@ -48,7 +48,7 @@ class Index extends Component
         $this->updateStatus = $service->getUpdateStatus(true);
 
         $message = match ($this->updateStatus['status'] ?? 'unknown') {
-            'up-to-date' => 'Git Project Manager is up to date.',
+            'up-to-date' => 'Git Web Manager is up to date.',
             'update-available' => 'A newer version is available.',
             default => 'Unable to determine update status.',
         };

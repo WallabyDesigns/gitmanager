@@ -540,7 +540,7 @@ class DeploymentService
             'stash',
             'push',
             '-m',
-            'gpm-deploy',
+            'gwm-deploy',
             '--',
             '.',
             ':(exclude).htaccess',
@@ -1046,7 +1046,7 @@ class DeploymentService
 
     private function gitBinary(): string
     {
-        $configured = trim((string) config('gitmanager.git_binary', env('GPM_GIT_BINARY', 'git')));
+        $configured = trim((string) config('gitmanager.git_binary', 'git'));
         $configured = trim($configured, "\"' ");
 
         return $configured !== '' ? $configured : 'git';
@@ -1054,7 +1054,7 @@ class DeploymentService
 
     private function composerBinary(): string
     {
-        $configured = trim((string) config('gitmanager.composer_binary', env('GPM_COMPOSER_BINARY', 'composer')));
+        $configured = trim((string) config('gitmanager.composer_binary', 'composer'));
         $configured = trim($configured, "\"' ");
 
         return $configured !== '' ? $configured : 'composer';
@@ -1062,7 +1062,7 @@ class DeploymentService
 
     private function npmBinary(): string
     {
-        $configured = trim((string) config('gitmanager.npm_binary', env('GPM_NPM_BINARY', 'npm')));
+        $configured = trim((string) config('gitmanager.npm_binary', 'npm'));
         $configured = trim($configured, "\"' ");
 
         return $configured !== '' ? $configured : 'npm';
@@ -1070,7 +1070,7 @@ class DeploymentService
 
     private function phpBinary(): string
     {
-        $configured = trim((string) config('gitmanager.php_binary', env('GPM_PHP_BINARY', env('GPM_PHP_PATH', 'php'))));
+        $configured = trim((string) config('gitmanager.php_binary', 'php'));
         $configured = trim($configured, "\"' ");
 
         return $configured !== '' ? $configured : 'php';
@@ -1102,7 +1102,7 @@ class DeploymentService
         $env = getenv();
         $env = is_array($env) ? $env : [];
 
-        $extraPath = trim((string) config('gitmanager.process_path', env('GPM_PROCESS_PATH', '')));
+        $extraPath = trim((string) config('gitmanager.process_path', ''));
         $extraPath = trim($extraPath, "\"' ");
         if ($extraPath !== '') {
             $pathKey = array_key_exists('PATH', $env) ? 'PATH' : (array_key_exists('Path', $env) ? 'Path' : 'PATH');
@@ -1207,7 +1207,7 @@ class DeploymentService
     private function askPassDirectories(): array
     {
         $paths = [];
-        $configured = trim((string) config('gitmanager.askpass_dir', env('GPM_ASKPASS_DIR', '')));
+        $configured = trim((string) config('gitmanager.askpass_dir', ''));
         if ($configured !== '') {
             $paths[] = $configured;
         }

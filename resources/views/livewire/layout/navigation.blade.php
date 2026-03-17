@@ -52,7 +52,7 @@ new class extends Component
                         <x-application-logo class="block h-9 w-auto fill-current text-slate-800 dark:text-slate-100" />
                         <div>
                             <h2 class="text-xl px-2 font-semibold text-slate-900 dark:text-slate-100">
-                                Git Project Manager
+                                Git Web Manager
                             </h2>
                         </div>
                     </a>
@@ -66,26 +66,32 @@ new class extends Component
                     <x-nav-link :href="route('projects.index')" :active="request()->routeIs('projects.index', 'projects.show', 'projects.edit')">
                         {{ __('Projects') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('app-updates.index')" :active="request()->routeIs('app-updates.index')">
-                        <span class="flex items-center gap-2">
-                            {{ __('Update App') }}
-                            @if ($updateAvailable)
-                                <span class="inline-flex items-center justify-center rounded-full bg-amber-400/20 px-2 py-0.5 text-xs text-amber-200">
-                                    NEW
-                                </span>
-                            @endif
-                        </span>
-                    </x-nav-link>
-                    <x-nav-link :href="route('security.index')" :active="request()->routeIs('security.index')">
-                        <span class="flex items-center gap-2">
-                            {{ __('Security') }}
-                            @if ($openAlerts > 0)
-                                <span class="inline-flex items-center justify-center rounded-full bg-rose-500/20 px-2 py-0.5 text-xs text-rose-200">
-                                    {{ $openAlerts }}
-                                </span>
-                            @endif
-                        </span>
-                    </x-nav-link>
+                    @if (auth()->user()?->isAdmin())
+                        <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.index')">
+                            {{ __('Users') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('security.index')" :active="request()->routeIs('security.index')">
+                            <span class="flex items-center gap-2">
+                                {{ __('Security') }}
+                                @if ($openAlerts > 0)
+                                    <span class="inline-flex items-center justify-center rounded-full bg-rose-500/20 px-2 py-0.5 text-xs text-rose-200">
+                                        {{ $openAlerts }}
+                                    </span>
+                                @endif
+                            </span>
+                        </x-nav-link>
+                        <x-nav-link :href="route('app-updates.index')" :active="request()->routeIs('app-updates.index')">
+                            <span class="flex items-center gap-2">
+                                {{ __('Update App') }}
+                                @if ($updateAvailable)
+                                    <span class="inline-flex items-center justify-center rounded-full bg-amber-400/20 px-2 py-0.5 text-xs text-amber-200">
+                                        NEW
+                                    </span>
+                                @endif
+                            </span>
+                        </x-nav-link>
+
+                    @endif
                 </div>
             </div>
 
@@ -140,6 +146,11 @@ new class extends Component
             <x-responsive-nav-link :href="route('projects.index')" :active="request()->routeIs('projects.index', 'projects.show', 'projects.edit')">
                 {{ __('Projects') }}
             </x-responsive-nav-link>
+            @if (auth()->user()?->isAdmin())
+                <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.index')">
+                    {{ __('Users') }}
+                </x-responsive-nav-link>
+            @endif
             <x-responsive-nav-link :href="route('app-updates.index')" :active="request()->routeIs('app-updates.index')">
                 <span class="flex items-center gap-2">
                     {{ __('Update App') }}

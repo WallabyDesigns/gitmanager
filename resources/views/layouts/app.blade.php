@@ -23,15 +23,15 @@
             <style>
                 body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f172a; color: #e2e8f0; }
                 a { color: #fbbf24; text-decoration: underline; }
-                .gpm-fallback-alert { max-width: 72rem; margin: 1.5rem auto; padding: 0.75rem 1rem; border-radius: 0.75rem; background: #1f2937; border: 1px solid #334155; }
-                .gpm-fallback-alert strong { color: #f8fafc; }
+                .gwm-fallback-alert { max-width: 72rem; margin: 1.5rem auto; padding: 0.75rem 1rem; border-radius: 0.75rem; background: #1f2937; border: 1px solid #334155; }
+                .gwm-fallback-alert strong { color: #f8fafc; }
             </style>
         @endif
     </head>
     <body class="font-sans antialiased h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
         <div class="min-h-screen">
             @if (! $viteReady)
-                <div class="gpm-fallback-alert">
+                <div class="gwm-fallback-alert">
                     <strong>Assets are not built.</strong> Run <code>npm run build</code> or fix the build permissions to restore the normal UI.
                 </div>
             @endif
@@ -52,24 +52,21 @@
                 {{ $slot }}
             </main>
             <footer>
-                <p class="footer-text">Git Project Manager © 2026 Wallaby Designs LLC.</p>
-                <a class="wallaby bg-neutral-950" href="https://wallabydesigns.com/" title="Website built by Wallaby Designs">
-                    <img width="175" height="62.25" src="/images/wallaby-w.png" alt="wallaby designs">
-                </a>
+                <p class="footer-text">Git Web Manager for Git © 2026 Wallaby Designs LLC. All rights reserved.</p>
             </footer>
         </div>
 
-        <div id="gpm-toast" class="fixed bottom-6 right-6 hidden max-w-sm rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-lg dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"></div>
+        <div id="gwm-toast" class="fixed bottom-6 right-6 hidden max-w-sm rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-lg dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"></div>
         <script>
             window.addEventListener('notify', (event) => {
-                const toast = document.getElementById('gpm-toast');
+                const toast = document.getElementById('gwm-toast');
                 if (!toast) {
                     return;
                 }
                 toast.textContent = event.detail.message || 'Done.';
                 toast.classList.remove('hidden');
-                clearTimeout(window.GPMToastTimer);
-                window.GPMToastTimer = setTimeout(() => {
+                clearTimeout(window.GWMToastTimer);
+                window.GWMToastTimer = setTimeout(() => {
                     toast.classList.add('hidden');
                 }, 4000);
             });

@@ -4,7 +4,7 @@
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Update Status</h3>
-                    <p class="text-sm text-slate-500 dark:text-slate-400">Check whether this install is on the latest Git Project Manager version.</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Check whether this install is on the latest Git Web Manager version.</p>
                 </div>
                 <div class="flex flex-wrap gap-2 items-center">
                     @php($status = $updateStatus['status'] ?? 'unknown')

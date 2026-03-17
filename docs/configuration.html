@@ -4,7 +4,7 @@
   <link rel="icon" href="favicon.ico" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Configuration | Git Project Manager</title>
+  <title>Configuration | Git Web Manager</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="app.js" defer></script>
 </head>
@@ -13,10 +13,13 @@
     <div class="page-hero-inner">
       <div class="docflex">
         <div class="brand">
-            <img class="logo" src="assets/logo.svg" alt="Git Project Manager" />
+            <a href="index.html">
+                <img class="logo" src="assets/logo.svg" alt="Git Web Manager" />
+
+            </a>
             <div>
               <p class="eyebrow">Configuration</p>
-              <h1>Git Project Manager</h1>
+              <h1>Git Web Manager</h1>
               <p class="tagline">Environment variables and optional runtime overrides.</p>
             </div>
         </div>
@@ -30,7 +33,7 @@
   </header>
 
   <main class="layout">
-    <div data-include="_partials/nav.html"></div>
+    <div data-include="partials/nav.html"></div>
 
     <section class="content">
       <section class="card">
@@ -44,35 +47,36 @@
 
       <section class="card">
         <h2>Binary Overrides</h2>
-        <p>Point GPM at specific binaries when multiple installations exist:</p>
+        <p>Point GWM at specific binaries when multiple installations exist:</p>
         <ul>
-          <li><code>GPM_GIT_BINARY</code></li>
-          <li><code>GPM_COMPOSER_BINARY</code></li>
-          <li><code>GPM_NPM_BINARY</code></li>
-          <li><code>GPM_PHP_BINARY</code> or <code>GPM_PHP_PATH</code></li>
-          <li><code>GPM_PROCESS_PATH</code> to prepend PATH.</li>
+          <li><code>GWM_GIT_BINARY</code></li>
+          <li><code>GWM_COMPOSER_BINARY</code></li>
+          <li><code>GWM_NPM_BINARY</code></li>
+          <li><code>GWM_PHP_BINARY</code> or <code>GWM_PHP_PATH</code></li>
+          <li><code>GWM_PROCESS_PATH</code> to prepend PATH.</li>
         </ul>
       </section>
 
       <section class="card">
         <h2>Preview Builds</h2>
         <ul>
-          <li><code>GPM_PREVIEW_PATH</code> (local base path)</li>
-          <li><code>GPM_PREVIEW_BASE_URL</code> (optional URL prefix)</li>
+          <li><code>GWM_PREVIEW_PATH</code> (local base path)</li>
+          <li><code>GWM_PREVIEW_BASE_URL</code> (optional URL prefix)</li>
         </ul>
       </section>
 
       <section class="card">
         <h2>Self Update</h2>
         <ul>
-          <li><code>GPM_SELF_UPDATE_ENABLED</code> to toggle nightly updates.</li>
-          <li><code>GPM_ASKPASS_DIR</code> for Git credential helper location.</li>
+          <li><code>GWM_SELF_UPDATE_ENABLED</code> to toggle nightly updates.</li>
+          <li><code>GWM_SELF_UPDATE_EXCLUDE_PATHS</code> to skip paths during app updates.</li>
+          <li><code>GWM_ASKPASS_DIR</code> for Git credential helper location.</li>
         </ul>
       </section>
     </section>
   </main>
 
-  <div data-include="_partials/footer.html"></div>
+  <div data-include="partials/footer.html"></div>
 </body>
 </html>
 

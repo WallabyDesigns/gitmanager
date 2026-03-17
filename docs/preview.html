@@ -4,7 +4,7 @@
   <link rel="icon" href="favicon.ico" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Preview Builds | Git Project Manager</title>
+  <title>Preview Builds | Git Web Manager</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="app.js" defer></script>
 </head>
@@ -13,10 +13,13 @@
     <div class="page-hero-inner">
       <div class="docflex">
         <div class="brand">
-            <img class="logo" src="assets/logo.svg" alt="Git Project Manager" />
+            <a href="index.html">
+                <img class="logo" src="assets/logo.svg" alt="Git Web Manager" />
+
+            </a>
             <div>
               <p class="eyebrow">Preview Builds</p>
-              <h1>Git Project Manager</h1>
+              <h1>Git Web Manager</h1>
               <p class="tagline">Preview any commit without touching production.</p>
             </div>
         </div>
@@ -30,15 +33,15 @@
   </header>
 
   <main class="layout">
-    <div data-include="_partials/nav.html"></div>
+    <div data-include="partials/nav.html"></div>
 
     <section class="content">
       <section class="card">
         <h2>Configure Preview Paths</h2>
         <p>Preview builds are stored in a dedicated base folder and optionally exposed through a base URL.</p>
         <ul>
-          <li><code>GPM_PREVIEW_PATH</code> (local base directory)</li>
-          <li><code>GPM_PREVIEW_BASE_URL</code> (URL prefix)</li>
+          <li><code>GWM_PREVIEW_PATH</code> (local base directory)</li>
+          <li><code>GWM_PREVIEW_BASE_URL</code> (URL prefix)</li>
         </ul>
       </section>
 
@@ -50,7 +53,9 @@ Preview URL: https://preview.example.com/my-project/abc1234</code></pre>
     </section>
   </main>
 
-  <div data-include="_partials/footer.html"></div>
+  <div data-include="partials/footer.html"></div>
 </body>
 </html>
+
+
 

@@ -4,7 +4,7 @@
   <link rel="icon" href="favicon.ico" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Security & Dependabot | Git Project Manager</title>
+  <title>Security & Dependabot | Git Web Manager</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="app.js" defer></script>
 </head>
@@ -13,10 +13,13 @@
     <div class="page-hero-inner">
       <div class="docflex">
         <div class="brand">
-            <img class="logo" src="assets/logo.svg" alt="Git Project Manager" />
+            <a href="index.html">
+                <img class="logo" src="assets/logo.svg" alt="Git Web Manager" />
+
+            </a>
             <div>
               <p class="eyebrow">Security & Dependabot</p>
-              <h1>Git Project Manager</h1>
+              <h1>Git Web Manager</h1>
               <p class="tagline">Keep dependencies patched with automated alerts and updates.</p>
             </div>
         </div>
@@ -30,7 +33,7 @@
   </header>
 
   <main class="layout">
-    <div data-include="_partials/nav.html"></div>
+    <div data-include="partials/nav.html"></div>
 
     <section class="content">
       <section class="card">
@@ -43,7 +46,7 @@
 
       <section class="card">
         <h2>Auto-Merge Options</h2>
-        <p>When auto-merge is enabled, GPM will attempt to apply Dependabot PRs automatically. Failures are recorded in the Security logs.</p>
+        <p>When auto-merge is enabled, GWM will attempt to apply Dependabot PRs automatically. Failures are recorded in the Security logs.</p>
       </section>
 
       <section class="card">
@@ -53,7 +56,9 @@
     </section>
   </main>
 
-  <div data-include="_partials/footer.html"></div>
+  <div data-include="partials/footer.html"></div>
 </body>
 </html>
+
+
 

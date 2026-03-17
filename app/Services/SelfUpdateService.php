@@ -12,7 +12,7 @@ class SelfUpdateService
 {
     private const REPO_URL = 'https://github.com/Costigan-Stephen/gitmanager.git';
     private const DEFAULT_BRANCH = 'main';
-    private const STATUS_CACHE_KEY = 'gpm_self_update_status';
+    private const STATUS_CACHE_KEY = 'gwm_self_update_status';
 
     /**
      * @return array{status: string, current?: string|null, latest?: string|null, branch?: string|null, checked_at?: string|null, error?: string|null}
@@ -190,6 +190,7 @@ class SelfUpdateService
 
             $this->restoreSnapshots($repoPath, $htaccessSnapshots, $output);
             $this->restoreProtectedHtaccess($repoPath, $protectedHtaccess, $output);
+            $this->removeExcludedPaths($repoPath, $output);
 
             $update->status = 'success';
             $update->from_hash = $fromHash;
@@ -211,6 +212,7 @@ class SelfUpdateService
 
             $this->restoreSnapshots($repoPath, $htaccessSnapshots, $output);
             $this->restoreProtectedHtaccess($repoPath, $protectedHtaccess, $output);
+            $this->removeExcludedPaths($repoPath, $output);
 
             $update->status = 'failed';
             $update->from_hash = $fromHash;
@@ -483,18 +485,29 @@ class SelfUpdateService
         }
 
         $output[] = 'Local changes detected: stashing tracked changes before update.';
-        $this->runProcess([
+        $command = [
             'git',
             '-C',
             $repoPath,
             'stash',
             'push',
             '-m',
-            'gpm-self-update',
+            'gwm-self-update',
             '--',
             '.',
             ':(exclude).htaccess',
-        ], $output);
+        ];
+
+        foreach ($this->selfUpdateExcludedPaths() as $path) {
+            $path = trim($path);
+            if ($path === '' || $path === '.' || $path === '..') {
+                continue;
+            }
+
+            $command[] = ':(exclude)'.$path;
+        }
+
+        $this->runProcess($command, $output);
 
         return true;
     }
@@ -506,7 +519,27 @@ class SelfUpdateService
             throw new \RuntimeException('Unable to check git status for this application.');
         }
 
-        return trim($process->getOutput());
+        $lines = array_filter(array_map('trim', explode("\n", $process->getOutput())));
+        $filtered = [];
+        foreach ($lines as $line) {
+            $path = trim(substr($line, 3));
+            if ($path === '') {
+                continue;
+            }
+
+            if (str_contains($path, ' -> ')) {
+                $parts = explode(' -> ', $path);
+                $path = trim(end($parts));
+            }
+
+            if ($this->isExcludedPath($path)) {
+                continue;
+            }
+
+            $filtered[] = $line;
+        }
+
+        return trim(implode("\n", $filtered));
     }
 
     private function tryRevParse(string $repoPath): ?string
@@ -875,7 +908,82 @@ class SelfUpdateService
             return true;
         }
 
+        foreach ($this->selfUpdateExcludedPaths() as $path) {
+            $path = trim($path);
+            if ($path === '') {
+                continue;
+            }
+
+            $path = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, ltrim($path, '/\\'));
+            if ($relative === $path || str_starts_with($relative, $path.DIRECTORY_SEPARATOR)) {
+                return true;
+            }
+        }
+
         return false;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function selfUpdateExcludedPaths(): array
+    {
+        $paths = config('gitmanager.self_update.exclude_paths', ['docs']);
+        if (! is_array($paths)) {
+            $paths = [$paths];
+        }
+
+        $normalized = [];
+        foreach ($paths as $path) {
+            $path = trim((string) $path);
+            if ($path !== '') {
+                $normalized[] = $path;
+            }
+        }
+
+        return $normalized;
+    }
+
+    private function isExcludedPath(string $path): bool
+    {
+        $path = ltrim(str_replace('\\', '/', $path), '/');
+        foreach ($this->selfUpdateExcludedPaths() as $exclude) {
+            $exclude = ltrim(str_replace('\\', '/', $exclude), '/');
+            if ($exclude === '') {
+                continue;
+            }
+
+            if ($path === $exclude || str_starts_with($path, $exclude.'/')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function removeExcludedPaths(string $repoPath, array &$output): void
+    {
+        foreach ($this->selfUpdateExcludedPaths() as $path) {
+            $path = trim($path);
+            if ($path === '') {
+                continue;
+            }
+
+            $target = $repoPath.DIRECTORY_SEPARATOR.$path;
+            if (! file_exists($target)) {
+                continue;
+            }
+
+            if (is_dir($target)) {
+                $this->deleteDirectory($target);
+                $output[] = 'Excluded path removed: '.$path;
+                continue;
+            }
+
+            if (@unlink($target)) {
+                $output[] = 'Excluded path removed: '.$path;
+            }
+        }
     }
 
     private function shouldIncludeDependencyDirs(string $repoPath, array &$output): bool
@@ -946,7 +1054,7 @@ class SelfUpdateService
 
     private function gitBinary(): string
     {
-        $configured = trim((string) config('gitmanager.git_binary', env('GPM_GIT_BINARY', 'git')));
+        $configured = trim((string) config('gitmanager.git_binary', 'git'));
         $configured = trim($configured, "\"' ");
 
         return $configured !== '' ? $configured : 'git';
@@ -954,7 +1062,7 @@ class SelfUpdateService
 
     private function composerBinary(): string
     {
-        $configured = trim((string) config('gitmanager.composer_binary', env('GPM_COMPOSER_BINARY', 'composer')));
+        $configured = trim((string) config('gitmanager.composer_binary', 'composer'));
         $configured = trim($configured, "\"' ");
 
         return $configured !== '' ? $configured : 'composer';
@@ -962,7 +1070,7 @@ class SelfUpdateService
 
     private function npmBinary(): string
     {
-        $configured = trim((string) config('gitmanager.npm_binary', env('GPM_NPM_BINARY', 'npm')));
+        $configured = trim((string) config('gitmanager.npm_binary', 'npm'));
         $configured = trim($configured, "\"' ");
 
         return $configured !== '' ? $configured : 'npm';
@@ -970,7 +1078,7 @@ class SelfUpdateService
 
     private function phpBinary(): string
     {
-        $configured = trim((string) config('gitmanager.php_binary', env('GPM_PHP_BINARY', env('GPM_PHP_PATH', 'php'))));
+        $configured = trim((string) config('gitmanager.php_binary', 'php'));
         $configured = trim($configured, "\"' ");
 
         return $configured !== '' ? $configured : 'php';
@@ -1002,7 +1110,7 @@ class SelfUpdateService
         $env = getenv();
         $env = is_array($env) ? $env : [];
 
-        $extraPath = trim((string) config('gitmanager.process_path', env('GPM_PROCESS_PATH', '')));
+        $extraPath = trim((string) config('gitmanager.process_path', ''));
         $extraPath = trim($extraPath, "\"' ");
         if ($extraPath !== '') {
             $pathKey = array_key_exists('PATH', $env) ? 'PATH' : (array_key_exists('Path', $env) ? 'Path' : 'PATH');
@@ -1095,7 +1203,7 @@ class SelfUpdateService
     private function askPassDirectories(): array
     {
         $paths = [];
-        $configured = trim((string) config('gitmanager.askpass_dir', env('GPM_ASKPASS_DIR', '')));
+        $configured = trim((string) config('gitmanager.askpass_dir', ''));
         if ($configured !== '') {
             $paths[] = $configured;
         }

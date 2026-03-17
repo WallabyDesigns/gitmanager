@@ -23,15 +23,15 @@
             <style>
                 body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f172a; color: #e2e8f0; }
                 a { color: #fbbf24; text-decoration: underline; }
-                .gpm-fallback-alert { max-width: 36rem; margin: 1.5rem auto; padding: 0.75rem 1rem; border-radius: 0.75rem; background: #1f2937; border: 1px solid #334155; text-align: center; }
-                .gpm-fallback-alert strong { color: #f8fafc; }
+                .gwm-fallback-alert { max-width: 36rem; margin: 1.5rem auto; padding: 0.75rem 1rem; border-radius: 0.75rem; background: #1f2937; border: 1px solid #334155; text-align: center; }
+                .gwm-fallback-alert strong { color: #f8fafc; }
             </style>
         @endif
     </head>
     <body class="min-h-screen font-sans antialiased h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
         <div class="h-full flex flex-col sm:justify-center items-center pt-6 sm:pt-0">
             @if (! $viteReady)
-                <div class="gpm-fallback-alert">
+                <div class="gwm-fallback-alert">
                     <strong>Assets are not built.</strong> Run <code>npm run build</code> to restore the styled UI.
                 </div>
             @endif
@@ -40,7 +40,7 @@
                     <x-application-logo class="w-20 h-20 fill-current text-gray-500" />
                     <div>
                         <h2 class="text-xl px-2 font-semibold text-slate-900 dark:text-slate-100">
-                            Git Project Manager
+                            Git Web Manager
                         </h2>
                     </div>
                 </a>
@@ -49,8 +49,7 @@
             <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white shadow-md overflow-hidden sm:rounded-lg dark:bg-slate-900 dark:border dark:border-slate-800">
                 {{ $slot }}
             </div>
-            <p class="footer-text">© 2026 <a href="https://wallabydesigns.com/" title="Website built by Wallaby Designs">Wallaby Designs LLC</a>. All rights reserved.</p>
+            <p class="footer-text">Git Web Manager for Git © 2026 <a href="https://wallabydesigns.com/" title="Website built by Wallaby Designs">Wallaby Designs LLC</a>. All rights reserved.</p>
         </div>
     </body>
 </html>
-

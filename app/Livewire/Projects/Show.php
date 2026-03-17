@@ -252,7 +252,7 @@ class Show extends Component
         }
 
         if ($appPath && $path === $appPath) {
-            $this->dispatch('notify', message: 'Refusing to delete the Git Project Manager directory.');
+            $this->dispatch('notify', message: 'Refusing to delete the Git Web Manager directory.');
             return;
         }
 

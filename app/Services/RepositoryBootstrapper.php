@@ -124,7 +124,7 @@ class RepositoryBootstrapper
 
     private function gitBinary(): string
     {
-        $configured = trim((string) config('gitmanager.git_binary', env('GPM_GIT_BINARY', 'git')));
+        $configured = trim((string) config('gitmanager.git_binary', 'git'));
         $configured = trim($configured, "\"' ");
 
         return $configured !== '' ? $configured : 'git';
@@ -228,7 +228,7 @@ class RepositoryBootstrapper
     private function askPassDirectories(): array
     {
         $paths = [];
-        $configured = trim((string) config('gitmanager.askpass_dir', env('GPM_ASKPASS_DIR', '')));
+        $configured = trim((string) config('gitmanager.askpass_dir', ''));
         if ($configured !== '') {
             $paths[] = $configured;
         }

@@ -4,7 +4,7 @@
   <link rel="icon" href="favicon.ico" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Troubleshooting | Git Project Manager</title>
+  <title>Troubleshooting | Git Web Manager</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="app.js" defer></script>
 </head>
@@ -13,10 +13,12 @@
     <div class="page-hero-inner">
       <div class="docflex">
         <div class="brand">
-            <img class="logo" src="assets/logo.svg" alt="Git Project Manager" />
+            <a href="index.html">
+                <img class="logo" src="assets/logo.svg" alt="Git Web Manager" />
+            </a>
             <div>
               <p class="eyebrow">Troubleshooting</p>
-              <h1>Git Project Manager</h1>
+              <h1>Git Web Manager</h1>
               <p class="tagline">Fix common deployment and build issues.</p>
             </div>
         </div>
@@ -30,17 +32,17 @@
   </header>
 
   <main class="layout">
-    <div data-include="_partials/nav.html"></div>
+    <div data-include="partials/nav.html"></div>
 
     <section class="content">
       <section class="card">
         <h2>Vite Manifest Missing</h2>
-        <p>Run <code>npm run build</code> and verify <code>public/build</code> is writable. GPM retries automatically after fixing permissions.</p>
+        <p>Run <code>npm run build</code> and verify <code>public/build</code> is writable. GWM retries automatically after fixing permissions.</p>
       </section>
 
       <section class="card">
         <h2>Git Authentication Failed</h2>
-        <p>Confirm <code>GITHUB_TOKEN</code> is set and the Git binary is reachable. For custom binaries, set <code>GPM_GIT_BINARY</code>.</p>
+        <p>Confirm <code>GITHUB_TOKEN</code> is set and the Git binary is reachable. For custom binaries, set <code>GWM_GIT_BINARY</code>.</p>
       </section>
 
       <section class="card">
@@ -50,7 +52,9 @@
     </section>
   </main>
 
-  <div data-include="_partials/footer.html"></div>
+  <div data-include="partials/footer.html"></div>
 </body>
 </html>
+
+
 

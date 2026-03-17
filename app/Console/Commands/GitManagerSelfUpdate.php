@@ -19,7 +19,7 @@ class GitManagerSelfUpdate extends Command
      *
      * @var string
      */
-    protected $description = 'Update the Git Project Manager application from its repository.';
+    protected $description = 'Update the Git Web Manager application from its repository.';
 
     /**
      * Execute the console command.

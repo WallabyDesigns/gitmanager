@@ -4,7 +4,7 @@
   <link rel="icon" href="favicon.ico" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Git Project Manager Docs</title>
+  <title>Git Web Manager Docs</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="app.js" defer></script>
 </head>
@@ -13,11 +13,14 @@
     <div class="page-hero-inner">
       <div class="docflex">
         <div class="brand">
-            <img class="logo" src="assets/logo.svg" alt="Git Project Manager" />
+            <a href="index.html">
+                <img class="logo" src="assets/logo.svg" alt="Git Web Manager" />
+
+            </a>
             <div>
               <p class="eyebrow">Overview</p>
-              <h1>Git Project Manager</h1>
-              <p class="tagline">Self-hosted Git deployment manager with health checks, rollbacks, preview builds, and Dependabot automation.</p>
+              <h1>Git Web Manager</h1>
+              <p class="tagline">Self-hosted Git deployment manager built in automation.</p>
             </div>
         </div>
         <a href="https://www.buymeacoffee.com/wallaby"> <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="50" width="210" alt="wallaby" /></a>
@@ -30,12 +33,12 @@
   </header>
 
   <main class="layout">
-    <div data-include="_partials/nav.html"></div>
+    <div data-include="partials/nav.html"></div>
 
     <section class="content">
       <section class="card">
         <h2>Overview</h2>
-        <p>Git Project Manager (GPM) is a self-hosted dashboard for deploying Git repositories to local paths. It manages rollbacks, health checks, preview builds, and automated dependency updates. This documentation site is split into focused pages for faster scanning.</p>
+        <p>Git Web Manager (GWM) is a self-hosted dashboard for deploying Git repositories to local paths. It manages rollbacks, health checks, preview builds, and automated dependency updates. This documentation site is split into focused pages for faster scanning.</p>
         <h3>Highlights</h3>
         <ul>
           <li>Deploy and rollback from a single dashboard.</li>
@@ -52,7 +55,7 @@
           <li><strong>Quick Start</strong> for the first install and first project.</li>
           <li><strong>Configuration</strong> to set required environment values.</li>
           <li><strong>Projects & Deployments</strong> for daily workflows.</li>
-          <li><strong>Self Update</strong> to keep GPM current.</li>
+          <li><strong>Self Update</strong> to keep GWM current.</li>
         </ul>
         <div class="cta">
           <a class="btn primary" href="quick-start.html">Quick Start</a>
@@ -65,14 +68,16 @@
         <p>Each topic lives on its own page. Shared pieces (navigation and footer) are loaded through a lightweight include system, making it easy to update global content once.</p>
         <pre><code>docs/
   app.js
-  _partials/
+  partials/
     nav.html
     footer.html</code></pre>
       </section>
     </section>
   </main>
 
-  <div data-include="_partials/footer.html"></div>
+  <div data-include="partials/footer.html"></div>
 </body>
 </html>
+
+
 
