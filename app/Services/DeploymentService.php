@@ -12,6 +12,28 @@ use Symfony\Component\Process\Process;
 
 class DeploymentService
 {
+    public function hasComposer(Project $project): bool
+    {
+        try {
+            $repoPath = $this->resolveRepoPath($project);
+
+            return is_file($repoPath.DIRECTORY_SEPARATOR.'composer.json');
+        } catch (\Throwable $exception) {
+            return false;
+        }
+    }
+
+    public function hasNpm(Project $project): bool
+    {
+        try {
+            $repoPath = $this->resolveRepoPath($project);
+
+            return is_file($repoPath.DIRECTORY_SEPARATOR.'package.json');
+        } catch (\Throwable $exception) {
+            return false;
+        }
+    }
+
     public function checkForUpdates(Project $project): bool
     {
         $repoPath = $this->resolveRepoPath($project);
@@ -565,13 +587,39 @@ class DeploymentService
         }
 
         $preservePath = $this->snapshotPreservePaths($project, $repoPath, $output);
-        $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', 'origin/'.$branch], $output);
+        $untrackedBackup = null;
+
+        try {
+            $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', 'origin/'.$branch], $output);
+        } catch (ProcessFailedException $exception) {
+            $paths = $this->extractUntrackedOverwritePaths($exception);
+            if ($paths === []) {
+                throw $exception;
+            }
+
+            $output[] = 'Reset blocked by untracked files. Backing them up before retry.';
+            $untrackedBackup = $this->backupUntrackedPaths($project, $repoPath, $paths, $output);
+            if (! $untrackedBackup) {
+                throw new \RuntimeException('Unable to backup untracked files blocking reset.');
+            }
+            $this->removeUntrackedPaths($repoPath, $paths, $output);
+
+            $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', 'origin/'.$branch], $output);
+        }
 
         if ($forceClean) {
             $this->runProcess($this->gitCleanCommand($project, $repoPath, false), $output);
         }
 
         $this->restorePreservedPaths($repoPath, $preservePath, $output);
+
+        if ($untrackedBackup) {
+            if ($forceClean) {
+                $output[] = 'Untracked conflict backup kept at: '.$untrackedBackup;
+            } else {
+                $this->restoreUntrackedBackup($repoPath, $untrackedBackup, $output);
+            }
+        }
     }
 
     private function forceCleanWorkingTree(Project $project, string $repoPath, array &$output): void
@@ -691,6 +739,194 @@ class DeploymentService
         }
 
         $output[] = 'Restored preserved paths.';
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function extractUntrackedOverwritePaths(ProcessFailedException $exception): array
+    {
+        $text = trim($exception->getProcess()->getErrorOutput());
+        if ($text === '') {
+            $text = trim($exception->getProcess()->getOutput());
+        }
+
+        if ($text === '' || ! str_contains($text, 'untracked working tree files would be overwritten')) {
+            return [];
+        }
+
+        $lines = preg_split('/\r?\n/', $text) ?: [];
+        $collect = false;
+        $paths = [];
+
+        foreach ($lines as $line) {
+            if (! $collect && str_contains($line, 'would be overwritten')) {
+                $collect = true;
+                continue;
+            }
+
+            if (! $collect) {
+                continue;
+            }
+
+            $trimmed = trim($line);
+            if ($trimmed === '') {
+                continue;
+            }
+
+            if (str_starts_with($trimmed, 'Please ') || str_starts_with($trimmed, 'Aborting') || str_starts_with($trimmed, 'error:')) {
+                break;
+            }
+
+            $path = $this->sanitizeUntrackedPath($trimmed);
+            if ($path === null) {
+                continue;
+            }
+
+            $paths[] = $path;
+        }
+
+        return array_values(array_unique($paths));
+    }
+
+    private function sanitizeUntrackedPath(string $path): ?string
+    {
+        $path = trim($path);
+        if ($path === '') {
+            return null;
+        }
+
+        if (str_contains($path, ' -> ')) {
+            $parts = explode(' -> ', $path);
+            $path = trim(end($parts));
+        }
+
+        $path = ltrim($path, "./");
+        $path = str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path);
+        if ($path === '' || $path === '.' || $path === '..') {
+            return null;
+        }
+
+        if (str_starts_with($path, DIRECTORY_SEPARATOR)) {
+            return null;
+        }
+
+        if (preg_match('/^[A-Za-z]:'.preg_quote(DIRECTORY_SEPARATOR, '/').'/', $path) === 1) {
+            return null;
+        }
+
+        if (str_contains($path, '..'.DIRECTORY_SEPARATOR) || str_starts_with($path, '..')) {
+            return null;
+        }
+
+        return $path;
+    }
+
+    /**
+     * @param array<int, string> $paths
+     */
+    private function backupUntrackedPaths(Project $project, string $repoPath, array $paths, array &$output): ?string
+    {
+        if ($paths === []) {
+            return null;
+        }
+
+        $base = storage_path('app/deploy-untracked/'.$project->id.'/'.now()->format('Ymd_His'));
+        if (! is_dir($base) && ! mkdir($base, 0775, true) && ! is_dir($base)) {
+            $output[] = 'Unable to create untracked backup directory: '.$base;
+            return null;
+        }
+
+        $output[] = 'Backing up '.count($paths).' untracked path(s) blocking reset.';
+
+        foreach ($paths as $relative) {
+            $relative = ltrim(str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relative), DIRECTORY_SEPARATOR);
+            if ($relative === '') {
+                continue;
+            }
+
+            $source = $repoPath.DIRECTORY_SEPARATOR.$relative;
+            if (! file_exists($source)) {
+                continue;
+            }
+
+            $destination = $base.DIRECTORY_SEPARATOR.$relative;
+            $this->copyPath($source, $destination);
+        }
+
+        return $base;
+    }
+
+    /**
+     * @param array<int, string> $paths
+     */
+    private function removeUntrackedPaths(string $repoPath, array $paths, array &$output): void
+    {
+        foreach ($paths as $relative) {
+            $relative = ltrim(str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relative), DIRECTORY_SEPARATOR);
+            if ($relative === '') {
+                continue;
+            }
+
+            $path = $repoPath.DIRECTORY_SEPARATOR.$relative;
+            if (is_dir($path)) {
+                $this->deleteDirectory($path);
+                continue;
+            }
+            if (is_file($path)) {
+                @unlink($path);
+            }
+        }
+
+        $output[] = 'Removed untracked files blocking reset.';
+    }
+
+    private function restoreUntrackedBackup(string $repoPath, string $backupPath, array &$output): void
+    {
+        if (! is_dir($backupPath)) {
+            return;
+        }
+
+        $restored = 0;
+        $skipped = 0;
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($backupPath, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            $relative = $iterator->getSubPathname();
+            $relative = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relative);
+            $target = $repoPath.DIRECTORY_SEPARATOR.$relative;
+
+            if (file_exists($target)) {
+                $skipped++;
+                continue;
+            }
+
+            if ($item->isDir()) {
+                if (! is_dir($target)) {
+                    mkdir($target, 0775, true);
+                }
+                continue;
+            }
+
+            $targetDir = dirname($target);
+            if (! is_dir($targetDir)) {
+                mkdir($targetDir, 0775, true);
+            }
+
+            copy($item->getPathname(), $target);
+            $restored++;
+        }
+
+        if ($restored > 0) {
+            $output[] = 'Restored '.$restored.' untracked path(s) after reset.';
+        }
+        if ($skipped > 0) {
+            $output[] = 'Skipped '.$skipped.' untracked path(s) because targets now exist. Backup kept at: '.$backupPath;
+        }
     }
 
     /**

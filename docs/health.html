@@ -37,8 +37,9 @@
 
     <section class="content">
       <section class="card">
-        <h2>Default Health URL</h2>
-        <p>Laravel 11 ships with <code>/up</code> as the default health endpoint. You can override this per project.</p>
+        <h2>Health Check URL</h2>
+        <p>The Health Check URL is used to monitor availability. Provide a full URL or a path relative to the project base.</p>
+        <p>Laravel 11 ships with <code>/up</code> as a built-in health endpoint. It’s a great default for Laravel apps, but any endpoint returning 200 OK can be used.</p>
       </section>
 
       <section class="card">

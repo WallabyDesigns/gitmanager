@@ -18,6 +18,7 @@ class Edit extends Component
         $this->project = $project;
         $this->form = [
             'name' => $project->name,
+            'project_type' => $project->project_type ?? 'custom',
             'repo_url' => $project->repo_url,
             'local_path' => $project->local_path,
             'default_branch' => $project->default_branch,
@@ -57,6 +58,7 @@ class Edit extends Component
     {
         return [
             'form.name' => ['required', 'string', 'max:255'],
+            'form.project_type' => ['required', 'string', Rule::in(['laravel', 'node', 'static', 'custom'])],
             'form.repo_url' => ['nullable', 'string', 'max:255'],
             'form.local_path' => [
                 'required',
@@ -70,7 +72,12 @@ class Edit extends Component
             'form.run_composer_install' => ['boolean'],
             'form.run_npm_install' => ['boolean'],
             'form.run_build_command' => ['boolean'],
-            'form.build_command' => ['required', 'string', 'max:255'],
+            'form.build_command' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::requiredIf(fn () => (bool) ($this->form['run_build_command'] ?? false)),
+            ],
             'form.run_test_command' => ['boolean'],
             'form.test_command' => [
                 'nullable',

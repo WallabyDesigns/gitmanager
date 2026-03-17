@@ -6,6 +6,16 @@
             <x-input-error :messages="$errors->get('form.name')" class="mt-2" />
         </div>
         <div>
+            <x-input-label for="project_type" value="Project Type" />
+            <select id="project_type" class="mt-1 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" wire:model.live="form.project_type">
+                <option value="laravel">Laravel</option>
+                <option value="node">Node</option>
+                <option value="static">Static</option>
+                <option value="custom">Custom</option>
+            </select>
+            <x-input-error :messages="$errors->get('form.project_type')" class="mt-2" />
+        </div>
+        <div>
             <x-input-label for="repo_url" value="Repository URL" />
             <x-text-input id="repo_url" class="mt-1 block w-full" wire:model.live="form.repo_url" />
             <x-input-error :messages="$errors->get('form.repo_url')" class="mt-2" />
@@ -23,7 +33,11 @@
         <div>
             <x-input-label for="health_url" value="Health Check URL" />
             <x-text-input id="health_url" class="mt-1 block w-full" wire:model.live="form.health_url" />
-            <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">Laravel apps often expose `/up`. Use a full URL or just `/up` to read `APP_URL` from the project.</p>
+            @if (($form['project_type'] ?? 'custom') === 'laravel')
+                <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">Laravel apps often expose `/up`. Use a full URL or just `/up` to read `APP_URL` from the project.</p>
+            @else
+                <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">Used for health checks. Provide a full URL or a path relative to the project base.</p>
+            @endif
             <x-input-error :messages="$errors->get('form.health_url')" class="mt-2" />
         </div>
         <div>

@@ -21,18 +21,7 @@ class Show extends Component
 
     public function render()
     {
-        $dependencyActions = [
-            'dependency_update',
-            'composer_install',
-            'composer_update',
-            'composer_audit',
-            'app_clear_cache',
-            'npm_install',
-            'npm_update',
-            'npm_audit_fix',
-            'npm_audit_fix_force',
-            'custom_command',
-        ];
+        $dependencyActions = $this->dependencyActions();
 
         $deployments = $this->project->deployments()->orderByDesc('started_at');
         $lastSuccessfulDeploy = (clone $deployments)
@@ -54,6 +43,8 @@ class Show extends Component
             'commits' => $commits,
             'activeCommit' => $activeCommit,
             'lastSuccessfulDeploy' => $lastSuccessfulDeploy,
+            'hasComposer' => $service->hasComposer($this->project),
+            'hasNpm' => $service->hasNpm($this->project),
         ])->layout('layouts.app', [
             'header' => view('livewire.projects.partials.show-header', [
                 'project' => $this->project,
@@ -123,6 +114,22 @@ class Show extends Component
         $this->dispatch('notify', message: $deployment->status === 'success'
             ? 'Dependency update completed.'
             : 'Dependency update failed. Check logs below.');
+    }
+
+    public function clearLatestDependencyOutput(): void
+    {
+        $latest = $this->project
+            ->deployments()
+            ->whereIn('action', $this->dependencyActions())
+            ->orderByDesc('started_at')
+            ->first();
+
+        if ($latest && $latest->output_log) {
+            $latest->output_log = null;
+            $latest->save();
+        }
+
+        $this->dispatch('notify', message: 'Latest output cleared.');
     }
 
     public function composerInstall(DeploymentService $service): void
@@ -266,5 +273,21 @@ class Show extends Component
         $project->delete();
         $this->dispatch('notify', message: 'Project and files deleted.');
         $this->redirectRoute('projects.index', navigate: true);
+    }
+
+    private function dependencyActions(): array
+    {
+        return [
+            'dependency_update',
+            'composer_install',
+            'composer_update',
+            'composer_audit',
+            'app_clear_cache',
+            'npm_install',
+            'npm_update',
+            'npm_audit_fix',
+            'npm_audit_fix_force',
+            'custom_command',
+        ];
     }
 }

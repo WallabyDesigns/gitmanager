@@ -30,6 +30,9 @@
                     <button type="button" wire:click="forceDeploy" onclick="return confirm('Force deploy will discard local changes. Continue?') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-rose-300 text-rose-600 hover:text-rose-700 dark:border-rose-600/60 dark:text-rose-300">
                         Force Deploy
                     </button>
+                    <button type="button" wire:click="rollback" onclick="return confirm('Rollback will redeploy the previous successful version. Continue?') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
+                        Undo Last Deploy
+                    </button>
                     <button type="button" wire:click="checkHealth" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
                         Health Check
                     </button>
@@ -170,41 +173,48 @@
                 <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Run composer/npm actions on demand.</p>
 
                 <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                    <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
-                        <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">Composer</div>
-                        <div class="mt-3 flex flex-wrap gap-2">
-                            <button type="button" wire:click="composerInstall" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
-                                Install
-                            </button>
-                            <button type="button" wire:click="composerUpdate" class="px-3 py-2 text-sm rounded-md border border-indigo-300 text-indigo-600 hover:text-indigo-800 dark:border-indigo-500/50 dark:text-indigo-300">
-                                Update
-                            </button>
-                            <button type="button" wire:click="composerAudit" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300">
-                                Audit
-                            </button>
-                            <button type="button" wire:click="appClearCache" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
-                                app:clear-cache
-                            </button>
+                    @if ($hasComposer)
+                        <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
+                            <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">Composer</div>
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                <button type="button" wire:click="composerInstall" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
+                                    Install
+                                </button>
+                                <button type="button" wire:click="composerUpdate" class="px-3 py-2 text-sm rounded-md border border-indigo-300 text-indigo-600 hover:text-indigo-800 dark:border-indigo-500/50 dark:text-indigo-300">
+                                    Update
+                                </button>
+                                <button type="button" wire:click="composerAudit" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300">
+                                    Audit
+                                </button>
+                                <button type="button" wire:click="appClearCache" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
+                                    Clear Cache
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                    <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
-                        <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">Npm</div>
-                        <div class="mt-3 flex flex-wrap gap-2">
-                            <button type="button" wire:click="npmInstall" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
-                                Install
-                            </button>
-                            <button type="button" wire:click="npmUpdate" class="px-3 py-2 text-sm rounded-md border border-indigo-300 text-indigo-600 hover:text-indigo-800 dark:border-indigo-500/50 dark:text-indigo-300">
-                                Update
-                            </button>
-                            <button type="button" wire:click="npmAuditFix" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300">
-                                Audit Fix
-                            </button>
-                            <button type="button" wire:click="npmAuditFixForce" onclick="return confirm('Force audit fix can introduce breaking changes. Continue?') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-rose-300 text-rose-600 hover:text-rose-700 dark:border-rose-600/60 dark:text-rose-300">
-                                Audit Fix (Force)
-                            </button>
+                    @endif
+                    @if ($hasNpm)
+                        <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
+                            <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">Npm</div>
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                <button type="button" wire:click="npmInstall" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
+                                    Install
+                                </button>
+                                <button type="button" wire:click="npmUpdate" class="px-3 py-2 text-sm rounded-md border border-indigo-300 text-indigo-600 hover:text-indigo-800 dark:border-indigo-500/50 dark:text-indigo-300">
+                                    Update
+                                </button>
+                                <button type="button" wire:click="npmAuditFix" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300">
+                                    Audit Fix
+                                </button>
+                                <button type="button" wire:click="npmAuditFixForce" onclick="return confirm('Force audit fix can introduce breaking changes. Continue?') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-rose-300 text-rose-600 hover:text-rose-700 dark:border-rose-600/60 dark:text-rose-300">
+                                    Audit Fix (Force)
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    @endif
                 </div>
+                @if (! $hasComposer && ! $hasNpm)
+                    <p class="mt-3 text-sm text-slate-500 dark:text-slate-400">No composer.json or package.json detected. Use manual commands below.</p>
+                @endif
             </div>
 
             <div>
@@ -218,7 +228,12 @@
             </div>
 
             <div>
-                <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Latest Output</h4>
+                <div class="flex items-center justify-between gap-3">
+                    <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Latest Output</h4>
+                    <button type="button" wire:click="clearLatestDependencyOutput" class="text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+                        Clear
+                    </button>
+                </div>
                 <pre class="mt-2 max-h-64 overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800">{{ $latestDependencyLog?->output_log ?? 'No output yet.' }}</pre>
             </div>
 
@@ -316,4 +331,3 @@
         </div>
     </div>
 </div>
-

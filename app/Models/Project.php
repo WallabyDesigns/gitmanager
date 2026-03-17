@@ -11,6 +11,7 @@ class Project extends Model
     protected $fillable = [
         'user_id',
         'name',
+        'project_type',
         'repo_url',
         'local_path',
         'default_branch',

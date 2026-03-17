@@ -2,12 +2,14 @@
 
 Git Web Manager is a self-hosted Laravel Livewire app for deploying and monitoring GitHub projects from a single dashboard. It handles deploys, rollbacks, health checks, preview builds, and Dependabot automation.
 
+![projects tab](/assets/projects.png)
+
 Git Web Manager is not affiliated with, endorsed by, or sponsored by Git or its maintainers.
 
 ## Support:
 This is a completely free service that I work hard to maintain. Show your support if you found this useful!
 
-[![wallaby](/coffee.png)](https://www.buymeacoffee.com/wallaby)
+[![wallaby](/assets/coffee.png)](https://www.buymeacoffee.com/wallaby)
 
 
 ## Read Documentation
