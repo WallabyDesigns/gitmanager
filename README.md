@@ -5,7 +5,7 @@ Git Project Manager is a self-hosted Laravel Livewire app for deploying and moni
 ### Support:
 Show your support if you found this useful!
 
-[![wallaby](https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png =210x50)](https://www.buymeacoffee.com/wallaby)
+[![wallaby](https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png){:width="210px" height="50px"}](https://www.buymeacoffee.com/wallaby)
 
 
 ## Read Documentation
