@@ -53,6 +53,7 @@ class SelfUpdateService
     public function update(?User $user = null, bool $allowDirty = false): AppUpdate
     {
         $repoPath = base_path();
+        Cache::forget(self::STATUS_CACHE_KEY);
 
         $update = AppUpdate::create([
             'triggered_by' => $user?->id,
@@ -210,6 +211,7 @@ class SelfUpdateService
             $update->output_log = implode("\n", $output);
             $update->finished_at = now();
             $update->save();
+            Cache::forget(self::STATUS_CACHE_KEY);
         } catch (\Throwable $exception) {
             if ($fromHash && ! $stashRestoreFailed) {
                 $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', $fromHash], $output, null, false);
@@ -233,6 +235,7 @@ class SelfUpdateService
             $update->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
             $update->finished_at = now();
             $update->save();
+            Cache::forget(self::STATUS_CACHE_KEY);
         }
 
         return $update;
