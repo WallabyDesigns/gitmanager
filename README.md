@@ -14,6 +14,7 @@ This is a completely free service that I work hard to maintain. Show your suppor
 
 ## Read Documentation
 Please read our [documentation](https://wallabydesigns.github.io/gitmanager/) to help you get up and running.
+[![documentation](/assets/docs.png)](https://wallabydesigns.github.io/gitmanager/)
 
 ## Features
 - Authenticated dashboard with project list and detail views.

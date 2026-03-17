@@ -39,8 +39,9 @@ class Index extends Component
             default => 'Update failed. Review the logs for details.',
         };
 
+        $this->updateStatus = $service->getUpdateStatus(true);
         $this->dispatch('notify', message: $message);
-        $this->redirectRoute('app-updates.index', navigate: true);
+        $this->redirectRoute('app-updates.index', navigate: false);
     }
 
     public function refreshUpdateStatus(SelfUpdateService $service): void
