@@ -10,7 +10,7 @@ use Symfony\Component\Process\Process;
 
 class SelfUpdateService
 {
-    private const REPO_URL = 'https://github.com/Costigan-Stephen/gitmanager.git';
+    private const REPO_URL = 'https://github.com/wallabydesigns/gitmanager.git';
     private const DEFAULT_BRANCH = 'main';
     private const STATUS_CACHE_KEY = 'gwm_self_update_status';
 

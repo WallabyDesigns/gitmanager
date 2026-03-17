@@ -50,7 +50,7 @@
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Run Update</h3>
-                    <p class="text-sm text-slate-500 dark:text-slate-400">This will pull from the `Costigan-Stephen/gitmanager` repo and apply updates locally.</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">This will pull from the `wallabydesigns/gitmanager` repo and apply updates locally.</p>
                     @if (! $selfUpdateEnabled)
                         <p class="mt-2 text-sm text-rose-500">Self-update is currently disabled in configuration.</p>
                     @endif
