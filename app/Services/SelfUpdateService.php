@@ -372,7 +372,7 @@ class SelfUpdateService
         $index = $gitDir.DIRECTORY_SEPARATOR.'index';
 
         if (in_array($objects, $blocked, true)) {
-            $this->chmodRecursive($objects, 0775, 0664, $output);
+            $this->chmodRecursiveWithModes($objects, 0775, 0664, $output);
         }
 
         if (in_array($index, $blocked, true) && is_file($index)) {
@@ -384,7 +384,7 @@ class SelfUpdateService
         }
     }
 
-    private function chmodRecursive(string $path, int $dirMode, int $fileMode, array &$output): void
+    private function chmodRecursiveWithModes(string $path, int $dirMode, int $fileMode, array &$output): void
     {
         if (! is_dir($path)) {
             return;
