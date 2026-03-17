@@ -249,7 +249,7 @@ class SelfUpdateService
 
         try {
             $this->ensureGitRepository($repoPath);
-            $this->assertGitWritable($repoPath, $output);
+            $this->assertGitWritable($repoPath, $output, false);
             $this->ensureOriginRemote($repoPath, $output);
             $branch = $this->resolveBranch($repoPath, $output);
             $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune'], $output);
@@ -284,16 +284,43 @@ class SelfUpdateService
         }
     }
 
-    private function assertGitWritable(string $repoPath, array &$output): void
+    private function assertGitWritable(string $repoPath, array &$output, bool $logIdentity = true): void
     {
         $gitDir = $repoPath.DIRECTORY_SEPARATOR.'.git';
         if (! is_dir($gitDir)) {
             return;
         }
 
+        $currentUid = $this->currentUid();
+        $currentUser = $this->resolveUsername($currentUid);
+
+        if ($logIdentity && $currentUid !== null) {
+            $output[] = sprintf('Running update as %s (%s).', $currentUser ?? 'unknown', $currentUid);
+        }
+
         $blocked = [];
         $objects = $gitDir.DIRECTORY_SEPARATOR.'objects';
         $index = $gitDir.DIRECTORY_SEPARATOR.'index';
+
+        $owners = [];
+        if (is_dir($objects)) {
+            $owners[] = ['path' => $objects, 'uid' => fileowner($objects)];
+        }
+        if (is_file($index)) {
+            $owners[] = ['path' => $index, 'uid' => fileowner($index)];
+        }
+
+        foreach ($owners as $info) {
+            if ($currentUid !== null && $info['uid'] !== false && $info['uid'] !== $currentUid) {
+                $ownerName = $this->resolveUsername($info['uid']);
+                $output[] = sprintf(
+                    'Git ownership mismatch: %s is owned by %s, running as %s.',
+                    $info['path'],
+                    $ownerName ?? (string) $info['uid'],
+                    $currentUser ?? ($currentUid !== null ? (string) $currentUid : 'unknown')
+                );
+            }
+        }
 
         if (is_dir($objects) && ! is_writable($objects)) {
             $blocked[] = $objects;
@@ -308,7 +335,32 @@ class SelfUpdateService
         }
 
         $output[] = 'Git repository is not writable: '.implode(', ', $blocked);
-        throw new \RuntimeException('Git repository is not writable by the web server user. Fix ownership/permissions for .git/objects and .git/index.');
+        throw new \RuntimeException('Git repository is not writable by the web server user. Fix ownership/permissions for .git/objects and .git/index, and avoid running updates as a different user.');
+    }
+
+    private function currentUid(): ?int
+    {
+        if (function_exists('posix_geteuid')) {
+            return posix_geteuid();
+        }
+
+        return null;
+    }
+
+    private function resolveUsername(?int $uid): ?string
+    {
+        if ($uid === null || $uid === false) {
+            return null;
+        }
+
+        if (function_exists('posix_getpwuid')) {
+            $info = posix_getpwuid($uid);
+            if (is_array($info) && isset($info['name'])) {
+                return $info['name'];
+            }
+        }
+
+        return null;
     }
 
     /**
