@@ -191,7 +191,7 @@ class SelfUpdateService
                 $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
                 if (! $pop->isSuccessful()) {
                     $stashRestoreFailed = true;
-                    throw new \RuntimeException('Update applied, but stashed changes could not be restored.');
+                    $output[] = 'Warning: update applied, but stashed changes could not be restored. Run `git stash list` to review.';
                 }
             }
             $this->restoreUntrackedBackups($repoPath, $untrackedBackups, $output);
