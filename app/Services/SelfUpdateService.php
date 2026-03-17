@@ -856,6 +856,17 @@ class SelfUpdateService
         } catch (ProcessFailedException $exception) {
             $paths = $this->extractMergeUntrackedPaths($exception);
             if ($paths === []) {
+                if ($this->isDivergedFastForwardError($exception)) {
+                    $output[] = 'Fast-forward not possible; performing merge with origin/'.$branch.'.';
+                    $merge = $this->runProcess(['git', '-C', $repoPath, 'merge', '--no-ff', 'origin/'.$branch], $output, null, false);
+                    if (! $merge->isSuccessful()) {
+                        $output[] = 'Merge failed; attempting to abort.';
+                        $this->runProcess(['git', '-C', $repoPath, 'merge', '--abort'], $output, null, false);
+                        throw new ProcessFailedException($merge);
+                    }
+                    return;
+                }
+
                 throw $exception;
             }
 
@@ -868,6 +879,24 @@ class SelfUpdateService
 
             $this->runProcess(['git', '-C', $repoPath, 'merge', '--ff-only', 'origin/'.$branch], $output);
         }
+    }
+
+    private function isDivergedFastForwardError(ProcessFailedException $exception): bool
+    {
+        $text = trim($exception->getProcess()->getErrorOutput());
+        if ($text === '') {
+            $text = trim($exception->getProcess()->getOutput());
+        }
+
+        if ($text === '') {
+            return false;
+        }
+
+        $text = strtolower($text);
+
+        return str_contains($text, 'diverging branches')
+            || str_contains($text, 'not possible to fast-forward')
+            || str_contains($text, 'fast-forward, aborting');
     }
 
     /**
