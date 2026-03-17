@@ -90,8 +90,9 @@
                                 <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
                                     {{ ucfirst(str_replace('_', ' ', $deployment->action)) }}
                                 </div>
-                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $deployment->status === 'success' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : ($deployment->status === 'failed' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300') }}">
-                                    {{ $deployment->status }}
+                                @php($warn = $deployment->status === 'failed' && str_contains($deployment->output_log ?? '', 'stashed changes could not be restored'))
+                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $warn ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' : ($deployment->status === 'success' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : ($deployment->status === 'failed' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300')) }}">
+                                    {{ $warn ? 'warning' : $deployment->status }}
                                 </span>
                             </div>
                             <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
@@ -246,8 +247,9 @@
                                 <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
                                     {{ ucfirst(str_replace('_', ' ', $deployment->action)) }}
                                 </div>
-                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $deployment->status === 'success' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : ($deployment->status === 'failed' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300') }}">
-                                    {{ $deployment->status }}
+                                @php($warn = $deployment->status === 'failed' && str_contains($deployment->output_log ?? '', 'stashed changes could not be restored'))
+                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $warn ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' : ($deployment->status === 'success' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : ($deployment->status === 'failed' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300')) }}">
+                                    {{ $warn ? 'warning' : $deployment->status }}
                                 </span>
                             </div>
                             <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
@@ -277,8 +279,9 @@
                             <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
                                 {{ ucfirst(str_replace('_', ' ', $deployment->action)) }}
                             </div>
-                            <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $deployment->status === 'success' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : ($deployment->status === 'failed' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300') }}">
-                                {{ $deployment->status }}
+                            @php($warn = $deployment->status === 'failed' && str_contains($deployment->output_log ?? '', 'stashed changes could not be restored'))
+                            <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $warn ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' : ($deployment->status === 'success' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : ($deployment->status === 'failed' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300')) }}">
+                                {{ $warn ? 'warning' : $deployment->status }}
                             </span>
                         </div>
                         <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
