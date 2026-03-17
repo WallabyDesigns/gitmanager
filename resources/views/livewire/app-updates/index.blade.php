@@ -65,16 +65,18 @@
                     >
                         Update App
                     </button>
-                    <button
-                        type="button"
-                        wire:click="runForceUpdate"
-                        wire:loading.attr="disabled"
-                        @if (! $selfUpdateEnabled) disabled @endif
-                        onclick="return confirm('Force update will discard local code changes and re-sync with the remote repo (protected files like .env are preserved). Continue?')"
-                        class="px-4 py-2 rounded-md border border-rose-500/70 text-rose-200 text-sm hover:text-white hover:bg-rose-500/10 disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                        Force Update
-                    </button>
+                    @if ($latest && $latest->status === 'failed')
+                        <button
+                            type="button"
+                            wire:click="runForceUpdate"
+                            wire:loading.attr="disabled"
+                            @if (! $selfUpdateEnabled) disabled @endif
+                            onclick="return confirm('Force update will discard local code changes and re-sync with the remote repo (protected files like .env are preserved). Continue?')"
+                            class="px-4 py-2 rounded-md border border-rose-500/70 text-rose-200 text-sm hover:text-white hover:bg-rose-500/10 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            Force Update
+                        </button>
+                    @endif
                 </div>
             </div>
             <div class="mt-3 text-xs text-slate-400 dark:text-slate-500" wire:loading>
