@@ -1,3 +1,36 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.wallaby {
+  text-align: center;
+  padding: 15px 0;
+  display: flex;
+  justify-content: center;
+  background-color: #000311;
+}
+
+.wallaby img {
+    width: 175px;
+}
+
+.wallaby img:hover{
+    filter: brightness(0) saturate(100%) invert(70%) sepia(26%) saturate(1784%) hue-rotate(335deg) brightness(102%) contrast(102%);
+    cursor: pointer;
+}
+
+.footer-text {
+  border-top: 1px solid var(--border);
+  text-align: center;
+  padding: 1.5rem;
+  color: var(--muted);
+}
+
+.wallaby img {
+    width: 175px;
+}
+
+.wallaby img:hover{
+    filter: brightness(0) saturate(100%) invert(70%) sepia(26%) saturate(1784%) hue-rotate(335deg) brightness(102%) contrast(102%);
+    cursor: pointer;
+}

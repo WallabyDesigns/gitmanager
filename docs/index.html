@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Git Project Manager Docs</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <div>
+        <div class="brand">
+            <img src="assets/logo.svg" alt="Git Project Manager" />
+            <div>
+                <p class="eyebrow">Documentation</p>
+                <h1>Git Project Manager</h1>
+                <p class="tagline">Self-hosted Git deployment manager with health checks, rollbacks, preview builds, and Dependabot automation.</p>
+            </div>
+        </div>
+        <div>
+          <div class="cta">
+            <a class="btn primary" href="#quick-start">Quick Start</a>
+            <a class="btn ghost" href="#use-cases">Use Cases</a>
+            <a href="https://www.buymeacoffee.com/wallaby"> <img align="left" src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="50" width="210" alt="stevecostigan" /></a>
+        </div>
+        </div>
+      </div>
+      <div class="meta-card">
+        <h3>Highlights</h3>
+        <ul>
+          <li>Deploy and rollback from a single dashboard.</li>
+          <li>Auto-deploy via schedule or GitHub webhooks.</li>
+          <li>Health checks with live status.</li>
+          <li>Preview builds for any commit.</li>
+          <li>Security tab with Dependabot alerts.</li>
+        </ul>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <nav class="side-nav">
+      <a href="#quick-start">Quick Start</a>
+      <a href="#installation">Installation</a>
+      <a href="#configuration">Configuration</a>
+      <a href="#projects">Projects & Deployments</a>
+      <a href="#health">Health Checks</a>
+      <a href="#preview">Preview Builds</a>
+      <a href="#security">Security & Dependabot</a>
+      <a href="#webhooks">GitHub Webhooks</a>
+      <a href="#self-update">Self Update</a>
+      <a href="#use-cases">Use Cases</a>
+      <a href="#troubleshooting">Troubleshooting</a>
+    </nav>
+
+    <section class="content">
+      <section id="quick-start" class="card">
+        <h2>Quick Start</h2>
+        <ol>
+          <li>Clone the repository to your server.</li>
+          <li>Configure environment variables in <code>.env</code>.</li>
+          <li>Install dependencies and run migrations.</li>
+          <li>Log in and add your first project.</li>
+        </ol>
+        <pre><code>composer install
+php artisan migrate
+npm install
+npm run build</code></pre>
+      </section>
+
+      <section id="installation" class="card">
+        <h2>Installation</h2>
+        <ul>
+          <li>PHP 8.2+ with required extensions.</li>
+          <li>Composer 2.</li>
+          <li>Node.js 18+ (or 20/22) for builds.</li>
+          <li>Git CLI available to the web user.</li>
+          <li>Queue worker for webhook deploys.</li>
+        </ul>
+        <p>Recommended: run on the same host where your projects live so deploys can write to local paths.</p>
+      </section>
+
+      <section id="configuration" class="card">
+        <h2>Configuration</h2>
+        <p>Key settings in <code>.env</code>:</p>
+        <ul>
+          <li><code>GITHUB_TOKEN</code> for private repos + Dependabot.</li>
+          <li><code>GITHUB_WEBHOOK_SECRET</code> for push-triggered deploys.</li>
+          <li><code>GPM_GIT_BINARY</code>, <code>GPM_COMPOSER_BINARY</code>, <code>GPM_NPM_BINARY</code> for custom CLI paths.</li>
+          <li><code>GPM_PHP_BINARY</code> / <code>GPM_PHP_PATH</code> for PHP CLI selection.</li>
+          <li><code>GPM_PROCESS_PATH</code> to prepend PATH (Node, PHP, etc).</li>
+          <li><code>GPM_SELF_UPDATE_ENABLED</code> to toggle nightly self updates.</li>
+          <li><code>GPM_PREVIEW_PATH</code> and <code>GPM_PREVIEW_BASE_URL</code> for preview builds.</li>
+        </ul>
+      </section>
+
+      <section id="projects" class="card">
+        <h2>Projects & Deployments</h2>
+        <p>Create a project by providing:</p>
+        <ul>
+          <li><strong>Repo URL</strong> (HTTPS, SSH, or owner/repo shorthand).</li>
+          <li><strong>Local path</strong> (existing or auto-created).</li>
+          <li><strong>Branch</strong> (default branch to deploy).</li>
+        </ul>
+        <p>Deploy actions:</p>
+        <ul>
+          <li>Deploy / Force Deploy (with optional clean).</li>
+          <li>Rollback to last successful deploy.</li>
+          <li>Dependency actions (composer/npm).</li>
+        </ul>
+        <p>You can preserve custom files via <strong>Exclude Paths</strong>. Each entry is one path per line (supports globs).</p>
+      </section>
+
+      <section id="health" class="card">
+        <h2>Health Checks</h2>
+        <p>Set a health URL (default: <code>/up</code> for Laravel 11). Health status refreshes every minute on list and detail views.</p>
+      </section>
+
+      <section id="preview" class="card">
+        <h2>Preview Builds</h2>
+        <p>Generate previews for any commit without touching production. Configure <code>GPM_PREVIEW_PATH</code> and optionally <code>GPM_PREVIEW_BASE_URL</code>.</p>
+        <p>Example preview path:</p>
+        <pre><code>/previews/my-project/abc1234</code></pre>
+      </section>
+
+      <section id="security" class="card">
+        <h2>Security & Dependabot</h2>
+        <ul>
+          <li>Syncs Dependabot alerts hourly.</li>
+          <li>Auto-merges Dependabot PRs (configurable).</li>
+          <li>Security tab shows open vs resolved issues.</li>
+        </ul>
+        <p>Make sure <code>GITHUB_TOKEN</code> has <code>repo</code> and <code>security_events</code> scopes.</p>
+      </section>
+
+      <section id="webhooks" class="card">
+        <h2>GitHub Webhooks</h2>
+        <p>Set your GitHub webhook to:</p>
+        <pre><code>POST /webhooks/github</code></pre>
+        <p>Use the same <code>GITHUB_WEBHOOK_SECRET</code> value in GitHub and your <code>.env</code>.</p>
+        <p>Webhook deploys are queued — run a worker:</p>
+        <pre><code>php artisan queue:work</code></pre>
+      </section>
+
+      <section id="self-update" class="card">
+        <h2>Self Update</h2>
+        <p>The app can self-update nightly (02:30 server time) and also includes a manual Update App page.</p>
+        <ul>
+          <li>Status badge shows if a new version is available.</li>
+          <li>Updates preserve <code>.htaccess</code> and optional paths.</li>
+          <li>NPM install is skipped when package files have not changed.</li>
+        </ul>
+      </section>
+
+      <section id="use-cases" class="card">
+        <h2>Use Cases</h2>
+        <ul>
+          <li>Small agencies managing multiple client sites.</li>
+          <li>Solo developers with multiple side projects.</li>
+          <li>Internal teams that need simple Git deploys.</li>
+          <li>Preview builds for QA or staging review.</li>
+        </ul>
+      </section>
+
+      <section id="troubleshooting" class="card">
+        <h2>Troubleshooting</h2>
+        <ul>
+          <li><strong>Vite manifest missing:</strong> run <code>npm run build</code> or fix permissions on <code>public/build</code>.</li>
+          <li><strong>Git auth failed:</strong> verify <code>GITHUB_TOKEN</code> and PATH for git.</li>
+          <li><strong>Health checks fail:</strong> confirm URL and HTTPS access.</li>
+          <li><strong>Deploy stuck:</strong> check queue worker and job logs.</li>
+        </ul>
+      </section>
+    </section>
+  </main>
+
+    <footer>
+        <p class="footer-text">Git Project Manager © 2026 Wallaby Designs LLC.</p>
+        <a class="wallaby bg-neutral-950" href="https://wallabydesigns.com/" title="Website built by Wallaby Designs">
+            <img width="175" height="62.25" src="./images/wallaby-w.png" alt="wallaby designs">
+        </a>
+    </footer>
+</body>
+</html>

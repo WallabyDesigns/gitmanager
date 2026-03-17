@@ -51,6 +51,12 @@
             <main>
                 {{ $slot }}
             </main>
+            <footer>
+                <p class="footer-text">Git Project Manager © 2026 Wallaby Designs LLC.</p>
+                <a class="wallaby bg-neutral-950" href="https://wallabydesigns.com/" title="Website built by Wallaby Designs">
+                    <img width="175" height="62.25" src="/images/wallaby-w.png" alt="wallaby designs">
+                </a>
+            </footer>
         </div>
 
         <div id="gpm-toast" class="fixed bottom-6 right-6 hidden max-w-sm rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-lg dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"></div>

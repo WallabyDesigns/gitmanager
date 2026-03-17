@@ -1,27 +1,85 @@
 # Git Project Manager
 
-Git Project Manager is a Laravel Livewire application for managing deployments of your published GitHub projects. It keeps track of local paths, watches for upstream Git updates, runs dependency installs/builds, and provides rollback + health monitoring from a single interface.
+Git Project Manager is a self-hosted Laravel Livewire app for deploying and monitoring GitHub projects from a single dashboard. It handles deploys, rollbacks, health checks, preview builds, and Dependabot automation.
+
+### Support:
+Show your support if you found this useful!
+
+[![stevecostigan](https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png)](https://www.buymeacoffee.com/stevecostigan)
+
 
 ## Features
-- Authenticated dashboard for projects
-- Manual deploys, rollbacks, health checks, and dependency updates
-- Auto-deploy on a schedule when new commits are detected
-- GitHub webhook endpoint for push-triggered deploys
-- Security page with Dependabot alert tracking
-- Dark theme interface
- - Optional pre-deploy test command
+- Authenticated dashboard with project list and detail views.
+- Manual deploys, force deploys, and rollbacks.
+- Auto-deploy via scheduler or GitHub webhooks.
+- Health checks with live status.
+- Preview builds for any commit.
+- Dependency actions (composer/npm) with logs.
+- Security tab with Dependabot alerts and auto-merge.
+- Self-update flow for the app itself.
 
-## Getting started
-1. Configure your environment in `.env`.
-1. Run migrations.
-1. Start the app and open the `/projects` dashboard.
+## Quick Start
+1. Copy `.env.example` to `.env` and configure required variables.
+2. Install dependencies and build assets.
+3. Run migrations and start the app.
 
-## Notes
-- Deployment commands run on the same host where the app is installed, so the application needs access to each project path.
-- Each `local_path` should be an existing Git repository with an `origin` remote and the configured default branch.
-- Git, Composer, and Node must be available on the server for deploys and builds.
-- Auto deploy runs with `projects:auto-deploy` and is scheduled every five minutes.
-- For GitHub webhooks, set `GITHUB_WEBHOOK_SECRET` and point GitHub to `/webhooks/github`.
- - Make sure `repo_url` matches the GitHub repo URL used in the webhook payload (HTML, SSH, or clone URL).
-- Webhook deploys are queued, so run a queue worker (`php artisan queue:work`).
- - For Dependabot sync and auto-merge, set `GITHUB_TOKEN`.
+```
+composer install
+php artisan migrate
+npm install
+npm run build
+```
+
+## Requirements
+- PHP 8.2+ with required extensions (mbstring, curl, etc).
+- Composer 2.
+- Node.js 18+ (or 20/22) for Vite builds.
+- Git CLI available to the web user.
+- Queue worker for webhook deploys.
+- Scheduler for auto-deploy and security sync.
+
+## Configuration Highlights
+Set these in `.env` as needed:
+- `GITHUB_TOKEN` for private repos + Dependabot actions.
+- `GITHUB_WEBHOOK_SECRET` for webhook verification.
+- `GPM_GIT_BINARY`, `GPM_COMPOSER_BINARY`, `GPM_NPM_BINARY` for custom CLI paths.
+- `GPM_PHP_BINARY` / `GPM_PHP_PATH` for PHP CLI selection.
+- `GPM_PROCESS_PATH` to prepend PATH (Node, PHP, etc).
+- `GPM_SELF_UPDATE_ENABLED` to enable nightly self updates.
+- `GPM_PREVIEW_PATH` and `GPM_PREVIEW_BASE_URL` for preview builds.
+
+## Scheduler & Queue
+Start a worker for webhook deployments:
+```
+php artisan queue:work
+```
+
+Ensure the scheduler runs (crontab entry):
+```
+* * * * * php /path/to/artisan schedule:run >> /dev/null 2>&1
+```
+
+Scheduled commands include:
+- `projects:auto-deploy` (every 5 minutes)
+- `security:sync` (hourly)
+- `dependabot:auto-merge` (hourly)
+- `gitmanager:self-update` (daily at 02:30 if enabled)
+
+## GitHub Webhooks
+Set GitHub to POST to:
+```
+/webhooks/github
+```
+
+Use the same `GITHUB_WEBHOOK_SECRET` in GitHub and `.env`.
+
+## Documentation Site (GitHub Pages)
+This repo ships a static docs site in `docs/`.
+
+To publish on GitHub Pages:
+1. Go to repo settings → Pages.
+2. Select **Deploy from a branch**.
+3. Choose branch `main` and folder `/docs`.
+
+## License
+Add your preferred open-source license before publishing.
