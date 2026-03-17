@@ -50,7 +50,12 @@ class SelfUpdateService
         return $this->update($user, false);
     }
 
-    public function update(?User $user = null, bool $allowDirty = false): AppUpdate
+    public function forceUpdate(?User $user = null): AppUpdate
+    {
+        return $this->update($user, true, true);
+    }
+
+    public function update(?User $user = null, bool $allowDirty = false, bool $force = false): AppUpdate
     {
         $repoPath = base_path();
         Cache::forget(self::STATUS_CACHE_KEY);
@@ -71,6 +76,10 @@ class SelfUpdateService
         $protectedHtaccess = null;
         $untrackedBackups = [];
         $untrackedFiles = [];
+        $forceUpdate = $force;
+        if ($forceUpdate) {
+            $allowDirty = true;
+        }
 
         try {
             $output[] = 'Update path: '.$repoPath;
@@ -80,7 +89,9 @@ class SelfUpdateService
             $this->assertGitWritable($repoPath, $output);
             $this->ensureOriginRemote($repoPath, $output);
             $fromHash = $this->tryRevParse($repoPath);
-            if ($allowDirty) {
+            if ($forceUpdate) {
+                $output[] = 'Force update requested; local changes will be discarded (protected files are preserved).';
+            } elseif ($allowDirty) {
                 $untrackedFiles = $this->getUntrackedFiles($repoPath, $output);
                 if ($untrackedFiles !== []) {
                     $backup = $this->backupUntrackedFiles($repoPath, $untrackedFiles, $output);
@@ -118,7 +129,11 @@ class SelfUpdateService
                 return $update;
             }
 
-            if ($fromHash) {
+            if ($forceUpdate) {
+                $output[] = 'Force updating working tree to origin/'.$branch.'.';
+                $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', 'origin/'.$branch], $output);
+                $this->runGitClean($repoPath, $this->forceCleanExcludePaths(), $output);
+            } elseif ($fromHash) {
                 $this->mergeFastForward($repoPath, $branch, $output, $untrackedBackups);
             } else {
                 if ($backupPath) {
@@ -433,6 +448,47 @@ class SelfUpdateService
         }
 
         return null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function forceCleanExcludePaths(): array
+    {
+        $paths = [
+            '.env',
+            'storage',
+            '.htaccess',
+            'public'.DIRECTORY_SEPARATOR.'.htaccess',
+        ];
+
+        foreach ($this->selfUpdateExcludedPaths() as $path) {
+            $path = trim((string) $path);
+            if ($path === '') {
+                continue;
+            }
+            $paths[] = $path;
+        }
+
+        return array_values(array_unique($paths));
+    }
+
+    /**
+     * @param array<int, string> $excludePaths
+     */
+    private function runGitClean(string $repoPath, array $excludePaths, array &$output): void
+    {
+        $command = ['git', '-C', $repoPath, 'clean', '-fd'];
+        foreach ($excludePaths as $path) {
+            $path = trim($path);
+            if ($path === '') {
+                continue;
+            }
+            $command[] = '-e';
+            $command[] = $path;
+        }
+
+        $this->runProcess($command, $output);
     }
 
     /**

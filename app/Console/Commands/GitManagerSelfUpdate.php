@@ -12,7 +12,7 @@ class GitManagerSelfUpdate extends Command
      *
      * @var string
      */
-    protected $signature = 'gitmanager:self-update';
+    protected $signature = 'gitmanager:self-update {--force : Force reset to the remote branch and discard local changes}';
 
     /**
      * The console command description.
@@ -31,7 +31,11 @@ class GitManagerSelfUpdate extends Command
             return self::SUCCESS;
         }
 
-        $update = $service->updateSmart();
+        if ($this->option('force')) {
+            $update = $service->forceUpdate();
+        } else {
+            $update = $service->updateSmart();
+        }
 
         return $update->status === 'failed' ? self::FAILURE : self::SUCCESS;
     }

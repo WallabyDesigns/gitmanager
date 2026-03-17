@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" href="favicon.ico" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Preview Builds | Git Web Manager</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="page-hero">
+    <div class="page-hero-inner">
+      <div class="docflex">
+        <div class="brand">
+            <a href="index.html">
+                <img class="logo" src="assets/logo.svg" alt="Git Web Manager" />
+            </a>
+            <div>
+              <p class="eyebrow">Preview Builds</p>
+              <h1>Git Web Manager</h1>
+              <p class="tagline">Preview any commit without touching production.</p>
+            </div>
+        </div>
+        <div>
+            <a href="https://github.com/WallabyDesigns/gitmanager"> <img src="assets/repo.svg" height="50" width="60" alt="repository" /></a>
+            <a href="https://www.buymeacoffee.com/wallaby"> <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="50" width="210" alt="wallaby" /></a>
+        </div>
+      </div>
+      <div class="page-actions">
+        <a class="btn ghost" href="health.html"><img src="assets/prev.svg" height="25" width="25" alt="" /> Health Checks</a>
+        <a class="btn primary" href="security.html">Security <img src="assets/next.svg" height="25" width="25" alt="" /></a>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <div data-include="partials/nav.html"></div>
+
+    <section class="content">
+      <section class="card">
+        <h2>Configure Preview Paths</h2>
+        <p>Preview builds are stored in a dedicated base folder and optionally exposed through a base URL.</p>
+        <ul>
+          <li><code>GWM_PREVIEW_PATH</code> (local base directory)</li>
+          <li><code>GWM_PREVIEW_BASE_URL</code> (URL prefix)</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Example</h2>
+        <pre><code>Preview path: /previews/my-project/abc1234
+Preview URL: https://preview.example.com/my-project/abc1234</code></pre>
+      </section>
+    </section>
+  </main>
+
+  <div data-include="partials/footer.html"></div>
+</body>
+</html>
+
+
+

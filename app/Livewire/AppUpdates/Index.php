@@ -44,6 +44,21 @@ class Index extends Component
         $this->redirectRoute('app-updates.index', navigate: false);
     }
 
+    public function runForceUpdate(SelfUpdateService $service): void
+    {
+        $update = $service->forceUpdate(Auth::user());
+
+        $message = match ($update->status) {
+            'success' => 'Git Web Manager force-updated successfully.',
+            'skipped' => 'Git Web Manager is already up to date.',
+            default => 'Force update failed. Review the logs for details.',
+        };
+
+        $this->updateStatus = $service->getUpdateStatus(true);
+        $this->dispatch('notify', message: $message);
+        $this->redirectRoute('app-updates.index', navigate: false);
+    }
+
     public function refreshUpdateStatus(SelfUpdateService $service): void
     {
         $this->updateStatus = $service->getUpdateStatus(true);

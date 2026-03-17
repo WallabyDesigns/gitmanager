@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" href="favicon.ico" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Security & Dependabot | Git Web Manager</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="page-hero">
+    <div class="page-hero-inner">
+      <div class="docflex">
+        <div class="brand">
+            <a href="index.html">
+                <img class="logo" src="assets/logo.svg" alt="Git Web Manager" />
+            </a>
+            <div>
+              <p class="eyebrow">Security & Dependabot</p>
+              <h1>Git Web Manager</h1>
+              <p class="tagline">Keep dependencies patched with automated alerts and updates.</p>
+            </div>
+        </div>
+        <div>
+            <a href="https://github.com/WallabyDesigns/gitmanager"> <img src="assets/repo.svg" height="50" width="60" alt="repository" /></a>
+            <a href="https://www.buymeacoffee.com/wallaby"> <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="50" width="210" alt="wallaby" /></a>
+        </div>
+      </div>
+      <div class="page-actions">
+        <a class="btn ghost" href="preview.html"><img src="assets/prev.svg" height="25" width="25" alt="" /> Preview Builds</a>
+        <a class="btn primary" href="users.html">User Management <img src="assets/next.svg" height="25" width="25" alt="" /></a>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <div data-include="partials/nav.html"></div>
+
+    <section class="content">
+      <section class="card">
+        <h2>Dependabot Alerts</h2>
+        <ul>
+          <li>Alerts sync hourly and show open vs resolved issues.</li>
+          <li>Unresolved issues appear in the Security tab with direct links.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Auto-Merge Options</h2>
+        <p>When auto-merge is enabled, GWM will attempt to apply Dependabot PRs automatically. Failures are recorded in the Security logs.</p>
+      </section>
+
+      <section class="card">
+        <h2>Required GitHub Token Scopes</h2>
+        <p>Ensure <code>GITHUB_TOKEN</code> includes <code>repo</code> and <code>security_events</code>.</p>
+      </section>
+    </section>
+  </main>
+
+  <div data-include="partials/footer.html"></div>
+</body>
+</html>
+
+
+
