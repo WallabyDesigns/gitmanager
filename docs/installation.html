@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" href="favicon.ico" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Installation | Git Project Manager</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="page-hero">
+    <div class="page-hero-inner">
+      <div class="docflex">
+        <div class="brand">
+            <img class="logo" src="assets/logo.svg" alt="Git Project Manager" />
+            <div>
+              <p class="eyebrow">Installation</p>
+              <h1>Git Project Manager</h1>
+              <p class="tagline">System requirements and recommended hosting setup.</p>
+            </div>
+        </div>
+        <a href="https://www.buymeacoffee.com/wallaby"> <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="50" width="210" alt="wallaby" /></a>
+      </div>
+      <div class="page-actions">
+        <a class="btn ghost" href="quick-start.html"><img src="assets/prev.svg" height="25" width="25" alt="" /> Quick Start</a>
+        <a class="btn primary" href="configuration.html">Configuration <img src="assets/next.svg" height="25" width="25" alt="" /></a>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <div data-include="_partials/nav.html"></div>
+
+    <section class="content">
+      <section class="card">
+        <h2>Requirements</h2>
+        <ul>
+          <li>PHP 8.2+ with required extensions.</li>
+          <li>Composer 2.</li>
+          <li>Node.js 18+ (20/22/24 recommended) for Vite builds.</li>
+          <li>Git CLI accessible to the web user.</li>
+          <li>Queue worker for webhook deploys.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Recommended Layout</h2>
+        <p>Install GPM on the same host where your websites live so it can deploy directly to local paths. If a path does not exist, GPM can create it.</p>
+      </section>
+
+      <section class="card">
+        <h2>Queue Worker</h2>
+        <p>Webhook-driven deploys and background tasks use the queue system:</p>
+        <pre><code>php artisan queue:work</code></pre>
+      </section>
+    </section>
+  </main>
+
+  <div data-include="_partials/footer.html"></div>
+</body>
+</html>
+

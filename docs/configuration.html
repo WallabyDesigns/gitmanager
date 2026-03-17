@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" href="favicon.ico" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Configuration | Git Project Manager</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="page-hero">
+    <div class="page-hero-inner">
+      <div class="docflex">
+        <div class="brand">
+            <img class="logo" src="assets/logo.svg" alt="Git Project Manager" />
+            <div>
+              <p class="eyebrow">Configuration</p>
+              <h1>Git Project Manager</h1>
+              <p class="tagline">Environment variables and optional runtime overrides.</p>
+            </div>
+        </div>
+        <a href="https://www.buymeacoffee.com/wallaby"> <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="50" width="210" alt="wallaby" /></a>
+      </div>
+      <div class="page-actions">
+        <a class="btn ghost" href="installation.html"><img src="assets/prev.svg" height="25" width="25" alt="" /> Installation</a>
+        <a class="btn primary" href="projects.html">Projects <img src="assets/next.svg" height="25" width="25" alt="" /></a>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <div data-include="_partials/nav.html"></div>
+
+    <section class="content">
+      <section class="card">
+        <h2>Core Settings</h2>
+        <ul>
+          <li><code>APP_URL</code>, <code>APP_KEY</code>, and database credentials.</li>
+          <li><code>GITHUB_TOKEN</code> for private repos and Dependabot.</li>
+          <li><code>GITHUB_WEBHOOK_SECRET</code> for GitHub webhook verification.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Binary Overrides</h2>
+        <p>Point GPM at specific binaries when multiple installations exist:</p>
+        <ul>
+          <li><code>GPM_GIT_BINARY</code></li>
+          <li><code>GPM_COMPOSER_BINARY</code></li>
+          <li><code>GPM_NPM_BINARY</code></li>
+          <li><code>GPM_PHP_BINARY</code> or <code>GPM_PHP_PATH</code></li>
+          <li><code>GPM_PROCESS_PATH</code> to prepend PATH.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Preview Builds</h2>
+        <ul>
+          <li><code>GPM_PREVIEW_PATH</code> (local base path)</li>
+          <li><code>GPM_PREVIEW_BASE_URL</code> (optional URL prefix)</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Self Update</h2>
+        <ul>
+          <li><code>GPM_SELF_UPDATE_ENABLED</code> to toggle nightly updates.</li>
+          <li><code>GPM_ASKPASS_DIR</code> for Git credential helper location.</li>
+        </ul>
+      </section>
+    </section>
+  </main>
+
+  <div data-include="_partials/footer.html"></div>
+</body>
+</html>
+

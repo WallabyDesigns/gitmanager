@@ -30,10 +30,31 @@ body {
 .hero-inner {
   max-width: 1100px;
   margin: 0 auto;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 2rem;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  align-items: center;
+  align-items: flex-start;
+}
+
+.page-hero {
+  padding: 2rem 1.5rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(135deg, #0f1b3a, #0b1120 65%);
+}
+
+.page-hero-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.page-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .brand {
@@ -42,7 +63,7 @@ body {
   align-items: flex-start;
 }
 
-.brand img {
+.logo {
   width: 72px;
   height: 72px;
 }
@@ -53,6 +74,14 @@ body {
   font-size: 0.7rem;
   color: var(--muted);
   margin: 0 0 0.4rem;
+}
+
+.docflex{
+  display: flex;
+  gap: 2rem;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
 }
 
 h1 {
@@ -132,6 +161,11 @@ h1 {
   color: var(--accent-2);
 }
 
+.side-nav a.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .content {
   display: flex;
   flex-direction: column;
@@ -186,7 +220,7 @@ code {
   padding: 15px 0;
   display: flex;
   justify-content: center;
-  background-color: rgb(9, 9, 9);
+  background-color: #000311;
 }
 
 .footer-text {

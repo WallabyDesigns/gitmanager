@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" href="favicon.ico" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Health Checks | Git Project Manager</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="page-hero">
+    <div class="page-hero-inner">
+      <div class="docflex">
+        <div class="brand">
+            <img class="logo" src="assets/logo.svg" alt="Git Project Manager" />
+            <div>
+              <p class="eyebrow">Health Checks</p>
+              <h1>Git Project Manager</h1>
+              <p class="tagline">Monitor site status with scheduled checks and on-demand refresh.</p>
+            </div>
+        </div>
+        <a href="https://www.buymeacoffee.com/wallaby"> <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="50" width="210" alt="wallaby" /></a>
+      </div>
+      <div class="page-actions">
+        <a class="btn ghost" href="deploy-behavior.html"><img src="assets/prev.svg" height="25" width="25" alt="" /> Deploy Behavior</a>
+        <a class="btn primary" href="preview.html">Preview Builds <img src="assets/next.svg" height="25" width="25" alt="" /></a>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <div data-include="_partials/nav.html"></div>
+
+    <section class="content">
+      <section class="card">
+        <h2>Default Health URL</h2>
+        <p>Laravel 11 ships with <code>/up</code> as the default health endpoint. You can override this per project.</p>
+      </section>
+
+      <section class="card">
+        <h2>Refresh Timing</h2>
+        <p>Health status refreshes every minute on the projects list and on project detail views. Manual refresh is also available.</p>
+      </section>
+    </section>
+  </main>
+
+  <div data-include="_partials/footer.html"></div>
+</body>
+</html>
+
