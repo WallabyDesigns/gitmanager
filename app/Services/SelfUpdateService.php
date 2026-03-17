@@ -76,6 +76,7 @@ class SelfUpdateService
             $protectedHtaccess = $this->prepareProtectedHtaccess($repoPath, $output);
             $htaccessSnapshots = $this->snapshotFiles($repoPath, ['.htaccess']);
             $this->ensureGitRepository($repoPath);
+            $this->assertGitWritable($repoPath, $output);
             $this->ensureOriginRemote($repoPath, $output);
             $fromHash = $this->tryRevParse($repoPath);
             if ($allowDirty) {
@@ -248,6 +249,7 @@ class SelfUpdateService
 
         try {
             $this->ensureGitRepository($repoPath);
+            $this->assertGitWritable($repoPath, $output);
             $this->ensureOriginRemote($repoPath, $output);
             $branch = $this->resolveBranch($repoPath, $output);
             $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune'], $output);
@@ -280,6 +282,33 @@ class SelfUpdateService
                 'error' => $exception->getMessage(),
             ];
         }
+    }
+
+    private function assertGitWritable(string $repoPath, array &$output): void
+    {
+        $gitDir = $repoPath.DIRECTORY_SEPARATOR.'.git';
+        if (! is_dir($gitDir)) {
+            return;
+        }
+
+        $blocked = [];
+        $objects = $gitDir.DIRECTORY_SEPARATOR.'objects';
+        $index = $gitDir.DIRECTORY_SEPARATOR.'index';
+
+        if (is_dir($objects) && ! is_writable($objects)) {
+            $blocked[] = $objects;
+        }
+
+        if (is_file($index) && ! is_writable($index)) {
+            $blocked[] = $index;
+        }
+
+        if ($blocked === []) {
+            return;
+        }
+
+        $output[] = 'Git repository is not writable: '.implode(', ', $blocked);
+        throw new \RuntimeException('Git repository is not writable by the web server user. Fix ownership/permissions for .git/objects and .git/index.');
     }
 
     /**
