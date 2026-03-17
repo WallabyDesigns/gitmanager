@@ -249,7 +249,7 @@ class SelfUpdateService
 
         try {
             $this->ensureGitRepository($repoPath);
-            $this->assertGitWritable($repoPath, $output, false);
+            $this->assertGitWritable($repoPath, $output, false, false);
             $this->ensureOriginRemote($repoPath, $output);
             $branch = $this->resolveBranch($repoPath, $output);
             $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune'], $output);
@@ -284,7 +284,7 @@ class SelfUpdateService
         }
     }
 
-    private function assertGitWritable(string $repoPath, array &$output, bool $logIdentity = true): void
+    private function assertGitWritable(string $repoPath, array &$output, bool $logIdentity = true, bool $attemptFix = true): void
     {
         $gitDir = $repoPath.DIRECTORY_SEPARATOR.'.git';
         if (! is_dir($gitDir)) {
@@ -322,12 +322,11 @@ class SelfUpdateService
             }
         }
 
-        if (is_dir($objects) && ! is_writable($objects)) {
-            $blocked[] = $objects;
-        }
+        $blocked = $this->findGitBlockedPaths($gitDir);
 
-        if (is_file($index) && ! is_writable($index)) {
-            $blocked[] = $index;
+        if ($blocked !== [] && $attemptFix) {
+            $this->attemptGitPermissionFix($gitDir, $blocked, $output);
+            $blocked = $this->findGitBlockedPaths($gitDir);
         }
 
         if ($blocked === []) {
@@ -336,6 +335,76 @@ class SelfUpdateService
 
         $output[] = 'Git repository is not writable: '.implode(', ', $blocked);
         throw new \RuntimeException('Git repository is not writable by the web server user. Fix ownership/permissions for .git/objects and .git/index, and avoid running updates as a different user.');
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function findGitBlockedPaths(string $gitDir): array
+    {
+        $blocked = [];
+        $objects = $gitDir.DIRECTORY_SEPARATOR.'objects';
+        $index = $gitDir.DIRECTORY_SEPARATOR.'index';
+
+        if (is_dir($objects) && ! is_writable($objects)) {
+            $blocked[] = $objects;
+        }
+
+        if (is_file($index) && ! is_writable($index)) {
+            $blocked[] = $index;
+        }
+
+        return $blocked;
+    }
+
+    /**
+     * @param array<int, string> $blocked
+     */
+    private function attemptGitPermissionFix(string $gitDir, array $blocked, array &$output): void
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            return;
+        }
+
+        $output[] = 'Attempting to make git directory writable before update.';
+
+        $objects = $gitDir.DIRECTORY_SEPARATOR.'objects';
+        $index = $gitDir.DIRECTORY_SEPARATOR.'index';
+
+        if (in_array($objects, $blocked, true)) {
+            $this->chmodRecursive($objects, 0775, 0664, $output);
+        }
+
+        if (in_array($index, $blocked, true) && is_file($index)) {
+            if (@chmod($index, 0664)) {
+                $output[] = 'Adjusted permissions on '.$index.'.';
+            } else {
+                $output[] = 'Unable to adjust permissions on '.$index.'.';
+            }
+        }
+    }
+
+    private function chmodRecursive(string $path, int $dirMode, int $fileMode, array &$output): void
+    {
+        if (! is_dir($path)) {
+            return;
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($path, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        @chmod($path, $dirMode);
+
+        foreach ($iterator as $item) {
+            $target = $item->getPathname();
+            if ($item->isDir()) {
+                @chmod($target, $dirMode);
+            } else {
+                @chmod($target, $fileMode);
+            }
+        }
     }
 
     private function currentUid(): ?int
