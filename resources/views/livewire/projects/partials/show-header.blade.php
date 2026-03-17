@@ -3,7 +3,6 @@
         <div class="flex items-center gap-2 text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
             <a href="{{ route('projects.index') }}" class="hover:text-slate-600 dark:hover:text-slate-300">Projects</a>
             <span>/</span>
-            <span class="text-slate-500 dark:text-slate-400">{{ $project->name }}</span>
         </div>
         <h2 class="text-xl font-semibold text-slate-900 dark:text-slate-100">{{ $project->name }}</h2>
         <p class="text-sm text-slate-500 dark:text-slate-400">{{ $project->local_path }}</p>
