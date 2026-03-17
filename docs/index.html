@@ -41,16 +41,16 @@
   </header>
 
   <main class="layout">
-    <nav class="side-nav">            <a href="#deploy-behavior">Deploy Behavior</a>
-<a href="#users">User Management</a>
-
+    <nav class="side-nav">
       <a href="#quick-start">Quick Start</a>
       <a href="#installation">Installation</a>
       <a href="#configuration">Configuration</a>
       <a href="#projects">Projects & Deployments</a>
+      <a href="#deploy-behavior">Deploy Behavior</a>
       <a href="#health">Health Checks</a>
       <a href="#preview">Preview Builds</a>
       <a href="#security">Security & Dependabot</a>
+      <a href="#users">User Management</a>
       <a href="#webhooks">GitHub Webhooks</a>
       <a href="#self-update">Self Update</a>
       <a href="#use-cases">Use Cases</a>
@@ -115,6 +115,11 @@ npm run build</code></pre>
         <p>You can preserve custom files via <strong>Exclude Paths</strong>. Each entry is one path per line (supports globs).</p>
       </section>
 
+      <section id="deploy-behavior" class="card">
+        <h2>Deploy Behavior</h2>
+        <p>Standard deploys will stash and restore tracked local changes automatically. Force Deploy remains destructive and will discard local changes.</p>
+      </section>
+
       <section id="health" class="card">
         <h2>Health Checks</h2>
         <p>Set a health URL (default: <code>/up</code> for Laravel 11). Health status refreshes every minute on list and detail views.</p>
@@ -135,6 +140,16 @@ npm run build</code></pre>
           <li>Security tab shows open vs resolved issues.</li>
         </ul>
         <p>Make sure <code>GITHUB_TOKEN</code> has <code>repo</code> and <code>security_events</code> scopes.</p>
+      </section>
+
+      <section id="users" class="card">
+        <h2>User Management</h2>
+        <p>Create users from the Security → Users tab. New accounts can be issued a temporary password and required to change it on first login.</p>
+        <ul>
+          <li>Registration is only open for the first user.</li>
+          <li>Admins can generate a temporary password or send a reset link.</li>
+          <li>Users are redirected to Profile until their password is updated.</li>
+        </ul>
       </section>
 
       <section id="webhooks" class="card">
