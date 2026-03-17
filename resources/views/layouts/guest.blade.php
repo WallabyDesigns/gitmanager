@@ -28,22 +28,28 @@
             </style>
         @endif
     </head>
-    <body class="font-sans antialiased h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-        <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0">
+    <body class="min-h-screen font-sans antialiased h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+        <div class="h-full flex flex-col sm:justify-center items-center pt-6 sm:pt-0">
             @if (! $viteReady)
                 <div class="gpm-fallback-alert">
                     <strong>Assets are not built.</strong> Run <code>npm run build</code> to restore the styled UI.
                 </div>
             @endif
             <div>
-                <a href="/">
+                <a href="/" class="flex items-center">
                     <x-application-logo class="w-20 h-20 fill-current text-gray-500" />
+                    <div>
+                        <h2 class="text-xl px-2 font-semibold text-slate-900 dark:text-slate-100">
+                            Git Project Manager
+                        </h2>
+                    </div>
                 </a>
             </div>
 
             <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white shadow-md overflow-hidden sm:rounded-lg dark:bg-slate-900 dark:border dark:border-slate-800">
                 {{ $slot }}
             </div>
+            <p class="footer-text">© 2026 <a href="https://wallabydesigns.com/" title="Website built by Wallaby Designs">Wallaby Designs LLC</a>. All rights reserved.</p>
         </div>
     </body>
 </html>

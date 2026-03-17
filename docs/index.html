@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head>  <link rel="icon" href="favicon.ico" />
+
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Git Project Manager Docs</title>
@@ -40,7 +41,9 @@
   </header>
 
   <main class="layout">
-    <nav class="side-nav">
+    <nav class="side-nav">            <a href="#deploy-behavior">Deploy Behavior</a>
+<a href="#users">User Management</a>
+
       <a href="#quick-start">Quick Start</a>
       <a href="#installation">Installation</a>
       <a href="#configuration">Configuration</a>
@@ -148,7 +151,7 @@ npm run build</code></pre>
         <p>The app can self-update nightly (02:30 server time) and also includes a manual Update App page.</p>
         <ul>
           <li>Status badge shows if a new version is available.</li>
-          <li>Updates preserve <code>.htaccess</code> and optional paths.</li>
+          <li>Updates preserve <code>.htaccess</code> and optional paths, and automatically preserve local changes when detected.</li>
           <li>NPM install is skipped when package files have not changed.</li>
         </ul>
       </section>
@@ -176,8 +179,8 @@ npm run build</code></pre>
   </main>
 
     <footer>
-        <p class="footer-text">Git Project Manager © 2026 Wallaby Designs LLC.</p>
-        <a class="wallaby bg-neutral-950" href="https://wallabydesigns.com/" title="Website built by Wallaby Designs">
+        <p class="footer-text">Git Project Manager © 2026 <a href="https://wallabydesigns.com/" title="Website built by Wallaby Designs">Wallaby Designs LLC</a>. All rights reserved.</p>
+        <a class="wallaby" href="https://wallabydesigns.com/" title="Website built by Wallaby Designs">
             <img width="175" height="62.25" src="./images/wallaby-w.png" alt="wallaby designs">
         </a>
     </footer>

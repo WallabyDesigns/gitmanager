@@ -1,12 +1,17 @@
 <?php
 
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Middleware\EnsureFirstUserRegistration;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
 Route::middleware('guest')->group(function () {
     Volt::route('login', 'pages.auth.login')
         ->name('login');
+
+    Volt::route('register', 'pages.auth.register')
+        ->middleware(EnsureFirstUserRegistration::class)
+        ->name('register');
 
     Volt::route('forgot-password', 'pages.auth.forgot-password')
         ->name('password.request');

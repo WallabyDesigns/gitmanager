@@ -65,19 +65,13 @@
                     >
                         Update App
                     </button>
-                    <button
-                        type="button"
-                        wire:click="runUpdatePreserve"
-                        wire:loading.attr="disabled"
-                        @if (! $selfUpdateEnabled) disabled @endif
-                        class="px-4 py-2 rounded-md border border-slate-300 text-slate-600 text-sm hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                        Update (Preserve Local Changes)
-                    </button>
                 </div>
             </div>
             <div class="mt-3 text-xs text-slate-400 dark:text-slate-500" wire:loading>
                 Update running... this can take a few minutes.
+            </div>
+            <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
+                Local changes are preserved automatically when detected.
             </div>
         </div>
 

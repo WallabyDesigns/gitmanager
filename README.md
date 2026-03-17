@@ -8,6 +8,9 @@ Show your support if you found this useful!
 [![wallaby](https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png)](https://www.buymeacoffee.com/wallaby)
 
 
+## Read Documentation
+Please read our [documentation](https://wallabydesigns.github.io/gitmanager/#troubleshooting) to help you get up and running.
+
 ## Features
 - Authenticated dashboard with project list and detail views.
 - Manual deploys, force deploys, and rollbacks.
@@ -17,6 +20,9 @@ Show your support if you found this useful!
 - Dependency actions (composer/npm) with logs.
 - Security tab with Dependabot alerts and auto-merge.
 - Self-update flow for the app itself.
+- User management tab for creating accounts and resetting passwords.
+- App updates automatically preserve local changes when detected.
+- Project deploys automatically stash and restore local tracked changes (force deploy remains destructive).
 
 ## Quick Start
 1. Copy `.env.example` to `.env` and configure required variables.
@@ -83,3 +89,9 @@ To publish on GitHub Pages:
 
 ## License
 Add your preferred open-source license before publishing.
+
+## User Management & First Login
+- Registration is open only when there are no users (first admin setup).
+- After the first account exists, create users from the **Security → Users** tab.
+- Users created by admins can be forced to change their password on first login.
+- Use “Send reset link” for email-driven password recovery.

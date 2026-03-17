@@ -48,8 +48,13 @@ class DeploymentService
         $output = [];
         $fromHash = null;
         $toHash = null;
+        $stashed = false;
 
         try {
+            if (! $allowDirty) {
+                $stashed = $this->stashIfDirty($repoPath, $output);
+            }
+
             $fromHash = $this->tryRevParse($repoPath);
             $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune'], $output);
             $remoteHash = trim($this->runProcess([
@@ -96,6 +101,13 @@ class DeploymentService
 
             $this->maybeRunLaravelClearCache($project, $output);
 
+            if ($stashed) {
+                $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
+                if (! $pop->isSuccessful()) {
+                    $output[] = 'Warning: stashed changes could not be restored.';
+                }
+            }
+
             $deployment->status = 'success';
             $deployment->from_hash = $fromHash;
             $deployment->to_hash = $toHash;
@@ -111,6 +123,13 @@ class DeploymentService
         } catch (\Throwable $exception) {
             if ($fromHash) {
                 $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', $fromHash], $output, null, false);
+            }
+
+            if ($stashed) {
+                $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
+                if (! $pop->isSuccessful()) {
+                    $output[] = 'Warning: stashed changes could not be restored.';
+                }
             }
 
             $deployment->status = 'failed';
@@ -499,6 +518,41 @@ class DeploymentService
         if ($this->workingTreeDirty($repoPath, $output)) {
             throw new \RuntimeException('Working tree has uncommitted changes. Resolve them before deploying.');
         }
+    }
+
+    private function stashIfDirty(string $repoPath, array &$output): bool
+    {
+        $status = $this->getWorkingTreeStatus($repoPath, $output);
+        if ($status === '') {
+            return false;
+        }
+
+        if (! $this->tryRevParse($repoPath)) {
+            $output[] = 'Local changes detected, but no initial commit exists. Skipping stash.';
+            return false;
+        }
+
+        $output[] = 'Local changes detected: stashing tracked changes before deploy.';
+        $process = $this->runProcess([
+            'git',
+            '-C',
+            $repoPath,
+            'stash',
+            'push',
+            '-m',
+            'gpm-deploy',
+            '--',
+            '.',
+            ':(exclude).htaccess',
+            ':(exclude)public/.htaccess',
+        ], $output, null, false);
+
+        if (! $process->isSuccessful()) {
+            $output[] = 'Warning: unable to stash local changes.';
+            return false;
+        }
+
+        return true;
     }
 
     private function resetToRemote(Project $project, string $repoPath, string $branch, array &$output, bool $forceClean): void

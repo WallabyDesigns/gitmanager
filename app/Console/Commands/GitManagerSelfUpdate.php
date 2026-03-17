@@ -31,7 +31,7 @@ class GitManagerSelfUpdate extends Command
             return self::SUCCESS;
         }
 
-        $update = $service->update();
+        $update = $service->updateSmart();
 
         return $update->status === 'failed' ? self::FAILURE : self::SUCCESS;
     }

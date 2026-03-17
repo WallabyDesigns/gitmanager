@@ -32,6 +32,24 @@ class SelfUpdateService
         return $status;
     }
 
+    public function updateSmart(?User $user = null): AppUpdate
+    {
+        try {
+            $repoPath = base_path();
+            $statusOutput = [];
+            $status = $this->getWorkingTreeStatus($repoPath, $statusOutput);
+            $hasHead = $this->tryRevParse($repoPath);
+
+            if (! $hasHead || $status !== '') {
+                return $this->update($user, true);
+            }
+        } catch (\Throwable $exception) {
+            // Fall through to standard update if we cannot inspect status.
+        }
+
+        return $this->update($user, false);
+    }
+
     public function update(?User $user = null, bool $allowDirty = false): AppUpdate
     {
         $repoPath = base_path();
