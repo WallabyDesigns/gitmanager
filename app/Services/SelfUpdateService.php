@@ -68,6 +68,8 @@ class SelfUpdateService
         $stashRestoreFailed = false;
         $htaccessSnapshots = [];
         $protectedHtaccess = null;
+        $untrackedBackups = [];
+        $untrackedFiles = [];
 
         try {
             $output[] = 'Update path: '.$repoPath;
@@ -77,6 +79,14 @@ class SelfUpdateService
             $this->ensureOriginRemote($repoPath, $output);
             $fromHash = $this->tryRevParse($repoPath);
             if ($allowDirty) {
+                $untrackedFiles = $this->getUntrackedFiles($repoPath, $output);
+                if ($untrackedFiles !== []) {
+                    $backup = $this->backupUntrackedFiles($repoPath, $untrackedFiles, $output);
+                    if ($backup) {
+                        $untrackedBackups[] = $backup;
+                    }
+                    $this->removeUntrackedFiles($repoPath, $untrackedFiles, $output);
+                }
                 $stashed = $this->stashIfDirty($repoPath, $output, $htaccessSnapshots);
                 if (! $fromHash) {
                     $includeDependencies = $this->shouldIncludeDependencyDirs($repoPath, $output);
@@ -107,7 +117,7 @@ class SelfUpdateService
             }
 
             if ($fromHash) {
-                $this->runProcess(['git', '-C', $repoPath, 'merge', '--ff-only', 'origin/'.$branch], $output);
+                $this->mergeFastForward($repoPath, $branch, $output, $untrackedBackups);
             } else {
                 if ($backupPath) {
                     $output[] = 'No initial commit detected; applying update with a forced checkout.';
@@ -184,6 +194,7 @@ class SelfUpdateService
                     throw new \RuntimeException('Update applied, but stashed changes could not be restored.');
                 }
             }
+            $this->restoreUntrackedBackups($repoPath, $untrackedBackups, $output);
             if ($backupPath) {
                 $output[] = 'Backup created at: '.$backupPath;
             }
@@ -209,6 +220,7 @@ class SelfUpdateService
                     $output[] = 'Stash restore failed after update failure. Run `git stash pop` manually if needed.';
                 }
             }
+            $this->restoreUntrackedBackups($repoPath, $untrackedBackups, $output);
 
             $this->restoreSnapshots($repoPath, $htaccessSnapshots, $output);
             $this->restoreProtectedHtaccess($repoPath, $protectedHtaccess, $output);
@@ -542,6 +554,250 @@ class SelfUpdateService
         return trim(implode("\n", $filtered));
     }
 
+    /**
+     * @return array<int, string>
+     */
+    private function getUntrackedFiles(string $repoPath, array &$output): array
+    {
+        $status = $this->getWorkingTreeStatus($repoPath, $output);
+        if ($status === '') {
+            return [];
+        }
+
+        $files = [];
+        foreach (explode("\n", $status) as $line) {
+            if (! str_starts_with($line, '?? ')) {
+                continue;
+            }
+
+            $path = trim(substr($line, 3));
+            if ($path === '') {
+                continue;
+            }
+
+            if (str_contains($path, ' -> ')) {
+                $parts = explode(' -> ', $path);
+                $path = trim(end($parts));
+            }
+
+            if ($this->isExcludedPath($path)) {
+                continue;
+            }
+
+            $relative = ltrim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path), DIRECTORY_SEPARATOR);
+            if ($this->shouldExcludeBackupPath($relative, false, '')) {
+                continue;
+            }
+
+            $files[] = $relative;
+        }
+
+        return array_values(array_unique($files));
+    }
+
+    /**
+     * @param array<int, string> $paths
+     */
+    private function backupUntrackedFiles(string $repoPath, array $paths, array &$output): ?string
+    {
+        if ($paths === []) {
+            return null;
+        }
+
+        $base = storage_path('app/self-update-untracked');
+        if (! is_dir($base)) {
+            mkdir($base, 0775, true);
+        }
+
+        $timestamp = now()->format('Ymd_His');
+        $target = $base.DIRECTORY_SEPARATOR.$timestamp;
+        if (! is_dir($target)) {
+            mkdir($target, 0775, true);
+        }
+
+        $output[] = 'Backing up untracked files before update.';
+        foreach ($paths as $relative) {
+            $source = $repoPath.DIRECTORY_SEPARATOR.$relative;
+            if (! file_exists($source)) {
+                continue;
+            }
+            $destination = $target.DIRECTORY_SEPARATOR.$relative;
+            $this->copyPath($source, $destination);
+        }
+
+        return $target;
+    }
+
+    /**
+     * @param array<int, string> $paths
+     */
+    private function removeUntrackedFiles(string $repoPath, array $paths, array &$output): void
+    {
+        if ($paths === []) {
+            return;
+        }
+
+        foreach ($paths as $relative) {
+            $path = $repoPath.DIRECTORY_SEPARATOR.$relative;
+            if (is_dir($path)) {
+                $this->deleteDirectory($path);
+                continue;
+            }
+            if (is_file($path)) {
+                @unlink($path);
+            }
+        }
+
+        $output[] = 'Removed untracked files before update.';
+    }
+
+    private function restoreUntrackedFiles(string $repoPath, string $backupPath, array &$output): void
+    {
+        if (! is_dir($backupPath)) {
+            return;
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($backupPath, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            $relative = $iterator->getSubPathname();
+            $relative = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relative);
+            $target = $repoPath.DIRECTORY_SEPARATOR.$relative;
+
+            if ($item->isDir()) {
+                if (! is_dir($target)) {
+                    mkdir($target, 0775, true);
+                }
+                continue;
+            }
+
+            $targetDir = dirname($target);
+            if (! is_dir($targetDir)) {
+                mkdir($targetDir, 0775, true);
+            }
+            copy($item->getPathname(), $target);
+        }
+
+        $output[] = 'Restored untracked files after update.';
+    }
+
+    private function restoreUntrackedBackups(string $repoPath, array $backups, array &$output): void
+    {
+        foreach ($backups as $backup) {
+            if (! is_string($backup) || $backup === '') {
+                continue;
+            }
+
+            $this->restoreUntrackedFiles($repoPath, $backup, $output);
+        }
+    }
+
+    private function mergeFastForward(string $repoPath, string $branch, array &$output, array &$untrackedBackups): void
+    {
+        try {
+            $this->runProcess(['git', '-C', $repoPath, 'merge', '--ff-only', 'origin/'.$branch], $output);
+            return;
+        } catch (ProcessFailedException $exception) {
+            $paths = $this->extractMergeUntrackedPaths($exception);
+            if ($paths === []) {
+                throw $exception;
+            }
+
+            $output[] = 'Merge blocked by untracked files. Backing them up before retry.';
+            $backup = $this->backupUntrackedFiles($repoPath, $paths, $output);
+            if ($backup) {
+                $untrackedBackups[] = $backup;
+            }
+            $this->removeUntrackedFiles($repoPath, $paths, $output);
+
+            $this->runProcess(['git', '-C', $repoPath, 'merge', '--ff-only', 'origin/'.$branch], $output);
+        }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function extractMergeUntrackedPaths(ProcessFailedException $exception): array
+    {
+        $text = trim($exception->getProcess()->getErrorOutput());
+        if ($text === '') {
+            $text = trim($exception->getProcess()->getOutput());
+        }
+
+        if ($text === '' || ! str_contains($text, 'untracked working tree files would be overwritten by merge')) {
+            return [];
+        }
+
+        $lines = preg_split('/\r?\n/', $text) ?: [];
+        $collect = false;
+        $paths = [];
+
+        foreach ($lines as $line) {
+            if (! $collect && str_contains($line, 'would be overwritten by merge')) {
+                $collect = true;
+                continue;
+            }
+
+            if (! $collect) {
+                continue;
+            }
+
+            $trimmed = trim($line);
+            if ($trimmed === '') {
+                continue;
+            }
+
+            if (str_starts_with($trimmed, 'Please ') || str_starts_with($trimmed, 'Aborting') || str_starts_with($trimmed, 'error:')) {
+                break;
+            }
+
+            if (str_contains($trimmed, ' -> ')) {
+                $parts = explode(' -> ', $trimmed);
+                $trimmed = trim(end($parts));
+            }
+
+            $path = $this->sanitizeMergePath($trimmed);
+            if ($path === null) {
+                continue;
+            }
+
+            $paths[] = $path;
+        }
+
+        return array_values(array_unique($paths));
+    }
+
+    private function sanitizeMergePath(string $path): ?string
+    {
+        $path = trim($path);
+        if ($path === '') {
+            return null;
+        }
+
+        $path = ltrim($path, "./");
+        $path = str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path);
+        if ($path === '' || $path === '.' || $path === '..') {
+            return null;
+        }
+
+        if (str_starts_with($path, DIRECTORY_SEPARATOR)) {
+            return null;
+        }
+
+        if (preg_match('/^[A-Za-z]:'.preg_quote(DIRECTORY_SEPARATOR, '/').'/', $path) === 1) {
+            return null;
+        }
+
+        if (str_contains($path, '..'.DIRECTORY_SEPARATOR) || str_starts_with($path, '..')) {
+            return null;
+        }
+
+        return $path;
+    }
+
     private function tryRevParse(string $repoPath): ?string
     {
         $localOutput = [];
@@ -781,6 +1037,55 @@ class SelfUpdateService
         }
 
         @rmdir($path);
+    }
+
+    private function copyPath(string $source, string $destination): void
+    {
+        if (is_link($source)) {
+            return;
+        }
+
+        if (is_dir($source)) {
+            if (! is_dir($destination)) {
+                mkdir($destination, 0775, true);
+            }
+
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($source, \FilesystemIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::SELF_FIRST
+            );
+
+            foreach ($iterator as $item) {
+                if ($item->isLink()) {
+                    continue;
+                }
+
+                $relative = $iterator->getSubPathname();
+                $relative = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relative);
+                $target = $destination.DIRECTORY_SEPARATOR.$relative;
+
+                if ($item->isDir()) {
+                    if (! is_dir($target)) {
+                        mkdir($target, 0775, true);
+                    }
+                    continue;
+                }
+
+                $targetDir = dirname($target);
+                if (! is_dir($targetDir)) {
+                    mkdir($targetDir, 0775, true);
+                }
+                copy($item->getPathname(), $target);
+            }
+
+            return;
+        }
+
+        $targetDir = dirname($destination);
+        if (! is_dir($targetDir)) {
+            mkdir($targetDir, 0775, true);
+        }
+        copy($source, $destination);
     }
 
     private function resolveBinaryPath(string $binary): ?string
