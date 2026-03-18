@@ -22,6 +22,10 @@ return [
     'deploy_queue' => [
         'enabled' => env('GWM_DEPLOY_QUEUE_ENABLED', true),
     ],
+    'deploy_staging' => [
+        'enabled' => env('GWM_DEPLOY_STAGING_ENABLED', true),
+        'path' => env('GWM_DEPLOY_STAGING_PATH', storage_path('app/deploy-staging')),
+    ],
     'scheduler' => [
         'stale_seconds' => env('GWM_SCHEDULER_STALE_SECONDS', 120),
     ],

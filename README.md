@@ -84,7 +84,7 @@ php artisan queue:work
 
 Ensure the scheduler runs (crontab entry):
 ```bash
-* * * * * php /path/to/artisan schedule:run >> /dev/null 2>&1
+* * * * * cd /path/to/app && /path/to/php artisan scheduler:run >/dev/null 2>&1
 ```
 
 Scheduled commands include:

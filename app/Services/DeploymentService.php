@@ -83,15 +83,15 @@ class DeploymentService
 
                 $fromHash = $this->tryRevParse($repoPath);
                 $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune'], $output);
-                $remoteHash = trim($this->runProcess([
-                    'git',
-                    '-C',
-                    $repoPath,
-                    'rev-parse',
-                    'origin/'.$project->default_branch,
-                ], $output)->getOutput());
+            $remoteHash = trim($this->runProcess([
+                'git',
+                '-C',
+                $repoPath,
+                'rev-parse',
+                'origin/'.$project->default_branch,
+            ], $output)->getOutput());
 
-                if ($fromHash && $fromHash === $remoteHash) {
+            if ($fromHash && $fromHash === $remoteHash) {
                     $deployment->status = 'success';
                     $deployment->from_hash = $fromHash;
                     $deployment->to_hash = $fromHash;
@@ -103,10 +103,12 @@ class DeploymentService
                     $project->last_checked_at = now();
                     $project->save();
 
-                    return $deployment;
-                }
+                return $deployment;
+            }
 
-                $this->resetToRemote($project, $repoPath, $project->default_branch, $output, $allowDirty);
+            $this->runStagingChecks($project, $repoPath, $remoteHash, $output);
+
+            $this->resetToRemote($project, $repoPath, $project->default_branch, $output, $allowDirty);
 
                 $toHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
 
@@ -207,9 +209,10 @@ class DeploymentService
             $attempts++;
             $fromHash = null;
             $toHash = $targetHash;
+            $stashed = false;
 
             try {
-                $this->ensureCleanWorkingTree($repoPath, $output, true);
+                $stashed = $this->stashIfDirty($repoPath, $output);
                 $fromHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
 
                 if (! $toHash) {
@@ -248,6 +251,13 @@ class DeploymentService
                     $this->maybeRunLaravelClearCache($project, $output);
                 }, $output, 'Post-rollback tasks');
 
+                if ($stashed) {
+                    $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
+                    if (! $pop->isSuccessful()) {
+                        $output[] = 'Warning: stashed changes could not be restored.';
+                    }
+                }
+
                 $deployment->status = 'success';
                 $deployment->from_hash = $fromHash;
                 $deployment->to_hash = $toHash;
@@ -265,6 +275,13 @@ class DeploymentService
             } catch (\Throwable $exception) {
                 if ($fromHash) {
                     $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', $fromHash], $output, null, false);
+                }
+
+                if ($stashed) {
+                    $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
+                    if (! $pop->isSuccessful()) {
+                        $output[] = 'Warning: stashed changes could not be restored.';
+                    }
                 }
 
                 if ($attempts < 2) {
@@ -1312,6 +1329,63 @@ class DeploymentService
         }
 
         rmdir($path);
+    }
+
+    private function runStagingChecks(Project $project, string $repoPath, ?string $hash, array &$output): void
+    {
+        if (! $this->stagingEnabled() || ! $hash) {
+            return;
+        }
+
+        $base = rtrim((string) config('gitmanager.deploy_staging.path', storage_path('app/deploy-staging')), DIRECTORY_SEPARATOR);
+        if ($base === '') {
+            return;
+        }
+
+        $stageRoot = $base.DIRECTORY_SEPARATOR.$project->id;
+        $stagePath = $stageRoot.DIRECTORY_SEPARATOR.now()->format('Ymd_His');
+        $output[] = 'Running staged deployment checks.';
+
+        if (! is_dir($stageRoot)) {
+            mkdir($stageRoot, 0775, true);
+        }
+
+        try {
+            if (is_dir($stagePath)) {
+                $this->runProcess(['git', '-C', $repoPath, 'worktree', 'remove', '--force', $stagePath], $output, null, false);
+                $this->deleteDirectory($stagePath);
+            }
+
+            $this->runProcess(['git', '-C', $repoPath, 'worktree', 'add', '--force', $stagePath, $hash], $output);
+
+            $this->runWithSingleRetry(function () use ($project, $stagePath, &$output): void {
+                if ($project->run_composer_install) {
+                    $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $stagePath);
+                }
+
+                if ($project->run_npm_install) {
+                    $this->runProcess($this->npmInstallCommand($stagePath), $output, $stagePath);
+                }
+
+                if ($project->run_build_command && $project->build_command) {
+                    $this->runShellCommand($project->build_command, $output, $stagePath);
+                }
+
+                if ($project->run_test_command && $project->test_command) {
+                    $this->runShellCommand($project->test_command, $output, $stagePath);
+                }
+            }, $output, 'Staged deploy checks');
+
+            $output[] = 'Staged deployment checks passed.';
+        } finally {
+            $this->runProcess(['git', '-C', $repoPath, 'worktree', 'remove', '--force', $stagePath], $output, null, false);
+            $this->deleteDirectory($stagePath);
+        }
+    }
+
+    private function stagingEnabled(): bool
+    {
+        return (bool) config('gitmanager.deploy_staging.enabled', true);
     }
 
     private function appendWorkflowOutput(Deployment $deployment, Project $project, array &$output): void

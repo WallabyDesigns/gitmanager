@@ -44,6 +44,16 @@
       </section>
 
       <section class="card">
+        <h2>Staged Deployment Checks</h2>
+        <p>When enabled, Git Web Manager performs builds/tests in a temporary staging directory before updating the live project.</p>
+        <ul>
+          <li>Prevents failed builds/tests from touching production files.</li>
+          <li>Uses a git worktree under <code>storage/app/deploy-staging</code>.</li>
+          <li>Disable by setting <code>GWM_DEPLOY_STAGING_ENABLED=false</code>.</li>
+        </ul>
+      </section>
+
+      <section class="card">
         <h2>Force Deploy</h2>
         <p>Force deploy discards local changes and replaces files from the repository. Use for recovery scenarios or when you intentionally want a clean sync.</p>
       </section>
@@ -63,6 +73,5 @@
   <div data-include="partials/footer.html"></div>
 </body>
 </html>
-
 
 
