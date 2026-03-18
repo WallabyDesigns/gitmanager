@@ -68,108 +68,120 @@ class DeploymentService
         ]);
 
         $output = [];
-        $fromHash = null;
-        $toHash = null;
-        $stashed = false;
+        $attempts = 0;
 
-        try {
-            if (! $allowDirty) {
-                $stashed = $this->stashIfDirty($repoPath, $output);
-            }
+        while ($attempts < 2) {
+            $attempts++;
+            $fromHash = null;
+            $toHash = null;
+            $stashed = false;
 
-            $fromHash = $this->tryRevParse($repoPath);
-            $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune'], $output);
-            $remoteHash = trim($this->runProcess([
-                'git',
-                '-C',
-                $repoPath,
-                'rev-parse',
-                'origin/'.$project->default_branch,
-            ], $output)->getOutput());
+            try {
+                if (! $allowDirty) {
+                    $stashed = $this->stashIfDirty($repoPath, $output);
+                }
 
-            if ($fromHash && $fromHash === $remoteHash) {
+                $fromHash = $this->tryRevParse($repoPath);
+                $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune'], $output);
+                $remoteHash = trim($this->runProcess([
+                    'git',
+                    '-C',
+                    $repoPath,
+                    'rev-parse',
+                    'origin/'.$project->default_branch,
+                ], $output)->getOutput());
+
+                if ($fromHash && $fromHash === $remoteHash) {
+                    $deployment->status = 'success';
+                    $deployment->from_hash = $fromHash;
+                    $deployment->to_hash = $fromHash;
+                    $this->appendWorkflowOutput($deployment, $project, $output);
+                    $deployment->output_log = implode("\n", $output);
+                    $deployment->finished_at = now();
+                    $deployment->save();
+
+                    $project->last_checked_at = now();
+                    $project->save();
+
+                    return $deployment;
+                }
+
+                $this->resetToRemote($project, $repoPath, $project->default_branch, $output, $allowDirty);
+
+                $toHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
+
+                $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
+                    if ($project->run_composer_install) {
+                        $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $executionPath);
+                    }
+
+                    if ($project->run_npm_install) {
+                        $this->runProcess($this->npmInstallCommand($executionPath), $output, $executionPath);
+                    }
+
+                    if ($project->run_build_command && $project->build_command) {
+                        $this->runShellCommand($project->build_command, $output, $executionPath);
+                    }
+
+                    if ($project->run_test_command && $project->test_command) {
+                        $this->runShellCommand($project->test_command, $output, $executionPath);
+                    }
+
+                    $this->maybeRunLaravelClearCache($project, $output);
+                }, $output, 'Post-deploy tasks');
+
+                if ($stashed) {
+                    $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
+                    if (! $pop->isSuccessful()) {
+                        $output[] = 'Warning: stashed changes could not be restored.';
+                    }
+                }
+
                 $deployment->status = 'success';
                 $deployment->from_hash = $fromHash;
-                $deployment->to_hash = $fromHash;
+                $deployment->to_hash = $toHash;
                 $this->appendWorkflowOutput($deployment, $project, $output);
                 $deployment->output_log = implode("\n", $output);
                 $deployment->finished_at = now();
                 $deployment->save();
 
+                $project->last_deployed_at = now();
+                $project->last_deployed_hash = $toHash;
+                $project->last_error_message = null;
                 $project->last_checked_at = now();
                 $project->save();
 
                 return $deployment;
+            } catch (\Throwable $exception) {
+                if ($fromHash) {
+                    $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', $fromHash], $output, null, false);
+                }
+
+                if ($stashed) {
+                    $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
+                    if (! $pop->isSuccessful()) {
+                        $output[] = 'Warning: stashed changes could not be restored.';
+                    }
+                }
+
+                if ($attempts < 2) {
+                    $output[] = 'Deploy failed. Retrying once.';
+                    continue;
+                }
+
+                $deployment->status = 'failed';
+                $deployment->from_hash = $fromHash;
+                $deployment->to_hash = $toHash;
+                $output[] = $exception->getMessage();
+                $this->appendWorkflowOutput($deployment, $project, $output);
+                $deployment->output_log = trim(implode("\n", $output));
+                $deployment->finished_at = now();
+                $deployment->save();
+
+                $project->last_error_message = $exception->getMessage();
+                $project->last_checked_at = now();
+                $project->save();
             }
-
-            $this->resetToRemote($project, $repoPath, $project->default_branch, $output, $allowDirty);
-
-            $toHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
-
-            $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
-                if ($project->run_composer_install) {
-                    $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $executionPath);
-                }
-
-                if ($project->run_npm_install) {
-                    $this->runProcess($this->npmInstallCommand($executionPath), $output, $executionPath);
-                }
-
-                if ($project->run_build_command && $project->build_command) {
-                    $this->runShellCommand($project->build_command, $output, $executionPath);
-                }
-
-                if ($project->run_test_command && $project->test_command) {
-                    $this->runShellCommand($project->test_command, $output, $executionPath);
-                }
-
-                $this->maybeRunLaravelClearCache($project, $output);
-            }, $output, 'Post-deploy tasks');
-
-            if ($stashed) {
-                $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
-                if (! $pop->isSuccessful()) {
-                    $output[] = 'Warning: stashed changes could not be restored.';
-                }
-            }
-
-            $deployment->status = 'success';
-            $deployment->from_hash = $fromHash;
-            $deployment->to_hash = $toHash;
-            $this->appendWorkflowOutput($deployment, $project, $output);
-            $deployment->output_log = implode("\n", $output);
-            $deployment->finished_at = now();
-            $deployment->save();
-
-            $project->last_deployed_at = now();
-            $project->last_deployed_hash = $toHash;
-            $project->last_error_message = null;
-            $project->last_checked_at = now();
-            $project->save();
-        } catch (\Throwable $exception) {
-            if ($fromHash) {
-                $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', $fromHash], $output, null, false);
-            }
-
-            if ($stashed) {
-                $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
-                if (! $pop->isSuccessful()) {
-                    $output[] = 'Warning: stashed changes could not be restored.';
-                }
-            }
-
-            $deployment->status = 'failed';
-            $deployment->from_hash = $fromHash;
-            $deployment->to_hash = $toHash;
-            $output[] = $exception->getMessage();
-            $this->appendWorkflowOutput($deployment, $project, $output);
-            $deployment->output_log = trim(implode("\n", $output));
-            $deployment->finished_at = now();
-            $deployment->save();
-
-            $project->last_error_message = $exception->getMessage();
-            $project->last_checked_at = now();
-            $project->save();
         }
 
         return $deployment;
@@ -189,72 +201,88 @@ class DeploymentService
         ]);
 
         $output = [];
-        $fromHash = null;
-        $toHash = $targetHash;
+        $attempts = 0;
 
-        try {
-            $this->ensureCleanWorkingTree($repoPath, $output, true);
-            $fromHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
+        while ($attempts < 2) {
+            $attempts++;
+            $fromHash = null;
+            $toHash = $targetHash;
 
-            if (! $toHash) {
-                $previous = $project->deployments()
-                    ->where('action', 'deploy')
-                    ->where('status', 'success')
-                    ->whereNotNull('to_hash')
-                    ->where('to_hash', '!=', $fromHash)
-                    ->orderByDesc('started_at')
-                    ->first();
+            try {
+                $this->ensureCleanWorkingTree($repoPath, $output, true);
+                $fromHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
 
-                if (! $previous) {
-                    throw new \RuntimeException('No previous successful deployment found to rollback to.');
+                if (! $toHash) {
+                    $previous = $project->deployments()
+                        ->where('action', 'deploy')
+                        ->where('status', 'success')
+                        ->whereNotNull('to_hash')
+                        ->where('to_hash', '!=', $fromHash)
+                        ->orderByDesc('started_at')
+                        ->first();
+
+                    if (! $previous) {
+                        throw new \RuntimeException('No previous successful deployment found to rollback to.');
+                    }
+
+                    $toHash = $previous->to_hash;
                 }
 
-                $toHash = $previous->to_hash;
+                $preservePath = $this->snapshotPreservePaths($project, $repoPath, $output);
+                $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', $toHash], $output);
+                $this->restorePreservedPaths($repoPath, $preservePath, $output);
+
+                $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
+                    if ($project->run_composer_install) {
+                        $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $executionPath);
+                    }
+
+                    if ($project->run_npm_install) {
+                        $this->runProcess($this->npmInstallCommand($executionPath), $output, $executionPath);
+                    }
+
+                    if ($project->run_build_command && $project->build_command) {
+                        $this->runShellCommand($project->build_command, $output, $executionPath);
+                    }
+
+                    $this->maybeRunLaravelClearCache($project, $output);
+                }, $output, 'Post-rollback tasks');
+
+                $deployment->status = 'success';
+                $deployment->from_hash = $fromHash;
+                $deployment->to_hash = $toHash;
+                $this->appendWorkflowOutput($deployment, $project, $output);
+                $deployment->output_log = implode("\n", $output);
+                $deployment->finished_at = now();
+                $deployment->save();
+
+                $project->last_deployed_at = now();
+                $project->last_deployed_hash = $toHash;
+                $project->last_error_message = null;
+                $project->save();
+
+                return $deployment;
+            } catch (\Throwable $exception) {
+                if ($fromHash) {
+                    $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', $fromHash], $output, null, false);
+                }
+
+                if ($attempts < 2) {
+                    $output[] = 'Rollback failed. Retrying once.';
+                    continue;
+                }
+
+                $deployment->status = 'failed';
+                $deployment->from_hash = $fromHash;
+                $deployment->to_hash = $toHash;
+                $this->appendWorkflowOutput($deployment, $project, $output);
+                $deployment->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
+                $deployment->finished_at = now();
+                $deployment->save();
+
+                $project->last_error_message = $exception->getMessage();
+                $project->save();
             }
-
-            $preservePath = $this->snapshotPreservePaths($project, $repoPath, $output);
-            $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', $toHash], $output);
-            $this->restorePreservedPaths($repoPath, $preservePath, $output);
-
-            $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
-                if ($project->run_composer_install) {
-                    $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $executionPath);
-                }
-
-                if ($project->run_npm_install) {
-                    $this->runProcess($this->npmInstallCommand($executionPath), $output, $executionPath);
-                }
-
-                if ($project->run_build_command && $project->build_command) {
-                    $this->runShellCommand($project->build_command, $output, $executionPath);
-                }
-
-                $this->maybeRunLaravelClearCache($project, $output);
-            }, $output, 'Post-rollback tasks');
-
-            $deployment->status = 'success';
-            $deployment->from_hash = $fromHash;
-            $deployment->to_hash = $toHash;
-            $this->appendWorkflowOutput($deployment, $project, $output);
-            $deployment->output_log = implode("\n", $output);
-            $deployment->finished_at = now();
-            $deployment->save();
-
-            $project->last_deployed_at = now();
-            $project->last_deployed_hash = $toHash;
-            $project->last_error_message = null;
-            $project->save();
-        } catch (\Throwable $exception) {
-            $deployment->status = 'failed';
-            $deployment->from_hash = $fromHash;
-            $deployment->to_hash = $toHash;
-            $this->appendWorkflowOutput($deployment, $project, $output);
-            $deployment->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
-            $deployment->finished_at = now();
-            $deployment->save();
-
-            $project->last_error_message = $exception->getMessage();
-            $project->save();
         }
 
         return $deployment;
@@ -274,54 +302,70 @@ class DeploymentService
         ]);
 
         $output = [];
-        $fromHash = null;
-        $toHash = null;
+        $attempts = 0;
 
-        try {
-            $this->ensureCleanWorkingTree($repoPath, $output, true);
-            $fromHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
+        while ($attempts < 2) {
+            $attempts++;
+            $fromHash = null;
+            $toHash = null;
 
-            if (! $project->allow_dependency_updates) {
-                throw new \RuntimeException('Dependency updates are disabled for this project.');
+            try {
+                $this->ensureCleanWorkingTree($repoPath, $output, true);
+                $fromHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
+
+                if (! $project->allow_dependency_updates) {
+                    throw new \RuntimeException('Dependency updates are disabled for this project.');
+                }
+
+                $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
+                    if ($project->run_composer_install) {
+                        $this->runProcess(['composer', 'update'], $output, $executionPath);
+                    }
+
+                    if ($project->run_npm_install) {
+                        $this->runProcess(['npm', 'update'], $output, $executionPath);
+                    }
+
+                    if ($project->run_build_command && $project->build_command) {
+                        $this->runShellCommand($project->build_command, $output, $executionPath);
+                    }
+
+                    if ($project->run_test_command && $project->test_command) {
+                        $this->runShellCommand($project->test_command, $output, $executionPath);
+                    }
+
+                    $this->maybeRunLaravelClearCache($project, $output);
+                }, $output, 'Dependency update tasks');
+
+                $toHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
+
+                $deployment->status = 'success';
+                $deployment->from_hash = $fromHash;
+                $deployment->to_hash = $toHash;
+                $this->appendWorkflowOutput($deployment, $project, $output);
+                $deployment->output_log = implode("\n", $output);
+                $deployment->finished_at = now();
+                $deployment->save();
+
+                return $deployment;
+            } catch (\Throwable $exception) {
+                if ($fromHash) {
+                    $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', $fromHash], $output, null, false);
+                }
+
+                if ($attempts < 2) {
+                    $output[] = 'Dependency update failed. Retrying once.';
+                    continue;
+                }
+
+                $deployment->status = 'failed';
+                $deployment->from_hash = $fromHash;
+                $deployment->to_hash = $toHash;
+                $this->appendWorkflowOutput($deployment, $project, $output);
+                $deployment->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
+                $deployment->finished_at = now();
+                $deployment->save();
             }
-
-            $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
-                if ($project->run_composer_install) {
-                    $this->runProcess(['composer', 'update'], $output, $executionPath);
-                }
-
-                if ($project->run_npm_install) {
-                    $this->runProcess(['npm', 'update'], $output, $executionPath);
-                }
-
-                if ($project->run_build_command && $project->build_command) {
-                    $this->runShellCommand($project->build_command, $output, $executionPath);
-                }
-
-                if ($project->run_test_command && $project->test_command) {
-                    $this->runShellCommand($project->test_command, $output, $executionPath);
-                }
-
-                $this->maybeRunLaravelClearCache($project, $output);
-            }, $output, 'Dependency update tasks');
-
-            $toHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
-
-            $deployment->status = 'success';
-            $deployment->from_hash = $fromHash;
-            $deployment->to_hash = $toHash;
-            $this->appendWorkflowOutput($deployment, $project, $output);
-            $deployment->output_log = implode("\n", $output);
-            $deployment->finished_at = now();
-            $deployment->save();
-        } catch (\Throwable $exception) {
-            $deployment->status = 'failed';
-            $deployment->from_hash = $fromHash;
-            $deployment->to_hash = $toHash;
-            $this->appendWorkflowOutput($deployment, $project, $output);
-            $deployment->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
-            $deployment->finished_at = now();
-            $deployment->save();
         }
 
         return $deployment;
@@ -417,62 +461,74 @@ class DeploymentService
         ]);
 
         $output = [];
+        $attempts = 0;
 
-        try {
-            $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune'], $output);
+        while ($attempts < 2) {
+            $attempts++;
 
-            $target = trim($commit) !== '' ? trim($commit) : 'origin/'.$project->default_branch;
-            $hash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', $target], $output)->getOutput());
-            $short = substr($hash, 0, 7);
+            try {
+                $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune'], $output);
 
-            $slug = Str::slug($project->name) ?: 'project';
-            $basePath = rtrim((string) config('gitmanager.preview.path', storage_path('app/previews')), DIRECTORY_SEPARATOR);
-            $previewPath = $basePath.DIRECTORY_SEPARATOR.$slug.DIRECTORY_SEPARATOR.$short;
+                $target = trim($commit) !== '' ? trim($commit) : 'origin/'.$project->default_branch;
+                $hash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', $target], $output)->getOutput());
+                $short = substr($hash, 0, 7);
 
-            $this->ensurePath(dirname($previewPath));
+                $slug = Str::slug($project->name) ?: 'project';
+                $basePath = rtrim((string) config('gitmanager.preview.path', storage_path('app/previews')), DIRECTORY_SEPARATOR);
+                $previewPath = $basePath.DIRECTORY_SEPARATOR.$slug.DIRECTORY_SEPARATOR.$short;
 
-            if (is_dir($previewPath)) {
-                $this->runProcess(['git', '-C', $repoPath, 'worktree', 'remove', '--force', $previewPath], $output, null, false);
-                $this->deleteDirectory($previewPath);
+                $this->ensurePath(dirname($previewPath));
+
+                if (is_dir($previewPath)) {
+                    $this->runProcess(['git', '-C', $repoPath, 'worktree', 'remove', '--force', $previewPath], $output, null, false);
+                    $this->deleteDirectory($previewPath);
+                }
+
+                $this->runProcess(['git', '-C', $repoPath, 'worktree', 'add', '--force', $previewPath, $hash], $output);
+                $output[] = 'Preview path: '.$previewPath;
+
+                $baseUrl = trim((string) config('gitmanager.preview.base_url', ''));
+                if ($baseUrl !== '') {
+                    $output[] = 'Preview url: '.rtrim($baseUrl, '/').'/'.$slug.'/'.$short;
+                }
+
+                $this->runWithSingleRetry(function () use ($project, $previewPath, &$output): void {
+                    if ($project->run_composer_install && is_file($previewPath.DIRECTORY_SEPARATOR.'composer.json')) {
+                        $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $previewPath);
+                    }
+
+                    if ($project->run_npm_install && is_file($previewPath.DIRECTORY_SEPARATOR.'package.json')) {
+                        $this->runProcess($this->npmInstallCommand($previewPath), $output, $previewPath);
+                    }
+
+                    if ($project->run_build_command && $project->build_command) {
+                        $this->runShellCommand($project->build_command, $output, $previewPath);
+                    }
+
+                    if ($project->run_test_command && $project->test_command) {
+                        $this->runShellCommand($project->test_command, $output, $previewPath);
+                    }
+                }, $output, 'Preview build tasks');
+
+                $deployment->status = 'success';
+                $this->appendWorkflowOutput($deployment, $project, $output);
+                $deployment->output_log = implode("\n", $output);
+                $deployment->finished_at = now();
+                $deployment->save();
+
+                return $deployment;
+            } catch (\Throwable $exception) {
+                if ($attempts < 2) {
+                    $output[] = 'Preview build failed. Retrying once.';
+                    continue;
+                }
+
+                $deployment->status = 'failed';
+                $this->appendWorkflowOutput($deployment, $project, $output);
+                $deployment->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
+                $deployment->finished_at = now();
+                $deployment->save();
             }
-
-            $this->runProcess(['git', '-C', $repoPath, 'worktree', 'add', '--force', $previewPath, $hash], $output);
-            $output[] = 'Preview path: '.$previewPath;
-
-            $baseUrl = trim((string) config('gitmanager.preview.base_url', ''));
-            if ($baseUrl !== '') {
-                $output[] = 'Preview url: '.rtrim($baseUrl, '/').'/'.$slug.'/'.$short;
-            }
-
-            $this->runWithSingleRetry(function () use ($project, $previewPath, &$output): void {
-                if ($project->run_composer_install && is_file($previewPath.DIRECTORY_SEPARATOR.'composer.json')) {
-                    $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $previewPath);
-                }
-
-                if ($project->run_npm_install && is_file($previewPath.DIRECTORY_SEPARATOR.'package.json')) {
-                    $this->runProcess($this->npmInstallCommand($previewPath), $output, $previewPath);
-                }
-
-                if ($project->run_build_command && $project->build_command) {
-                    $this->runShellCommand($project->build_command, $output, $previewPath);
-                }
-
-                if ($project->run_test_command && $project->test_command) {
-                    $this->runShellCommand($project->test_command, $output, $previewPath);
-                }
-            }, $output, 'Preview build tasks');
-
-            $deployment->status = 'success';
-            $this->appendWorkflowOutput($deployment, $project, $output);
-            $deployment->output_log = implode("\n", $output);
-            $deployment->finished_at = now();
-            $deployment->save();
-        } catch (\Throwable $exception) {
-            $deployment->status = 'failed';
-            $this->appendWorkflowOutput($deployment, $project, $output);
-            $deployment->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
-            $deployment->finished_at = now();
-            $deployment->save();
         }
 
         return $deployment;

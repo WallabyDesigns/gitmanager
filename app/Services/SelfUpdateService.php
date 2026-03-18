@@ -67,156 +67,168 @@ class SelfUpdateService
         ]);
 
         $output = [];
-        $fromHash = null;
-        $toHash = null;
-        $remoteHash = null;
-        $branch = null;
-        $stashed = false;
-        $backupPath = null;
-        $stashRestoreFailed = false;
-        $htaccessSnapshots = [];
-        $protectedHtaccess = null;
-        $untrackedBackups = [];
-        $untrackedFiles = [];
         $forceUpdate = $force;
         if ($forceUpdate) {
             $allowDirty = true;
         }
 
-        try {
-            $output[] = 'Update path: '.$repoPath;
-            $protectedHtaccess = $this->prepareProtectedHtaccess($repoPath, $output);
-            $htaccessSnapshots = $this->snapshotFiles($repoPath, ['.htaccess']);
-            $this->ensureGitRepository($repoPath);
-            $this->assertGitWritable($repoPath, $output);
-            $this->ensureOriginRemote($repoPath, $output);
-            $fromHash = $this->tryRevParse($repoPath);
-            if ($forceUpdate) {
-                $output[] = 'Force update requested; local changes will be discarded (protected files are preserved).';
-            } elseif ($allowDirty) {
-                $untrackedFiles = $this->getUntrackedFiles($repoPath, $output);
-                if ($untrackedFiles !== []) {
-                    $backup = $this->backupUntrackedFiles($repoPath, $untrackedFiles, $output);
-                    if ($backup) {
-                        $untrackedBackups[] = $backup;
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            $fromHash = null;
+            $toHash = null;
+            $remoteHash = null;
+            $branch = null;
+            $stashed = false;
+            $backupPath = null;
+            $stashRestoreFailed = false;
+            $htaccessSnapshots = [];
+            $protectedHtaccess = null;
+            $untrackedBackups = [];
+            $untrackedFiles = [];
+
+            try {
+                $output[] = 'Update path: '.$repoPath;
+                $protectedHtaccess = $this->prepareProtectedHtaccess($repoPath, $output);
+                $htaccessSnapshots = $this->snapshotFiles($repoPath, ['.htaccess']);
+                $this->ensureGitRepository($repoPath);
+                $this->assertGitWritable($repoPath, $output);
+                $this->ensureOriginRemote($repoPath, $output);
+                $fromHash = $this->tryRevParse($repoPath);
+                if ($forceUpdate) {
+                    $output[] = 'Force update requested; local changes will be discarded (protected files are preserved).';
+                } elseif ($allowDirty) {
+                    $untrackedFiles = $this->getUntrackedFiles($repoPath, $output);
+                    if ($untrackedFiles !== []) {
+                        $backup = $this->backupUntrackedFiles($repoPath, $untrackedFiles, $output);
+                        if ($backup) {
+                            $untrackedBackups[] = $backup;
+                        }
+                        $this->removeUntrackedFiles($repoPath, $untrackedFiles, $output);
                     }
-                    $this->removeUntrackedFiles($repoPath, $untrackedFiles, $output);
+                    $stashed = $this->stashIfDirty($repoPath, $output, $htaccessSnapshots);
+                    if (! $fromHash) {
+                        $includeDependencies = $this->shouldIncludeDependencyDirs($repoPath, $output);
+                        $backupPath = $this->backupWorkingTree($repoPath, $output, $includeDependencies);
+                    }
+                } else {
+                    $this->ensureCleanWorkingTree($repoPath, $output);
+                    if (! $fromHash) {
+                        throw new \RuntimeException('Repository has no commits. Use preserve update or initialize git before updating.');
+                    }
                 }
-                $stashed = $this->stashIfDirty($repoPath, $output, $htaccessSnapshots);
-                if (! $fromHash) {
-                    $includeDependencies = $this->shouldIncludeDependencyDirs($repoPath, $output);
-                    $backupPath = $this->backupWorkingTree($repoPath, $output, $includeDependencies);
+
+                $branch = $this->resolveBranch($repoPath, $output);
+
+                $this->protectHtaccess($repoPath, $output);
+                $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune'], $output);
+                $remoteHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'origin/'.$branch], $output)->getOutput());
+
+                if ($fromHash === $remoteHash) {
+                    $update->status = 'skipped';
+                    $update->from_hash = $fromHash;
+                    $update->to_hash = $fromHash;
+                    $update->output_log = implode("\n", $output);
+                    $update->finished_at = now();
+                    $update->save();
+
+                    return $update;
                 }
-            } else {
-                $this->ensureCleanWorkingTree($repoPath, $output);
-                if (! $fromHash) {
-                    throw new \RuntimeException('Repository has no commits. Use preserve update or initialize git before updating.');
+
+                if ($forceUpdate) {
+                    $output[] = 'Force updating working tree to origin/'.$branch.'.';
+                    $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', 'origin/'.$branch], $output);
+                    $this->runGitClean($repoPath, $this->forceCleanExcludePaths(), $output);
+                } elseif ($fromHash) {
+                    $this->mergeFastForward($repoPath, $branch, $output, $untrackedBackups);
+                } else {
+                    if ($backupPath) {
+                        $output[] = 'No initial commit detected; applying update with a forced checkout.';
+                    }
+                    $command = ['git', '-C', $repoPath, 'checkout', '-B', $branch, 'origin/'.$branch];
+                    if ($backupPath) {
+                        $command[] = '--force';
+                    }
+                    $this->runProcess($command, $output);
                 }
-            }
+                $toHash = $this->tryRevParse($repoPath);
 
-            $branch = $this->resolveBranch($repoPath, $output);
+                $postAttempts = 0;
+                while (true) {
+                    try {
+                        $this->runPostUpdateTasks($repoPath, $fromHash, $toHash, $output);
+                        break;
+                    } catch (\Throwable $exception) {
+                        $postAttempts++;
+                        if ($postAttempts >= 2) {
+                            throw $exception;
+                        }
+                        $output[] = 'Post-update tasks failed. Retrying once.';
+                        $this->applyPostUpdatePermissions($repoPath, $output);
+                    }
+                }
 
-            $this->protectHtaccess($repoPath, $output);
-            $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune'], $output);
-            $remoteHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'origin/'.$branch], $output)->getOutput());
+                if ($stashed) {
+                    $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
+                    if (! $pop->isSuccessful()) {
+                        $stashRestoreFailed = true;
+                        $output[] = 'Warning: update applied, but stashed changes could not be restored. Run `git stash list` to review.';
+                    }
+                }
+                $this->restoreUntrackedBackups($repoPath, $untrackedBackups, $output);
+                if ($backupPath) {
+                    $output[] = 'Backup created at: '.$backupPath;
+                }
 
-            if ($fromHash === $remoteHash) {
-                $update->status = 'skipped';
+                $this->restoreSnapshots($repoPath, $htaccessSnapshots, $output);
+                $this->restoreProtectedHtaccess($repoPath, $protectedHtaccess, $output);
+                $this->removeExcludedPaths($repoPath, $output);
+
+                $update->status = 'success';
                 $update->from_hash = $fromHash;
-                $update->to_hash = $fromHash;
+                $update->to_hash = $toHash ?: $remoteHash;
                 $update->output_log = implode("\n", $output);
                 $update->finished_at = now();
                 $update->save();
+                Cache::forget(self::STATUS_CACHE_KEY);
+
+                return $update;
+            } catch (\Throwable $exception) {
+                if ($fromHash && ! $stashRestoreFailed) {
+                    $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', $fromHash], $output, null, false);
+                }
+
+                if ($stashed && ! $stashRestoreFailed) {
+                    $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
+                    if (! $pop->isSuccessful()) {
+                        $output[] = 'Stash restore failed after update failure. Run `git stash pop` manually if needed.';
+                    }
+                }
+                $this->restoreUntrackedBackups($repoPath, $untrackedBackups, $output);
+
+                $this->restoreSnapshots($repoPath, $htaccessSnapshots, $output);
+                $this->restoreProtectedHtaccess($repoPath, $protectedHtaccess, $output);
+                $this->removeExcludedPaths($repoPath, $output);
+
+                if ($attempt < 2) {
+                    $output[] = 'Update failed. Retrying once.';
+                    continue;
+                }
+
+                $status = 'failed';
+                if ($toHash && $remoteHash && $toHash === $remoteHash) {
+                    $status = 'warning';
+                    $output[] = 'Update applied, but post-update tasks failed. Review the log and retry if needed.';
+                }
+
+                $update->status = $status;
+                $update->from_hash = $fromHash;
+                $update->to_hash = $toHash;
+                $update->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
+                $update->finished_at = now();
+                $update->save();
+                Cache::forget(self::STATUS_CACHE_KEY);
 
                 return $update;
             }
-
-            if ($forceUpdate) {
-                $output[] = 'Force updating working tree to origin/'.$branch.'.';
-                $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', 'origin/'.$branch], $output);
-                $this->runGitClean($repoPath, $this->forceCleanExcludePaths(), $output);
-            } elseif ($fromHash) {
-                $this->mergeFastForward($repoPath, $branch, $output, $untrackedBackups);
-            } else {
-                if ($backupPath) {
-                    $output[] = 'No initial commit detected; applying update with a forced checkout.';
-                }
-                $command = ['git', '-C', $repoPath, 'checkout', '-B', $branch, 'origin/'.$branch];
-                if ($backupPath) {
-                    $command[] = '--force';
-                }
-                $this->runProcess($command, $output);
-            }
-            $toHash = $this->tryRevParse($repoPath);
-
-            $postAttempts = 0;
-            while (true) {
-                try {
-                    $this->runPostUpdateTasks($repoPath, $fromHash, $toHash, $output);
-                    break;
-                } catch (\Throwable $exception) {
-                    $postAttempts++;
-                    if ($postAttempts >= 2) {
-                        throw $exception;
-                    }
-                    $output[] = 'Post-update tasks failed. Retrying once.';
-                    $this->applyPostUpdatePermissions($repoPath, $output);
-                }
-            }
-
-            if ($stashed) {
-                $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
-                if (! $pop->isSuccessful()) {
-                    $stashRestoreFailed = true;
-                    $output[] = 'Warning: update applied, but stashed changes could not be restored. Run `git stash list` to review.';
-                }
-            }
-            $this->restoreUntrackedBackups($repoPath, $untrackedBackups, $output);
-            if ($backupPath) {
-                $output[] = 'Backup created at: '.$backupPath;
-            }
-
-            $this->restoreSnapshots($repoPath, $htaccessSnapshots, $output);
-            $this->restoreProtectedHtaccess($repoPath, $protectedHtaccess, $output);
-            $this->removeExcludedPaths($repoPath, $output);
-
-            $update->status = 'success';
-            $update->from_hash = $fromHash;
-            $update->to_hash = $toHash ?: $remoteHash;
-            $update->output_log = implode("\n", $output);
-            $update->finished_at = now();
-            $update->save();
-            Cache::forget(self::STATUS_CACHE_KEY);
-        } catch (\Throwable $exception) {
-            if ($fromHash && ! $stashRestoreFailed) {
-                $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', $fromHash], $output, null, false);
-            }
-
-            if ($stashed && ! $stashRestoreFailed) {
-                $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
-                if (! $pop->isSuccessful()) {
-                    $output[] = 'Stash restore failed after update failure. Run `git stash pop` manually if needed.';
-                }
-            }
-            $this->restoreUntrackedBackups($repoPath, $untrackedBackups, $output);
-
-            $this->restoreSnapshots($repoPath, $htaccessSnapshots, $output);
-            $this->restoreProtectedHtaccess($repoPath, $protectedHtaccess, $output);
-            $this->removeExcludedPaths($repoPath, $output);
-
-            $status = 'failed';
-            if ($toHash && $remoteHash && $toHash === $remoteHash) {
-                $status = 'warning';
-                $output[] = 'Update applied, but post-update tasks failed. Review the log and retry if needed.';
-            }
-
-            $update->status = $status;
-            $update->from_hash = $fromHash;
-            $update->to_hash = $toHash;
-            $update->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
-            $update->finished_at = now();
-            $update->save();
-            Cache::forget(self::STATUS_CACHE_KEY);
         }
 
         return $update;
