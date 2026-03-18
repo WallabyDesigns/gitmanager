@@ -60,9 +60,14 @@
       <section class="card">
         <h2>Cron Installation</h2>
         <p>Add the cron line shown on the Scheduler Settings page so Laravel's scheduler runs every minute:</p>
-        <pre><code>* * * * * cd /path/to/app &amp;&amp; /path/to/php artisan schedule:run &gt;&gt; /path/to/storage/logs/scheduler.log 2&gt;&amp;1</code></pre>
+        <pre><code>* * * * * cd /path/to/app &amp;&amp; /path/to/php artisan scheduler:run &gt;/dev/null 2&gt;&amp;1</code></pre>
         <p>The <strong>Install Cron</strong> button attempts to add this entry automatically on Linux hosts. On Windows, configure Task Scheduler instead.</p>
-        <p>If the heartbeat isn't updating, check <code>storage/logs/scheduler.log</code> for errors and verify <code>storage/logs/scheduler-heartbeat.json</code> is being updated.</p>
+        <p>If the heartbeat isn't updating, verify <code>storage/logs/scheduler-heartbeat.json</code> is being updated.</p>
+      </section>
+
+      <section class="card">
+        <h2>Scheduler Error Log</h2>
+        <p>Scheduler issues are stored in <code>storage/app/scheduler-errors.json</code> as JSON entries. When the same error repeats, the entry increments an <strong>Error Count</strong> instead of duplicating the log.</p>
       </section>
     </section>
   </main>

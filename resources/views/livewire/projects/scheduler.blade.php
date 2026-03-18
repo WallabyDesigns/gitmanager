@@ -77,5 +77,41 @@
                 If automatic install fails, add the cron line manually or configure a Task Scheduler entry on Windows.
             </p>
         </div>
+
+        <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-6 space-y-4">
+            <div>
+                <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Scheduler Error Log</h3>
+                <p class="text-sm text-slate-600 dark:text-slate-300">
+                    Entries are recorded only when the scheduler reports an issue. Repeated errors increase the count.
+                </p>
+            </div>
+
+            @if (empty($schedulerLog))
+                <div class="text-sm text-slate-500 dark:text-slate-400">
+                    No scheduler errors recorded yet.
+                </div>
+            @else
+                <div class="space-y-3">
+                    @foreach ($schedulerLog as $entry)
+                        <div class="rounded-md border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/40 p-4">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                    {{ $entry['message'] ?? 'Scheduler error' }}
+                                </div>
+                                <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                    Error Count: {{ $entry['count'] ?? 1 }}
+                                </div>
+                            </div>
+                            <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                First seen: {{ $entry['first_seen'] ?? 'Unknown' }} · Last seen: {{ $entry['last_seen'] ?? 'Unknown' }}
+                            </div>
+                            @if (! empty($entry['output']))
+                                <pre class="mt-3 max-h-48 overflow-auto rounded-md border border-slate-200/70 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900/60 p-3 text-xs text-slate-700 dark:text-slate-200 whitespace-pre-wrap">{{ $entry['output'] }}</pre>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        </div>
     </div>
 </div>

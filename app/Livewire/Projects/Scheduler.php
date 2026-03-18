@@ -64,6 +64,7 @@ class Scheduler extends Component
             'lastHeartbeat' => $scheduler->lastHeartbeat(),
             'lastManualRun' => $scheduler->lastManualRun(),
             'lastSource' => $scheduler->lastSource(),
+            'schedulerLog' => $scheduler->schedulerLogEntries(),
             'queueEnabled' => config('gitmanager.deploy_queue.enabled', true),
             'queueCount' => $queueCount,
             'cronCommand' => $scheduler->cronCommand(),

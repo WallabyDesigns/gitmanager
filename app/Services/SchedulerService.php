@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Symfony\Component\Process\Process;
@@ -70,11 +71,8 @@ class SchedulerService
         }
 
         $base = base_path();
-        $log = storage_path('logs/scheduler.log');
         $baseArg = escapeshellarg($base);
-        $logArg = escapeshellarg($log);
-
-        return '* * * * * cd '.$baseArg.' && '.$php.' artisan schedule:run >> '.$logArg.' 2>&1';
+        return '* * * * * cd '.$baseArg.' && '.$php.' artisan scheduler:run >/dev/null 2>&1';
     }
 
     public function installCron(): array
@@ -224,29 +222,7 @@ class SchedulerService
      */
     public function runScheduleNow(): array
     {
-        $php = trim((string) config('gitmanager.php_binary', 'php'));
-        $php = trim($php, "\"' ");
-        if ($php === '') {
-            $php = 'php';
-        }
-
-        $process = new Process([$php, base_path('artisan'), 'schedule:run']);
-        $process->setTimeout(600);
-        $process->run(null, $this->baseEnv());
-
-        if (! $process->isSuccessful()) {
-            return [
-                'success' => false,
-                'message' => 'Scheduler run failed.',
-                'output' => trim($process->getErrorOutput() ?: $process->getOutput()),
-            ];
-        }
-
-        return [
-            'success' => true,
-            'message' => 'Scheduler executed successfully.',
-            'output' => trim($process->getOutput()),
-        ];
+        return $this->runSchedulerOnce('manual');
     }
 
     private function baseEnv(): array
@@ -276,5 +252,139 @@ class SchedulerService
         }
 
         return $env;
+    }
+
+    /**
+     * @return array{success: bool, message: string, output?: string}
+     */
+    public function runSchedulerOnce(string $source = 'manual'): array
+    {
+        $exitCode = Artisan::call('schedule:run');
+        $output = trim(Artisan::output());
+
+        $hadIssue = $exitCode !== 0 || $this->outputHasFailure($output);
+        $this->recordHeartbeat($source);
+
+        if ($hadIssue) {
+            $summary = $this->summarizeIssue($output) ?: 'Scheduler reported a failure.';
+            $this->logSchedulerIssue($summary, $output);
+
+            return [
+                'success' => false,
+                'message' => 'Scheduler ran with issues.',
+                'output' => $output,
+            ];
+        }
+
+        return [
+            'success' => true,
+            'message' => 'Scheduler executed successfully.',
+            'output' => $output,
+        ];
+    }
+
+    /**
+     * @return array<int, array{message: string, count: int, first_seen: string, last_seen: string, output?: string}>
+     */
+    public function schedulerLogEntries(): array
+    {
+        $path = $this->schedulerLogPath();
+        if (! is_file($path)) {
+            return [];
+        }
+
+        $data = json_decode(file_get_contents($path) ?: '', true);
+        if (! is_array($data) || ! isset($data['entries']) || ! is_array($data['entries'])) {
+            return [];
+        }
+
+        return $data['entries'];
+    }
+
+    private function logSchedulerIssue(string $message, string $output = ''): void
+    {
+        $path = $this->schedulerLogPath();
+        $dir = dirname($path);
+        if (! is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+
+        $data = [];
+        if (is_file($path)) {
+            $decoded = json_decode(file_get_contents($path) ?: '', true);
+            if (is_array($decoded)) {
+                $data = $decoded;
+            }
+        }
+
+        $entries = $data['entries'] ?? [];
+        $entries = is_array($entries) ? $entries : [];
+        $now = now()->toDateTimeString();
+
+        if (! empty($entries) && ($entries[0]['message'] ?? '') === $message) {
+            $entries[0]['count'] = (int) ($entries[0]['count'] ?? 1) + 1;
+            $entries[0]['last_seen'] = $now;
+            if ($output !== '') {
+                $entries[0]['output'] = $this->trimOutput($output);
+            }
+        } else {
+            array_unshift($entries, [
+                'message' => $message,
+                'count' => 1,
+                'first_seen' => $now,
+                'last_seen' => $now,
+                'output' => $output !== '' ? $this->trimOutput($output) : null,
+            ]);
+        }
+
+        $entries = array_slice($entries, 0, 25);
+
+        $payload = [
+            'updated_at' => $now,
+            'entries' => $entries,
+        ];
+
+        @file_put_contents($path, json_encode($payload, JSON_PRETTY_PRINT));
+        @chmod($path, 0664);
+    }
+
+    private function outputHasFailure(string $output): bool
+    {
+        if ($output === '') {
+            return false;
+        }
+
+        return (bool) preg_match('/\bFAIL\b|\bERROR\b|\bEXCEPTION\b/i', $output);
+    }
+
+    private function summarizeIssue(string $output): string
+    {
+        if ($output === '') {
+            return '';
+        }
+
+        $lines = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $output) ?: [])));
+        foreach ($lines as $line) {
+            if (preg_match('/\bFAIL\b|\bERROR\b|\bEXCEPTION\b/i', $line)) {
+                return $line;
+            }
+        }
+
+        return $lines[0] ?? '';
+    }
+
+    private function trimOutput(string $output): string
+    {
+        $output = trim($output);
+        if (mb_strlen($output) <= 2000) {
+            return $output;
+        }
+
+        return mb_substr($output, 0, 2000).'…';
+    }
+
+    private function schedulerLogPath(): string
+    {
+        return storage_path('app/scheduler-errors.json');
     }
 }
