@@ -1,41 +1,35 @@
 # Git Web Manager
 
-Git Web Manager is a self-hosted Laravel Livewire app for deploying and monitoring GitHub projects from a single dashboard. It handles deploys, rollbacks, health checks, preview builds, and Dependabot automation.
+Git Web Manager (GWM) is a self-hosted Laravel + Livewire application for deploying and monitoring Git-backed websites from a single dashboard. It handles deploys, rollbacks, health checks, preview builds by commit, dependency actions, and a security overview for Dependabot alerts.
 
-![projects tab](/assets/projects.png)
+![Projects dashboard](/assets/projects.png)
 
-Git Web Manager is not affiliated with, endorsed by, or sponsored by Git or its maintainers.
+Git Web Manager is not affiliated with, endorsed by, or sponsored by Git or GitHub.
 
-## Support:
-This is a completely free service that I work hard to maintain. Show your support if you found this useful!
-
-[![wallaby](/assets/coffee.png)](https://www.buymeacoffee.com/wallaby)
-
-
-## Read Documentation
-Please read our [documentation](https://wallabydesigns.github.io/gitmanager/) to help you get up and running.
-
-[![documentation](/assets/docs.png)](https://wallabydesigns.github.io/gitmanager/)
+## Why Use It
+- Replace manual `git pull` + build + rollback steps with one UI.
+- Get per-project health checks and recent activity logs.
+- Spin up preview builds for any commit.
+- Keep dependencies and security alerts visible.
 
 ## Features
-- Authenticated dashboard with project list and detail views.
-- Manual deploys, force deploys, and rollbacks.
+- Authenticated dashboard with project list and detail pages.
+- Deploys, force deploys, and rollbacks.
 - Auto-deploy via scheduler or GitHub webhooks.
 - Health checks with live status.
-- Preview builds for any commit.
+- Preview builds by commit.
 - Dependency actions (composer/npm) with logs.
 - Security tab with Dependabot alerts and auto-merge.
 - Self-update flow for the app itself.
 - User management tab for creating accounts and resetting passwords.
-- App updates automatically preserve local changes when detected.
-- Project deploys automatically stash and restore local tracked changes (force deploy remains destructive).
+- Project-type wizard (Laravel, Node, Static, Custom) with relevant defaults.
 
 ## Quick Start
-1. Copy `.env.example` to `.env` and configure required variables.
+1. Copy `.env.example` to `.env` and configure required values.
 2. Install dependencies and build assets.
 3. Run migrations and start the app.
 
-```
+```bash
 composer install
 php artisan migrate
 npm install
@@ -50,6 +44,9 @@ npm run build
 - Queue worker for webhook deploys.
 - Scheduler for auto-deploy and security sync.
 
+## Permissions (Important)
+Git operations are performed by the web server user. For reliable updates, the PHP-FPM user should match the filesystem owner of the app and project directories. If they differ, git may fail to write to `.git/objects` or `.git/index`.
+
 ## Configuration Highlights
 Set these in `.env` as needed:
 - `GITHUB_TOKEN` for private repos + Dependabot actions.
@@ -57,19 +54,20 @@ Set these in `.env` as needed:
 - `GWM_GIT_BINARY`, `GWM_COMPOSER_BINARY`, `GWM_NPM_BINARY` for custom CLI paths.
 - `GWM_PHP_BINARY` / `GWM_PHP_PATH` for PHP CLI selection.
 - `GWM_PROCESS_PATH` to prepend PATH (Node, PHP, etc).
-- `GWM_SELF_UPDATE_ENABLED` to enable nightly self updates.
-- `GWM_SELF_UPDATE_EXCLUDE_PATHS` to skip paths (like `docs`) during app updates.
+- `GWM_SELF_UPDATE_ENABLED` to enable self updates.
+- `GWM_SELF_UPDATE_EXCLUDE_PATHS` to skip paths (default: `docs`).
 - `GWM_PREVIEW_PATH` and `GWM_PREVIEW_BASE_URL` for preview builds.
+
 Legacy `GPM_*` keys are still supported for backward compatibility.
 
 ## Scheduler & Queue
 Start a worker for webhook deployments:
-```
+```bash
 php artisan queue:work
 ```
 
 Ensure the scheduler runs (crontab entry):
-```
+```bash
 * * * * * php /path/to/artisan schedule:run >> /dev/null 2>&1
 ```
 
@@ -87,6 +85,15 @@ Set GitHub to POST to:
 
 Use the same `GITHUB_WEBHOOK_SECRET` in GitHub and `.env`.
 
+## App Updates
+The app can update itself from its repo. By default it preserves local changes when detected. If an update fails, you can run a **Force Update** to hard-reset to the remote branch while preserving `.env`, `storage/`, `.htaccess`, and `GWM_SELF_UPDATE_EXCLUDE_PATHS`.
+
+CLI:
+```bash
+php artisan gitmanager:self-update
+php artisan gitmanager:self-update --force
+```
+
 ## Documentation Site (GitHub Pages)
 This repo ships a static docs site in `docs/`.
 
@@ -95,12 +102,15 @@ To publish on GitHub Pages:
 2. Select **Deploy from a branch**.
 3. Choose branch `main` and folder `/docs`.
 
-## License
-Add your preferred open-source license before publishing.
-
 ## User Management & First Login
 - Registration is open only when there are no users (first admin setup).
 - After the first account exists, create users from the **Users** page in the main navigation.
 - Users created by admins can be forced to change their password on first login.
 - Use “Send reset link” for email-driven password recovery.
+
+## Contributing
+Issues and pull requests are welcome. Please include clear reproduction steps and environment details for bugs.
+
+## License
+MIT License. See LICENSE for details.
 
