@@ -1,0 +1,27 @@
+<?php
+
+namespace App\Console\Commands;
+
+use App\Services\DeploymentQueueService;
+use Illuminate\Console\Command;
+
+class ProcessDeploymentQueue extends Command
+{
+    protected $signature = 'deployments:process-queue {--limit=3}';
+
+    protected $description = 'Process queued deployment requests.';
+
+    public function handle(DeploymentQueueService $queue): int
+    {
+        if (! config('gitmanager.deploy_queue.enabled', true)) {
+            $this->info('Deployment queue is disabled.');
+            return self::SUCCESS;
+        }
+
+        $limit = (int) $this->option('limit') ?: 3;
+        $processed = $queue->processNext($limit);
+        $this->info("Processed {$processed} queued deployments.");
+
+        return self::SUCCESS;
+    }
+}

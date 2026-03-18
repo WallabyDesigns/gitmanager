@@ -70,20 +70,17 @@ new class extends Component
                         <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.index')">
                             {{ __('Users') }}
                         </x-nav-link>
-                        <x-nav-link :href="route('security.index')" :active="request()->routeIs('security.index')">
+                        <x-nav-link :href="route('workflows.index')" :active="request()->routeIs('workflows.index')">
+                            {{ __('Workflows') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('system.updates')" :active="request()->routeIs('system.*')">
                             <span class="flex items-center gap-2">
-                                {{ __('Security') }}
+                                {{ __('System') }}
                                 @if ($openAlerts > 0)
                                     <span class="inline-flex items-center justify-center rounded-full bg-rose-500/20 px-2 py-0.5 text-xs text-rose-200">
                                         {{ $openAlerts }}
                                     </span>
-                                @endif
-                            </span>
-                        </x-nav-link>
-                        <x-nav-link :href="route('app-updates.index')" :active="request()->routeIs('app-updates.index')">
-                            <span class="flex items-center gap-2">
-                                {{ __('Update App') }}
-                                @if ($updateAvailable)
+                                @elseif ($updateAvailable)
                                     <span class="inline-flex items-center justify-center rounded-full bg-amber-400/20 px-2 py-0.5 text-xs text-amber-200">
                                         NEW
                                     </span>
@@ -151,26 +148,25 @@ new class extends Component
                     {{ __('Users') }}
                 </x-responsive-nav-link>
             @endif
-            <x-responsive-nav-link :href="route('app-updates.index')" :active="request()->routeIs('app-updates.index')">
-                <span class="flex items-center gap-2">
-                    {{ __('Update App') }}
-                    @if ($updateAvailable)
-                        <span class="inline-flex items-center justify-center rounded-full bg-amber-400/20 px-2 py-0.5 text-xs text-amber-200">
-                            NEW
-                        </span>
-                    @endif
-                </span>
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('security.index')" :active="request()->routeIs('security.index')">
-                <span class="flex items-center gap-2">
-                    {{ __('Security') }}
-                    @if ($openAlerts > 0)
-                        <span class="inline-flex items-center justify-center rounded-full bg-rose-500/20 px-2 py-0.5 text-xs text-rose-200">
-                            {{ $openAlerts }}
-                        </span>
-                    @endif
-                </span>
-            </x-responsive-nav-link>
+            @if (auth()->user()?->isAdmin())
+                <x-responsive-nav-link :href="route('workflows.index')" :active="request()->routeIs('workflows.index')">
+                    {{ __('Workflows') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('system.updates')" :active="request()->routeIs('system.*')">
+                    <span class="flex items-center gap-2">
+                        {{ __('System') }}
+                        @if ($openAlerts > 0)
+                            <span class="inline-flex items-center justify-center rounded-full bg-rose-500/20 px-2 py-0.5 text-xs text-rose-200">
+                                {{ $openAlerts }}
+                            </span>
+                        @elseif ($updateAvailable)
+                            <span class="inline-flex items-center justify-center rounded-full bg-amber-400/20 px-2 py-0.5 text-xs text-amber-200">
+                                NEW
+                            </span>
+                        @endif
+                    </span>
+                </x-responsive-nav-link>
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->
@@ -195,4 +191,3 @@ new class extends Component
         </div>
     </div>
 </nav>
-

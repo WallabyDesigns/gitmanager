@@ -1,0 +1,156 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\DeploymentQueueItem;
+use App\Models\Project;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+
+class DeploymentQueueService
+{
+    public function enqueue(Project $project, string $action, array $payload = [], ?User $user = null): DeploymentQueueItem
+    {
+        $position = (int) DeploymentQueueItem::query()
+            ->where('project_id', $project->id)
+            ->where('status', 'queued')
+            ->max('position');
+
+        return DeploymentQueueItem::create([
+            'project_id' => $project->id,
+            'queued_by' => $user?->id,
+            'action' => $action,
+            'payload' => $payload,
+            'status' => 'queued',
+            'position' => $position + 1,
+        ]);
+    }
+
+    public function processNext(int $limit = 3): int
+    {
+        $processed = 0;
+
+        while ($processed < $limit) {
+            $item = $this->reserveNext();
+            if (! $item) {
+                break;
+            }
+
+            $this->runItem($item);
+            $processed++;
+        }
+
+        return $processed;
+    }
+
+    public function cancel(DeploymentQueueItem $item): void
+    {
+        if ($item->status !== 'queued') {
+            return;
+        }
+
+        $item->status = 'cancelled';
+        $item->finished_at = now();
+        $item->save();
+    }
+
+    public function moveUp(DeploymentQueueItem $item): void
+    {
+        if ($item->status !== 'queued') {
+            return;
+        }
+
+        $swap = DeploymentQueueItem::query()
+            ->where('project_id', $item->project_id)
+            ->where('status', 'queued')
+            ->where('position', '<', $item->position)
+            ->orderByDesc('position')
+            ->first();
+
+        if (! $swap) {
+            return;
+        }
+
+        [$item->position, $swap->position] = [$swap->position, $item->position];
+        $item->save();
+        $swap->save();
+    }
+
+    public function moveDown(DeploymentQueueItem $item): void
+    {
+        if ($item->status !== 'queued') {
+            return;
+        }
+
+        $swap = DeploymentQueueItem::query()
+            ->where('project_id', $item->project_id)
+            ->where('status', 'queued')
+            ->where('position', '>', $item->position)
+            ->orderBy('position')
+            ->first();
+
+        if (! $swap) {
+            return;
+        }
+
+        [$item->position, $swap->position] = [$swap->position, $item->position];
+        $item->save();
+        $swap->save();
+    }
+
+    private function reserveNext(): ?DeploymentQueueItem
+    {
+        return DB::transaction(function () {
+            $runningProjects = DeploymentQueueItem::query()
+                ->where('status', 'running')
+                ->pluck('project_id')
+                ->all();
+
+            $item = DeploymentQueueItem::query()
+                ->where('status', 'queued')
+                ->when($runningProjects !== [], fn ($query) => $query->whereNotIn('project_id', $runningProjects))
+                ->orderBy('position')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $item) {
+                return null;
+            }
+
+            $item->status = 'running';
+            $item->started_at = now();
+            $item->save();
+
+            return $item;
+        });
+    }
+
+    private function runItem(DeploymentQueueItem $item): void
+    {
+        $service = app(DeploymentService::class);
+        $project = $item->project;
+        $user = $item->queuedBy;
+        $deployment = null;
+
+        try {
+            if (! $project) {
+                throw new \RuntimeException('Project not found for queued deployment.');
+            }
+
+            $payload = is_array($item->payload) ? $item->payload : [];
+            $deployment = match ($item->action) {
+                'force_deploy' => $service->deploy($project, $user, true),
+                'rollback' => $service->rollback($project, $user, $payload['target'] ?? null),
+                default => $service->deploy($project, $user, false),
+            };
+
+            $item->deployment_id = $deployment->id;
+            $item->status = $deployment->status === 'success' ? 'completed' : 'failed';
+        } catch (\Throwable $exception) {
+            $item->status = 'failed';
+        }
+
+        $item->finished_at = now();
+        $item->save();
+    }
+}

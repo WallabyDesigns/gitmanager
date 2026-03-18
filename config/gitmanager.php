@@ -18,4 +18,8 @@ return [
         'path' => env('GWM_PREVIEW_PATH', env('GPM_PREVIEW_PATH', storage_path('app/previews'))),
         'base_url' => env('GWM_PREVIEW_BASE_URL', env('GPM_PREVIEW_BASE_URL', '')),
     ],
+
+    'deploy_queue' => [
+        'enabled' => env('GWM_DEPLOY_QUEUE_ENABLED', true),
+    ],
 ];

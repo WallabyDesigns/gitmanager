@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Project;
+use App\Services\DeploymentQueueService;
 use App\Services\DeploymentService;
 use Illuminate\Console\Command;
 
@@ -25,7 +26,7 @@ class ProjectsAutoDeploy extends Command
     /**
      * Execute the console command.
      */
-    public function handle(DeploymentService $service): int
+    public function handle(DeploymentService $service, DeploymentQueueService $queue): int
     {
         $projects = Project::query()
             ->where('auto_deploy', true)
@@ -34,8 +35,13 @@ class ProjectsAutoDeploy extends Command
         foreach ($projects as $project) {
             try {
                 if ($service->checkForUpdates($project)) {
-                    $service->deploy($project);
-                    $this->info("Deployed {$project->name}.");
+                    if (config('gitmanager.deploy_queue.enabled', true)) {
+                        $queue->enqueue($project, 'deploy');
+                        $this->info("Queued deploy for {$project->name}.");
+                    } else {
+                        $service->deploy($project);
+                        $this->info("Deployed {$project->name}.");
+                    }
                 } else {
                     $this->line("No updates for {$project->name}.");
                 }

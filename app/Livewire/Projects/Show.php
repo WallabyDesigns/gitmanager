@@ -62,6 +62,13 @@ class Show extends Component
 
     public function deploy(DeploymentService $service): void
     {
+        if ($this->queueEnabled()) {
+            $queue = app(\App\Services\DeploymentQueueService::class);
+            $queue->enqueue($this->project, 'deploy', [], Auth::user());
+            $this->dispatch('notify', message: 'Deployment queued.');
+            return;
+        }
+
         $deployment = $service->deploy($this->project, Auth::user());
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -71,6 +78,13 @@ class Show extends Component
 
     public function forceDeploy(DeploymentService $service): void
     {
+        if ($this->queueEnabled()) {
+            $queue = app(\App\Services\DeploymentQueueService::class);
+            $queue->enqueue($this->project, 'force_deploy', [], Auth::user());
+            $this->dispatch('notify', message: 'Force deployment queued.');
+            return;
+        }
+
         $deployment = $service->deploy($this->project, Auth::user(), true);
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -80,11 +94,23 @@ class Show extends Component
 
     public function rollback(DeploymentService $service): void
     {
+        if ($this->queueEnabled()) {
+            $queue = app(\App\Services\DeploymentQueueService::class);
+            $queue->enqueue($this->project, 'rollback', [], Auth::user());
+            $this->dispatch('notify', message: 'Rollback queued.');
+            return;
+        }
+
         $deployment = $service->rollback($this->project, Auth::user());
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
             ? 'Rollback completed.'
             : 'Rollback failed. Check logs below.');
+    }
+
+    private function queueEnabled(): bool
+    {
+        return (bool) config('gitmanager.deploy_queue.enabled', true);
     }
 
     public function checkUpdates(DeploymentService $service): void

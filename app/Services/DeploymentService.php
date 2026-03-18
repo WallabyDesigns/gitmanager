@@ -91,6 +91,7 @@ class DeploymentService
                 $deployment->status = 'success';
                 $deployment->from_hash = $fromHash;
                 $deployment->to_hash = $fromHash;
+                $this->appendWorkflowOutput($deployment, $project, $output);
                 $deployment->output_log = implode("\n", $output);
                 $deployment->finished_at = now();
                 $deployment->save();
@@ -133,6 +134,7 @@ class DeploymentService
             $deployment->status = 'success';
             $deployment->from_hash = $fromHash;
             $deployment->to_hash = $toHash;
+            $this->appendWorkflowOutput($deployment, $project, $output);
             $deployment->output_log = implode("\n", $output);
             $deployment->finished_at = now();
             $deployment->save();
@@ -157,7 +159,9 @@ class DeploymentService
             $deployment->status = 'failed';
             $deployment->from_hash = $fromHash;
             $deployment->to_hash = $toHash;
-            $deployment->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
+            $output[] = $exception->getMessage();
+            $this->appendWorkflowOutput($deployment, $project, $output);
+            $deployment->output_log = trim(implode("\n", $output));
             $deployment->finished_at = now();
             $deployment->save();
 
@@ -1228,6 +1232,18 @@ class DeploymentService
         }
 
         rmdir($path);
+    }
+
+    private function appendWorkflowOutput(Deployment $deployment, Project $project, array &$output): void
+    {
+        try {
+            $messages = app(WorkflowService::class)->handleDeployment($deployment, $project);
+            foreach ($messages as $message) {
+                $output[] = $message;
+            }
+        } catch (\Throwable $exception) {
+            $output[] = 'Workflow notifications failed: '.$exception->getMessage();
+        }
     }
 
     private function runProcess(array $command, array &$output = [], ?string $workingDir = null, bool $throwOnFailure = true): Process

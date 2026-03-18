@@ -10,7 +10,10 @@
   <a href="health.html">Health Checks</a>
   <a href="preview.html">Preview Builds</a>
   <a href="security.html">Security & Dependabot</a>
+  <a href="workflows.html">Workflows</a>
+  <a href="email-settings.html">Email Settings</a>
   <a href="users.html">User Management</a>
+  <a href="deploy-queue.html">Deploy Queue</a>
   <a href="webhooks.html">GitHub Webhooks</a>
   <a href="self-update.html">Self Update</a>
   <a href="use-cases.html">Use Cases</a>

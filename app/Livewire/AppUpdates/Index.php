@@ -41,7 +41,7 @@ class Index extends Component
 
         $this->updateStatus = $service->getUpdateStatus(true);
         $this->dispatch('notify', message: $message);
-        $this->redirectRoute('app-updates.index', navigate: false);
+        $this->redirectRoute('system.updates', navigate: false);
     }
 
     public function runForceUpdate(SelfUpdateService $service): void
@@ -56,7 +56,7 @@ class Index extends Component
 
         $this->updateStatus = $service->getUpdateStatus(true);
         $this->dispatch('notify', message: $message);
-        $this->redirectRoute('app-updates.index', navigate: false);
+        $this->redirectRoute('system.updates', navigate: false);
     }
 
     public function refreshUpdateStatus(SelfUpdateService $service): void

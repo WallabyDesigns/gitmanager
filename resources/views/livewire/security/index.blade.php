@@ -1,12 +1,13 @@
 <div class="py-10">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-        <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
+        @include('livewire.system.partials.tabs')
+        <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-3 flex-wrap">
-                    <a href="{{ route('security.index', ['tab' => 'current']) }}" class="px-3 py-2 text-sm rounded-md {{ $tab === 'current' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300' }}">
+                    <a href="{{ route('system.security', ['tab' => 'current']) }}" class="px-3 py-2 text-sm rounded-md {{ $tab === 'current' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300' }}">
                         Current Issues ({{ $openCount }})
                     </a>
-                    <a href="{{ route('security.index', ['tab' => 'resolved']) }}" class="px-3 py-2 text-sm rounded-md {{ $tab === 'resolved' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300' }}">
+                    <a href="{{ route('system.security', ['tab' => 'resolved']) }}" class="px-3 py-2 text-sm rounded-md {{ $tab === 'resolved' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300' }}">
                         Resolved Issues ({{ $resolvedCount }})
                     </a>
                 </div>
@@ -23,7 +24,7 @@
                         <h3 class="text-lg font-semibold">Git Web Manager update failed</h3>
                         <p class="text-sm text-rose-100/80">Last attempt: {{ $latestUpdate->finished_at?->format('M j, Y g:i A') ?? 'Unknown time' }}</p>
                     </div>
-                    <a href="{{ route('app-updates.index') }}" class="px-4 py-2 rounded-md bg-rose-500/20 text-rose-100 text-sm hover:bg-rose-500/30">
+                    <a href="{{ route('system.updates') }}" class="px-4 py-2 rounded-md bg-rose-500/20 text-rose-100 text-sm hover:bg-rose-500/30">
                         View update logs
                     </a>
                 </div>

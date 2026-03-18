@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" href="favicon.ico" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Deploy Queue | Git Web Manager</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="page-hero">
+    <div class="page-hero-inner">
+      <div class="docflex">
+        <div class="brand">
+            <a href="index.html">
+                <img class="logo" src="assets/logo.svg" alt="Git Web Manager" />
+            </a>
+            <div>
+              <p class="eyebrow">Deploy Queue</p>
+              <h1>Git Web Manager</h1>
+              <p class="tagline">Queue, cancel, and reorder deployments.</p>
+            </div>
+        </div>
+        <div>
+            <a href="https://github.com/WallabyDesigns/gitmanager"> <img src="assets/repo.svg" height="50" width="60" alt="repository" /></a>
+            <a href="https://www.buymeacoffee.com/wallaby"> <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="50" width="210" alt="wallaby" /></a>
+        </div>
+      </div>
+      <div class="page-actions">
+        <a class="btn ghost" href="users.html"><img src="assets/prev.svg" height="25" width="25" alt="" /> User Management</a>
+        <a class="btn primary" href="webhooks.html">Webhooks <img src="assets/next.svg" height="25" width="25" alt="" /></a>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <div data-include="partials/nav.html"></div>
+
+    <section class="content">
+      <section class="card">
+        <h2>Queue Behavior</h2>
+        <p>When the deploy queue is enabled, deploy requests are queued and processed sequentially.</p>
+        <ul>
+          <li>Manual deploys, auto-deploys, and webhooks all enqueue</li>
+          <li>Only one deploy runs at a time per project</li>
+          <li>Queued items can be cancelled or reordered</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Enable / Disable</h2>
+        <p>Toggle the queue via <code>GWM_DEPLOY_QUEUE_ENABLED</code> in <code>.env</code>.</p>
+      </section>
+
+      <section class="card">
+        <h2>Queue Processor</h2>
+        <p>The scheduler runs <code>deployments:process-queue</code> every minute to process queued items.</p>
+      </section>
+    </section>
+  </main>
+
+  <div data-include="partials/footer.html"></div>
+</body>
+</html>

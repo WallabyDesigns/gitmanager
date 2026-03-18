@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Project;
+use App\Services\DeploymentQueueService;
 use App\Services\DeploymentService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -23,10 +24,15 @@ class DeployProjectFromWebhook implements ShouldQueue
     {
     }
 
-    public function handle(DeploymentService $service): void
+    public function handle(DeploymentService $service, DeploymentQueueService $queue): void
     {
         $project = Project::find($this->projectId);
         if (! $project || ! $project->auto_deploy) {
+            return;
+        }
+
+        if (config('gitmanager.deploy_queue.enabled', true)) {
+            $queue->enqueue($project, 'deploy');
             return;
         }
 

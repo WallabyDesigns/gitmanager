@@ -40,7 +40,7 @@
     <section class="content">
       <section class="card">
         <h2>Status Badge</h2>
-        <p>The Update App page includes a badge that shows whether you are up to date or if a new release is available.</p>
+        <p>The System &rarr; App Updates tab includes a badge that shows whether you are up to date or if a new release is available.</p>
       </section>
 
       <section class="card">
@@ -55,6 +55,11 @@
       </section>
 
       <section class="card">
+        <h2>Force Update</h2>
+        <p>If an update fails, admins can run a Force Update to reset the working tree to the remote branch. This discards local code changes but preserves <code>.env</code>, <code>storage</code>, <code>.htaccess</code>, and excluded paths.</p>
+      </section>
+
+      <section class="card">
         <h2>Build Steps</h2>
         <p>Composer and NPM steps run only when lock/package files change. Builds retry automatically if file permissions need to be repaired.</p>
       </section>
@@ -64,6 +69,5 @@
   <div data-include="partials/footer.html"></div>
 </body>
 </html>
-
 
 

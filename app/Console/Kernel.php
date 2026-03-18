@@ -15,6 +15,9 @@ class Kernel extends ConsoleKernel
         // $schedule->command('inspire')->hourly();
         $schedule->command('sitemap:generate')->daily();
         $schedule->command('projects:auto-deploy')->everyFiveMinutes()->withoutOverlapping();
+        if (config('gitmanager.deploy_queue.enabled', true)) {
+            $schedule->command('deployments:process-queue')->everyMinute()->withoutOverlapping();
+        }
         $schedule->command('security:sync')->hourly()->withoutOverlapping();
         $schedule->command('dependabot:auto-merge')->hourly()->withoutOverlapping();
         if (config('gitmanager.self_update.enabled')) {

@@ -21,6 +21,8 @@ Git Web Manager is not affiliated with, endorsed by, or sponsored by Git or GitH
 - Dependency actions (composer/npm) with logs.
 - Security tab with Dependabot alerts and auto-merge.
 - Self-update flow for the app itself.
+- Workflows for deploy success/failure (email + webhooks).
+- Deploy queue for serializing deployments.
 - User management tab for creating accounts and resetting passwords.
 - Project-type wizard (Laravel, Node, Static, Custom) with relevant defaults.
 
@@ -57,6 +59,7 @@ Set these in `.env` as needed:
 - `GWM_SELF_UPDATE_ENABLED` to enable self updates.
 - `GWM_SELF_UPDATE_EXCLUDE_PATHS` to skip paths (default: `docs`).
 - `GWM_PREVIEW_PATH` and `GWM_PREVIEW_BASE_URL` for preview builds.
+- `GWM_DEPLOY_QUEUE_ENABLED` to enable queued deployments.
 
 Legacy `GPM_*` keys are still supported for backward compatibility.
 
@@ -73,6 +76,7 @@ Ensure the scheduler runs (crontab entry):
 
 Scheduled commands include:
 - `projects:auto-deploy` (every 5 minutes)
+- `deployments:process-queue` (every minute)
 - `security:sync` (hourly)
 - `dependabot:auto-merge` (hourly)
 - `gitmanager:self-update` (daily at 02:30 if enabled)
@@ -113,4 +117,5 @@ Issues and pull requests are welcome. Please include clear reproduction steps an
 
 ## License
 MIT License. See LICENSE for details.
+
 
