@@ -139,9 +139,17 @@ class SchedulerService
             ];
         }
 
+        $run = $this->runSchedulerOnce('cron-install');
+        if (! $run['success']) {
+            return [
+                'success' => true,
+                'message' => 'Cron entry installed, but the scheduler run failed. Check the Scheduler Error Log.',
+            ];
+        }
+
         return [
             'success' => true,
-            'message' => 'Cron entry installed successfully.',
+            'message' => 'Cron entry installed successfully and scheduler executed.',
         ];
     }
 
