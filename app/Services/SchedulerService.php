@@ -69,9 +69,12 @@ class SchedulerService
             $php = 'php';
         }
 
-        $artisan = base_path('artisan');
+        $base = base_path();
+        $log = storage_path('logs/scheduler.log');
+        $baseArg = escapeshellarg($base);
+        $logArg = escapeshellarg($log);
 
-        return '* * * * * '.$php.' '.$artisan.' schedule:run >> /dev/null 2>&1';
+        return '* * * * * cd '.$baseArg.' && '.$php.' artisan schedule:run >> '.$logArg.' 2>&1';
     }
 
     public function installCron(): array
@@ -92,14 +95,32 @@ class SchedulerService
             ];
         }
 
-        if (Str::contains($current, $command)) {
-            return [
-                'success' => true,
-                'message' => 'Cron entry already exists.',
-            ];
+        $lines = preg_split('/\r\n|\r|\n/', $current) ?: [];
+        $updated = false;
+        $artisanPath = base_path('artisan');
+        $normalizedLines = [];
+
+        foreach ($lines as $line) {
+            $trimmed = trim($line);
+            if ($trimmed === '') {
+                $normalizedLines[] = $line;
+                continue;
+            }
+
+            if (Str::contains($line, $artisanPath) && Str::contains($line, 'schedule:run')) {
+                $normalizedLines[] = $command;
+                $updated = true;
+                continue;
+            }
+
+            $normalizedLines[] = $line;
         }
 
-        $content = rtrim($current)."\n".$command."\n";
+        if (! $updated) {
+            $normalizedLines[] = $command;
+        }
+
+        $content = rtrim(implode("\n", $normalizedLines))."\n";
         $tmp = tempnam(sys_get_temp_dir(), 'gwm-cron-');
         if (! $tmp) {
             return [
