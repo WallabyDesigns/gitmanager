@@ -17,6 +17,7 @@ class SchedulerService
     {
         Cache::forever(self::HEARTBEAT_KEY, now()->toDateTimeString());
         Cache::forever(self::SOURCE_KEY, $source);
+        $this->writeHeartbeatFile($source);
     }
 
     public function recordManualRun(): void
@@ -27,7 +28,12 @@ class SchedulerService
     public function lastHeartbeat(): ?Carbon
     {
         $value = Cache::get(self::HEARTBEAT_KEY);
-        return $value ? Carbon::parse($value) : null;
+        if ($value) {
+            return Carbon::parse($value);
+        }
+
+        $file = $this->readHeartbeatFile();
+        return $file['timestamp'] ?? null;
     }
 
     public function lastManualRun(): ?Carbon
@@ -39,7 +45,12 @@ class SchedulerService
     public function lastSource(): ?string
     {
         $value = Cache::get(self::SOURCE_KEY);
-        return is_string($value) && $value !== '' ? $value : null;
+        if (is_string($value) && $value !== '') {
+            return $value;
+        }
+
+        $file = $this->readHeartbeatFile();
+        return $file['source'] ?? null;
     }
 
     public function isHealthy(?int $graceSeconds = null): bool
@@ -125,6 +136,51 @@ class SchedulerService
         }
 
         return $process->getOutput();
+    }
+
+    private function writeHeartbeatFile(string $source): void
+    {
+        $path = $this->heartbeatPath();
+        $payload = [
+            'timestamp' => now()->toDateTimeString(),
+            'source' => $source,
+        ];
+
+        @file_put_contents($path, json_encode($payload));
+    }
+
+    /**
+     * @return array{timestamp?: Carbon, source?: string}
+     */
+    private function readHeartbeatFile(): array
+    {
+        $path = $this->heartbeatPath();
+        if (! is_file($path)) {
+            return [];
+        }
+
+        $contents = file_get_contents($path);
+        if (! $contents) {
+            return [];
+        }
+
+        $data = json_decode($contents, true);
+        if (! is_array($data)) {
+            return [];
+        }
+
+        $timestamp = $data['timestamp'] ?? null;
+        $source = is_string($data['source'] ?? null) ? $data['source'] : null;
+
+        return [
+            'timestamp' => $timestamp ? Carbon::parse($timestamp) : null,
+            'source' => $source,
+        ];
+    }
+
+    private function heartbeatPath(): string
+    {
+        return storage_path('app/scheduler-heartbeat.json');
     }
 
     /**
