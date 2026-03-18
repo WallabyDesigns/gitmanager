@@ -40,6 +40,9 @@
                     </p>
                 </div>
                 <div class="flex flex-wrap gap-2">
+                    <button type="button" wire:click="refreshStatus" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white">
+                        Refresh Status
+                    </button>
                     <button type="button" wire:click="runScheduler" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white">
                         Run Scheduler Now
                     </button>

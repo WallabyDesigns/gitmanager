@@ -16,13 +16,16 @@ class Scheduler extends Component
     {
         $processed = $queue->processNext(3);
         $scheduler->recordManualRun();
+        $scheduler->recordHeartbeat('manual');
 
         if ($processed === 0) {
             $this->dispatch('notify', message: 'No queued deployments to process.');
+            $this->dispatch('$refresh');
             return;
         }
 
         $this->dispatch('notify', message: "Processed {$processed} queued deployment(s).");
+        $this->dispatch('$refresh');
     }
 
     public function installCron(SchedulerService $scheduler): void
@@ -30,14 +33,22 @@ class Scheduler extends Component
         $result = $scheduler->installCron();
         $message = $result['message'] ?? 'Cron action completed.';
         $this->dispatch('notify', message: $message);
+        $this->dispatch('$refresh');
     }
 
     public function runScheduler(SchedulerService $scheduler): void
     {
         $result = $scheduler->runScheduleNow();
         $scheduler->recordManualRun();
+        $scheduler->recordHeartbeat('manual');
 
         $this->dispatch('notify', message: $result['message']);
+        $this->dispatch('$refresh');
+    }
+
+    public function refreshStatus(): void
+    {
+        $this->dispatch('$refresh');
     }
 
     public function render(SchedulerService $scheduler)

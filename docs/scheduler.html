@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" href="favicon.ico" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scheduler Settings | Git Web Manager</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="page-hero">
+    <div class="page-hero-inner">
+      <div class="docflex">
+        <div class="brand">
+            <a href="index.html">
+                <img class="logo" src="assets/logo.svg" alt="Git Web Manager" />
+            </a>
+            <div>
+              <p class="eyebrow">Scheduler Settings</p>
+              <h1>Git Web Manager</h1>
+              <p class="tagline">Keep deploy queues moving by monitoring scheduler health.</p>
+            </div>
+        </div>
+        <div>
+            <a href="https://github.com/WallabyDesigns/gitmanager"> <img src="assets/repo.svg" height="50" width="60" alt="repository" /></a>
+            <a href="https://www.buymeacoffee.com/wallaby"> <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="50" width="210" alt="wallaby" /></a>
+        </div>
+      </div>
+      <div class="page-actions">
+        <a class="btn ghost" href="users.html"><img src="assets/prev.svg" height="25" width="25" alt="" /> User Management</a>
+        <a class="btn primary" href="deploy-queue.html">Deploy Queue <img src="assets/next.svg" height="25" width="25" alt="" /></a>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <div data-include="partials/nav.html"></div>
+
+    <section class="content">
+      <section class="card">
+        <h2>Scheduler Health</h2>
+        <p>The Scheduler Settings tab shows the last heartbeat recorded by the Laravel scheduler. If the heartbeat is stale, queued deployments will not run.</p>
+        <ul>
+          <li>Healthy: scheduler heartbeat recorded within the configured window.</li>
+          <li>Not detected: no recent heartbeat.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Run Scheduler Now</h2>
+        <p>Use the <strong>Run Scheduler Now</strong> button to execute <code>php artisan schedule:run</code> immediately. This is helpful during onboarding or troubleshooting.</p>
+      </section>
+
+      <section class="card">
+        <h2>Process Queue Now</h2>
+        <p>The <strong>Process Queue Now</strong> button runs the deploy queue processor once. Use it when you have queued items and the scheduler is offline.</p>
+      </section>
+
+      <section class="card">
+        <h2>Cron Installation</h2>
+        <p>Add the cron line shown on the Scheduler Settings page so Laravel's scheduler runs every minute:</p>
+        <pre><code>* * * * * php /path/to/artisan schedule:run &gt;&gt; /dev/null 2&gt;&amp;1</code></pre>
+        <p>The <strong>Install Cron</strong> button attempts to add this entry automatically on Linux hosts. On Windows, configure Task Scheduler instead.</p>
+      </section>
+    </section>
+  </main>
+
+  <div data-include="partials/footer.html"></div>
+</body>
+</html>
