@@ -52,7 +52,7 @@
                 {{ $slot }}
             </main>
             <footer>
-                <p class="footer-text">Git Web Manager for Git © 2026 Wallaby Designs LLC • MIT License<br/>
+                <p class="footer-text">Git Web Manager for Git © 2026 <a style="text-decoration: underline;" href="https://wallabydesigns.com/" title="Website built by Wallaby Designs">Wallaby Designs LLC</a> • MIT License<br/>
                 <span class="footer-disclaimer">Git Web Manager is not affiliated with, endorsed by, or sponsored by Git or its maintainers.</span></p>
             </footer>
         </div>

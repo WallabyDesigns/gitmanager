@@ -49,7 +49,7 @@
             <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white shadow-md overflow-hidden sm:rounded-lg dark:bg-slate-900 dark:border dark:border-slate-800">
                 {{ $slot }}
             </div>
-            <p class="footer-text">Git Web Manager for Git © 2026 Wallaby Designs LLC • MIT License<br/>
+            <p class="footer-text">Git Web Manager for Git © 2026 <a style="text-decoration: underline;" href="https://wallabydesigns.com/" title="Website built by Wallaby Designs">Wallaby Designs LLC</a> • MIT License<br/>
                 <span class="footer-disclaimer">Git Web Manager is not affiliated with, endorsed by, or sponsored by Git or its maintainers.</span></p>
         </div>
     </body>

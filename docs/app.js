@@ -20,7 +20,7 @@
   <a href="troubleshooting.html">Troubleshooting</a>
 </nav>`,
     'partials/footer.html': `<footer>
-  <p class="footer-text">Git Web Manager for Git © 2026 <a href="https://wallabydesigns.com/" title="Website built by Wallaby Designs">Wallaby Designs LLC</a>. All rights reserved.</p>
+  <p class="footer-text">Git Web Manager for Git © 2026 <a href="https://wallabydesigns.com/" title="Website built by Wallaby Designs">Wallaby Designs LLC</a>. MIT License.</p>
   <p class="footer-disclaimer">Git Web Manager is not affiliated with, endorsed by, or sponsored by Git or its maintainers.</p>
   <a class="wallaby" href="https://wallabydesigns.com/" title="Website built by Wallaby Designs">
     <img width="175" height="62" src="./images/wallaby-w.png" alt="wallaby designs">
