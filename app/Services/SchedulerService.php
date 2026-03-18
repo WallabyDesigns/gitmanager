@@ -141,12 +141,18 @@ class SchedulerService
     private function writeHeartbeatFile(string $source): void
     {
         $path = $this->heartbeatPath();
+        $dir = dirname($path);
+        if (! is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
         $payload = [
             'timestamp' => now()->toDateTimeString(),
             'source' => $source,
         ];
 
-        @file_put_contents($path, json_encode($payload));
+        if (@file_put_contents($path, json_encode($payload)) !== false) {
+            @chmod($path, 0664);
+        }
     }
 
     /**
