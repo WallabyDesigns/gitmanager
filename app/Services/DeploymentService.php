@@ -106,23 +106,25 @@ class DeploymentService
 
             $toHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
 
-            if ($project->run_composer_install) {
-                $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $executionPath);
-            }
+            $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
+                if ($project->run_composer_install) {
+                    $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $executionPath);
+                }
 
-            if ($project->run_npm_install) {
-                $this->runProcess($this->npmInstallCommand($executionPath), $output, $executionPath);
-            }
+                if ($project->run_npm_install) {
+                    $this->runProcess($this->npmInstallCommand($executionPath), $output, $executionPath);
+                }
 
-            if ($project->run_build_command && $project->build_command) {
-                $this->runShellCommand($project->build_command, $output, $executionPath);
-            }
+                if ($project->run_build_command && $project->build_command) {
+                    $this->runShellCommand($project->build_command, $output, $executionPath);
+                }
 
-            if ($project->run_test_command && $project->test_command) {
-                $this->runShellCommand($project->test_command, $output, $executionPath);
-            }
+                if ($project->run_test_command && $project->test_command) {
+                    $this->runShellCommand($project->test_command, $output, $executionPath);
+                }
 
-            $this->maybeRunLaravelClearCache($project, $output);
+                $this->maybeRunLaravelClearCache($project, $output);
+            }, $output, 'Post-deploy tasks');
 
             if ($stashed) {
                 $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
@@ -214,19 +216,21 @@ class DeploymentService
             $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', $toHash], $output);
             $this->restorePreservedPaths($repoPath, $preservePath, $output);
 
-            if ($project->run_composer_install) {
-                $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $executionPath);
-            }
+            $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
+                if ($project->run_composer_install) {
+                    $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $executionPath);
+                }
 
-            if ($project->run_npm_install) {
-                $this->runProcess($this->npmInstallCommand($executionPath), $output, $executionPath);
-            }
+                if ($project->run_npm_install) {
+                    $this->runProcess($this->npmInstallCommand($executionPath), $output, $executionPath);
+                }
 
-            if ($project->run_build_command && $project->build_command) {
-                $this->runShellCommand($project->build_command, $output, $executionPath);
-            }
+                if ($project->run_build_command && $project->build_command) {
+                    $this->runShellCommand($project->build_command, $output, $executionPath);
+                }
 
-            $this->maybeRunLaravelClearCache($project, $output);
+                $this->maybeRunLaravelClearCache($project, $output);
+            }, $output, 'Post-rollback tasks');
 
             $deployment->status = 'success';
             $deployment->from_hash = $fromHash;
@@ -281,23 +285,25 @@ class DeploymentService
                 throw new \RuntimeException('Dependency updates are disabled for this project.');
             }
 
-            if ($project->run_composer_install) {
-                $this->runProcess(['composer', 'update'], $output, $executionPath);
-            }
+            $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
+                if ($project->run_composer_install) {
+                    $this->runProcess(['composer', 'update'], $output, $executionPath);
+                }
 
-            if ($project->run_npm_install) {
-                $this->runProcess(['npm', 'update'], $output, $executionPath);
-            }
+                if ($project->run_npm_install) {
+                    $this->runProcess(['npm', 'update'], $output, $executionPath);
+                }
 
-            if ($project->run_build_command && $project->build_command) {
-                $this->runShellCommand($project->build_command, $output, $executionPath);
-            }
+                if ($project->run_build_command && $project->build_command) {
+                    $this->runShellCommand($project->build_command, $output, $executionPath);
+                }
 
-            if ($project->run_test_command && $project->test_command) {
-                $this->runShellCommand($project->test_command, $output, $executionPath);
-            }
+                if ($project->run_test_command && $project->test_command) {
+                    $this->runShellCommand($project->test_command, $output, $executionPath);
+                }
 
-            $this->maybeRunLaravelClearCache($project, $output);
+                $this->maybeRunLaravelClearCache($project, $output);
+            }, $output, 'Dependency update tasks');
 
             $toHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
 
@@ -438,21 +444,23 @@ class DeploymentService
                 $output[] = 'Preview url: '.rtrim($baseUrl, '/').'/'.$slug.'/'.$short;
             }
 
-            if ($project->run_composer_install && is_file($previewPath.DIRECTORY_SEPARATOR.'composer.json')) {
-                $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $previewPath);
-            }
+            $this->runWithSingleRetry(function () use ($project, $previewPath, &$output): void {
+                if ($project->run_composer_install && is_file($previewPath.DIRECTORY_SEPARATOR.'composer.json')) {
+                    $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $previewPath);
+                }
 
-            if ($project->run_npm_install && is_file($previewPath.DIRECTORY_SEPARATOR.'package.json')) {
-            $this->runProcess($this->npmInstallCommand($previewPath), $output, $previewPath);
-            }
+                if ($project->run_npm_install && is_file($previewPath.DIRECTORY_SEPARATOR.'package.json')) {
+                    $this->runProcess($this->npmInstallCommand($previewPath), $output, $previewPath);
+                }
 
-            if ($project->run_build_command && $project->build_command) {
-                $this->runShellCommand($project->build_command, $output, $previewPath);
-            }
+                if ($project->run_build_command && $project->build_command) {
+                    $this->runShellCommand($project->build_command, $output, $previewPath);
+                }
 
-            if ($project->run_test_command && $project->test_command) {
-                $this->runShellCommand($project->test_command, $output, $previewPath);
-            }
+                if ($project->run_test_command && $project->test_command) {
+                    $this->runShellCommand($project->test_command, $output, $previewPath);
+                }
+            }, $output, 'Preview build tasks');
 
             $deployment->status = 'success';
             $this->appendWorkflowOutput($deployment, $project, $output);
@@ -1114,6 +1122,16 @@ class DeploymentService
 
         $hash = trim($process->getOutput());
         return $hash !== '' ? $hash : null;
+    }
+
+    private function runWithSingleRetry(callable $callback, array &$output, string $label): void
+    {
+        try {
+            $callback();
+        } catch (\Throwable $exception) {
+            $output[] = $label.' failed. Retrying once.';
+            $callback();
+        }
     }
 
     private function runMaintenanceAction(Project $project, ?User $user, string $action, callable $callback, bool $runClearCache = false): Deployment

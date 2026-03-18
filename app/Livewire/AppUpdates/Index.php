@@ -36,6 +36,7 @@ class Index extends Component
         $message = match ($update->status) {
             'success' => 'Git Web Manager updated successfully.',
             'skipped' => 'Git Web Manager is already up to date.',
+            'warning' => 'Update applied with warnings. Review the logs for details.',
             default => 'Update failed. Review the logs for details.',
         };
 
@@ -51,6 +52,7 @@ class Index extends Component
         $message = match ($update->status) {
             'success' => 'Git Web Manager force-updated successfully.',
             'skipped' => 'Git Web Manager is already up to date.',
+            'warning' => 'Force update applied with warnings. Review the logs for details.',
             default => 'Force update failed. Review the logs for details.',
         };
 

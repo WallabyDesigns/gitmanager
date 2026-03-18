@@ -69,6 +69,8 @@ class SelfUpdateService
         $output = [];
         $fromHash = null;
         $toHash = null;
+        $remoteHash = null;
+        $branch = null;
         $stashed = false;
         $backupPath = null;
         $stashRestoreFailed = false;
@@ -147,63 +149,20 @@ class SelfUpdateService
             }
             $toHash = $this->tryRevParse($repoPath);
 
-            if (is_file(base_path('composer.json'))) {
-                $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $repoPath);
-            }
-
-            if (is_file(base_path('package.json'))) {
-                if ($this->canRunNpm($output)) {
-                    try {
-                        $shouldInstall = $this->shouldRunNpmInstall($repoPath, $fromHash, $toHash, $output);
-                        if ($shouldInstall) {
-                            $this->runProcess($this->npmInstallCommand($repoPath), $output, $repoPath);
-                        } else {
-                            $output[] = 'Skipping npm install: no package changes detected.';
-                        }
-
-                        if ($this->npmScriptExists('build')) {
-                            $manifestBackup = $this->backupBuildManifest($repoPath, $output);
-                            if ($this->shouldRunNpmBuild($repoPath, $fromHash, $toHash, $output)) {
-                                $this->prepareViteBuildDirectory($repoPath, $output);
-                                try {
-                                    $this->runProcess(['npm', 'run', 'build'], $output, $repoPath);
-                                } catch (\Throwable $buildException) {
-                                    if ($this->isBuildPermissionError($buildException)) {
-                                        $output[] = 'Build failed due to permissions; retrying after fixing build directory.';
-                                        $this->prepareViteBuildDirectory($repoPath, $output, true);
-                                        try {
-                                            $this->runProcess(['npm', 'run', 'build'], $output, $repoPath);
-                                        } catch (\Throwable $retryException) {
-                                            if ($this->isBuildPermissionError($retryException)) {
-                                                $output[] = 'Build still failing due to permissions. Skipping build to allow update to complete.';
-                                                $this->restoreBuildManifest($repoPath, $manifestBackup, $output);
-                                            } else {
-                                                throw $retryException;
-                                            }
-                                        }
-                                    } else {
-                                        throw $buildException;
-                                    }
-                                }
-                            } else {
-                                $output[] = 'Skipping npm build: no frontend changes detected.';
-                            }
-                        }
-                    } catch (\Throwable $exception) {
-                        $this->logNpmDiagnostics($output);
+            $postAttempts = 0;
+            while (true) {
+                try {
+                    $this->runPostUpdateTasks($repoPath, $fromHash, $toHash, $output);
+                    break;
+                } catch (\Throwable $exception) {
+                    $postAttempts++;
+                    if ($postAttempts >= 2) {
                         throw $exception;
                     }
-                } else {
-                    $output[] = 'Skipping npm install: node/npm not available in PATH.';
+                    $output[] = 'Post-update tasks failed. Retrying once.';
+                    $this->applyPostUpdatePermissions($repoPath, $output);
                 }
             }
-
-            if (is_file(base_path('artisan'))) {
-                $this->runProcess(['php', 'artisan', 'migrate', '--force'], $output, $repoPath);
-                $this->maybeRunAppClearCache($repoPath, $output);
-            }
-
-            $this->applyPostUpdatePermissions($repoPath, $output);
 
             if ($stashed) {
                 $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
@@ -245,7 +204,13 @@ class SelfUpdateService
             $this->restoreProtectedHtaccess($repoPath, $protectedHtaccess, $output);
             $this->removeExcludedPaths($repoPath, $output);
 
-            $update->status = 'failed';
+            $status = 'failed';
+            if ($toHash && $remoteHash && $toHash === $remoteHash) {
+                $status = 'warning';
+                $output[] = 'Update applied, but post-update tasks failed. Review the log and retry if needed.';
+            }
+
+            $update->status = $status;
             $update->from_hash = $fromHash;
             $update->to_hash = $toHash;
             $update->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
@@ -652,6 +617,67 @@ class SelfUpdateService
                 $output[] = 'Warning: unable to chmod '.$path.'.';
             }
         }
+    }
+
+    private function runPostUpdateTasks(string $repoPath, ?string $fromHash, ?string $toHash, array &$output): void
+    {
+        if (is_file(base_path('composer.json'))) {
+            $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $repoPath);
+        }
+
+        if (is_file(base_path('package.json'))) {
+            if ($this->canRunNpm($output)) {
+                try {
+                    $shouldInstall = $this->shouldRunNpmInstall($repoPath, $fromHash, $toHash, $output);
+                    if ($shouldInstall) {
+                        $this->runProcess($this->npmInstallCommand($repoPath), $output, $repoPath);
+                    } else {
+                        $output[] = 'Skipping npm install: no package changes detected.';
+                    }
+
+                    if ($this->npmScriptExists('build')) {
+                        $manifestBackup = $this->backupBuildManifest($repoPath, $output);
+                        if ($this->shouldRunNpmBuild($repoPath, $fromHash, $toHash, $output)) {
+                            $this->prepareViteBuildDirectory($repoPath, $output);
+                            try {
+                                $this->runProcess(['npm', 'run', 'build'], $output, $repoPath);
+                            } catch (\Throwable $buildException) {
+                                if ($this->isBuildPermissionError($buildException)) {
+                                    $output[] = 'Build failed due to permissions; retrying after fixing build directory.';
+                                    $this->prepareViteBuildDirectory($repoPath, $output, true);
+                                    try {
+                                        $this->runProcess(['npm', 'run', 'build'], $output, $repoPath);
+                                    } catch (\Throwable $retryException) {
+                                        if ($this->isBuildPermissionError($retryException)) {
+                                            $output[] = 'Build still failing due to permissions. Skipping build to allow update to complete.';
+                                            $this->restoreBuildManifest($repoPath, $manifestBackup, $output);
+                                        } else {
+                                            throw $retryException;
+                                        }
+                                    }
+                                } else {
+                                    throw $buildException;
+                                }
+                            }
+                        } else {
+                            $output[] = 'Skipping npm build: no frontend changes detected.';
+                        }
+                    }
+                } catch (\Throwable $exception) {
+                    $this->logNpmDiagnostics($output);
+                    throw $exception;
+                }
+            } else {
+                $output[] = 'Skipping npm install: node/npm not available in PATH.';
+            }
+        }
+
+        if (is_file(base_path('artisan'))) {
+            $this->runProcess(['php', 'artisan', 'migrate', '--force'], $output, $repoPath);
+            $this->maybeRunAppClearCache($repoPath, $output);
+        }
+
+        $this->applyPostUpdatePermissions($repoPath, $output);
     }
 
     private function maybeRunAppClearCache(string $repoPath, array &$output): void
