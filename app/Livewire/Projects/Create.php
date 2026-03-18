@@ -9,6 +9,8 @@ use Livewire\Component;
 
 class Create extends Component
 {
+    public string $projectsTab = 'create';
+
     public array $form = [];
     public int $step = 1;
 

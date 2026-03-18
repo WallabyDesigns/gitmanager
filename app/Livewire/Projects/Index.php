@@ -9,6 +9,8 @@ use Livewire\Component;
 
 class Index extends Component
 {
+    public string $projectsTab = 'list';
+
     public function refreshHealth(DeploymentService $service): void
     {
         $projects = Auth::user()

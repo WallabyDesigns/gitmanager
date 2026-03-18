@@ -11,6 +11,8 @@ use Livewire\Component;
 
 class Index extends Component
 {
+    public string $tab = 'list';
+
     public array $userForm = [
         'name' => '',
         'email' => '',
@@ -31,6 +33,11 @@ class Index extends Component
         ])->layout('layouts.app', [
             'header' => view('livewire.users.partials.header'),
         ]);
+    }
+
+    public function setTab(string $tab): void
+    {
+        $this->tab = $tab === 'list' ? 'list' : 'create';
     }
 
     public function createUser(): void
@@ -58,6 +65,7 @@ class Index extends Component
         $this->userForm['email'] = '';
         $this->userForm['password'] = '';
 
+        $this->tab = 'list';
         $this->dispatch('notify', message: 'User created.');
     }
 

@@ -9,4 +9,9 @@
             class="px-3 py-2 text-sm border-b-2 {{ $tab === 'form' ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
         Create Workflow
     </button>
+    <button type="button"
+            wire:click="setTab('test')"
+            class="px-3 py-2 text-sm border-b-2 {{ $tab === 'test' ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
+        Test Delivery
+    </button>
 </div>

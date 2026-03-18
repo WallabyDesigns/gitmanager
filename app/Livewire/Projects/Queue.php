@@ -9,6 +9,8 @@ use Livewire\Component;
 
 class Queue extends Component
 {
+    public string $projectsTab = 'queue';
+
     public function render()
     {
         $userId = Auth::id();

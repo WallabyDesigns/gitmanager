@@ -9,6 +9,8 @@ use Livewire\Component;
 
 class Edit extends Component
 {
+    public string $projectsTab = 'list';
+
     public Project $project;
     public array $form = [];
 

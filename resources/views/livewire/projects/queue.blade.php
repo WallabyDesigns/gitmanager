@@ -2,15 +2,6 @@
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
         @include('livewire.projects.partials.tabs')
 
-        <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
-            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Queued Deployments</h3>
-                    <p class="text-sm text-slate-500 dark:text-slate-400">Only queued items can be cancelled or reordered.</p>
-                </div>
-            </div>
-        </div>
-
         <div class="space-y-3">
             @forelse ($items as $item)
                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -42,7 +33,9 @@
                     </div>
                 </div>
             @empty
-                <p class="text-sm text-slate-500 dark:text-slate-400">No queued deployments yet.</p>
+                <div class="rounded-lg border border-dashed border-slate-300/70 dark:border-slate-700 p-6 text-sm text-slate-500 dark:text-slate-400">
+                    No queued deployments yet.
+                </div>
             @endforelse
         </div>
     </div>

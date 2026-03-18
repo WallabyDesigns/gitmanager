@@ -1,22 +1,10 @@
 <div class="py-10" wire:init="refreshHealth" wire:poll.60s="refreshHealth">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
         @include('livewire.projects.partials.tabs')
-        <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800">
-            <div class="p-6">
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Your Projects</h3>
-                        <p class="text-sm text-slate-500 dark:text-slate-400">Deploy and monitor the sites you already published.</p>
-                    </div>
-                    <a href="{{ route('projects.create') }}" class="px-3 py-2 text-sm rounded-md bg-slate-900 text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900">
-                        New Project
-                    </a>
-                </div>
-            </div>
-        </div>
+
         <div class="mt-6 space-y-4">
             @forelse ($projects as $project)
-                <a href="{{ route('projects.show', $project) }}" class="block rounded-lg border border-slate-200/70 dark:border-slate-800 p-4 transition hover:border-indigo-300 hover:shadow-sm dark:hover:border-indigo-500/60">
+                <a href="{{ route('projects.show', $project) }}" class="block rounded-lg border border-slate-200/70 bg-white dark:bg-slate-900 dark:border-slate-800 p-4 transition hover:border-indigo-300 hover:shadow-sm dark:hover:border-indigo-500/60">
                     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <div class="flex items-center gap-2">
@@ -37,7 +25,9 @@
                     </div>
                 </a>
             @empty
-                <p class="text-sm text-slate-500 dark:text-slate-400">No projects yet. Add one above to get started.</p>
+                <div class="rounded-lg border border-dashed border-slate-300/70 dark:border-slate-700 p-6 text-sm text-slate-500 dark:text-slate-400">
+                    No projects yet. Add one above to get started.
+                </div>
             @endforelse
         </div>
     </div>

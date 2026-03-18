@@ -210,7 +210,11 @@ class Index extends Component
 
     public function setTab(string $tab): void
     {
-        $this->tab = $tab === 'form' ? 'form' : 'list';
+        $this->tab = match ($tab) {
+            'form' => 'form',
+            'test' => 'test',
+            default => 'list',
+        };
     }
 
     private function resetForm(): void

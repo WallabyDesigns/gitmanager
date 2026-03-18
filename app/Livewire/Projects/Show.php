@@ -9,6 +9,8 @@ use Livewire\Component;
 
 class Show extends Component
 {
+    public string $projectsTab = 'list';
+
     public Project $project;
     public string $customCommand = '';
     public string $previewCommit = '';

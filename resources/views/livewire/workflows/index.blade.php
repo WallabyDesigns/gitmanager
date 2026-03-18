@@ -7,13 +7,7 @@
             'showMailSettingsLink' => $showMailSettingsLink,
         ])
 
-        <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
-            <div class="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                    <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Workflows</h3>
-                    <p class="text-sm text-slate-500 dark:text-slate-400">Each workflow listens for an action outcome and triggers an email or webhook.</p>
-                </div>
-            </div>
+        <div>
 
             @if($tab === 'list')
                 @if($workflows->isEmpty())
@@ -21,7 +15,7 @@
                         No workflows yet. Switch to “Create Workflow” to add your first rule.
                     </div>
                 @else
-                    <div class="overflow-x-auto">
+                    <div class="overflow-x-auto bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
                         <table class="min-w-full text-sm">
                             <thead class="text-xs uppercase tracking-wide text-slate-400">
                                 <tr>
@@ -35,7 +29,7 @@
                             </thead>
                             <tbody class="divide-y divide-slate-200/60 dark:divide-slate-800">
                                 @foreach($workflows as $workflow)
-                                    <tr class="text-slate-600 dark:text-slate-300">
+                                    <tr class="text-slate-600  dark:text-slate-300">
                                         <td class="py-3 pr-4 font-medium text-slate-900 dark:text-slate-100">
                                             {{ $workflow->name }}
                                         </td>
@@ -172,23 +166,25 @@
             </div>
         @endif
 
-        <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
-            <div>
-                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Test Delivery</h3>
-                <p class="text-sm text-slate-500 dark:text-slate-400">Send one-off tests using the current email/webhook settings.</p>
+        @if($tab === 'test')
+            <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Test Delivery</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Send one-off tests using the current email/webhook settings.</p>
+                </div>
+                <div class="flex flex-wrap gap-3">
+                    <input type="email" wire:model.defer="testEmail" placeholder="test email" class="w-full sm:flex-1 rounded-md border border-slate-200/70 bg-white/70 p-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+                    <button type="button" wire:click="sendTestEmail" class="px-4 py-2 rounded-md border border-slate-200 text-sm text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white">
+                        Send Test Email
+                    </button>
+                </div>
+                <div class="flex flex-wrap gap-3">
+                    <input type="url" wire:model.defer="testWebhookUrl" placeholder="test webhook url" class="w-full sm:flex-1 rounded-md border border-slate-200/70 bg-white/70 p-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+                    <button type="button" wire:click="sendTestWebhook" class="px-4 py-2 rounded-md border border-slate-200 text-sm text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white">
+                        Send Test Webhook
+                    </button>
+                </div>
             </div>
-            <div class="flex flex-wrap gap-3">
-                <input type="email" wire:model.defer="testEmail" placeholder="test email" class="w-full sm:flex-1 rounded-md border border-slate-200/70 bg-white/70 p-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
-                <button type="button" wire:click="sendTestEmail" class="px-4 py-2 rounded-md border border-slate-200 text-sm text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white">
-                    Send Test Email
-                </button>
-            </div>
-            <div class="flex flex-wrap gap-3">
-                <input type="url" wire:model.defer="testWebhookUrl" placeholder="test webhook url" class="w-full sm:flex-1 rounded-md border border-slate-200/70 bg-white/70 p-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
-                <button type="button" wire:click="sendTestWebhook" class="px-4 py-2 rounded-md border border-slate-200 text-sm text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white">
-                    Send Test Webhook
-                </button>
-            </div>
-        </div>
+        @endif
     </div>
 </div>
