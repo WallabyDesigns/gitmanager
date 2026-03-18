@@ -6,6 +6,19 @@ Git Web Manager (GWM) is a self-hosted Laravel + Livewire application for deploy
 
 Git Web Manager is not affiliated with, endorsed by, or sponsored by Git or GitHub.
 
+## Support:
+This is a completely free service that I work hard to maintain. Show your support if you found this useful!
+
+[![wallaby](/assets/coffee.png)](https://www.buymeacoffee.com/wallaby)
+
+
+## Documentation Site (GitHub Pages)
+This repo ships a static docs site in `docs/`.
+
+You can read it directly here: [documentation](https://wallabydesigns.github.io/gitmanager/).
+
+[![documentation](/assets/docs.png)](https://wallabydesigns.github.io/gitmanager/)
+
 ## Why Use It
 - Replace manual `git pull` + build + rollback steps with one UI.
 - Get per-project health checks and recent activity logs.
@@ -97,9 +110,6 @@ CLI:
 php artisan gitmanager:self-update
 php artisan gitmanager:self-update --force
 ```
-
-## Documentation Site (GitHub Pages)
-This repo ships a static docs site in `docs/`.
 
 To publish on GitHub Pages:
 1. Go to repo settings → Pages.
