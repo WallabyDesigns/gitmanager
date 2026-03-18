@@ -2,6 +2,19 @@
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
         @include('livewire.projects.partials.tabs')
 
+        <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-4 text-sm text-slate-600 dark:text-slate-300 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <div class="font-semibold text-slate-900 dark:text-slate-100">Queue Runner</div>
+                <div>
+                    Queued deployments are processed by the scheduler (<code>php artisan schedule:work</code>) or a cron task.
+                    If the scheduler isn’t running, use “Process Queue” to advance items.
+                </div>
+            </div>
+            <button type="button" wire:click="processNow" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white">
+                Process Queue
+            </button>
+        </div>
+
         <div class="space-y-3">
             @forelse ($items as $item)
                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

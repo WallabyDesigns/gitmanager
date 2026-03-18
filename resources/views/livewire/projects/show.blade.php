@@ -19,8 +19,15 @@
         <div x-show="tab === 'overview'" x-cloak class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-6">
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div class="flex items-center gap-2">
-                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $project->health_status === 'ok' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : ($project->health_status === 'fail' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300') }}">
-                        {{ $project->health_status ?? 'unknown' }}
+                    @php
+                        $healthStatus = $project->health_status ?? 'na';
+                        $healthLabel = $healthStatus === 'ok' ? 'Health: OK' : 'Health: N/A';
+                        $healthClass = $healthStatus === 'ok'
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+                            : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300';
+                    @endphp
+                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $healthClass }}">
+                        {{ $healthLabel }}
                     </span>
                     <span class="text-xs text-slate-500 dark:text-slate-400">Last checked: {{ $project->health_checked_at?->format('M j, Y g:i a') ?? 'Never' }}</span>
                 </div>

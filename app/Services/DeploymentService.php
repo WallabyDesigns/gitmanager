@@ -539,18 +539,18 @@ class DeploymentService
         $healthUrl = $this->resolveHealthUrl($project);
 
         if (! $healthUrl) {
-            $project->health_status = 'unknown';
+            $project->health_status = 'na';
             $project->health_checked_at = now();
             $project->save();
 
-            return 'unknown';
+            return 'na';
         }
 
         try {
             $response = Http::timeout(10)->get($healthUrl);
-            $status = $response->successful() ? 'ok' : 'fail';
+            $status = $response->successful() ? 'ok' : 'na';
         } catch (\Throwable $exception) {
-            $status = 'fail';
+            $status = 'na';
         }
 
         $project->health_status = $status;

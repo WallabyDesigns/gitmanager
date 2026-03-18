@@ -4,12 +4,26 @@ namespace App\Livewire\Projects;
 
 use App\Models\DeploymentQueueItem;
 use App\Services\DeploymentQueueService;
+use App\Services\SchedulerService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
 class Queue extends Component
 {
     public string $projectsTab = 'queue';
+
+    public function processNow(DeploymentQueueService $queue, SchedulerService $scheduler): void
+    {
+        $processed = $queue->processNext(3);
+        $scheduler->recordManualRun();
+
+        if ($processed === 0) {
+            $this->dispatch('notify', message: 'No queued deployments to process.');
+            return;
+        }
+
+        $this->dispatch('notify', message: "Processed {$processed} queued deployment(s).");
+    }
 
     public function render()
     {

@@ -89,26 +89,37 @@ class GitHubService
             return null;
         }
 
-        if (str_starts_with($repoUrl, 'git@github.com:')) {
-            $repoUrl = str_replace('git@github.com:', 'https://github.com/', $repoUrl);
+        if (str_starts_with($repoUrl, 'git@')) {
+            if (preg_match('/^git@([^:]+):(.+)$/', $repoUrl, $matches)) {
+                $host = $matches[1] ?? null;
+                $path = $matches[2] ?? null;
+            } else {
+                return null;
+            }
+        } elseif (str_contains($repoUrl, '://')) {
+            $parts = parse_url($repoUrl);
+            $host = $parts['host'] ?? null;
+            $path = $parts['path'] ?? null;
+        } else {
+            return substr_count($repoUrl, '/') === 1 ? $repoUrl : null;
         }
 
-        $repoUrl = preg_replace('/\.git$/', '', $repoUrl);
-        if (! $repoUrl) {
+        if (($host ?? '') !== 'github.com' || ! $path) {
             return null;
         }
 
-        $parts = parse_url($repoUrl);
-        if (! $parts || ($parts['host'] ?? '') !== 'github.com') {
+        $path = trim($path, '/');
+        $path = preg_replace('/\.git$/', '', $path);
+        if (! $path) {
             return null;
         }
 
-        $path = trim($parts['path'] ?? '', '/');
-        if (! $path || substr_count($path, '/') !== 1) {
+        $segments = array_values(array_filter(explode('/', $path), fn ($segment) => $segment !== ''));
+        if (count($segments) < 2) {
             return null;
         }
 
-        return $path;
+        return $segments[0].'/'.$segments[1];
     }
 
     private function client(): PendingRequest

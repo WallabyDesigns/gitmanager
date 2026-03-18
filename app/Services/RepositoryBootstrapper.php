@@ -78,16 +78,51 @@ class RepositoryBootstrapper
             throw new \RuntimeException('Repository URL is required to initialize git for this project.');
         }
 
-        if (str_starts_with($repoUrl, 'git@') || str_contains($repoUrl, '://')) {
+        $host = null;
+        $path = null;
+        $scheme = null;
+        $isSsh = false;
+
+        if (str_starts_with($repoUrl, 'git@')) {
+            $isSsh = true;
+            if (preg_match('/^git@([^:]+):(.+)$/', $repoUrl, $matches)) {
+                $host = $matches[1] ?? null;
+                $path = $matches[2] ?? null;
+            }
+        } elseif (str_contains($repoUrl, '://')) {
+            $parts = parse_url($repoUrl);
+            $scheme = $parts['scheme'] ?? 'https';
+            $host = $parts['host'] ?? null;
+            $path = $parts['path'] ?? null;
+        } else {
+            // Allow shorthand "owner/repo" by expanding to GitHub HTTPS URL.
+            if (substr_count($repoUrl, '/') === 1) {
+                return 'https://github.com/'.$repoUrl.(str_ends_with($repoUrl, '.git') ? '' : '.git');
+            }
+
             return $repoUrl;
         }
 
-        // Allow shorthand "owner/repo" by expanding to GitHub HTTPS URL.
-        if (substr_count($repoUrl, '/') === 1) {
-            return 'https://github.com/'.$repoUrl.(str_ends_with($repoUrl, '.git') ? '' : '.git');
+        if (! $host || ! $path) {
+            return $repoUrl;
         }
 
-        return $repoUrl;
+        $path = trim($path, '/');
+        $path = preg_replace('/\.git$/', '', $path);
+        $segments = array_values(array_filter(explode('/', $path), fn ($segment) => $segment !== ''));
+        if (count($segments) < 2) {
+            return $repoUrl;
+        }
+
+        $owner = $segments[0];
+        $repo = $segments[1];
+
+        if ($isSsh) {
+            return 'git@'.$host.':'.$owner.'/'.$repo.'.git';
+        }
+
+        $scheme = $scheme ?: 'https';
+        return $scheme.'://'.$host.'/'.$owner.'/'.$repo.'.git';
     }
 
     private function findGitRoot(string $path): ?string

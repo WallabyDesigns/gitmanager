@@ -9,9 +9,16 @@
                         <div>
                             <div class="flex items-center gap-2">
                                 <h4 class="text-base font-semibold text-slate-900 dark:text-slate-100">{{ $project->name }}</h4>
-                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $project->health_status === 'ok' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : ($project->health_status === 'fail' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300') }}">
-                                    {{ $project->health_status ?? 'unknown' }}
-                                </span>
+                            @php
+                                $healthStatus = $project->health_status ?? 'na';
+                                $healthLabel = $healthStatus === 'ok' ? 'Health: OK' : 'Health: N/A';
+                                $healthClass = $healthStatus === 'ok'
+                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+                                    : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300';
+                            @endphp
+                            <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $healthClass }}">
+                                {{ $healthLabel }}
+                            </span>
                             </div>
                             <p class="text-sm text-slate-500 dark:text-slate-400">{{ $project->local_path }}</p>
                             <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
@@ -32,4 +39,3 @@
         </div>
     </div>
 </div>
-

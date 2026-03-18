@@ -130,8 +130,7 @@ class Show extends Component
         $this->project->refresh();
         $this->dispatch('notify', message: match ($status) {
             'ok' => 'Health check passed.',
-            'fail' => 'Health check failed.',
-            default => 'Health check not configured.',
+            default => 'Health check unavailable.',
         });
     }
 

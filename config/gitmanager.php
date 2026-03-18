@@ -22,4 +22,7 @@ return [
     'deploy_queue' => [
         'enabled' => env('GWM_DEPLOY_QUEUE_ENABLED', true),
     ],
+    'scheduler' => [
+        'stale_seconds' => env('GWM_SCHEDULER_STALE_SECONDS', 120),
+    ],
 ];
