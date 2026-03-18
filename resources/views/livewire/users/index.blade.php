@@ -1,5 +1,10 @@
 <div class="py-10">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+        @include('livewire.partials.mail-warning', [
+            'mailConfigured' => $mailConfigured,
+            'showMailSettingsLink' => $showMailSettingsLink,
+        ])
+
         <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-6">
             <div>
                 <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Create User</h3>

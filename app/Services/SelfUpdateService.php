@@ -200,6 +200,7 @@ class SelfUpdateService
 
             if (is_file(base_path('artisan'))) {
                 $this->runProcess(['php', 'artisan', 'migrate', '--force'], $output, $repoPath);
+                $this->maybeRunAppClearCache($repoPath, $output);
             }
 
             $this->applyPostUpdatePermissions($repoPath, $output);
@@ -651,6 +652,49 @@ class SelfUpdateService
                 $output[] = 'Warning: unable to chmod '.$path.'.';
             }
         }
+    }
+
+    private function maybeRunAppClearCache(string $repoPath, array &$output): void
+    {
+        $artisan = $repoPath.DIRECTORY_SEPARATOR.'artisan';
+        if (! is_file($artisan)) {
+            return;
+        }
+
+        try {
+            if (! $this->artisanCommandExists($repoPath, 'app:clear-cache', $output)) {
+                $output[] = 'Skipping app:clear-cache (command not found).';
+                return;
+            }
+
+            $output[] = 'Running app:clear-cache.';
+            $this->runProcess(['php', 'artisan', 'app:clear-cache'], $output, $repoPath, false);
+        } catch (\Throwable $exception) {
+            $output[] = 'Warning: app:clear-cache failed: '.$exception->getMessage();
+        }
+    }
+
+    private function artisanCommandExists(string $path, string $command, array &$output): bool
+    {
+        $process = $this->runProcess(['php', 'artisan', 'list', '--format=json'], $output, $path, false);
+
+        if (! $process->isSuccessful()) {
+            return false;
+        }
+
+        $payload = json_decode($process->getOutput(), true);
+        if (! is_array($payload)) {
+            return false;
+        }
+
+        $commands = $payload['commands'] ?? [];
+        foreach ($commands as $entry) {
+            if (($entry['name'] ?? null) === $command) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function ensureGitRepository(string $repoPath): void

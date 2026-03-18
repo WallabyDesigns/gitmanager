@@ -57,11 +57,13 @@
       <section class="card">
         <h2>Force Update</h2>
         <p>If an update fails, admins can run a Force Update to reset the working tree to the remote branch. This discards local code changes but preserves <code>.env</code>, <code>storage</code>, <code>.htaccess</code>, and excluded paths.</p>
+        <p>Force Update does not clear app data (logs, cache, storage files, and other protected paths are kept).</p>
       </section>
 
       <section class="card">
         <h2>Build Steps</h2>
         <p>Composer and NPM steps run only when lock/package files change. Builds retry automatically if file permissions need to be repaired.</p>
+        <p>If the app exposes the custom <code>app:clear-cache</code> command, it runs after updates to flush cached data.</p>
       </section>
     </section>
   </main>
@@ -69,5 +71,3 @@
   <div data-include="partials/footer.html"></div>
 </body>
 </html>
-
-

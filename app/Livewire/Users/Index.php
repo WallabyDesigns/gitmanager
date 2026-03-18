@@ -3,6 +3,7 @@
 namespace App\Livewire\Users;
 
 use App\Models\User;
+use App\Services\SettingsService;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
@@ -21,8 +22,12 @@ class Index extends Component
 
     public function render()
     {
+        $settings = app(SettingsService::class);
+
         return view('livewire.users.index', [
             'users' => User::query()->orderBy('created_at')->get(),
+            'mailConfigured' => $settings->isMailConfigured(),
+            'showMailSettingsLink' => auth()->user()?->isAdmin() ?? false,
         ])->layout('layouts.app', [
             'header' => view('livewire.users.partials.header'),
         ]);

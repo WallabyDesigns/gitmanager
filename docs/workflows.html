@@ -39,19 +39,23 @@
 
     <section class="content">
       <section class="card">
-        <h2>Workflow Channels</h2>
-        <p>Workflows let you notify your team whenever a deployment succeeds or fails.</p>
+        <h2>Create Workflow Rules</h2>
+        <p>Workflows are rule-based notifications. Each rule listens for an <strong>action</strong> and <strong>outcome</strong>, then fires an email or webhook.</p>
         <ul>
-          <li>Email notifications (project owner + custom recipients)</li>
-          <li>Webhook notifications (Discord, Slack, custom endpoints)</li>
+          <li>Choose an action (deploy, rollback, dependency update, preview build, composer/npm, custom commands).</li>
+          <li>Choose an outcome (success or failed).</li>
+          <li>Select a channel (email or webhook).</li>
         </ul>
+        <p>Use the tabs on the Workflows page to switch between the current rules list and the create form.</p>
       </section>
 
       <section class="card">
         <h2>Webhook Payload</h2>
-        <p>Webhooks receive a JSON payload describing the deployment.</p>
+        <p>Webhooks receive a JSON payload describing the action.</p>
         <pre><code>{
   "event": "deploy.deploy_success",
+  "event_key": "deploy_success",
+  "event_standard": "deploy.success",
   "timestamp": "2026-03-18 12:00:00",
   "project": {
     "id": 1,
@@ -67,8 +71,15 @@
     "from": "abc123",
     "to": "def456",
     "started_at": "2026-03-18 11:59:00",
-    "finished_at": "2026-03-18 12:00:00"
-  }
+          "finished_at": "2026-03-18 12:00:00"
+        },
+        "workflow": {
+          "id": 12,
+          "name": "Deploy success webhook",
+          "channel": "webhook",
+          "action": "deploy",
+          "status": "success"
+        }
 }</code></pre>
         <p>If a webhook secret is configured, requests include an <code>X-GWM-Signature</code> HMAC header.</p>
       </section>

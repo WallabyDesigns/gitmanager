@@ -99,6 +99,33 @@ class SettingsService
         }
     }
 
+    public function isMailConfigured(): bool
+    {
+        $this->applyMailConfig();
+
+        $mailer = (string) (config('mail.default') ?? config('mail.mailer') ?? '');
+        $from = (string) (config('mail.from.address') ?? '');
+
+        if ($mailer === '' || in_array($mailer, ['log', 'array', 'null'], true)) {
+            return false;
+        }
+
+        if ($from === '') {
+            return false;
+        }
+
+        if ($mailer === 'smtp') {
+            $host = (string) (config('mail.mailers.smtp.host') ?? '');
+            $port = (string) (config('mail.mailers.smtp.port') ?? '');
+
+            if ($host === '' || $port === '') {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     /**
      * @return array<string, mixed>
      */

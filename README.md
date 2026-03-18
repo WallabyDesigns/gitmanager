@@ -34,7 +34,7 @@ You can read it directly here: [documentation](https://wallabydesigns.github.io/
 - Dependency actions (composer/npm) with logs.
 - Security tab with Dependabot alerts and auto-merge.
 - Self-update flow for the app itself.
-- Workflows for deploy success/failure (email + webhooks).
+- Rule-based workflows for deploys, rollbacks, dependency actions (email + webhooks).
 - Deploy queue for serializing deployments.
 - User management tab for creating accounts and resetting passwords.
 - Project-type wizard (Laravel, Node, Static, Custom) with relevant defaults.
@@ -104,6 +104,8 @@ Use the same `GITHUB_WEBHOOK_SECRET` in GitHub and `.env`.
 
 ## App Updates
 The app can update itself from its repo. By default it preserves local changes when detected. If an update fails, you can run a **Force Update** to hard-reset to the remote branch while preserving `.env`, `storage/`, `.htaccess`, and `GWM_SELF_UPDATE_EXCLUDE_PATHS`.
+If the app exposes the custom `app:clear-cache` command, it runs automatically after updates.
+Force Update does not clear app data (logs, storage files, and other protected paths are retained).
 
 CLI:
 ```bash
@@ -127,5 +129,3 @@ Issues and pull requests are welcome. Please include clear reproduction steps an
 
 ## License
 MIT License. See LICENSE for details.
-
-

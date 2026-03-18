@@ -86,6 +86,9 @@
             <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
                 Local changes are preserved automatically when detected.
             </div>
+            <div class="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                Force Update does not clear app data (storage, .env, logs, or excluded paths are preserved).
+            </div>
         </div>
 
         <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">

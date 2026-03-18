@@ -231,6 +231,7 @@ class DeploymentService
             $deployment->status = 'success';
             $deployment->from_hash = $fromHash;
             $deployment->to_hash = $toHash;
+            $this->appendWorkflowOutput($deployment, $project, $output);
             $deployment->output_log = implode("\n", $output);
             $deployment->finished_at = now();
             $deployment->save();
@@ -243,6 +244,7 @@ class DeploymentService
             $deployment->status = 'failed';
             $deployment->from_hash = $fromHash;
             $deployment->to_hash = $toHash;
+            $this->appendWorkflowOutput($deployment, $project, $output);
             $deployment->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
             $deployment->finished_at = now();
             $deployment->save();
@@ -302,6 +304,7 @@ class DeploymentService
             $deployment->status = 'success';
             $deployment->from_hash = $fromHash;
             $deployment->to_hash = $toHash;
+            $this->appendWorkflowOutput($deployment, $project, $output);
             $deployment->output_log = implode("\n", $output);
             $deployment->finished_at = now();
             $deployment->save();
@@ -309,6 +312,7 @@ class DeploymentService
             $deployment->status = 'failed';
             $deployment->from_hash = $fromHash;
             $deployment->to_hash = $toHash;
+            $this->appendWorkflowOutput($deployment, $project, $output);
             $deployment->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
             $deployment->finished_at = now();
             $deployment->save();
@@ -451,11 +455,13 @@ class DeploymentService
             }
 
             $deployment->status = 'success';
+            $this->appendWorkflowOutput($deployment, $project, $output);
             $deployment->output_log = implode("\n", $output);
             $deployment->finished_at = now();
             $deployment->save();
         } catch (\Throwable $exception) {
             $deployment->status = 'failed';
+            $this->appendWorkflowOutput($deployment, $project, $output);
             $deployment->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
             $deployment->finished_at = now();
             $deployment->save();
