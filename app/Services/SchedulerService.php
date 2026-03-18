@@ -181,31 +181,40 @@ class SchedulerService
      */
     private function readHeartbeatFile(): array
     {
-        $path = $this->heartbeatPath();
-        if (! is_file($path)) {
-            return [];
+        $paths = [$this->heartbeatPath(), $this->legacyHeartbeatPath()];
+        foreach ($paths as $path) {
+            if (! is_file($path)) {
+                continue;
+            }
+
+            $contents = file_get_contents($path);
+            if (! $contents) {
+                continue;
+            }
+
+            $data = json_decode($contents, true);
+            if (! is_array($data)) {
+                continue;
+            }
+
+            $timestamp = $data['timestamp'] ?? null;
+            $source = is_string($data['source'] ?? null) ? $data['source'] : null;
+
+            return [
+                'timestamp' => $timestamp ? Carbon::parse($timestamp) : null,
+                'source' => $source,
+            ];
         }
 
-        $contents = file_get_contents($path);
-        if (! $contents) {
-            return [];
-        }
-
-        $data = json_decode($contents, true);
-        if (! is_array($data)) {
-            return [];
-        }
-
-        $timestamp = $data['timestamp'] ?? null;
-        $source = is_string($data['source'] ?? null) ? $data['source'] : null;
-
-        return [
-            'timestamp' => $timestamp ? Carbon::parse($timestamp) : null,
-            'source' => $source,
-        ];
+        return [];
     }
 
     private function heartbeatPath(): string
+    {
+        return storage_path('logs/scheduler-heartbeat.json');
+    }
+
+    private function legacyHeartbeatPath(): string
     {
         return storage_path('app/scheduler-heartbeat.json');
     }

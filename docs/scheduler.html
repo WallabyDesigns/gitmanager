@@ -62,7 +62,7 @@
         <p>Add the cron line shown on the Scheduler Settings page so Laravel's scheduler runs every minute:</p>
         <pre><code>* * * * * cd /path/to/app &amp;&amp; /path/to/php artisan schedule:run &gt;&gt; /path/to/storage/logs/scheduler.log 2&gt;&amp;1</code></pre>
         <p>The <strong>Install Cron</strong> button attempts to add this entry automatically on Linux hosts. On Windows, configure Task Scheduler instead.</p>
-        <p>If the heartbeat isn't updating, check <code>storage/logs/scheduler.log</code> for errors.</p>
+        <p>If the heartbeat isn't updating, check <code>storage/logs/scheduler.log</code> for errors and verify <code>storage/logs/scheduler-heartbeat.json</code> is being updated.</p>
       </section>
     </section>
   </main>
