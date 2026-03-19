@@ -1419,7 +1419,7 @@ class DeploymentService
     private function runProjectProcess(array $command, array &$output = [], ?string $workingDir = null, bool $throwOnFailure = true): Process
     {
         $command = $this->normalizeCommand($command);
-        $process = new Process($command, $workingDir, $this->projectEnv());
+        $process = new Process($command, $workingDir, $this->projectEnvForPath($workingDir));
         $process->setTimeout(600);
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
@@ -1439,7 +1439,7 @@ class DeploymentService
             $command = $this->phpBinary().' '.substr($trimmed, 4);
         }
 
-        $process = Process::fromShellCommandline($command, $workingDir, $this->projectEnv());
+        $process = Process::fromShellCommandline($command, $workingDir, $this->projectEnvForPath($workingDir));
         $process->setTimeout(600);
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
@@ -1597,6 +1597,113 @@ class DeploymentService
         return $env;
     }
 
+    private function projectEnvForPath(?string $workingDir): array
+    {
+        $env = $this->projectEnv();
+        if (! $workingDir) {
+            return $env;
+        }
+
+        $envRoot = $this->findEnvRoot($workingDir);
+        if (! $envRoot) {
+            return $env;
+        }
+
+        $overrides = $this->readEnvFile($envRoot.DIRECTORY_SEPARATOR.'.env');
+        if ($overrides === []) {
+            return $env;
+        }
+
+        $allowedPrefixes = [
+            'APP_',
+            'DB_',
+            'CACHE_',
+            'SESSION_',
+            'QUEUE_',
+            'REDIS_',
+            'MAIL_',
+            'FILESYSTEM_',
+            'LOG_',
+            'BROADCAST_',
+            'MEMCACHED_',
+        ];
+
+        foreach ($overrides as $key => $value) {
+            $upperKey = strtoupper((string) $key);
+            foreach ($allowedPrefixes as $prefix) {
+                if (str_starts_with($upperKey, $prefix)) {
+                    $env[$key] = $value;
+                    break;
+                }
+            }
+        }
+
+        return $env;
+    }
+
+    private function findEnvRoot(string $path): ?string
+    {
+        return $this->walkUpForMarker($path, '.env');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function readEnvFile(string $path): array
+    {
+        if (! is_file($path)) {
+            return [];
+        }
+
+        $lines = file($path, FILE_IGNORE_NEW_LINES);
+        if (! is_array($lines)) {
+            return [];
+        }
+
+        $values = [];
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '' || str_starts_with($line, '#')) {
+                continue;
+            }
+
+            if (str_starts_with($line, 'export ')) {
+                $line = trim(substr($line, 7));
+            }
+
+            if (! preg_match('/^([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*(.*)$/', $line, $matches)) {
+                continue;
+            }
+
+            $key = $matches[1];
+            $value = trim($matches[2]);
+
+            if ($value === '') {
+                $values[$key] = '';
+                continue;
+            }
+
+            $firstChar = $value[0];
+            $lastChar = substr($value, -1);
+            if (($firstChar === '"' && $lastChar === '"') || ($firstChar === "'" && $lastChar === "'")) {
+                $value = substr($value, 1, -1);
+                if ($firstChar === '"') {
+                    $value = str_replace(['\\n', '\\r', '\\"', '\\\\'], ["\n", "\r", '"', '\\'], $value);
+                }
+            } else {
+                if (str_contains($value, ' #')) {
+                    $value = explode(' #', $value, 2)[0];
+                } elseif (str_contains($value, "\t#")) {
+                    $value = explode("\t#", $value, 2)[0];
+                }
+            }
+
+            $values[$key] = trim($value);
+        }
+
+        return $values;
+    }
+
     /**
      * @return array<int, string>
      */
@@ -1724,7 +1831,39 @@ class DeploymentService
             return;
         }
 
-        $this->runProjectProcess(['php', 'artisan', 'app:clear-cache'], $output, $laravelRoot);
+        $this->clearLaravelConfigCache($laravelRoot, $output);
+
+        $connection = $this->getLaravelEnvValue($laravelRoot, 'DB_CONNECTION');
+        if ($connection === null || trim($connection) === '') {
+            $output[] = 'Skipping app:clear-cache: DB_CONNECTION not set in project .env.';
+            return;
+        }
+
+        if (strtolower($connection) === 'sqlite') {
+            $database = $this->getLaravelEnvValue($laravelRoot, 'DB_DATABASE');
+            if ($database === null || trim($database) === '') {
+                $output[] = 'Skipping app:clear-cache: sqlite database path not set.';
+                return;
+            }
+
+            $database = trim($database);
+            if ($database !== ':memory:') {
+                $resolved = $this->isAbsolutePath($database)
+                    ? $database
+                    : $laravelRoot.DIRECTORY_SEPARATOR.$database;
+
+                if (! file_exists($resolved)) {
+                    $output[] = 'Skipping app:clear-cache: sqlite database file not found at '.$resolved;
+                    return;
+                }
+            }
+        }
+
+        try {
+            $this->runProjectProcess(['php', 'artisan', 'app:clear-cache'], $output, $laravelRoot);
+        } catch (\Throwable $exception) {
+            $output[] = 'Warning: app:clear-cache failed: '.$exception->getMessage();
+        }
     }
 
     private function artisanCommandExists(string $path, string $command, array &$output): bool
@@ -1812,23 +1951,57 @@ class DeploymentService
 
     private function getLaravelAppUrl(string $path): ?string
     {
+        return $this->getLaravelEnvValue($path, 'APP_URL');
+    }
+
+    private function getLaravelEnvValue(string $path, string $key): ?string
+    {
         $envPath = $path.DIRECTORY_SEPARATOR.'.env';
         if (! is_file($envPath)) {
             return null;
         }
 
+        $prefix = $key.'=';
         $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
         foreach ($lines as $line) {
             $line = trim($line);
-            if ($line === '' || str_starts_with($line, '#') || ! str_starts_with($line, 'APP_URL=')) {
+            if ($line === '' || str_starts_with($line, '#') || ! str_starts_with($line, $prefix)) {
                 continue;
             }
 
-            $value = trim(substr($line, strlen('APP_URL=')));
+            $value = trim(substr($line, strlen($prefix)));
             $value = trim($value, "\"'");
             return $value !== '' ? $value : null;
         }
 
         return null;
+    }
+
+    private function clearLaravelConfigCache(string $laravelRoot, array &$output): void
+    {
+        $configCache = $laravelRoot.DIRECTORY_SEPARATOR.'bootstrap'.DIRECTORY_SEPARATOR.'cache'.DIRECTORY_SEPARATOR.'config.php';
+        if (! is_file($configCache)) {
+            return;
+        }
+
+        if (@unlink($configCache)) {
+            $output[] = 'Cleared Laravel config cache file before app:clear-cache.';
+            return;
+        }
+
+        $output[] = 'Warning: unable to remove config cache file: '.$configCache;
+    }
+
+    private function isAbsolutePath(string $path): bool
+    {
+        if ($path === '') {
+            return false;
+        }
+
+        if (str_starts_with($path, DIRECTORY_SEPARATOR)) {
+            return true;
+        }
+
+        return (bool) preg_match('/^[A-Za-z]:\\\\|^[A-Za-z]:\\//', $path);
     }
 }
