@@ -114,19 +114,19 @@ class DeploymentService
 
                 $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
                     if ($project->run_composer_install) {
-                        $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $executionPath);
+                    $this->runProjectProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $executionPath);
                     }
 
                     if ($project->run_npm_install) {
-                        $this->runProcess($this->npmInstallCommand($executionPath), $output, $executionPath);
+                    $this->runProjectProcess($this->npmInstallCommand($executionPath), $output, $executionPath);
                     }
 
                     if ($project->run_build_command && $project->build_command) {
-                        $this->runShellCommand($project->build_command, $output, $executionPath);
+                    $this->runProjectShellCommand($project->build_command, $output, $executionPath);
                     }
 
                     if ($project->run_test_command && $project->test_command) {
-                        $this->runShellCommand($project->test_command, $output, $executionPath);
+                    $this->runProjectShellCommand($project->test_command, $output, $executionPath);
                     }
 
                     $this->maybeRunLaravelClearCache($project, $output);
@@ -237,15 +237,15 @@ class DeploymentService
 
                 $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
                     if ($project->run_composer_install) {
-                        $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $executionPath);
+                    $this->runProjectProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $executionPath);
                     }
 
                     if ($project->run_npm_install) {
-                        $this->runProcess($this->npmInstallCommand($executionPath), $output, $executionPath);
+                    $this->runProjectProcess($this->npmInstallCommand($executionPath), $output, $executionPath);
                     }
 
                     if ($project->run_build_command && $project->build_command) {
-                        $this->runShellCommand($project->build_command, $output, $executionPath);
+                    $this->runProjectShellCommand($project->build_command, $output, $executionPath);
                     }
 
                     $this->maybeRunLaravelClearCache($project, $output);
@@ -336,19 +336,19 @@ class DeploymentService
 
                 $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
                     if ($project->run_composer_install) {
-                        $this->runProcess(['composer', 'update'], $output, $executionPath);
+                    $this->runProjectProcess(['composer', 'update'], $output, $executionPath);
                     }
 
                     if ($project->run_npm_install) {
-                        $this->runProcess(['npm', 'update'], $output, $executionPath);
+                    $this->runProjectProcess(['npm', 'update'], $output, $executionPath);
                     }
 
                     if ($project->run_build_command && $project->build_command) {
-                        $this->runShellCommand($project->build_command, $output, $executionPath);
+                    $this->runProjectShellCommand($project->build_command, $output, $executionPath);
                     }
 
                     if ($project->run_test_command && $project->test_command) {
-                        $this->runShellCommand($project->test_command, $output, $executionPath);
+                    $this->runProjectShellCommand($project->test_command, $output, $executionPath);
                     }
 
                     $this->maybeRunLaravelClearCache($project, $output);
@@ -391,21 +391,21 @@ class DeploymentService
     public function composerInstall(Project $project, ?User $user = null): Deployment
     {
         return $this->runMaintenanceAction($project, $user, 'composer_install', function (string $path, array &$output): void {
-            $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $path);
+            $this->runProjectProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $path);
         }, true);
     }
 
     public function composerUpdate(Project $project, ?User $user = null): Deployment
     {
         return $this->runMaintenanceAction($project, $user, 'composer_update', function (string $path, array &$output): void {
-            $this->runProcess(['composer', 'update'], $output, $path);
+            $this->runProjectProcess(['composer', 'update'], $output, $path);
         }, true);
     }
 
     public function composerAudit(Project $project, ?User $user = null): Deployment
     {
         return $this->runMaintenanceAction($project, $user, 'composer_audit', function (string $path, array &$output): void {
-            $this->runProcess(['composer', 'audit'], $output, $path);
+            $this->runProjectProcess(['composer', 'audit'], $output, $path);
         }, true);
     }
 
@@ -423,21 +423,21 @@ class DeploymentService
                 throw new \RuntimeException('Command app:clear-cache not found.');
             }
 
-            $this->runProcess(['php', 'artisan', 'app:clear-cache'], $output, $laravelRoot);
+            $this->runProjectProcess(['php', 'artisan', 'app:clear-cache'], $output, $laravelRoot);
         });
     }
 
     public function npmInstall(Project $project, ?User $user = null): Deployment
     {
         return $this->runMaintenanceAction($project, $user, 'npm_install', function (string $path, array &$output): void {
-            $this->runProcess(['npm', 'install'], $output, $path);
+            $this->runProjectProcess(['npm', 'install'], $output, $path);
         });
     }
 
     public function npmUpdate(Project $project, ?User $user = null): Deployment
     {
         return $this->runMaintenanceAction($project, $user, 'npm_update', function (string $path, array &$output): void {
-            $this->runProcess(['npm', 'update'], $output, $path);
+            $this->runProjectProcess(['npm', 'update'], $output, $path);
         });
     }
 
@@ -448,7 +448,7 @@ class DeploymentService
             if ($force) {
                 $command[] = '--force';
             }
-            $this->runProcess($command, $output, $path);
+            $this->runProjectProcess($command, $output, $path);
         });
     }
 
@@ -461,7 +461,7 @@ class DeploymentService
             }
 
             $output[] = '$ '.$command;
-            $this->runShellCommand($command, $output, $path);
+            $this->runProjectShellCommand($command, $output, $path);
         });
     }
 
@@ -511,19 +511,19 @@ class DeploymentService
 
                 $this->runWithSingleRetry(function () use ($project, $previewPath, &$output): void {
                     if ($project->run_composer_install && is_file($previewPath.DIRECTORY_SEPARATOR.'composer.json')) {
-                        $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $previewPath);
+                    $this->runProjectProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $previewPath);
                     }
 
                     if ($project->run_npm_install && is_file($previewPath.DIRECTORY_SEPARATOR.'package.json')) {
-                        $this->runProcess($this->npmInstallCommand($previewPath), $output, $previewPath);
+                    $this->runProjectProcess($this->npmInstallCommand($previewPath), $output, $previewPath);
                     }
 
                     if ($project->run_build_command && $project->build_command) {
-                        $this->runShellCommand($project->build_command, $output, $previewPath);
+                    $this->runProjectShellCommand($project->build_command, $output, $previewPath);
                     }
 
                     if ($project->run_test_command && $project->test_command) {
-                        $this->runShellCommand($project->test_command, $output, $previewPath);
+                    $this->runProjectShellCommand($project->test_command, $output, $previewPath);
                     }
                 }, $output, 'Preview build tasks');
 
@@ -1360,19 +1360,19 @@ class DeploymentService
 
             $this->runWithSingleRetry(function () use ($project, $stagePath, &$output): void {
                 if ($project->run_composer_install) {
-                    $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $stagePath);
+                    $this->runProjectProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $stagePath);
                 }
 
                 if ($project->run_npm_install) {
-                    $this->runProcess($this->npmInstallCommand($stagePath), $output, $stagePath);
+                    $this->runProjectProcess($this->npmInstallCommand($stagePath), $output, $stagePath);
                 }
 
                 if ($project->run_build_command && $project->build_command) {
-                    $this->runShellCommand($project->build_command, $output, $stagePath);
+                    $this->runProjectShellCommand($project->build_command, $output, $stagePath);
                 }
 
                 if ($project->run_test_command && $project->test_command) {
-                    $this->runShellCommand($project->test_command, $output, $stagePath);
+                    $this->runProjectShellCommand($project->test_command, $output, $stagePath);
                 }
             }, $output, 'Staged deploy checks');
 
@@ -1404,6 +1404,42 @@ class DeploymentService
     {
         $command = $this->normalizeCommand($command);
         $process = new Process($command, $workingDir, array_merge($this->baseEnv(), $this->gitEnv()));
+        $process->setTimeout(600);
+        $process->run(function ($type, $buffer) use (&$output) {
+            $output[] = trim($buffer);
+        });
+
+        if ($throwOnFailure && ! $process->isSuccessful()) {
+            throw new ProcessFailedException($process);
+        }
+
+        return $process;
+    }
+
+    private function runProjectProcess(array $command, array &$output = [], ?string $workingDir = null, bool $throwOnFailure = true): Process
+    {
+        $command = $this->normalizeCommand($command);
+        $process = new Process($command, $workingDir, $this->projectEnv());
+        $process->setTimeout(600);
+        $process->run(function ($type, $buffer) use (&$output) {
+            $output[] = trim($buffer);
+        });
+
+        if ($throwOnFailure && ! $process->isSuccessful()) {
+            throw new ProcessFailedException($process);
+        }
+
+        return $process;
+    }
+
+    private function runProjectShellCommand(string $command, array &$output = [], ?string $workingDir = null, bool $throwOnFailure = true): Process
+    {
+        $trimmed = ltrim($command);
+        if (str_starts_with($trimmed, 'php ')) {
+            $command = $this->phpBinary().' '.substr($trimmed, 4);
+        }
+
+        $process = Process::fromShellCommandline($command, $workingDir, $this->projectEnv());
         $process->setTimeout(600);
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
@@ -1524,6 +1560,36 @@ class DeploymentService
                 $current = $env[$pathKey] ?? '';
                 if (! str_contains($current, $phpDir)) {
                     $env[$pathKey] = $phpDir.PATH_SEPARATOR.$current;
+                }
+            }
+        }
+
+        return $env;
+    }
+
+    private function projectEnv(): array
+    {
+        $env = $this->baseEnv();
+        $blockedPrefixes = [
+            'APP_',
+            'DB_',
+            'CACHE_',
+            'SESSION_',
+            'QUEUE_',
+            'REDIS_',
+            'MAIL_',
+            'FILESYSTEM_',
+            'LOG_',
+            'BROADCAST_',
+            'MEMCACHED_',
+        ];
+
+        foreach (array_keys($env) as $key) {
+            $upperKey = strtoupper((string) $key);
+            foreach ($blockedPrefixes as $prefix) {
+                if (str_starts_with($upperKey, $prefix)) {
+                    unset($env[$key]);
+                    break;
                 }
             }
         }
@@ -1658,12 +1724,12 @@ class DeploymentService
             return;
         }
 
-        $this->runProcess(['php', 'artisan', 'app:clear-cache'], $output, $laravelRoot);
+        $this->runProjectProcess(['php', 'artisan', 'app:clear-cache'], $output, $laravelRoot);
     }
 
     private function artisanCommandExists(string $path, string $command, array &$output): bool
     {
-        $process = $this->runProcess(['php', 'artisan', 'list', '--format=json'], $output, $path, false);
+        $process = $this->runProjectProcess(['php', 'artisan', 'list', '--format=json'], $output, $path, false);
 
         if (! $process->isSuccessful()) {
             return false;
