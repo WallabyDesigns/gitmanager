@@ -59,7 +59,7 @@
                     </button>
                     @if ($permissionsLocked)
                         <button type="button" wire:click="deployAnyway" class="px-3 py-2 text-sm rounded-md border border-amber-300 text-amber-700 hover:text-amber-800 dark:border-amber-500/60 dark:text-amber-300">
-                            Deploy Anyway (Staged)
+                            Attempt Staging Fix
                         </button>
                     @endif
                     <button type="button" wire:click="forceDeploy" onclick="return confirm('Force deploy will discard local changes. Continue?') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-rose-300 text-rose-600 hover:text-rose-700 dark:border-rose-600/60 dark:text-rose-300 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
@@ -137,7 +137,20 @@
                                 {{ $deployment->started_at?->format('M j, Y g:i a') ?? 'Queued' }}
                             </div>
                             @if ($deployment->output_log)
-                                <details class="mt-3">
+                                <details
+                                    class="mt-3"
+                                    x-data="{
+                                        open: false,
+                                        key: 'gwm-recent-log-{{ $deployment->id }}'
+                                    }"
+                                    x-init="
+                                        const stored = localStorage.getItem(key);
+                                        open = stored !== null ? stored === 'true' : open;
+                                        $el.open = open;
+                                    "
+                                    x-bind:open="open"
+                                    @toggle="open = $el.open; localStorage.setItem(key, open)"
+                                >
                                     <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">View log</summary>
                                     <pre class="mt-2 max-h-80 overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800">{{ $deployment->output_log }}</pre>
                                 </details>
@@ -294,7 +307,20 @@
                                 {{ $deployment->started_at?->format('M j, Y g:i a') ?? 'Queued' }}
                             </div>
                             @if ($deployment->output_log)
-                                <details class="mt-3">
+                                <details
+                                    class="mt-3"
+                                    x-data="{
+                                        open: false,
+                                        key: 'gwm-dependency-log-{{ $deployment->id }}'
+                                    }"
+                                    x-init="
+                                        const stored = localStorage.getItem(key);
+                                        open = stored !== null ? stored === 'true' : open;
+                                        $el.open = open;
+                                    "
+                                    x-bind:open="open"
+                                    @toggle="open = $el.open; localStorage.setItem(key, open)"
+                                >
                                     <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">View log</summary>
                                     <pre class="mt-2 max-h-80 overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800">{{ $deployment->output_log }}</pre>
                                 </details>
@@ -331,7 +357,20 @@
                             </div>
                         @endif
                         @if ($deployment->output_log)
-                            <details class="mt-3">
+                            <details
+                                class="mt-3"
+                                x-data="{
+                                    open: false,
+                                    key: 'gwm-debug-log-{{ $deployment->id }}'
+                                }"
+                                x-init="
+                                    const stored = localStorage.getItem(key);
+                                    open = stored !== null ? stored === 'true' : open;
+                                    $el.open = open;
+                                "
+                                x-bind:open="open"
+                                @toggle="open = $el.open; localStorage.setItem(key, open)"
+                            >
                                 <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">View log</summary>
                                 <pre class="mt-2 max-h-80 overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800">{{ $deployment->output_log }}</pre>
                             </details>

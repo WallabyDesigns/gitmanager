@@ -127,7 +127,20 @@
                     </div>
                     @php($log = $item->deployment?->output_log ?? ($runningDeployments[$item->project_id]->output_log ?? null))
                     @if ($item->status === 'running' || $log)
-                        <details class="mt-2" {{ $item->status === 'running' ? 'open' : '' }}>
+                        <details
+                            class="mt-2"
+                            x-data="{
+                                open: {{ $item->status === 'running' ? 'true' : 'false' }},
+                                key: 'gwm-queue-log-{{ $item->id }}'
+                            }"
+                            x-init="
+                                const stored = localStorage.getItem(key);
+                                open = stored !== null ? stored === 'true' : open;
+                                $el.open = open;
+                            "
+                            x-bind:open="open"
+                            @toggle="open = $el.open; localStorage.setItem(key, open)"
+                        >
                             <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">
                                 {{ $item->status === 'running' ? 'Live deployment log' : 'Deployment log' }}
                             </summary>
