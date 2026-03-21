@@ -6,11 +6,13 @@ use App\Models\DeploymentQueueItem;
 use App\Services\DeploymentQueueService;
 use App\Services\SchedulerService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\WithPagination;
 use Livewire\Component;
 
 class Queue extends Component
 {
+    use AuthorizesRequests;
     use WithPagination;
 
     public string $projectsTab = 'queue';
@@ -121,7 +123,7 @@ class Queue extends Component
     public function cancel(int $id, DeploymentQueueService $queue): void
     {
         $item = DeploymentQueueItem::findOrFail($id);
-        abort_unless($item->project && $item->project->user_id === Auth::id(), 403);
+        $this->authorize('update', $item);
         $queue->cancel($item);
         $this->dispatch('notify', message: 'Queued deployment cancelled.');
         $this->resetPage();
@@ -130,14 +132,14 @@ class Queue extends Component
     public function moveUp(int $id, DeploymentQueueService $queue): void
     {
         $item = DeploymentQueueItem::findOrFail($id);
-        abort_unless($item->project && $item->project->user_id === Auth::id(), 403);
+        $this->authorize('update', $item);
         $queue->moveUp($item);
     }
 
     public function moveDown(int $id, DeploymentQueueService $queue): void
     {
         $item = DeploymentQueueItem::findOrFail($id);
-        abort_unless($item->project && $item->project->user_id === Auth::id(), 403);
+        $this->authorize('update', $item);
         $queue->moveDown($item);
     }
 }

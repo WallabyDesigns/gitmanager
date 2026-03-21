@@ -5,10 +5,13 @@ namespace App\Livewire\Projects;
 use App\Models\Project;
 use App\Services\DeploymentService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 class Show extends Component
 {
+    use AuthorizesRequests;
+
     public string $projectsTab = 'list';
 
     public Project $project;
@@ -17,7 +20,7 @@ class Show extends Component
 
     public function mount(Project $project): void
     {
-        abort_unless($project->user_id === Auth::id(), 403);
+        $this->authorize('view', $project);
         $this->project = $project;
     }
 
@@ -271,7 +274,7 @@ class Show extends Component
     public function deleteProject(): void
     {
         $project = $this->project;
-        abort_unless($project->user_id === Auth::id(), 403);
+        $this->authorize('delete', $project);
 
         $project->delete();
 
@@ -282,7 +285,7 @@ class Show extends Component
     public function deleteProjectFiles(): void
     {
         $project = $this->project;
-        abort_unless($project->user_id === Auth::id(), 403);
+        $this->authorize('delete', $project);
 
         $path = realpath($project->local_path);
         $appPath = realpath(base_path());

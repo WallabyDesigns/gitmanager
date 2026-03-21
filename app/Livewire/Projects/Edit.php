@@ -5,10 +5,13 @@ namespace App\Livewire\Projects;
 use App\Models\Project;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 class Edit extends Component
 {
+    use AuthorizesRequests;
+
     public string $projectsTab = 'list';
 
     public Project $project;
@@ -16,7 +19,7 @@ class Edit extends Component
 
     public function mount(Project $project): void
     {
-        abort_unless($project->user_id === Auth::id(), 403);
+        $this->authorize('update', $project);
         $this->project = $project;
         $this->form = [
             'name' => $project->name,
