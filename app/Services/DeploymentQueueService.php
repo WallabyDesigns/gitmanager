@@ -11,6 +11,18 @@ class DeploymentQueueService
 {
     public function enqueue(Project $project, string $action, array $payload = [], ?User $user = null): DeploymentQueueItem
     {
+        $actionGroup = $this->actionGroup($action);
+        $existing = DeploymentQueueItem::query()
+            ->where('project_id', $project->id)
+            ->whereIn('status', ['queued', 'running'])
+            ->whereIn('action', $actionGroup)
+            ->orderByDesc('position')
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
         $position = (int) DeploymentQueueItem::query()
             ->where('project_id', $project->id)
             ->where('status', 'queued')
@@ -41,6 +53,60 @@ class DeploymentQueueService
         }
 
         return $processed;
+    }
+
+    public function purgeDuplicatesForUser(User $user): int
+    {
+        $queued = DeploymentQueueItem::query()
+            ->with('project')
+            ->where('status', 'queued')
+            ->whereHas('project', fn ($query) => $query->where('user_id', $user->id))
+            ->orderBy('project_id')
+            ->orderBy('position')
+            ->get();
+
+        $seen = [];
+        $cancelled = 0;
+
+        foreach ($queued as $item) {
+            $projectId = $item->project_id;
+            $groupKey = $this->actionGroup($item->action)[0] ?? $item->action;
+            $key = $projectId.'|'.$groupKey;
+
+            if (! isset($seen[$key])) {
+                $seen[$key] = true;
+                continue;
+            }
+
+            $item->status = 'cancelled';
+            $item->finished_at = now();
+            $item->save();
+            $cancelled++;
+        }
+
+        return $cancelled;
+    }
+
+    public function clearQueueForUser(User $user): int
+    {
+        $count = DeploymentQueueItem::query()
+            ->where('status', 'queued')
+            ->whereHas('project', fn ($query) => $query->where('user_id', $user->id))
+            ->count();
+
+        if ($count === 0) {
+            return 0;
+        }
+
+        DeploymentQueueItem::query()
+            ->where('status', 'queued')
+            ->whereHas('project', fn ($query) => $query->where('user_id', $user->id))
+            ->update([
+                'status' => 'cancelled',
+                'finished_at' => now(),
+            ]);
+
+        return $count;
     }
 
     public function cancel(DeploymentQueueItem $item): void
@@ -121,6 +187,8 @@ class DeploymentQueueService
             $item->started_at = now();
             $item->save();
 
+            $this->cancelDuplicateQueuedItems($item);
+
             return $item;
         });
     }
@@ -152,5 +220,32 @@ class DeploymentQueueService
 
         $item->finished_at = now();
         $item->save();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function actionGroup(string $action): array
+    {
+        if (in_array($action, ['deploy', 'force_deploy'], true)) {
+            return ['deploy', 'force_deploy'];
+        }
+
+        return [$action];
+    }
+
+    private function cancelDuplicateQueuedItems(DeploymentQueueItem $item): void
+    {
+        $group = $this->actionGroup($item->action);
+
+        DeploymentQueueItem::query()
+            ->where('status', 'queued')
+            ->where('project_id', $item->project_id)
+            ->whereIn('action', $group)
+            ->where('id', '!=', $item->id)
+            ->update([
+                'status' => 'cancelled',
+                'finished_at' => now(),
+            ]);
     }
 }

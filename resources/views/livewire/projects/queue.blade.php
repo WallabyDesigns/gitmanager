@@ -10,9 +10,17 @@
                     If the scheduler isn’t running, use “Process Queue” to advance items.
                 </div>
             </div>
-            <button type="button" wire:click="processNow" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white">
-                Process Queue
-            </button>
+            <div class="flex flex-wrap gap-2">
+                <button type="button" wire:click="processNow" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white">
+                    Process Queue
+                </button>
+                <button type="button" wire:click="purgeDuplicates" class="px-3 py-2 text-xs rounded-md border border-amber-500/50 text-amber-200 hover:text-white hover:bg-amber-500/10">
+                    Purge Duplicates
+                </button>
+                <button type="button" wire:click="clearQueue" class="px-3 py-2 text-xs rounded-md border border-rose-500/60 text-rose-200 hover:text-white hover:bg-rose-500/10">
+                    Clear Queue
+                </button>
+            </div>
         </div>
 
         <div class="space-y-3">

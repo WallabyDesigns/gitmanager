@@ -1341,6 +1341,9 @@ class DeploymentService
         if ($base === '') {
             return;
         }
+        if (! $this->isAbsolutePath($base)) {
+            $base = base_path($base);
+        }
 
         $stageRoot = $base.DIRECTORY_SEPARATOR.$project->id;
         $stagePath = $stageRoot.DIRECTORY_SEPARATOR.now()->format('Ymd_His');

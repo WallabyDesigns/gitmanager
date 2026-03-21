@@ -25,6 +25,38 @@ class Queue extends Component
         $this->dispatch('notify', message: "Processed {$processed} queued deployment(s).");
     }
 
+    public function purgeDuplicates(DeploymentQueueService $queue): void
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return;
+        }
+
+        $cancelled = $queue->purgeDuplicatesForUser($user);
+        if ($cancelled === 0) {
+            $this->dispatch('notify', message: 'No duplicate queued deployments found.');
+            return;
+        }
+
+        $this->dispatch('notify', message: "Cancelled {$cancelled} duplicate queued deployment(s).");
+    }
+
+    public function clearQueue(DeploymentQueueService $queue): void
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return;
+        }
+
+        $cleared = $queue->clearQueueForUser($user);
+        if ($cleared === 0) {
+            $this->dispatch('notify', message: 'Queue already empty.');
+            return;
+        }
+
+        $this->dispatch('notify', message: "Cleared {$cleared} queued deployment(s).");
+    }
+
     public function render()
     {
         $userId = Auth::id();
