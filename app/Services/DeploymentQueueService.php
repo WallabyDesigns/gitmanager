@@ -183,6 +183,7 @@ class DeploymentQueueService
 
             $item = DeploymentQueueItem::query()
                 ->where('status', 'queued')
+                ->whereHas('project', fn ($query) => $query->where('permissions_locked', false))
                 ->when($runningProjects !== [], fn ($query) => $query->whereNotIn('project_id', $runningProjects))
                 ->orderBy('position')
                 ->lockForUpdate()

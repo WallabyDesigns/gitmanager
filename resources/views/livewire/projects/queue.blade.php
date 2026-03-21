@@ -126,7 +126,18 @@
                             <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">
                                 {{ $item->status === 'running' ? 'Live deployment log' : 'Deployment log' }}
                             </summary>
-                            <pre class="mt-2 max-h-[calc(100vh-18rem)] overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800">{{ $log ?: 'No output yet. Refreshing...' }}</pre>
+                            <pre
+                                x-data
+                                x-init="
+                                    const el = $el;
+                                    const scrollToBottom = () => { el.scrollTop = el.scrollHeight; };
+                                    scrollToBottom();
+                                    const observer = new MutationObserver(scrollToBottom);
+                                    observer.observe(el, { childList: true, characterData: true, subtree: true });
+                                    $cleanup(() => observer.disconnect());
+                                "
+                                class="mt-2 max-h-[calc(100vh-18rem)] overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800"
+                            >{{ $log ?: 'No output yet. Refreshing...' }}</pre>
                         </details>
                     @endif
                 </div>

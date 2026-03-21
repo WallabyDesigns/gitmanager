@@ -60,6 +60,29 @@ class DeploymentService
 
     public function deploy(Project $project, ?User $user = null, bool $allowDirty = false): Deployment
     {
+        if ($project->permissions_locked) {
+            $message = 'Permissions need fixing before deployments can run.';
+            if ($project->permissions_issue_message) {
+                $message .= ' '.$project->permissions_issue_message;
+            }
+
+            $deployment = Deployment::create([
+                'project_id' => $project->id,
+                'triggered_by' => $user?->id,
+                'action' => 'deploy',
+                'status' => 'failed',
+                'started_at' => now(),
+                'finished_at' => now(),
+                'output_log' => $message,
+            ]);
+
+            $project->last_error_message = $message;
+            $project->last_checked_at = now();
+            $project->save();
+
+            return $deployment;
+        }
+
         $repoPath = $this->resolveRepoPath($project);
         $executionPath = $this->resolveExecutionPath($project, $repoPath);
 
@@ -207,6 +230,29 @@ class DeploymentService
 
     public function rollback(Project $project, ?User $user = null, ?string $targetHash = null): Deployment
     {
+        if ($project->permissions_locked) {
+            $message = 'Permissions need fixing before rollbacks can run.';
+            if ($project->permissions_issue_message) {
+                $message .= ' '.$project->permissions_issue_message;
+            }
+
+            $deployment = Deployment::create([
+                'project_id' => $project->id,
+                'triggered_by' => $user?->id,
+                'action' => 'rollback',
+                'status' => 'failed',
+                'started_at' => now(),
+                'finished_at' => now(),
+                'output_log' => $message,
+            ]);
+
+            $project->last_error_message = $message;
+            $project->last_checked_at = now();
+            $project->save();
+
+            return $deployment;
+        }
+
         $repoPath = $this->resolveRepoPath($project);
         $executionPath = $this->resolveExecutionPath($project, $repoPath);
 
@@ -504,31 +550,58 @@ class DeploymentService
         return $this->runMaintenanceAction($project, $user, 'fix_permissions', function (string $path, array &$output) use ($project): void {
             if (PHP_OS_FAMILY === 'Windows') {
                 $output[] = 'Permission fix skipped on Windows.';
+                $project->permissions_locked = false;
+                $project->permissions_issue_message = null;
+                $project->permissions_checked_at = now();
+                $project->save();
                 return;
             }
 
             $laravelRoot = $this->findLaravelRoot($project->local_path)
                 ?? $this->findLaravelRoot($path)
                 ?? $path;
+            $isLaravel = $this->findLaravelRoot($project->local_path) !== null || $this->findLaravelRoot($path) !== null;
+            $needsComposer = $project->run_composer_install || is_file($laravelRoot.DIRECTORY_SEPARATOR.'composer.json');
+            $needsNpm = $project->run_npm_install || is_file($laravelRoot.DIRECTORY_SEPARATOR.'package.json');
+            $needsBuild = $project->run_build_command || is_dir($laravelRoot.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'build');
 
             $targets = [
-                $laravelRoot,
-                $laravelRoot.DIRECTORY_SEPARATOR.'vendor',
-                $laravelRoot.DIRECTORY_SEPARATOR.'storage',
-                $laravelRoot.DIRECTORY_SEPARATOR.'bootstrap'.DIRECTORY_SEPARATOR.'cache',
-                $laravelRoot.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'build',
-                $laravelRoot.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'build'.DIRECTORY_SEPARATOR.'assets',
-                $laravelRoot.DIRECTORY_SEPARATOR.'node_modules',
+                ['label' => 'Project directory', 'path' => $laravelRoot, 'required' => true],
+                ['label' => 'Vendor directory', 'path' => $laravelRoot.DIRECTORY_SEPARATOR.'vendor', 'required' => $needsComposer],
+                ['label' => 'Storage directory', 'path' => $laravelRoot.DIRECTORY_SEPARATOR.'storage', 'required' => $isLaravel],
+                ['label' => 'Bootstrap cache directory', 'path' => $laravelRoot.DIRECTORY_SEPARATOR.'bootstrap'.DIRECTORY_SEPARATOR.'cache', 'required' => $isLaravel],
+                ['label' => 'Build directory', 'path' => $laravelRoot.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'build', 'required' => $needsBuild],
+                ['label' => 'Build assets directory', 'path' => $laravelRoot.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'build'.DIRECTORY_SEPARATOR.'assets', 'required' => $needsBuild],
+                ['label' => 'Node modules directory', 'path' => $laravelRoot.DIRECTORY_SEPARATOR.'node_modules', 'required' => $needsNpm],
             ];
 
+            $failures = [];
             foreach ($targets as $target) {
-                if (! is_dir($target)) {
+                $targetPath = $target['path'];
+                if (! $target['required'] && ! is_dir($targetPath)) {
                     continue;
                 }
 
-                $this->chmodRecursivePath($target, 0775, 0664, $output);
-                $output[] = 'Adjusted permissions for: '.$target;
+                $this->ensureWritableDirectory($targetPath, $output, $target['label']);
+                if (! is_writable($targetPath)) {
+                    $failures[] = $target['label'].': '.$targetPath;
+                    continue;
+                }
+
+                $output[] = 'Adjusted permissions for: '.$targetPath;
             }
+
+            $project->permissions_checked_at = now();
+            if ($failures !== []) {
+                $project->permissions_locked = true;
+                $project->permissions_issue_message = 'Still not writable: '.implode(' | ', $failures);
+                $project->save();
+                throw new \RuntimeException('Permission fix incomplete. '.implode(' | ', $failures));
+            }
+
+            $project->permissions_locked = false;
+            $project->permissions_issue_message = null;
+            $project->save();
         });
     }
 

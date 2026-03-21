@@ -16,6 +16,26 @@
             </button>
         </div>
 
+        @php($permissionsLocked = (bool) $project->permissions_locked)
+        @php($actionDisabledClass = $permissionsLocked ? 'opacity-60 cursor-not-allowed' : '')
+        @if ($permissionsLocked)
+            <div class="rounded-xl border border-amber-300/60 p-4 text-sm text-amber-200 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <div class="text-xs uppercase tracking-wide text-amber-300">Permissions need fixing</div>
+                    <div class="text-sm text-amber-100">Deployments and dependency actions are paused until file permissions are writable.</div>
+                    @if ($project->permissions_issue_message)
+                        <div class="text-xs text-amber-200 mt-1">{{ $project->permissions_issue_message }}</div>
+                    @endif
+                    @if ($project->permissions_checked_at)
+                        <div class="text-xs text-amber-300 mt-1">Last checked: {{ $project->permissions_checked_at->format('M j, Y g:i a') }}</div>
+                    @endif
+                </div>
+                <button type="button" wire:click="fixPermissions" class="inline-flex items-center justify-center rounded-md border border-amber-300/60 px-3 py-1.5 text-xs font-semibold text-amber-100 hover:border-white hover:text-white">
+                    Run Fix Permissions
+                </button>
+            </div>
+        @endif
+
         <div x-show="tab === 'overview'" x-cloak class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-6">
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div class="flex items-center gap-2">
@@ -32,13 +52,13 @@
                     <span class="text-xs text-slate-500 dark:text-slate-400">Last checked: {{ $project->health_checked_at?->format('M j, Y g:i a') ?? 'Never' }}</span>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <button type="button" wire:click="deploy" class="px-3 py-2 text-sm rounded-md bg-slate-900 text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900">
+                    <button type="button" wire:click="deploy" class="px-3 py-2 text-sm rounded-md bg-slate-900 text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
                         Deploy
                     </button>
-                    <button type="button" wire:click="forceDeploy" onclick="return confirm('Force deploy will discard local changes. Continue?') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-rose-300 text-rose-600 hover:text-rose-700 dark:border-rose-600/60 dark:text-rose-300">
+                    <button type="button" wire:click="forceDeploy" onclick="return confirm('Force deploy will discard local changes. Continue?') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-rose-300 text-rose-600 hover:text-rose-700 dark:border-rose-600/60 dark:text-rose-300 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
                         Force Deploy
                     </button>
-                    <button type="button" wire:click="rollback" onclick="return confirm('Rollback will redeploy the previous successful version. Continue?') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
+                    <button type="button" wire:click="rollback" onclick="return confirm('Rollback will redeploy the previous successful version. Continue?') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
                         Undo Last Deploy
                     </button>
                     <button type="button" wire:click="checkHealth" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
@@ -112,7 +132,7 @@
                             @if ($deployment->output_log)
                                 <details class="mt-3">
                                     <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">View log</summary>
-                                    <pre class="mt-2 text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800">{{ $deployment->output_log }}</pre>
+                                    <pre class="mt-2 max-h-80 overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800">{{ $deployment->output_log }}</pre>
                                 </details>
                             @endif
                         </div>
@@ -128,7 +148,7 @@
                 <button type="button" wire:click="checkUpdates" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
                     Check Updates
                 </button>
-                <button type="button" wire:click="rollback" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
+                <button type="button" wire:click="rollback" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
                     Rollback
                 </button>
             </div>
@@ -154,7 +174,7 @@
                                             Active
                                         </span>
                                     @else
-                                        <button type="button" wire:click="createPreviewForCommit('{{ $commit['hash'] }}')" class="px-3 py-2 text-sm rounded-md border border-indigo-300 text-indigo-600 hover:text-indigo-800 dark:border-indigo-500/50 dark:text-indigo-300">
+                                        <button type="button" wire:click="createPreviewForCommit('{{ $commit['hash'] }}')" class="px-3 py-2 text-sm rounded-md border border-indigo-300 text-indigo-600 hover:text-indigo-800 dark:border-indigo-500/50 dark:text-indigo-300 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
                                             Create Preview
                                         </button>
                                     @endif
@@ -171,8 +191,8 @@
                 <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Preview Build</h4>
                 <p class="text-xs text-slate-500 dark:text-slate-400">Create a preview from any commit or branch.</p>
                 <div class="mt-3 flex flex-wrap gap-3">
-                    <x-text-input id="preview_commit" class="block w-full sm:max-w-md" wire:model.live="previewCommit" placeholder="origin/main or commit hash" />
-                    <button type="button" wire:click="createPreview" class="px-3 py-2 text-sm rounded-md bg-slate-900 text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900">
+                    <x-text-input id="preview_commit" class="block w-full sm:max-w-md {{ $actionDisabledClass }}" wire:model.live="previewCommit" placeholder="origin/main or commit hash" {{ $permissionsLocked ? 'disabled' : '' }} />
+                    <button type="button" wire:click="createPreview" class="px-3 py-2 text-sm rounded-md bg-slate-900 text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
                         Create Preview
                     </button>
                 </div>
@@ -189,16 +209,16 @@
                         <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
                             <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">Composer</div>
                             <div class="mt-3 flex flex-wrap gap-2">
-                                <button type="button" wire:click="composerInstall" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
+                                <button type="button" wire:click="composerInstall" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
                                     Install
                                 </button>
-                                <button type="button" wire:click="composerUpdate" class="px-3 py-2 text-sm rounded-md border border-indigo-300 text-indigo-600 hover:text-indigo-800 dark:border-indigo-500/50 dark:text-indigo-300">
+                                <button type="button" wire:click="composerUpdate" class="px-3 py-2 text-sm rounded-md border border-indigo-300 text-indigo-600 hover:text-indigo-800 dark:border-indigo-500/50 dark:text-indigo-300 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
                                     Update
                                 </button>
-                                <button type="button" wire:click="composerAudit" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300">
+                                <button type="button" wire:click="composerAudit" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
                                     Audit
                                 </button>
-                                <button type="button" wire:click="appClearCache" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
+                                <button type="button" wire:click="appClearCache" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
                                     Clear Cache
                                 </button>
                             </div>
@@ -208,16 +228,16 @@
                         <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
                             <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">Npm</div>
                             <div class="mt-3 flex flex-wrap gap-2">
-                                <button type="button" wire:click="npmInstall" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
+                                <button type="button" wire:click="npmInstall" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
                                     Install
                                 </button>
-                                <button type="button" wire:click="npmUpdate" class="px-3 py-2 text-sm rounded-md border border-indigo-300 text-indigo-600 hover:text-indigo-800 dark:border-indigo-500/50 dark:text-indigo-300">
+                                <button type="button" wire:click="npmUpdate" class="px-3 py-2 text-sm rounded-md border border-indigo-300 text-indigo-600 hover:text-indigo-800 dark:border-indigo-500/50 dark:text-indigo-300 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
                                     Update
                                 </button>
-                                <button type="button" wire:click="npmAuditFix" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300">
+                                <button type="button" wire:click="npmAuditFix" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
                                     Audit Fix
                                 </button>
-                                <button type="button" wire:click="npmAuditFixForce" onclick="return confirm('Force audit fix can introduce breaking changes. Continue?') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-rose-300 text-rose-600 hover:text-rose-700 dark:border-rose-600/60 dark:text-rose-300">
+                                <button type="button" wire:click="npmAuditFixForce" onclick="return confirm('Force audit fix can introduce breaking changes. Continue?') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-rose-300 text-rose-600 hover:text-rose-700 dark:border-rose-600/60 dark:text-rose-300 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
                                     Audit Fix (Force)
                                 </button>
                             </div>
@@ -232,8 +252,8 @@
             <div>
                 <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Manual Command</h4>
                 <div class="mt-2 flex flex-wrap gap-3">
-                    <x-text-input id="custom_command" class="block w-full sm:max-w-2xl" wire:model.live="customCommand" placeholder="npm run build" />
-                    <button type="button" wire:click="runCustomCommand" class="px-3 py-2 text-sm rounded-md bg-slate-900 text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900">
+                    <x-text-input id="custom_command" class="block w-full sm:max-w-2xl {{ $actionDisabledClass }}" wire:model.live="customCommand" placeholder="npm run build" {{ $permissionsLocked ? 'disabled' : '' }} />
+                    <button type="button" wire:click="runCustomCommand" class="px-3 py-2 text-sm rounded-md bg-slate-900 text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
                         Run Command
                     </button>
                 </div>
@@ -269,7 +289,7 @@
                             @if ($deployment->output_log)
                                 <details class="mt-3">
                                     <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">View log</summary>
-                                    <pre class="mt-2 text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800">{{ $deployment->output_log }}</pre>
+                                    <pre class="mt-2 max-h-80 overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800">{{ $deployment->output_log }}</pre>
                                 </details>
                             @endif
                         </div>
@@ -306,7 +326,7 @@
                         @if ($deployment->output_log)
                             <details class="mt-3">
                                 <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">View log</summary>
-                                <pre class="mt-2 text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800">{{ $deployment->output_log }}</pre>
+                                <pre class="mt-2 max-h-80 overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800">{{ $deployment->output_log }}</pre>
                             </details>
                         @endif
                     </div>

@@ -67,6 +67,10 @@ class Show extends Component
 
     public function deploy(DeploymentService $service): void
     {
+        if ($this->blockIfPermissionsLocked()) {
+            return;
+        }
+
         if ($this->queueEnabled()) {
             $queue = app(\App\Services\DeploymentQueueService::class);
             $queue->enqueue($this->project, 'deploy', [], Auth::user());
@@ -83,6 +87,10 @@ class Show extends Component
 
     public function forceDeploy(DeploymentService $service): void
     {
+        if ($this->blockIfPermissionsLocked()) {
+            return;
+        }
+
         if ($this->queueEnabled()) {
             $queue = app(\App\Services\DeploymentQueueService::class);
             $queue->enqueue($this->project, 'force_deploy', [], Auth::user());
@@ -99,6 +107,10 @@ class Show extends Component
 
     public function rollback(DeploymentService $service): void
     {
+        if ($this->blockIfPermissionsLocked()) {
+            return;
+        }
+
         if ($this->queueEnabled()) {
             $queue = app(\App\Services\DeploymentQueueService::class);
             $queue->enqueue($this->project, 'rollback', [], Auth::user());
@@ -116,6 +128,16 @@ class Show extends Component
     private function queueEnabled(): bool
     {
         return (bool) config('gitmanager.deploy_queue.enabled', true);
+    }
+
+    private function blockIfPermissionsLocked(string $context = 'deployments'): bool
+    {
+        if (! $this->project->permissions_locked) {
+            return false;
+        }
+
+        $this->dispatch('notify', message: 'Permissions need fixing before running '.$context.'.');
+        return true;
     }
 
     public function checkUpdates(DeploymentService $service): void
@@ -139,6 +161,10 @@ class Show extends Component
 
     public function updateDependencies(DeploymentService $service): void
     {
+        if ($this->blockIfPermissionsLocked('dependency actions')) {
+            return;
+        }
+
         $deployment = $service->updateDependencies($this->project, Auth::user());
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -164,6 +190,10 @@ class Show extends Component
 
     public function composerInstall(DeploymentService $service): void
     {
+        if ($this->blockIfPermissionsLocked('composer install')) {
+            return;
+        }
+
         $deployment = $service->composerInstall($this->project, Auth::user());
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -173,6 +203,10 @@ class Show extends Component
 
     public function composerUpdate(DeploymentService $service): void
     {
+        if ($this->blockIfPermissionsLocked('composer update')) {
+            return;
+        }
+
         $deployment = $service->composerUpdate($this->project, Auth::user());
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -182,6 +216,10 @@ class Show extends Component
 
     public function composerAudit(DeploymentService $service): void
     {
+        if ($this->blockIfPermissionsLocked('composer audit')) {
+            return;
+        }
+
         $deployment = $service->composerAudit($this->project, Auth::user());
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -191,6 +229,10 @@ class Show extends Component
 
     public function appClearCache(DeploymentService $service): void
     {
+        if ($this->blockIfPermissionsLocked('cache clearing')) {
+            return;
+        }
+
         $deployment = $service->appClearCache($this->project, Auth::user());
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -200,6 +242,10 @@ class Show extends Component
 
     public function npmInstall(DeploymentService $service): void
     {
+        if ($this->blockIfPermissionsLocked('npm install')) {
+            return;
+        }
+
         $deployment = $service->npmInstall($this->project, Auth::user());
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -209,6 +255,10 @@ class Show extends Component
 
     public function npmUpdate(DeploymentService $service): void
     {
+        if ($this->blockIfPermissionsLocked('npm update')) {
+            return;
+        }
+
         $deployment = $service->npmUpdate($this->project, Auth::user());
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -218,6 +268,10 @@ class Show extends Component
 
     public function npmAuditFix(DeploymentService $service): void
     {
+        if ($this->blockIfPermissionsLocked('npm audit fix')) {
+            return;
+        }
+
         $deployment = $service->npmAuditFix($this->project, Auth::user(), false);
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -227,6 +281,10 @@ class Show extends Component
 
     public function npmAuditFixForce(DeploymentService $service): void
     {
+        if ($this->blockIfPermissionsLocked('npm audit fix')) {
+            return;
+        }
+
         $deployment = $service->npmAuditFix($this->project, Auth::user(), true);
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -236,6 +294,10 @@ class Show extends Component
 
     public function runCustomCommand(DeploymentService $service): void
     {
+        if ($this->blockIfPermissionsLocked('custom commands')) {
+            return;
+        }
+
         $deployment = $service->runCustomCommand($this->project, Auth::user(), $this->customCommand);
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -254,6 +316,10 @@ class Show extends Component
 
     public function createPreview(DeploymentService $service): void
     {
+        if ($this->blockIfPermissionsLocked('preview builds')) {
+            return;
+        }
+
         $commit = trim($this->previewCommit);
         $deployment = $service->previewBuild($this->project, Auth::user(), $commit);
         $this->project->refresh();
@@ -264,6 +330,10 @@ class Show extends Component
 
     public function createPreviewForCommit(string $commit, DeploymentService $service): void
     {
+        if ($this->blockIfPermissionsLocked('preview builds')) {
+            return;
+        }
+
         $deployment = $service->previewBuild($this->project, Auth::user(), $commit);
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
