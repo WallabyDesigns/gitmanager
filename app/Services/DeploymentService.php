@@ -12,6 +12,10 @@ use Symfony\Component\Process\Process;
 
 class DeploymentService
 {
+    private ?Deployment $activeDeployment = null;
+    private int $lastOutputCount = 0;
+    private float $lastStreamAt = 0.0;
+
     public function hasComposer(Project $project): bool
     {
         try {
@@ -66,6 +70,7 @@ class DeploymentService
             'status' => 'running',
             'started_at' => now(),
         ]);
+        $this->beginDeploymentStream($deployment);
 
         $output = [];
         $attempts = 0;
@@ -103,6 +108,7 @@ class DeploymentService
                     $project->last_checked_at = now();
                     $project->save();
 
+                $this->endDeploymentStream();
                 return $deployment;
             }
 
@@ -114,26 +120,27 @@ class DeploymentService
 
                 $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
                     if ($project->run_composer_install) {
-                    $this->ensureWritableDirectory($executionPath.DIRECTORY_SEPARATOR.'vendor', $output, 'Vendor directory');
-                    $this->logStep($output, 'Composer install', $executionPath, 'composer install --no-dev --optimize-autoloader');
-                    $this->runProjectProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $executionPath);
+                        $this->ensureWritableDirectory($executionPath, $output, 'Project directory');
+                        $this->ensureWritableDirectory($executionPath.DIRECTORY_SEPARATOR.'vendor', $output, 'Vendor directory');
+                        $this->logStep($output, 'Composer install', $executionPath, 'composer install --no-dev --optimize-autoloader');
+                        $this->runProjectProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $executionPath);
                     }
 
                     if ($project->run_npm_install) {
-                    $this->ensureWritableDirectory($executionPath, $output, 'Project directory');
-                    $this->logStep($output, 'Npm install', $executionPath, implode(' ', $this->npmInstallCommand($executionPath)));
-                    $this->runProjectProcess($this->npmInstallCommand($executionPath), $output, $executionPath);
+                        $this->ensureWritableDirectory($executionPath, $output, 'Project directory');
+                        $this->logStep($output, 'Npm install', $executionPath, implode(' ', $this->npmInstallCommand($executionPath)));
+                        $this->runProjectProcess($this->npmInstallCommand($executionPath), $output, $executionPath);
                     }
 
                     if ($project->run_build_command && $project->build_command) {
-                    $this->ensureBuildOutputWritable($executionPath, $output);
-                    $this->logStep($output, 'Build command', $executionPath, $project->build_command);
-                    $this->runProjectShellCommand($project->build_command, $output, $executionPath);
+                        $this->ensureBuildOutputWritable($executionPath, $output);
+                        $this->logStep($output, 'Build command', $executionPath, $project->build_command);
+                        $this->runProjectShellCommand($project->build_command, $output, $executionPath);
                     }
 
                     if ($project->run_test_command && $project->test_command) {
-                    $this->logStep($output, 'Test command', $executionPath, $project->test_command);
-                    $this->runTestCommand($project, $project->test_command, $executionPath, $output);
+                        $this->logStep($output, 'Test command', $executionPath, $project->test_command);
+                        $this->runTestCommand($project, $project->test_command, $executionPath, $output);
                     }
 
                     $this->maybeRunLaravelClearCache($project, $output);
@@ -160,6 +167,7 @@ class DeploymentService
                 $project->last_checked_at = now();
                 $project->save();
 
+                $this->endDeploymentStream();
                 return $deployment;
             } catch (\Throwable $exception) {
                 if ($fromHash) {
@@ -187,6 +195,7 @@ class DeploymentService
                 $deployment->finished_at = now();
                 $deployment->save();
 
+                $this->endDeploymentStream();
                 $project->last_error_message = $exception->getMessage();
                 $project->last_checked_at = now();
                 $project->save();
@@ -208,6 +217,7 @@ class DeploymentService
             'status' => 'running',
             'started_at' => now(),
         ]);
+        $this->beginDeploymentStream($deployment);
 
         $output = [];
         $attempts = 0;
@@ -244,21 +254,22 @@ class DeploymentService
 
                 $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
                     if ($project->run_composer_install) {
-                    $this->ensureWritableDirectory($executionPath.DIRECTORY_SEPARATOR.'vendor', $output, 'Vendor directory');
-                    $this->logStep($output, 'Composer install', $executionPath, 'composer install --no-dev --optimize-autoloader');
-                    $this->runProjectProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $executionPath);
+                        $this->ensureWritableDirectory($executionPath, $output, 'Project directory');
+                        $this->ensureWritableDirectory($executionPath.DIRECTORY_SEPARATOR.'vendor', $output, 'Vendor directory');
+                        $this->logStep($output, 'Composer install', $executionPath, 'composer install --no-dev --optimize-autoloader');
+                        $this->runProjectProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $executionPath);
                     }
 
                     if ($project->run_npm_install) {
-                    $this->ensureWritableDirectory($executionPath, $output, 'Project directory');
-                    $this->logStep($output, 'Npm install', $executionPath, implode(' ', $this->npmInstallCommand($executionPath)));
-                    $this->runProjectProcess($this->npmInstallCommand($executionPath), $output, $executionPath);
+                        $this->ensureWritableDirectory($executionPath, $output, 'Project directory');
+                        $this->logStep($output, 'Npm install', $executionPath, implode(' ', $this->npmInstallCommand($executionPath)));
+                        $this->runProjectProcess($this->npmInstallCommand($executionPath), $output, $executionPath);
                     }
 
                     if ($project->run_build_command && $project->build_command) {
-                    $this->ensureBuildOutputWritable($executionPath, $output);
-                    $this->logStep($output, 'Build command', $executionPath, $project->build_command);
-                    $this->runProjectShellCommand($project->build_command, $output, $executionPath);
+                        $this->ensureBuildOutputWritable($executionPath, $output);
+                        $this->logStep($output, 'Build command', $executionPath, $project->build_command);
+                        $this->runProjectShellCommand($project->build_command, $output, $executionPath);
                     }
 
                     $this->maybeRunLaravelClearCache($project, $output);
@@ -284,6 +295,7 @@ class DeploymentService
                 $project->last_error_message = null;
                 $project->save();
 
+                $this->endDeploymentStream();
                 return $deployment;
             } catch (\Throwable $exception) {
                 if ($fromHash) {
@@ -310,6 +322,7 @@ class DeploymentService
                 $deployment->finished_at = now();
                 $deployment->save();
 
+                $this->endDeploymentStream();
                 $project->last_error_message = $exception->getMessage();
                 $project->save();
             }
@@ -330,6 +343,7 @@ class DeploymentService
             'status' => 'running',
             'started_at' => now(),
         ]);
+        $this->beginDeploymentStream($deployment);
 
         $output = [];
         $attempts = 0;
@@ -349,26 +363,27 @@ class DeploymentService
 
                 $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
                     if ($project->run_composer_install) {
-                    $this->ensureWritableDirectory($executionPath.DIRECTORY_SEPARATOR.'vendor', $output, 'Vendor directory');
-                    $this->logStep($output, 'Composer update', $executionPath, 'composer update');
-                    $this->runProjectProcess(['composer', 'update'], $output, $executionPath);
+                        $this->ensureWritableDirectory($executionPath, $output, 'Project directory');
+                        $this->ensureWritableDirectory($executionPath.DIRECTORY_SEPARATOR.'vendor', $output, 'Vendor directory');
+                        $this->logStep($output, 'Composer update', $executionPath, 'composer update');
+                        $this->runProjectProcess(['composer', 'update'], $output, $executionPath);
                     }
 
                     if ($project->run_npm_install) {
-                    $this->ensureWritableDirectory($executionPath, $output, 'Project directory');
-                    $this->logStep($output, 'Npm update', $executionPath, 'npm update');
-                    $this->runProjectProcess(['npm', 'update'], $output, $executionPath);
+                        $this->ensureWritableDirectory($executionPath, $output, 'Project directory');
+                        $this->logStep($output, 'Npm update', $executionPath, 'npm update');
+                        $this->runProjectProcess(['npm', 'update'], $output, $executionPath);
                     }
 
                     if ($project->run_build_command && $project->build_command) {
-                    $this->ensureBuildOutputWritable($executionPath, $output);
-                    $this->logStep($output, 'Build command', $executionPath, $project->build_command);
-                    $this->runProjectShellCommand($project->build_command, $output, $executionPath);
+                        $this->ensureBuildOutputWritable($executionPath, $output);
+                        $this->logStep($output, 'Build command', $executionPath, $project->build_command);
+                        $this->runProjectShellCommand($project->build_command, $output, $executionPath);
                     }
 
                     if ($project->run_test_command && $project->test_command) {
-                    $this->logStep($output, 'Test command', $executionPath, $project->test_command);
-                    $this->runTestCommand($project, $project->test_command, $executionPath, $output);
+                        $this->logStep($output, 'Test command', $executionPath, $project->test_command);
+                        $this->runTestCommand($project, $project->test_command, $executionPath, $output);
                     }
 
                     $this->maybeRunLaravelClearCache($project, $output);
@@ -384,6 +399,7 @@ class DeploymentService
                 $deployment->finished_at = now();
                 $deployment->save();
 
+                $this->endDeploymentStream();
                 return $deployment;
             } catch (\Throwable $exception) {
                 if ($fromHash) {
@@ -402,6 +418,7 @@ class DeploymentService
                 $deployment->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
                 $deployment->finished_at = now();
                 $deployment->save();
+                $this->endDeploymentStream();
             }
         }
 
@@ -411,6 +428,9 @@ class DeploymentService
     public function composerInstall(Project $project, ?User $user = null): Deployment
     {
         return $this->runMaintenanceAction($project, $user, 'composer_install', function (string $path, array &$output): void {
+            $this->ensureWritableDirectory($path, $output, 'Project directory');
+            $this->ensureWritableDirectory($path.DIRECTORY_SEPARATOR.'vendor', $output, 'Vendor directory');
+            $this->logStep($output, 'Composer install', $path, 'composer install --no-dev --optimize-autoloader');
             $this->runProjectProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $path);
         }, true);
     }
@@ -418,6 +438,9 @@ class DeploymentService
     public function composerUpdate(Project $project, ?User $user = null): Deployment
     {
         return $this->runMaintenanceAction($project, $user, 'composer_update', function (string $path, array &$output): void {
+            $this->ensureWritableDirectory($path, $output, 'Project directory');
+            $this->ensureWritableDirectory($path.DIRECTORY_SEPARATOR.'vendor', $output, 'Vendor directory');
+            $this->logStep($output, 'Composer update', $path, 'composer update');
             $this->runProjectProcess(['composer', 'update'], $output, $path);
         }, true);
     }
@@ -450,6 +473,8 @@ class DeploymentService
     public function npmInstall(Project $project, ?User $user = null): Deployment
     {
         return $this->runMaintenanceAction($project, $user, 'npm_install', function (string $path, array &$output): void {
+            $this->ensureWritableDirectory($path, $output, 'Project directory');
+            $this->logStep($output, 'Npm install', $path, 'npm install');
             $this->runProjectProcess(['npm', 'install'], $output, $path);
         });
     }
@@ -457,6 +482,8 @@ class DeploymentService
     public function npmUpdate(Project $project, ?User $user = null): Deployment
     {
         return $this->runMaintenanceAction($project, $user, 'npm_update', function (string $path, array &$output): void {
+            $this->ensureWritableDirectory($path, $output, 'Project directory');
+            $this->logStep($output, 'Npm update', $path, 'npm update');
             $this->runProjectProcess(['npm', 'update'], $output, $path);
         });
     }
@@ -529,79 +556,88 @@ class DeploymentService
             'status' => 'running',
             'started_at' => now(),
         ]);
+        $this->beginDeploymentStream($deployment);
 
         $output = [];
         $attempts = 0;
 
-        while ($attempts < 2) {
-            $attempts++;
+        try {
+            while ($attempts < 2) {
+                $attempts++;
 
-            try {
-                $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune'], $output);
+                try {
+                    $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune'], $output);
 
-                $target = trim($commit) !== '' ? trim($commit) : 'origin/'.$project->default_branch;
-                $hash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', $target], $output)->getOutput());
-                $short = substr($hash, 0, 7);
+                    $target = trim($commit) !== '' ? trim($commit) : 'origin/'.$project->default_branch;
+                    $hash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', $target], $output)->getOutput());
+                    $short = substr($hash, 0, 7);
 
-                $slug = Str::slug($project->name) ?: 'project';
-                $basePath = rtrim((string) config('gitmanager.preview.path', storage_path('app/previews')), DIRECTORY_SEPARATOR);
-                $previewPath = $basePath.DIRECTORY_SEPARATOR.$slug.DIRECTORY_SEPARATOR.$short;
+                    $slug = Str::slug($project->name) ?: 'project';
+                    $basePath = rtrim((string) config('gitmanager.preview.path', storage_path('app/previews')), DIRECTORY_SEPARATOR);
+                    $previewPath = $basePath.DIRECTORY_SEPARATOR.$slug.DIRECTORY_SEPARATOR.$short;
 
-                $this->ensurePath(dirname($previewPath));
+                    $this->ensurePath(dirname($previewPath));
 
-                if (is_dir($previewPath)) {
-                    $this->runProcess(['git', '-C', $repoPath, 'worktree', 'remove', '--force', $previewPath], $output, null, false);
-                    $this->deleteDirectory($previewPath);
+                    if (is_dir($previewPath)) {
+                        $this->runProcess(['git', '-C', $repoPath, 'worktree', 'remove', '--force', $previewPath], $output, null, false);
+                        $this->deleteDirectory($previewPath);
+                    }
+
+                    $this->runProcess(['git', '-C', $repoPath, 'worktree', 'add', '--force', $previewPath, $hash], $output);
+                    $output[] = 'Preview path: '.$previewPath;
+
+                    $baseUrl = trim((string) config('gitmanager.preview.base_url', ''));
+                    if ($baseUrl !== '') {
+                        $output[] = 'Preview url: '.rtrim($baseUrl, '/').'/'.$slug.'/'.$short;
+                    }
+
+                    $this->runWithSingleRetry(function () use ($project, $previewPath, &$output): void {
+                        if ($project->run_composer_install && is_file($previewPath.DIRECTORY_SEPARATOR.'composer.json')) {
+                            $this->ensureWritableDirectory($previewPath, $output, 'Project directory');
+                            $this->ensureWritableDirectory($previewPath.DIRECTORY_SEPARATOR.'vendor', $output, 'Vendor directory');
+                            $this->runProjectProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $previewPath);
+                        }
+
+                        if ($project->run_npm_install && is_file($previewPath.DIRECTORY_SEPARATOR.'package.json')) {
+                            $this->ensureWritableDirectory($previewPath, $output, 'Project directory');
+                            $this->runProjectProcess($this->npmInstallCommand($previewPath), $output, $previewPath);
+                        }
+
+                        if ($project->run_build_command && $project->build_command) {
+                            $this->ensureBuildOutputWritable($previewPath, $output);
+                            $this->runProjectShellCommand($project->build_command, $output, $previewPath);
+                        }
+
+                        if ($project->run_test_command && $project->test_command) {
+                            $this->runTestCommand($project, $project->test_command, $previewPath, $output);
+                        }
+                    }, $output, 'Preview build tasks');
+
+                    $deployment->status = 'success';
+                    $this->appendWorkflowOutput($deployment, $project, $output);
+                    $deployment->output_log = implode("\n", $output);
+                    $deployment->finished_at = now();
+                    $deployment->save();
+
+                    return $deployment;
+                } catch (\Throwable $exception) {
+                    if ($attempts < 2) {
+                        $output[] = 'Preview build failed. Retrying once.';
+                        continue;
+                    }
+
+                    $deployment->status = 'failed';
+                    $this->appendWorkflowOutput($deployment, $project, $output);
+                    $deployment->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
+                    $deployment->finished_at = now();
+                    $deployment->save();
                 }
-
-                $this->runProcess(['git', '-C', $repoPath, 'worktree', 'add', '--force', $previewPath, $hash], $output);
-                $output[] = 'Preview path: '.$previewPath;
-
-                $baseUrl = trim((string) config('gitmanager.preview.base_url', ''));
-                if ($baseUrl !== '') {
-                    $output[] = 'Preview url: '.rtrim($baseUrl, '/').'/'.$slug.'/'.$short;
-                }
-
-                $this->runWithSingleRetry(function () use ($project, $previewPath, &$output): void {
-                    if ($project->run_composer_install && is_file($previewPath.DIRECTORY_SEPARATOR.'composer.json')) {
-                    $this->runProjectProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $previewPath);
-                    }
-
-                    if ($project->run_npm_install && is_file($previewPath.DIRECTORY_SEPARATOR.'package.json')) {
-                    $this->runProjectProcess($this->npmInstallCommand($previewPath), $output, $previewPath);
-                    }
-
-                    if ($project->run_build_command && $project->build_command) {
-                    $this->runProjectShellCommand($project->build_command, $output, $previewPath);
-                    }
-
-                    if ($project->run_test_command && $project->test_command) {
-                    $this->runTestCommand($project, $project->test_command, $previewPath, $output);
-                    }
-                }, $output, 'Preview build tasks');
-
-                $deployment->status = 'success';
-                $this->appendWorkflowOutput($deployment, $project, $output);
-                $deployment->output_log = implode("\n", $output);
-                $deployment->finished_at = now();
-                $deployment->save();
-
-                return $deployment;
-            } catch (\Throwable $exception) {
-                if ($attempts < 2) {
-                    $output[] = 'Preview build failed. Retrying once.';
-                    continue;
-                }
-
-                $deployment->status = 'failed';
-                $this->appendWorkflowOutput($deployment, $project, $output);
-                $deployment->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
-                $deployment->finished_at = now();
-                $deployment->save();
             }
-        }
 
-        return $deployment;
+            return $deployment;
+        } finally {
+            $this->endDeploymentStream();
+        }
     }
 
     public function checkHealth(Project $project): string
@@ -1260,6 +1296,49 @@ class DeploymentService
         }
     }
 
+    private function beginDeploymentStream(Deployment $deployment): void
+    {
+        $this->activeDeployment = $deployment;
+        $this->lastOutputCount = 0;
+        $this->lastStreamAt = microtime(true);
+        $this->activeDeployment->output_log = '';
+        $this->activeDeployment->save();
+    }
+
+    private function endDeploymentStream(): void
+    {
+        $this->activeDeployment = null;
+        $this->lastOutputCount = 0;
+        $this->lastStreamAt = 0.0;
+    }
+
+    private function maybeStreamOutput(array $output, bool $force = false): void
+    {
+        if (! $this->activeDeployment) {
+            return;
+        }
+
+        $count = count($output);
+        if (! $force) {
+            if ($count === $this->lastOutputCount) {
+                return;
+            }
+
+            $now = microtime(true);
+            if (($count - $this->lastOutputCount) < 5 && ($now - $this->lastStreamAt) < 2.0) {
+                return;
+            }
+
+            $this->lastStreamAt = $now;
+        } else {
+            $this->lastStreamAt = microtime(true);
+        }
+
+        $this->lastOutputCount = $count;
+        $this->activeDeployment->output_log = implode("\n", $output);
+        $this->activeDeployment->save();
+    }
+
     private function runMaintenanceAction(Project $project, ?User $user, string $action, callable $callback, bool $runClearCache = false): Deployment
     {
         $repoPath = $this->resolveRepoPath($project);
@@ -1272,6 +1351,7 @@ class DeploymentService
             'status' => 'running',
             'started_at' => now(),
         ]);
+        $this->beginDeploymentStream($deployment);
 
         $output = [];
 
@@ -1288,6 +1368,7 @@ class DeploymentService
 
             $project->last_error_message = null;
             $project->save();
+            $this->endDeploymentStream();
         } catch (\Throwable $exception) {
             $deployment->status = 'failed';
             $deployment->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
@@ -1296,6 +1377,7 @@ class DeploymentService
 
             $project->last_error_message = $exception->getMessage();
             $project->save();
+            $this->endDeploymentStream();
         }
 
         return $deployment;
@@ -1416,6 +1498,7 @@ class DeploymentService
 
             $this->runWithSingleRetry(function () use ($project, $stagePath, &$output): void {
                 if ($project->run_composer_install) {
+                    $this->ensureWritableDirectory($stagePath, $output, 'Project directory');
                     $this->ensureWritableDirectory($stagePath.DIRECTORY_SEPARATOR.'vendor', $output, 'Vendor directory');
                     $this->logStep($output, 'Staging composer install', $stagePath, 'composer install --no-dev --optimize-autoloader');
                     $this->runProjectProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $stagePath);
@@ -1470,6 +1553,7 @@ class DeploymentService
         $process->setTimeout(600);
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
+            $this->maybeStreamOutput($output);
         });
 
         if ($throwOnFailure && ! $process->isSuccessful()) {
@@ -1486,6 +1570,7 @@ class DeploymentService
         $process->setTimeout(600);
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
+            $this->maybeStreamOutput($output);
         });
 
         if ($throwOnFailure && ! $process->isSuccessful()) {
@@ -1506,6 +1591,7 @@ class DeploymentService
         $process->setTimeout(600);
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
+            $this->maybeStreamOutput($output);
         });
 
         if ($throwOnFailure && ! $process->isSuccessful()) {
@@ -1526,6 +1612,7 @@ class DeploymentService
         $process->setTimeout(600);
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
+            $this->maybeStreamOutput($output);
         });
 
         if (! $process->isSuccessful()) {
@@ -1981,12 +2068,16 @@ class DeploymentService
     {
         $output[] = $label.' (path: '.$path.')';
         $output[] = '$ '.$command;
+        $this->maybeStreamOutput($output);
     }
 
     private function ensureWritableDirectory(string $path, array &$output, string $label): void
     {
         if (! is_dir($path)) {
-            @mkdir($path, 0775, true);
+            if (! @mkdir($path, 0775, true) && ! is_dir($path)) {
+                $output[] = 'Warning: unable to create '.$label.': '.$path;
+                return;
+            }
         }
 
         if (! is_writable($path)) {
@@ -1994,7 +2085,11 @@ class DeploymentService
         }
 
         if (! is_writable($path)) {
-            $output[] = 'Warning: '.$label.' is not writable: '.$path;
+            $this->chmodRecursivePath($path, 0775, 0664, $output);
+        }
+
+        if (! is_writable($path)) {
+            $output[] = 'Warning: '.$label.' is not writable: '.$path.'. Run Fix Permissions or ensure the web user owns this path.';
         }
     }
 

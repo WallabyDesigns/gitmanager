@@ -3,6 +3,7 @@
 namespace App\Livewire\Projects;
 
 use App\Models\DeploymentQueueItem;
+use App\Models\Deployment;
 use App\Services\DeploymentQueueService;
 use App\Services\SchedulerService;
 use Illuminate\Support\Facades\Auth;
@@ -17,7 +18,7 @@ class Queue extends Component
 
     public string $projectsTab = 'queue';
     public int $perPage = 25;
-    public string $statusFilter = 'all';
+    public string $statusFilter = 'queued';
     public string $actionFilter = 'all';
     public string $search = '';
     protected string $paginationTheme = 'tailwind';
@@ -72,7 +73,7 @@ class Queue extends Component
 
     public function clearFilters(): void
     {
-        $this->statusFilter = 'all';
+        $this->statusFilter = 'queued';
         $this->actionFilter = 'all';
         $this->search = '';
         $this->resetPage();
@@ -98,7 +99,7 @@ class Queue extends Component
         $userId = Auth::id();
 
         $items = DeploymentQueueItem::query()
-            ->with(['project'])
+            ->with(['project', 'deployment'])
             ->whereHas('project', fn ($query) => $query->where('user_id', $userId))
             ->when($this->statusFilter !== 'all', fn ($query) => $query->where('status', $this->statusFilter))
             ->when($this->actionFilter !== 'all', fn ($query) => $query->where('action', $this->actionFilter))
@@ -113,8 +114,25 @@ class Queue extends Component
             ->orderBy('position')
             ->paginate($this->perPage);
 
+        $projectIds = $items->getCollection()
+            ->pluck('project_id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $runningDeployments = $projectIds
+            ? Deployment::query()
+                ->whereIn('project_id', $projectIds)
+                ->where('status', 'running')
+                ->latest('started_at')
+                ->get()
+                ->keyBy('project_id')
+            : collect();
+
         return view('livewire.projects.queue', [
             'items' => $items,
+            'runningDeployments' => $runningDeployments,
         ])->layout('layouts.app', [
             'header' => view('livewire.projects.partials.queue-header'),
         ]);

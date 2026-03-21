@@ -1,4 +1,4 @@
-<div class="py-10">
+<div class="py-10" wire:poll.5s>
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
         @include('livewire.projects.partials.tabs')
 
@@ -91,7 +91,8 @@
 
         <div class="space-y-3">
             @forelse ($items as $item)
-                <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4 flex flex-col gap-3">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <div class="flex items-center gap-2">
                             <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ $item->project?->name ?? 'Unknown project' }}</h4>
@@ -118,6 +119,16 @@
                             <span class="text-xs text-slate-400 dark:text-slate-500">Queue locked</span>
                         @endif
                     </div>
+                    </div>
+                    @php($log = $item->deployment?->output_log ?? ($runningDeployments[$item->project_id]->output_log ?? null))
+                    @if ($item->status === 'running' || $log)
+                        <details class="mt-2" {{ $item->status === 'running' ? 'open' : '' }}>
+                            <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">
+                                {{ $item->status === 'running' ? 'Live deployment log' : 'Deployment log' }}
+                            </summary>
+                            <pre class="mt-2 max-h-[calc(100vh-18rem)] overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800">{{ $log ?: 'No output yet. Refreshing...' }}</pre>
+                        </details>
+                    @endif
                 </div>
             @empty
                 <div class="rounded-lg border border-dashed border-slate-300/70 dark:border-slate-700 p-6 text-sm text-slate-500 dark:text-slate-400">
