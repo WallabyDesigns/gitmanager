@@ -23,6 +23,51 @@
             </div>
         </div>
 
+        <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-200 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 flex-1">
+                <label class="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-400">
+                    Search
+                    <input type="text" wire:model.debounce.400ms="search" placeholder="Project name or action" class="w-full rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none">
+                </label>
+                <label class="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-400">
+                    Status
+                    <select wire:model="statusFilter" class="w-full rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none">
+                        <option value="all">All</option>
+                        <option value="queued">Queued</option>
+                        <option value="running">Running</option>
+                        <option value="completed">Completed</option>
+                        <option value="failed">Failed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </label>
+                <label class="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-400">
+                    Action
+                    <select wire:model="actionFilter" class="w-full rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none">
+                        <option value="all">All</option>
+                        <option value="deploy">Deploy</option>
+                        <option value="force_deploy">Force Deploy</option>
+                        <option value="rollback">Rollback</option>
+                        <option value="dependency_update">Dependency Update</option>
+                        <option value="composer_install">Composer Install</option>
+                        <option value="composer_update">Composer Update</option>
+                        <option value="composer_audit">Composer Audit</option>
+                        <option value="npm_install">Npm Install</option>
+                        <option value="npm_update">Npm Update</option>
+                        <option value="npm_audit_fix">Npm Audit Fix</option>
+                        <option value="npm_audit_fix_force">Npm Audit Fix (Force)</option>
+                        <option value="app_clear_cache">App Clear Cache</option>
+                        <option value="preview_build">Preview Build</option>
+                        <option value="custom_command">Custom Command</option>
+                    </select>
+                </label>
+            </div>
+            <div class="flex justify-end">
+                <button type="button" wire:click="clearFilters" class="px-3 py-2 text-xs rounded-md border border-slate-700 text-slate-200 hover:text-white hover:border-slate-500">
+                    Clear Filters
+                </button>
+            </div>
+        </div>
+
         <div class="space-y-3">
             @forelse ($items as $item)
                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -59,5 +104,11 @@
                 </div>
             @endforelse
         </div>
+
+        @if ($items->hasPages())
+            <div class="pt-4">
+                {{ $items->links() }}
+            </div>
+        @endif
     </div>
 </div>

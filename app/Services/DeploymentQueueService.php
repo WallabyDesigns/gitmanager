@@ -87,26 +87,35 @@ class DeploymentQueueService
         return $cancelled;
     }
 
-    public function clearQueueForUser(User $user): int
+    /**
+     * @return array{cancelled:int, deleted:int}
+     */
+    public function clearQueueForUser(User $user): array
     {
-        $count = DeploymentQueueItem::query()
+        $cancelled = DeploymentQueueItem::query()
             ->where('status', 'queued')
             ->whereHas('project', fn ($query) => $query->where('user_id', $user->id))
             ->count();
 
-        if ($count === 0) {
-            return 0;
+        if ($cancelled > 0) {
+            DeploymentQueueItem::query()
+                ->where('status', 'queued')
+                ->whereHas('project', fn ($query) => $query->where('user_id', $user->id))
+                ->update([
+                    'status' => 'cancelled',
+                    'finished_at' => now(),
+                ]);
         }
 
-        DeploymentQueueItem::query()
-            ->where('status', 'queued')
+        $deleted = DeploymentQueueItem::query()
+            ->where('status', 'cancelled')
             ->whereHas('project', fn ($query) => $query->where('user_id', $user->id))
-            ->update([
-                'status' => 'cancelled',
-                'finished_at' => now(),
-            ]);
+            ->delete();
 
-        return $count;
+        return [
+            'cancelled' => $cancelled,
+            'deleted' => (int) $deleted,
+        ];
     }
 
     public function cancel(DeploymentQueueItem $item): void

@@ -6,11 +6,19 @@ use App\Models\DeploymentQueueItem;
 use App\Services\DeploymentQueueService;
 use App\Services\SchedulerService;
 use Illuminate\Support\Facades\Auth;
+use Livewire\WithPagination;
 use Livewire\Component;
 
 class Queue extends Component
 {
+    use WithPagination;
+
     public string $projectsTab = 'queue';
+    public int $perPage = 25;
+    public string $statusFilter = 'all';
+    public string $actionFilter = 'all';
+    public string $search = '';
+    protected string $paginationTheme = 'tailwind';
 
     public function processNow(DeploymentQueueService $queue, SchedulerService $scheduler): void
     {
@@ -48,13 +56,39 @@ class Queue extends Component
             return;
         }
 
-        $cleared = $queue->clearQueueForUser($user);
-        if ($cleared === 0) {
+        $result = $queue->clearQueueForUser($user);
+        $cancelled = $result['cancelled'] ?? 0;
+        $deleted = $result['deleted'] ?? 0;
+        if ($cancelled === 0 && $deleted === 0) {
             $this->dispatch('notify', message: 'Queue already empty.');
             return;
         }
 
-        $this->dispatch('notify', message: "Cleared {$cleared} queued deployment(s).");
+        $this->dispatch('notify', message: "Cleared {$cancelled} queued deployment(s) and removed {$deleted} cancelled item(s).");
+        $this->resetPage();
+    }
+
+    public function clearFilters(): void
+    {
+        $this->statusFilter = 'all';
+        $this->actionFilter = 'all';
+        $this->search = '';
+        $this->resetPage();
+    }
+
+    public function updatingStatusFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingActionFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
     }
 
     public function render()
@@ -64,9 +98,18 @@ class Queue extends Component
         $items = DeploymentQueueItem::query()
             ->with(['project'])
             ->whereHas('project', fn ($query) => $query->where('user_id', $userId))
+            ->when($this->statusFilter !== 'all', fn ($query) => $query->where('status', $this->statusFilter))
+            ->when($this->actionFilter !== 'all', fn ($query) => $query->where('action', $this->actionFilter))
+            ->when(trim($this->search) !== '', function ($query) {
+                $term = '%'.trim($this->search).'%';
+                $query->where(function ($inner) use ($term) {
+                    $inner->where('action', 'like', $term)
+                        ->orWhereHas('project', fn ($project) => $project->where('name', 'like', $term));
+                });
+            })
             ->orderBy('status')
             ->orderBy('position')
-            ->get();
+            ->paginate($this->perPage);
 
         return view('livewire.projects.queue', [
             'items' => $items,
@@ -81,6 +124,7 @@ class Queue extends Component
         abort_unless($item->project && $item->project->user_id === Auth::id(), 403);
         $queue->cancel($item);
         $this->dispatch('notify', message: 'Queued deployment cancelled.');
+        $this->resetPage();
     }
 
     public function moveUp(int $id, DeploymentQueueService $queue): void
