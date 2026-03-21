@@ -23,6 +23,27 @@
             </div>
         </div>
 
+        @php
+            $queueTabs = [
+                'queued' => 'Queued',
+                'running' => 'Running',
+                'failed' => 'Failed',
+                'completed' => 'Completed',
+                'cancelled' => 'Cancelled',
+                'all' => 'All',
+            ];
+        @endphp
+
+        <div class="flex flex-wrap gap-2 border-b border-slate-200/70 dark:border-slate-800">
+            @foreach ($queueTabs as $value => $label)
+                <button type="button"
+                        wire:click="$set('statusFilter','{{ $value }}')"
+                        class="px-3 py-2 text-sm border-b-2 {{ $statusFilter === $value ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
+                    {{ $label }}
+                </button>
+            @endforeach
+        </div>
+
         <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-200 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 flex-1">
                 <label class="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-400">

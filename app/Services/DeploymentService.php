@@ -126,7 +126,7 @@ class DeploymentService
                     }
 
                     if ($project->run_test_command && $project->test_command) {
-                    $this->runProjectShellCommand($project->test_command, $output, $executionPath);
+                    $this->runTestCommand($project, $project->test_command, $executionPath, $output);
                     }
 
                     $this->maybeRunLaravelClearCache($project, $output);
@@ -348,7 +348,7 @@ class DeploymentService
                     }
 
                     if ($project->run_test_command && $project->test_command) {
-                    $this->runProjectShellCommand($project->test_command, $output, $executionPath);
+                    $this->runTestCommand($project, $project->test_command, $executionPath, $output);
                     }
 
                     $this->maybeRunLaravelClearCache($project, $output);
@@ -523,7 +523,7 @@ class DeploymentService
                     }
 
                     if ($project->run_test_command && $project->test_command) {
-                    $this->runProjectShellCommand($project->test_command, $output, $previewPath);
+                    $this->runTestCommand($project, $project->test_command, $previewPath, $output);
                     }
                 }, $output, 'Preview build tasks');
 
@@ -1375,7 +1375,7 @@ class DeploymentService
                 }
 
                 if ($project->run_test_command && $project->test_command) {
-                    $this->runProjectShellCommand($project->test_command, $output, $stagePath);
+                    $this->runTestCommand($project, $project->test_command, $stagePath, $output);
                 }
             }, $output, 'Staged deploy checks');
 
@@ -1890,6 +1890,31 @@ class DeploymentService
         }
 
         return false;
+    }
+
+    private function runTestCommand(Project $project, string $command, string $path, array &$output): void
+    {
+        if ($this->isArtisanTestCommand($command)) {
+            $laravelRoot = $this->findLaravelRoot($path) ?? $this->findLaravelRoot($project->local_path);
+            if (! $laravelRoot) {
+                $output[] = 'Skipping tests: Laravel app not detected for artisan test.';
+                return;
+            }
+
+            if (! $this->artisanCommandExists($laravelRoot, 'test', $output)) {
+                $output[] = 'Skipping tests: artisan test not available (dev dependencies may be missing).';
+                return;
+            }
+        }
+
+        $this->runProjectShellCommand($command, $output, $path);
+    }
+
+    private function isArtisanTestCommand(string $command): bool
+    {
+        $normalized = strtolower(trim($command));
+
+        return (bool) preg_match('/(^|\\s)artisan\\s+test(\\s|$)/', $normalized);
     }
 
     private function resolveHealthUrl(Project $project): ?string
