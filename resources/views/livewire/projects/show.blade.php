@@ -16,8 +16,10 @@
             </button>
         </div>
 
-        @php($permissionsLocked = (bool) $project->permissions_locked)
-        @php($actionDisabledClass = $permissionsLocked ? 'opacity-60 cursor-not-allowed' : '')
+        @php
+            $permissionsLocked = (bool) $project->permissions_locked;
+            $actionDisabledClass = $permissionsLocked ? 'opacity-60 cursor-not-allowed' : '';
+        @endphp
         @if ($permissionsLocked)
             <div class="rounded-xl border border-amber-300/60 p-4 text-sm text-amber-200 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
