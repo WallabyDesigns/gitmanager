@@ -2,6 +2,26 @@
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
         @include('livewire.projects.partials.tabs')
 
+        <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-200 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 flex-1">
+                <label class="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-400">
+                    Search
+                    <input type="text" wire:model.debounce.300ms="search" placeholder="Project name or path" class="w-full rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none">
+                </label>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button type="button" wire:click="$set('filter','all')" class="px-3 py-2 text-xs rounded-md border {{ $filter === 'all' ? 'border-emerald-400 text-emerald-200' : 'border-slate-700 text-slate-200 hover:text-white hover:border-slate-500' }}">
+                    All ({{ $counts['all'] ?? 0 }})
+                </button>
+                <button type="button" wire:click="$set('filter','health')" class="px-3 py-2 text-xs rounded-md border {{ $filter === 'health' ? 'border-emerald-400 text-emerald-200' : 'border-slate-700 text-slate-200 hover:text-white hover:border-slate-500' }}">
+                    Health Issues ({{ $counts['health'] ?? 0 }})
+                </button>
+                <button type="button" wire:click="$set('filter','permissions')" class="px-3 py-2 text-xs rounded-md border {{ $filter === 'permissions' ? 'border-emerald-400 text-emerald-200' : 'border-slate-700 text-slate-200 hover:text-white hover:border-slate-500' }}">
+                    Permissions Issues ({{ $counts['permissions'] ?? 0 }})
+                </button>
+            </div>
+        </div>
+
         <div class="mt-6 space-y-4">
             @forelse ($projects as $project)
                 <a href="{{ route('projects.show', $project) }}" class="block rounded-lg border border-slate-200/70 bg-white dark:bg-slate-900 dark:border-slate-800 p-4 transition hover:border-indigo-300 hover:shadow-sm dark:hover:border-indigo-500/60">
@@ -19,6 +39,11 @@
                             <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $healthClass }}">
                                 {{ $healthLabel }}
                             </span>
+                            @if ($project->permissions_locked)
+                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                                    Permissions
+                                </span>
+                            @endif
                             </div>
                             <p class="text-sm text-slate-500 dark:text-slate-400">{{ $project->local_path }}</p>
                             <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">

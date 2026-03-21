@@ -57,6 +57,11 @@
                     <button type="button" wire:click="deploy" class="px-3 py-2 text-sm rounded-md bg-slate-900 text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
                         Deploy
                     </button>
+                    @if ($permissionsLocked)
+                        <button type="button" wire:click="deployAnyway" class="px-3 py-2 text-sm rounded-md border border-amber-300 text-amber-700 hover:text-amber-800 dark:border-amber-500/60 dark:text-amber-300">
+                            Deploy Anyway (Staged)
+                        </button>
+                    @endif
                     <button type="button" wire:click="forceDeploy" onclick="return confirm('Force deploy will discard local changes. Continue?') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-rose-300 text-rose-600 hover:text-rose-700 dark:border-rose-600/60 dark:text-rose-300 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
                         Force Deploy
                     </button>

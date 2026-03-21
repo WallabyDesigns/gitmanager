@@ -58,9 +58,9 @@ class DeploymentService
         return $head !== $remote;
     }
 
-    public function deploy(Project $project, ?User $user = null, bool $allowDirty = false): Deployment
+    public function deploy(Project $project, ?User $user = null, bool $allowDirty = false, bool $ignorePermissionsLock = false): Deployment
     {
-        if ($project->permissions_locked) {
+        if ($project->permissions_locked && ! $ignorePermissionsLock) {
             $message = 'Permissions need fixing before deployments can run.';
             if ($project->permissions_issue_message) {
                 $message .= ' '.$project->permissions_issue_message;
@@ -143,16 +143,21 @@ class DeploymentService
 
                 $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
                     if ($project->run_composer_install) {
-                        $this->ensureWritableDirectory($executionPath, $output, 'Project directory');
-                        $this->ensureWritableDirectory($executionPath.DIRECTORY_SEPARATOR.'vendor', $output, 'Vendor directory');
-                        $this->logStep($output, 'Composer install', $executionPath, 'composer install --no-dev --optimize-autoloader');
-                        $this->runProjectProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $executionPath);
+                        $this->runComposerCommandWithFallback(
+                            $executionPath,
+                            $output,
+                            'Composer install',
+                            ['composer', 'install', '--no-dev', '--optimize-autoloader']
+                        );
                     }
 
                     if ($project->run_npm_install) {
-                        $this->ensureWritableDirectory($executionPath, $output, 'Project directory');
-                        $this->logStep($output, 'Npm install', $executionPath, implode(' ', $this->npmInstallCommand($executionPath)));
-                        $this->runProjectProcess($this->npmInstallCommand($executionPath), $output, $executionPath);
+                        $this->runNpmInstallWithFallback(
+                            $executionPath,
+                            $output,
+                            'Npm install',
+                            $this->npmInstallCommand($executionPath)
+                        );
                     }
 
                     if ($project->run_build_command && $project->build_command) {
@@ -300,16 +305,21 @@ class DeploymentService
 
                 $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
                     if ($project->run_composer_install) {
-                        $this->ensureWritableDirectory($executionPath, $output, 'Project directory');
-                        $this->ensureWritableDirectory($executionPath.DIRECTORY_SEPARATOR.'vendor', $output, 'Vendor directory');
-                        $this->logStep($output, 'Composer install', $executionPath, 'composer install --no-dev --optimize-autoloader');
-                        $this->runProjectProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $executionPath);
+                        $this->runComposerCommandWithFallback(
+                            $executionPath,
+                            $output,
+                            'Composer install',
+                            ['composer', 'install', '--no-dev', '--optimize-autoloader']
+                        );
                     }
 
                     if ($project->run_npm_install) {
-                        $this->ensureWritableDirectory($executionPath, $output, 'Project directory');
-                        $this->logStep($output, 'Npm install', $executionPath, implode(' ', $this->npmInstallCommand($executionPath)));
-                        $this->runProjectProcess($this->npmInstallCommand($executionPath), $output, $executionPath);
+                        $this->runNpmInstallWithFallback(
+                            $executionPath,
+                            $output,
+                            'Npm install',
+                            $this->npmInstallCommand($executionPath)
+                        );
                     }
 
                     if ($project->run_build_command && $project->build_command) {
@@ -409,16 +419,22 @@ class DeploymentService
 
                 $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
                     if ($project->run_composer_install) {
-                        $this->ensureWritableDirectory($executionPath, $output, 'Project directory');
-                        $this->ensureWritableDirectory($executionPath.DIRECTORY_SEPARATOR.'vendor', $output, 'Vendor directory');
-                        $this->logStep($output, 'Composer update', $executionPath, 'composer update');
-                        $this->runProjectProcess(['composer', 'update'], $output, $executionPath);
+                        $this->runComposerCommandWithFallback(
+                            $executionPath,
+                            $output,
+                            'Composer update',
+                            ['composer', 'update']
+                        );
                     }
 
                     if ($project->run_npm_install) {
-                        $this->ensureWritableDirectory($executionPath, $output, 'Project directory');
-                        $this->logStep($output, 'Npm update', $executionPath, 'npm update');
-                        $this->runProjectProcess(['npm', 'update'], $output, $executionPath);
+                        $this->runNpmCommandWithFallback(
+                            $executionPath,
+                            $output,
+                            'Npm update',
+                            ['npm', 'update'],
+                            true
+                        );
                     }
 
                     if ($project->run_build_command && $project->build_command) {
@@ -474,20 +490,24 @@ class DeploymentService
     public function composerInstall(Project $project, ?User $user = null): Deployment
     {
         return $this->runMaintenanceAction($project, $user, 'composer_install', function (string $path, array &$output): void {
-            $this->ensureWritableDirectory($path, $output, 'Project directory');
-            $this->ensureWritableDirectory($path.DIRECTORY_SEPARATOR.'vendor', $output, 'Vendor directory');
-            $this->logStep($output, 'Composer install', $path, 'composer install --no-dev --optimize-autoloader');
-            $this->runProjectProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $path);
+            $this->runComposerCommandWithFallback(
+                $path,
+                $output,
+                'Composer install',
+                ['composer', 'install', '--no-dev', '--optimize-autoloader']
+            );
         }, true);
     }
 
     public function composerUpdate(Project $project, ?User $user = null): Deployment
     {
         return $this->runMaintenanceAction($project, $user, 'composer_update', function (string $path, array &$output): void {
-            $this->ensureWritableDirectory($path, $output, 'Project directory');
-            $this->ensureWritableDirectory($path.DIRECTORY_SEPARATOR.'vendor', $output, 'Vendor directory');
-            $this->logStep($output, 'Composer update', $path, 'composer update');
-            $this->runProjectProcess(['composer', 'update'], $output, $path);
+            $this->runComposerCommandWithFallback(
+                $path,
+                $output,
+                'Composer update',
+                ['composer', 'update']
+            );
         }, true);
     }
 
@@ -519,18 +539,25 @@ class DeploymentService
     public function npmInstall(Project $project, ?User $user = null): Deployment
     {
         return $this->runMaintenanceAction($project, $user, 'npm_install', function (string $path, array &$output): void {
-            $this->ensureWritableDirectory($path, $output, 'Project directory');
-            $this->logStep($output, 'Npm install', $path, 'npm install');
-            $this->runProjectProcess(['npm', 'install'], $output, $path);
+            $this->runNpmInstallWithFallback(
+                $path,
+                $output,
+                'Npm install',
+                ['npm', 'install']
+            );
         });
     }
 
     public function npmUpdate(Project $project, ?User $user = null): Deployment
     {
         return $this->runMaintenanceAction($project, $user, 'npm_update', function (string $path, array &$output): void {
-            $this->ensureWritableDirectory($path, $output, 'Project directory');
-            $this->logStep($output, 'Npm update', $path, 'npm update');
-            $this->runProjectProcess(['npm', 'update'], $output, $path);
+            $this->runNpmCommandWithFallback(
+                $path,
+                $output,
+                'Npm update',
+                ['npm', 'update'],
+                true
+            );
         });
     }
 
@@ -541,7 +568,13 @@ class DeploymentService
             if ($force) {
                 $command[] = '--force';
             }
-            $this->runProjectProcess($command, $output, $path);
+            $this->runNpmCommandWithFallback(
+                $path,
+                $output,
+                'Npm audit fix',
+                $command,
+                true
+            );
         });
     }
 
@@ -666,14 +699,21 @@ class DeploymentService
 
                     $this->runWithSingleRetry(function () use ($project, $previewPath, &$output): void {
                         if ($project->run_composer_install && is_file($previewPath.DIRECTORY_SEPARATOR.'composer.json')) {
-                            $this->ensureWritableDirectory($previewPath, $output, 'Project directory');
-                            $this->ensureWritableDirectory($previewPath.DIRECTORY_SEPARATOR.'vendor', $output, 'Vendor directory');
-                            $this->runProjectProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $previewPath);
+                            $this->runComposerCommandWithFallback(
+                                $previewPath,
+                                $output,
+                                'Composer install',
+                                ['composer', 'install', '--no-dev', '--optimize-autoloader']
+                            );
                         }
 
                         if ($project->run_npm_install && is_file($previewPath.DIRECTORY_SEPARATOR.'package.json')) {
-                            $this->ensureWritableDirectory($previewPath, $output, 'Project directory');
-                            $this->runProjectProcess($this->npmInstallCommand($previewPath), $output, $previewPath);
+                            $this->runNpmInstallWithFallback(
+                                $previewPath,
+                                $output,
+                                'Npm install',
+                                $this->npmInstallCommand($previewPath)
+                            );
                         }
 
                         if ($project->run_build_command && $project->build_command) {
@@ -1571,16 +1611,21 @@ class DeploymentService
 
             $this->runWithSingleRetry(function () use ($project, $stagePath, &$output): void {
                 if ($project->run_composer_install) {
-                    $this->ensureWritableDirectory($stagePath, $output, 'Project directory');
-                    $this->ensureWritableDirectory($stagePath.DIRECTORY_SEPARATOR.'vendor', $output, 'Vendor directory');
-                    $this->logStep($output, 'Staging composer install', $stagePath, 'composer install --no-dev --optimize-autoloader');
-                    $this->runProjectProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $stagePath);
+                    $this->runComposerCommandWithFallback(
+                        $stagePath,
+                        $output,
+                        'Staging composer install',
+                        ['composer', 'install', '--no-dev', '--optimize-autoloader']
+                    );
                 }
 
                 if ($project->run_npm_install) {
-                    $this->ensureWritableDirectory($stagePath, $output, 'Project directory');
-                    $this->logStep($output, 'Staging npm install', $stagePath, implode(' ', $this->npmInstallCommand($stagePath)));
-                    $this->runProjectProcess($this->npmInstallCommand($stagePath), $output, $stagePath);
+                    $this->runNpmInstallWithFallback(
+                        $stagePath,
+                        $output,
+                        'Staging npm install',
+                        $this->npmInstallCommand($stagePath)
+                    );
                 }
 
                 if ($project->run_build_command && $project->build_command) {
@@ -1640,6 +1685,24 @@ class DeploymentService
     {
         $command = $this->normalizeCommand($command);
         $process = new Process($command, $workingDir, $this->projectEnvForPath($workingDir));
+        $process->setTimeout(600);
+        $process->run(function ($type, $buffer) use (&$output) {
+            $output[] = trim($buffer);
+            $this->maybeStreamOutput($output);
+        });
+
+        if ($throwOnFailure && ! $process->isSuccessful()) {
+            throw new ProcessFailedException($process);
+        }
+
+        return $process;
+    }
+
+    private function runProjectProcessWithEnv(array $command, array &$output = [], ?string $workingDir = null, array $extraEnv = [], bool $throwOnFailure = true): Process
+    {
+        $command = $this->normalizeCommand($command);
+        $env = array_merge($this->projectEnvForPath($workingDir), $extraEnv);
+        $process = new Process($command, $workingDir, $env);
         $process->setTimeout(600);
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
@@ -2142,6 +2205,158 @@ class DeploymentService
         $output[] = $label.' (path: '.$path.')';
         $output[] = '$ '.$command;
         $this->maybeStreamOutput($output);
+    }
+
+    private function runComposerCommandWithFallback(string $path, array &$output, string $label, array $command): void
+    {
+        $vendorPath = $path.DIRECTORY_SEPARATOR.'vendor';
+        $projectWritable = is_writable($path);
+        $vendorWritable = is_dir($vendorPath) ? is_writable($vendorPath) : $projectWritable;
+
+        $this->ensureWritableDirectory($path, $output, 'Project directory');
+        if ($vendorWritable) {
+            $this->ensureWritableDirectory($vendorPath, $output, 'Vendor directory');
+            $this->logStep($output, $label, $path, implode(' ', $command));
+            $this->runProjectProcess($command, $output, $path);
+            return;
+        }
+
+        $output[] = 'Vendor directory is not writable. Attempting staged install.';
+        $tempRoot = $this->createTempPath($path, 'composer');
+        $tempVendor = $tempRoot.DIRECTORY_SEPARATOR.'vendor';
+        $this->ensurePath($tempRoot);
+
+        try {
+            $this->logStep($output, $label.' (staged)', $path, implode(' ', $command));
+            $this->runProjectProcessWithEnv($command, $output, $path, [
+                'COMPOSER_VENDOR_DIR' => $tempVendor,
+            ]);
+
+            if (! is_dir($tempVendor)) {
+                throw new \RuntimeException('Staged composer install did not create a vendor directory.');
+            }
+
+            $this->swapDirectory($tempVendor, $vendorPath, $output, 'Vendor directory');
+        } finally {
+            if (is_dir($tempRoot)) {
+                $this->deleteDirectory($tempRoot);
+            }
+        }
+    }
+
+    private function runNpmInstallWithFallback(string $path, array &$output, string $label, array $command): void
+    {
+        $this->runNpmCommandWithFallback($path, $output, $label, $command, false);
+    }
+
+    private function runNpmCommandWithFallback(string $path, array &$output, string $label, array $command, bool $syncManifestFiles): void
+    {
+        $modulesPath = $path.DIRECTORY_SEPARATOR.'node_modules';
+        $projectWritable = is_writable($path);
+        $modulesWritable = is_dir($modulesPath) ? is_writable($modulesPath) : $projectWritable;
+
+        $this->ensureWritableDirectory($path, $output, 'Project directory');
+        if ($modulesWritable) {
+            $this->logStep($output, $label, $path, implode(' ', $command));
+            $this->runProjectProcess($command, $output, $path);
+            return;
+        }
+
+        $output[] = 'Node modules directory is not writable. Attempting staged install.';
+        $tempRoot = $this->createTempPath($path, 'npm');
+        $this->ensurePath($tempRoot);
+        $this->copyNpmManifestFiles($path, $tempRoot, $output);
+
+        try {
+            $this->logStep($output, $label.' (staged)', $tempRoot, implode(' ', $command));
+            $this->runProjectProcess($command, $output, $tempRoot);
+
+            $tempModules = $tempRoot.DIRECTORY_SEPARATOR.'node_modules';
+            if (! is_dir($tempModules)) {
+                throw new \RuntimeException('Staged npm install did not create node_modules.');
+            }
+
+            if ($syncManifestFiles) {
+                $this->syncNpmManifestFiles($tempRoot, $path, $output);
+            }
+
+            $this->swapDirectory($tempModules, $modulesPath, $output, 'Node modules directory');
+        } finally {
+            if (is_dir($tempRoot)) {
+                $this->deleteDirectory($tempRoot);
+            }
+        }
+    }
+
+    private function copyNpmManifestFiles(string $sourceRoot, string $targetRoot, array &$output): void
+    {
+        $files = ['package.json', 'package-lock.json', 'npm-shrinkwrap.json'];
+        foreach ($files as $file) {
+            $source = $sourceRoot.DIRECTORY_SEPARATOR.$file;
+            if (! is_file($source)) {
+                continue;
+            }
+
+            $destination = $targetRoot.DIRECTORY_SEPARATOR.$file;
+            if (! @copy($source, $destination)) {
+                $output[] = 'Warning: unable to copy '.$file.' for staged npm install.';
+            }
+        }
+    }
+
+    private function syncNpmManifestFiles(string $sourceRoot, string $targetRoot, array &$output): void
+    {
+        $files = ['package.json', 'package-lock.json', 'npm-shrinkwrap.json'];
+        foreach ($files as $file) {
+            $source = $sourceRoot.DIRECTORY_SEPARATOR.$file;
+            if (! is_file($source)) {
+                continue;
+            }
+
+            $destination = $targetRoot.DIRECTORY_SEPARATOR.$file;
+            if (! @copy($source, $destination)) {
+                throw new \RuntimeException('Unable to update '.$file.' after staged npm run.');
+            }
+
+            $output[] = 'Updated '.$file.' from staged npm run.';
+        }
+    }
+
+    private function createTempPath(string $root, string $prefix): string
+    {
+        $base = $root.DIRECTORY_SEPARATOR.'.gwm-staging';
+        $this->ensurePath($base);
+
+        return $base.DIRECTORY_SEPARATOR.$prefix.'-'.date('YmdHis').'-'.substr(bin2hex(random_bytes(4)), 0, 8);
+    }
+
+    private function swapDirectory(string $source, string $destination, array &$output, string $label): void
+    {
+        $backup = null;
+        $destinationParent = dirname($destination);
+        if (! is_dir($destinationParent)) {
+            $this->ensurePath($destinationParent);
+        }
+
+        if (is_dir($destination)) {
+            $backup = $destination.'-gwm-backup-'.date('YmdHis');
+            if (! @rename($destination, $backup)) {
+                throw new \RuntimeException('Unable to move existing '.$label.' out of the way.');
+            }
+        }
+
+        if (! @rename($source, $destination)) {
+            if ($backup && is_dir($backup)) {
+                @rename($backup, $destination);
+            }
+            throw new \RuntimeException('Unable to replace '.$label.' after staged install.');
+        }
+
+        if ($backup && is_dir($backup)) {
+            $this->deleteDirectory($backup);
+        }
+
+        $output[] = 'Replaced '.$label.' using staged install.';
     }
 
     private function ensureWritableDirectory(string $path, array &$output, string $label): void

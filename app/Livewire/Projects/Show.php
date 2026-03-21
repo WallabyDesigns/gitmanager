@@ -105,6 +105,15 @@ class Show extends Component
             : 'Force deployment failed. Check logs below.');
     }
 
+    public function deployAnyway(DeploymentService $service): void
+    {
+        $deployment = $service->deploy($this->project, Auth::user(), false, true);
+        $this->project->refresh();
+        $this->dispatch('notify', message: $deployment->status === 'success'
+            ? 'Deployment completed (staged install).' 
+            : 'Deployment failed. Check logs below.');
+    }
+
     public function rollback(DeploymentService $service): void
     {
         if ($this->blockIfPermissionsLocked()) {

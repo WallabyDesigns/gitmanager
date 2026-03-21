@@ -99,6 +99,11 @@
                             <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $item->status === 'queued' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' : ($item->status === 'running' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300' : ($item->status === 'completed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300')) }}">
                                 {{ $item->status }}
                             </span>
+                            @if ($item->project?->permissions_locked)
+                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                                    Permissions
+                                </span>
+                            @endif
                         </div>
                         <div class="text-xs text-slate-400 dark:text-slate-500">
                             Action: {{ $item->action }} • Position: {{ $item->position }}
