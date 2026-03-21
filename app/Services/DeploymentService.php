@@ -114,18 +114,25 @@ class DeploymentService
 
                 $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
                     if ($project->run_composer_install) {
+                    $this->ensureWritableDirectory($executionPath.DIRECTORY_SEPARATOR.'vendor', $output, 'Vendor directory');
+                    $this->logStep($output, 'Composer install', $executionPath, 'composer install --no-dev --optimize-autoloader');
                     $this->runProjectProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $executionPath);
                     }
 
                     if ($project->run_npm_install) {
+                    $this->ensureWritableDirectory($executionPath, $output, 'Project directory');
+                    $this->logStep($output, 'Npm install', $executionPath, implode(' ', $this->npmInstallCommand($executionPath)));
                     $this->runProjectProcess($this->npmInstallCommand($executionPath), $output, $executionPath);
                     }
 
                     if ($project->run_build_command && $project->build_command) {
+                    $this->ensureBuildOutputWritable($executionPath, $output);
+                    $this->logStep($output, 'Build command', $executionPath, $project->build_command);
                     $this->runProjectShellCommand($project->build_command, $output, $executionPath);
                     }
 
                     if ($project->run_test_command && $project->test_command) {
+                    $this->logStep($output, 'Test command', $executionPath, $project->test_command);
                     $this->runTestCommand($project, $project->test_command, $executionPath, $output);
                     }
 
@@ -237,14 +244,20 @@ class DeploymentService
 
                 $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
                     if ($project->run_composer_install) {
+                    $this->ensureWritableDirectory($executionPath.DIRECTORY_SEPARATOR.'vendor', $output, 'Vendor directory');
+                    $this->logStep($output, 'Composer install', $executionPath, 'composer install --no-dev --optimize-autoloader');
                     $this->runProjectProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $executionPath);
                     }
 
                     if ($project->run_npm_install) {
+                    $this->ensureWritableDirectory($executionPath, $output, 'Project directory');
+                    $this->logStep($output, 'Npm install', $executionPath, implode(' ', $this->npmInstallCommand($executionPath)));
                     $this->runProjectProcess($this->npmInstallCommand($executionPath), $output, $executionPath);
                     }
 
                     if ($project->run_build_command && $project->build_command) {
+                    $this->ensureBuildOutputWritable($executionPath, $output);
+                    $this->logStep($output, 'Build command', $executionPath, $project->build_command);
                     $this->runProjectShellCommand($project->build_command, $output, $executionPath);
                     }
 
@@ -336,18 +349,25 @@ class DeploymentService
 
                 $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
                     if ($project->run_composer_install) {
+                    $this->ensureWritableDirectory($executionPath.DIRECTORY_SEPARATOR.'vendor', $output, 'Vendor directory');
+                    $this->logStep($output, 'Composer update', $executionPath, 'composer update');
                     $this->runProjectProcess(['composer', 'update'], $output, $executionPath);
                     }
 
                     if ($project->run_npm_install) {
+                    $this->ensureWritableDirectory($executionPath, $output, 'Project directory');
+                    $this->logStep($output, 'Npm update', $executionPath, 'npm update');
                     $this->runProjectProcess(['npm', 'update'], $output, $executionPath);
                     }
 
                     if ($project->run_build_command && $project->build_command) {
+                    $this->ensureBuildOutputWritable($executionPath, $output);
+                    $this->logStep($output, 'Build command', $executionPath, $project->build_command);
                     $this->runProjectShellCommand($project->build_command, $output, $executionPath);
                     }
 
                     if ($project->run_test_command && $project->test_command) {
+                    $this->logStep($output, 'Test command', $executionPath, $project->test_command);
                     $this->runTestCommand($project, $project->test_command, $executionPath, $output);
                     }
 
@@ -449,6 +469,39 @@ class DeploymentService
                 $command[] = '--force';
             }
             $this->runProjectProcess($command, $output, $path);
+        });
+    }
+
+    public function fixPermissions(Project $project, ?User $user = null): Deployment
+    {
+        return $this->runMaintenanceAction($project, $user, 'fix_permissions', function (string $path, array &$output) use ($project): void {
+            if (PHP_OS_FAMILY === 'Windows') {
+                $output[] = 'Permission fix skipped on Windows.';
+                return;
+            }
+
+            $laravelRoot = $this->findLaravelRoot($project->local_path)
+                ?? $this->findLaravelRoot($path)
+                ?? $path;
+
+            $targets = [
+                $laravelRoot,
+                $laravelRoot.DIRECTORY_SEPARATOR.'vendor',
+                $laravelRoot.DIRECTORY_SEPARATOR.'storage',
+                $laravelRoot.DIRECTORY_SEPARATOR.'bootstrap'.DIRECTORY_SEPARATOR.'cache',
+                $laravelRoot.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'build',
+                $laravelRoot.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'build'.DIRECTORY_SEPARATOR.'assets',
+                $laravelRoot.DIRECTORY_SEPARATOR.'node_modules',
+            ];
+
+            foreach ($targets as $target) {
+                if (! is_dir($target)) {
+                    continue;
+                }
+
+                $this->chmodRecursivePath($target, 0775, 0664, $output);
+                $output[] = 'Adjusted permissions for: '.$target;
+            }
         });
     }
 
@@ -1363,18 +1416,25 @@ class DeploymentService
 
             $this->runWithSingleRetry(function () use ($project, $stagePath, &$output): void {
                 if ($project->run_composer_install) {
+                    $this->ensureWritableDirectory($stagePath.DIRECTORY_SEPARATOR.'vendor', $output, 'Vendor directory');
+                    $this->logStep($output, 'Staging composer install', $stagePath, 'composer install --no-dev --optimize-autoloader');
                     $this->runProjectProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $stagePath);
                 }
 
                 if ($project->run_npm_install) {
+                    $this->ensureWritableDirectory($stagePath, $output, 'Project directory');
+                    $this->logStep($output, 'Staging npm install', $stagePath, implode(' ', $this->npmInstallCommand($stagePath)));
                     $this->runProjectProcess($this->npmInstallCommand($stagePath), $output, $stagePath);
                 }
 
                 if ($project->run_build_command && $project->build_command) {
+                    $this->ensureBuildOutputWritable($stagePath, $output);
+                    $this->logStep($output, 'Staging build command', $stagePath, $project->build_command);
                     $this->runProjectShellCommand($project->build_command, $output, $stagePath);
                 }
 
                 if ($project->run_test_command && $project->test_command) {
+                    $this->logStep($output, 'Staging test command', $stagePath, $project->test_command);
                     $this->runTestCommand($project, $project->test_command, $stagePath, $output);
                 }
             }, $output, 'Staged deploy checks');
@@ -1915,6 +1975,59 @@ class DeploymentService
         $normalized = strtolower(trim($command));
 
         return (bool) preg_match('/(^|\\s)artisan\\s+test(\\s|$)/', $normalized);
+    }
+
+    private function logStep(array &$output, string $label, string $path, string $command): void
+    {
+        $output[] = $label.' (path: '.$path.')';
+        $output[] = '$ '.$command;
+    }
+
+    private function ensureWritableDirectory(string $path, array &$output, string $label): void
+    {
+        if (! is_dir($path)) {
+            @mkdir($path, 0775, true);
+        }
+
+        if (! is_writable($path)) {
+            @chmod($path, 0775);
+        }
+
+        if (! is_writable($path)) {
+            $output[] = 'Warning: '.$label.' is not writable: '.$path;
+        }
+    }
+
+    private function ensureBuildOutputWritable(string $rootPath, array &$output): void
+    {
+        $buildPath = $rootPath.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'build';
+        $assetsPath = $buildPath.DIRECTORY_SEPARATOR.'assets';
+
+        $this->ensureWritableDirectory($buildPath, $output, 'Build directory');
+        $this->ensureWritableDirectory($assetsPath, $output, 'Build assets directory');
+    }
+
+    private function chmodRecursivePath(string $path, int $dirMode, int $fileMode, array &$output): void
+    {
+        if (! is_dir($path)) {
+            return;
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            $target = $item->getPathname();
+            if ($item->isDir()) {
+                @chmod($target, $dirMode);
+            } else {
+                @chmod($target, $fileMode);
+            }
+        }
+
+        @chmod($path, $dirMode);
     }
 
     private function resolveHealthUrl(Project $project): ?string

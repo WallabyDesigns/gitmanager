@@ -240,6 +240,15 @@ class Show extends Component
             : 'Command failed. Check logs below.');
     }
 
+    public function fixPermissions(DeploymentService $service): void
+    {
+        $deployment = $service->fixPermissions($this->project, Auth::user());
+        $this->project->refresh();
+        $this->dispatch('notify', message: $deployment->status === 'success'
+            ? 'Permissions updated.'
+            : 'Permission fix failed. Check logs below.');
+    }
+
     public function createPreview(DeploymentService $service): void
     {
         $commit = trim($this->previewCommit);
