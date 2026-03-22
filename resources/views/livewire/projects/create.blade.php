@@ -37,7 +37,9 @@
                                         <option value="{{ $type['value'] }}">{{ $type['label'] }}</option>
                                     @endforeach
                                 </select>
-                                @php($typeMeta = collect($projectTypes)->firstWhere('value', $form['project_type'] ?? 'custom'))
+                                @php
+                                    $typeMeta = collect($projectTypes)->firstWhere('value', $form['project_type'] ?? 'custom');
+                                @endphp
                                 <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">
                                     {{ $typeMeta['description'] ?? '' }}
                                 </p>
