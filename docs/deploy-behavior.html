@@ -44,6 +44,11 @@
       </section>
 
       <section class="card">
+        <h2>Permissions & Staged Installs</h2>
+        <p>When dependency directories are not writable, GWM runs Fix Permissions and retries. If permissions still block dependency installs, it falls back to staged installs and swaps the result into place.</p>
+      </section>
+
+      <section class="card">
         <h2>Staged Deployment Checks</h2>
         <p>When enabled, Git Web Manager performs builds/tests in a temporary staging directory before updating the live project.</p>
         <ul>
@@ -60,7 +65,12 @@
 
       <section class="card">
         <h2>Undo Last Deploy</h2>
-        <p>Use the Undo Last Deploy button to roll back to the most recent successful deploy. This is a fast recovery option if a new release introduces issues.</p>
+        <p>Use the Undo Last Deploy button to roll back to the most recent successful deploy. The button only appears when a rollback target exists.</p>
+      </section>
+
+      <section class="card">
+        <h2>Auto Rollback on Health Failure</h2>
+        <p>If a deploy fails and the health check flips from OK to failing, GWM automatically attempts a rollback to the last known-good deployment.</p>
       </section>
 
       <section class="card">
@@ -73,5 +83,4 @@
   <div data-include="partials/footer.html"></div>
 </body>
 </html>
-
 

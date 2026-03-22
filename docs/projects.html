@@ -53,14 +53,14 @@
         <ul>
           <li><strong>Deploy</strong> – standard update with change preservation.</li>
           <li><strong>Force Deploy</strong> – destructive update (use carefully).</li>
-          <li><strong>Undo Last Deploy</strong> – one-click rollback to the previous successful release.</li>
+          <li><strong>Undo Last Deploy</strong> – one-click rollback to the previous successful release (visible only when a rollback target exists).</li>
           <li><strong>Check Updates</strong> – refresh repository status.</li>
         </ul>
       </section>
 
       <section class="card">
         <h2>Deploy Queue</h2>
-        <p>When the queue is enabled, deploy requests are added to the queue and processed in order. The Deploy Queue tab lets you cancel or reorder queued items.</p>
+        <p>When the queue is enabled, auto-deploys and webhooks are added to the queue and processed in order. Manual deploys run immediately and take priority. The Deploy Queue tab lets you cancel, reorder, or force-cancel stuck items.</p>
       </section>
 
       <section class="card">
@@ -77,5 +77,4 @@ public/uploads/
   <div data-include="partials/footer.html"></div>
 </body>
 </html>
-
 

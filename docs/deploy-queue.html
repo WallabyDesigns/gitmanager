@@ -40,11 +40,11 @@
     <section class="content">
       <section class="card">
         <h2>Queue Behavior</h2>
-        <p>When the deploy queue is enabled, deploy requests are queued and processed sequentially.</p>
+        <p>When the deploy queue is enabled, auto-deploys and webhooks are queued and processed sequentially. Manual deploys run immediately and take priority.</p>
         <ul>
-          <li>Manual deploys, auto-deploys, and webhooks all enqueue</li>
+          <li>Manual deploys bypass the queue and clear queued deploys for the same project</li>
           <li>Only one deploy runs at a time per project</li>
-          <li>Queued items can be cancelled or reordered</li>
+          <li>Queued items can be cancelled, reordered, or force-cancelled if stuck</li>
         </ul>
       </section>
 

@@ -50,6 +50,14 @@ class Show extends Component
         $commits = $service->getRecentCommits($this->project, 3);
         $currentHead = $service->getCurrentHead($this->project);
         $activeCommit = $currentHead ?: $this->project->last_deployed_hash;
+        $rollbackAvailable = $activeCommit
+            ? $this->project->deployments()
+                ->where('action', 'deploy')
+                ->where('status', 'success')
+                ->whereNotNull('to_hash')
+                ->where('to_hash', '!=', $activeCommit)
+                ->exists()
+            : false;
 
         return view('livewire.projects.show', [
             'deployments' => (clone $deployments)->take(20)->get(),
@@ -59,6 +67,7 @@ class Show extends Component
             'commits' => $commits,
             'activeCommit' => $activeCommit,
             'lastSuccessfulDeploy' => $lastSuccessfulDeploy,
+            'rollbackAvailable' => $rollbackAvailable,
             'hasComposer' => $service->hasComposer($this->project),
             'hasNpm' => $service->hasNpm($this->project),
         ])->layout('layouts.app', [

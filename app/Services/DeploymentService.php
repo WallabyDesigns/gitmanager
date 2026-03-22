@@ -102,6 +102,8 @@ class DeploymentService
         $output = [];
         $permissionsStep = false;
         $forceStaged = false;
+        $previousHealthOk = $project->health_status === 'ok';
+        $autoRollbackAttempted = false;
 
         while (true) {
             $fromHash = null;
@@ -230,6 +232,30 @@ class DeploymentService
                     continue;
                 }
 
+                if ($previousHealthOk && ! $autoRollbackAttempted) {
+                    $autoRollbackAttempted = true;
+                    $output[] = 'Deployment failed. Checking health status for rollback.';
+                    $currentHealth = $this->checkHealth($project);
+                    if ($currentHealth !== 'ok') {
+                        $rollbackTarget = $project->last_deployed_hash ?: $fromHash;
+                        if ($rollbackTarget) {
+                            $output[] = 'Health check failed after deploy. Attempting rollback.';
+                            try {
+                                $rollbackDeployment = $this->rollback($project, $user, $rollbackTarget);
+                                $output[] = $rollbackDeployment->status === 'success'
+                                    ? 'Auto-rollback completed successfully.'
+                                    : 'Auto-rollback failed. See rollback log for details.';
+                            } catch (\Throwable $rollbackException) {
+                                $output[] = 'Auto-rollback failed: '.$rollbackException->getMessage();
+                            }
+                        } else {
+                            $output[] = 'Auto-rollback skipped: no previous deployment available.';
+                        }
+                    } else {
+                        $output[] = 'Health check still passing; no rollback required.';
+                    }
+                }
+
                 $deployment->status = 'failed';
                 $deployment->from_hash = $fromHash;
                 $deployment->to_hash = $toHash;
@@ -243,6 +269,7 @@ class DeploymentService
                 $project->last_error_message = $exception->getMessage();
                 $project->last_checked_at = now();
                 $project->save();
+                return $deployment;
             }
         }
 

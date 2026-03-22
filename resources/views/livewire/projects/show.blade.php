@@ -65,9 +65,11 @@
                     <button type="button" wire:click="forceDeploy" onclick="return confirm('Force deploy will discard local changes. Continue?') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-rose-300 text-rose-600 hover:text-rose-700 dark:border-rose-600/60 dark:text-rose-300 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
                         Force Deploy
                     </button>
-                    <button type="button" wire:click="rollback" onclick="return confirm('Rollback will redeploy the previous successful version. Continue?') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
-                        Undo Last Deploy
-                    </button>
+                    @if ($rollbackAvailable)
+                        <button type="button" wire:click="rollback" onclick="return confirm('Rollback will redeploy the previous successful version. Continue?') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
+                            Undo Last Deploy
+                        </button>
+                    @endif
                     <button type="button" wire:click="checkHealth" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
                         Health Check
                     </button>
@@ -173,9 +175,11 @@
                 <button type="button" wire:click="checkUpdates" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
                     Check Updates
                 </button>
-                <button type="button" wire:click="rollback" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
-                    Rollback
-                </button>
+                @if ($rollbackAvailable)
+                    <button type="button" wire:click="rollback" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 {{ $actionDisabledClass }}" {{ $permissionsLocked ? 'disabled' : '' }}>
+                        Rollback
+                    </button>
+                @endif
             </div>
 
             <div>
