@@ -58,6 +58,7 @@
                             <div class="sm:col-span-2">
                                 <x-input-label for="local_path" value="Local Path" />
                                 <x-text-input id="local_path" class="mt-1 block w-full" wire:model.live="form.local_path" placeholder="/home/user/testwebsite" />
+                                <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">Local build workspace on this server. FTP-only deployments will use a storage workspace if this path isn't writable.</p>
                                 <label class="mt-2 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                                     <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="checkPermissions" />
                                     Check permissions for this path

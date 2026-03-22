@@ -30,6 +30,9 @@ return [
         'enabled' => env('GWM_DEPLOY_STAGING_ENABLED', true),
         'path' => env('GWM_DEPLOY_STAGING_PATH', storage_path('app/deploy-staging')),
     ],
+    'ftp' => [
+        'workspace_path' => env('GWM_FTP_WORKSPACE_PATH', storage_path('app/ftp-workspaces')),
+    ],
     'ssh' => [
         'binary' => env('GWM_SSH_BINARY', 'ssh'),
         'pass_binary' => env('GWM_SSH_PASS_BINARY', ''),

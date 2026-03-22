@@ -1304,28 +1304,87 @@ class DeploymentService
 
     private function resolveRepoPath(Project $project): string
     {
-        $this->ensurePath($project->local_path);
+        $localPath = trim((string) $project->local_path);
+        $repoPath = '';
 
-        $repoPath = $project->local_path;
+        if ($localPath !== '' && $this->isPathWritableForGit($localPath)) {
+            $this->ensurePath($localPath);
+            $repoPath = $localPath;
+        } elseif ($this->shouldUseFtpWorkspace($project)) {
+            $repoPath = $this->ensureFtpWorkspace($project);
+        } else {
+            $this->ensurePath($localPath);
+            $repoPath = $localPath;
+        }
+
         if (! is_dir($repoPath.DIRECTORY_SEPARATOR.'.git')) {
             if (! $project->repo_url) {
                 throw new \RuntimeException('Repository URL is required to initialize git for this project.');
             }
 
-            app(RepositoryBootstrapper::class)->bootstrap($project);
+            app(RepositoryBootstrapper::class)->bootstrap($project, $repoPath);
         }
 
         if (! is_dir($repoPath.DIRECTORY_SEPARATOR.'.git')) {
-            throw new \RuntimeException('No git repository found at: '.$project->local_path);
+            throw new \RuntimeException('No git repository found at: '.$repoPath);
         }
 
         return $repoPath;
     }
 
+    private function shouldUseFtpWorkspace(Project $project): bool
+    {
+        return (bool) $project->ftp_enabled && ! $project->ssh_enabled;
+    }
+
+    private function ensureFtpWorkspace(Project $project): string
+    {
+        $path = $this->ftpWorkspacePath($project);
+        $this->ensurePath($path);
+        return $path;
+    }
+
+    private function ftpWorkspacePath(Project $project): string
+    {
+        $root = trim((string) config('gitmanager.ftp.workspace_path', storage_path('app/ftp-workspaces')));
+        if ($root === '') {
+            $root = storage_path('app/ftp-workspaces');
+        }
+        if (! $this->isAbsolutePath($root)) {
+            $root = base_path($root);
+        }
+        $root = rtrim($root, DIRECTORY_SEPARATOR);
+
+        return $root.DIRECTORY_SEPARATOR.$project->id;
+    }
+
+    private function isPathWritableForGit(string $path): bool
+    {
+        if ($path === '') {
+            return false;
+        }
+
+        if (is_dir($path)) {
+            if (! is_writable($path)) {
+                return false;
+            }
+
+            $gitDir = $path.DIRECTORY_SEPARATOR.'.git';
+            if (is_dir($gitDir) && ! is_writable($gitDir)) {
+                return false;
+            }
+
+            return true;
+        }
+
+        $parent = $this->closestExistingParent($path);
+        return $parent !== null && is_writable($parent);
+    }
+
     private function resolveExecutionPath(Project $project, string $repoPath): string
     {
-        $laravelRoot = $this->findLaravelRoot($project->local_path)
-            ?? $this->findLaravelRoot($repoPath);
+        $laravelRoot = $this->findLaravelRoot($repoPath)
+            ?? $this->findLaravelRoot($project->local_path);
 
         return $laravelRoot ?: $repoPath;
     }
@@ -2081,8 +2140,17 @@ class DeploymentService
 
     private function getRepoPathIfExists(Project $project): ?string
     {
-        $path = $project->local_path;
-        return is_dir($path.DIRECTORY_SEPARATOR.'.git') ? $path : null;
+        $localPath = trim((string) $project->local_path);
+        if ($localPath !== '' && is_dir($localPath.DIRECTORY_SEPARATOR.'.git')) {
+            return $localPath;
+        }
+
+        if (! $this->shouldUseFtpWorkspace($project)) {
+            return null;
+        }
+
+        $workspace = $this->ftpWorkspacePath($project);
+        return is_dir($workspace.DIRECTORY_SEPARATOR.'.git') ? $workspace : null;
     }
 
     private function deleteDirectory(string $path): void

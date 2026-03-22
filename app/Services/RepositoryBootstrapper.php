@@ -11,9 +11,9 @@ class RepositoryBootstrapper
     /**
      * @return array{status: string, dirty?: bool, output?: array<int, string>}
      */
-    public function bootstrap(Project $project): array
+    public function bootstrap(Project $project, ?string $path = null): array
     {
-        $path = $project->local_path;
+        $path = $path ?? $project->local_path;
 
         if (! is_dir($path)) {
             throw new \RuntimeException('Project path not found: '.$path);

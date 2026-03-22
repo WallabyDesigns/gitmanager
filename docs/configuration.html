@@ -136,6 +136,7 @@
           <li>Npm: compares lock files (<code>package-lock.json</code> or <code>npm-shrinkwrap.json</code>) when present, otherwise falls back to <code>package.json</code>.</li>
           <li>If dependency files match and local <code>vendor</code>/<code>node_modules</code> exist, installs are skipped and those directories are excluded from sync.</li>
           <li>If dependency files differ, local installs run and dependency folders are synced.</li>
+          <li><code>GWM_FTP_WORKSPACE_PATH</code> sets the local workspace used when the project path is not writable (default: <code>storage/app/ftp-workspaces</code>).</li>
         </ul>
         <p class="muted">FTP-only deployments are a fallback for hosts without SSH. They work, but are less efficient than SSH because dependency folders may need to be uploaded.</p>
       </section>
