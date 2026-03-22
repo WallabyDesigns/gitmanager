@@ -3,7 +3,10 @@
 namespace App\Livewire\Projects;
 
 use App\Models\Project;
+use App\Models\Deployment;
+use App\Models\DeploymentQueueItem;
 use App\Services\DeploymentService;
+use App\Services\DeploymentQueueService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
@@ -71,13 +74,12 @@ class Show extends Component
             return;
         }
 
-        if ($this->queueEnabled()) {
-            $queue = app(\App\Services\DeploymentQueueService::class);
-            $queue->enqueue($this->project, 'deploy', [], Auth::user());
-            $this->dispatch('notify', message: 'Deployment queued.');
+        if ($this->deploymentInProgress()) {
+            $this->dispatch('notify', message: 'A deployment is already running for this project.');
             return;
         }
 
+        app(DeploymentQueueService::class)->cancelQueuedGroup($this->project, 'deploy');
         $deployment = $service->deploy($this->project, Auth::user());
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -91,13 +93,12 @@ class Show extends Component
             return;
         }
 
-        if ($this->queueEnabled()) {
-            $queue = app(\App\Services\DeploymentQueueService::class);
-            $queue->enqueue($this->project, 'force_deploy', [], Auth::user());
-            $this->dispatch('notify', message: 'Force deployment queued.');
+        if ($this->deploymentInProgress()) {
+            $this->dispatch('notify', message: 'A deployment is already running for this project.');
             return;
         }
 
+        app(DeploymentQueueService::class)->cancelQueuedGroup($this->project, 'force_deploy');
         $deployment = $service->deploy($this->project, Auth::user(), true);
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -107,6 +108,12 @@ class Show extends Component
 
     public function deployAnyway(DeploymentService $service): void
     {
+        if ($this->deploymentInProgress()) {
+            $this->dispatch('notify', message: 'A deployment is already running for this project.');
+            return;
+        }
+
+        app(DeploymentQueueService::class)->cancelQueuedGroup($this->project, 'deploy');
         $deployment = $service->deploy($this->project, Auth::user(), false, true);
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -120,13 +127,12 @@ class Show extends Component
             return;
         }
 
-        if ($this->queueEnabled()) {
-            $queue = app(\App\Services\DeploymentQueueService::class);
-            $queue->enqueue($this->project, 'rollback', [], Auth::user());
-            $this->dispatch('notify', message: 'Rollback queued.');
+        if ($this->deploymentInProgress()) {
+            $this->dispatch('notify', message: 'A deployment is already running for this project.');
             return;
         }
 
+        app(DeploymentQueueService::class)->cancelQueuedGroup($this->project, 'rollback');
         $deployment = $service->rollback($this->project, Auth::user());
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -137,6 +143,25 @@ class Show extends Component
     private function queueEnabled(): bool
     {
         return (bool) config('gitmanager.deploy_queue.enabled', true);
+    }
+
+    private function deploymentInProgress(): bool
+    {
+        $projectId = $this->project->id;
+
+        $runningDeployment = Deployment::query()
+            ->where('project_id', $projectId)
+            ->where('status', 'running')
+            ->exists();
+
+        if ($runningDeployment) {
+            return true;
+        }
+
+        return DeploymentQueueItem::query()
+            ->where('project_id', $projectId)
+            ->where('status', 'running')
+            ->exists();
     }
 
     private function blockIfPermissionsLocked(string $context = 'deployments'): bool

@@ -118,6 +118,20 @@ class DeploymentQueueService
         ];
     }
 
+    public function cancelQueuedGroup(Project $project, string $action): int
+    {
+        $group = $this->actionGroup($action);
+
+        return DeploymentQueueItem::query()
+            ->where('project_id', $project->id)
+            ->where('status', 'queued')
+            ->whereIn('action', $group)
+            ->update([
+                'status' => 'cancelled',
+                'finished_at' => now(),
+            ]);
+    }
+
     public function cancel(DeploymentQueueItem $item): void
     {
         if ($item->status !== 'queued') {

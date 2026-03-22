@@ -3,6 +3,7 @@
 namespace App\Livewire\Projects;
 
 use App\Models\Deployment;
+use App\Models\DeploymentQueueItem;
 use App\Services\DeploymentService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
@@ -68,8 +69,28 @@ class Index extends Component
             ->latest()
             ->get();
 
+        $projectIds = $projects->pluck('id')->all();
+        $runningDeployments = $projectIds === []
+            ? []
+            : Deployment::query()
+                ->whereIn('project_id', $projectIds)
+                ->where('status', 'running')
+                ->pluck('project_id')
+                ->all();
+
+        $runningQueueItems = $projectIds === []
+            ? []
+            : DeploymentQueueItem::query()
+                ->whereIn('project_id', $projectIds)
+                ->where('status', 'running')
+                ->pluck('project_id')
+                ->all();
+
+        $buildInProcess = array_values(array_unique(array_merge($runningDeployments, $runningQueueItems)));
+
         return view('livewire.projects.index', [
             'projects' => $projects,
+            'buildInProcess' => $buildInProcess,
             'counts' => [
                 'all' => Auth::user()->projects()->count(),
                 'health' => Auth::user()

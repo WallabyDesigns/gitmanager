@@ -44,6 +44,11 @@
                                     Permissions
                                 </span>
                             @endif
+                            @if (in_array($project->id, $buildInProcess ?? [], true))
+                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
+                                    Build in process
+                                </span>
+                            @endif
                             </div>
                             <p class="text-sm text-slate-500 dark:text-slate-400">{{ $project->local_path }}</p>
                             <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">

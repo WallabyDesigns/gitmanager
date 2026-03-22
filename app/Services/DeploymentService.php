@@ -96,10 +96,10 @@ class DeploymentService
         $this->beginDeploymentStream($deployment);
 
         $output = [];
-        $attempts = 0;
+        $permissionsStep = false;
+        $forceStaged = false;
 
-        while ($attempts < 2) {
-            $attempts++;
+        while (true) {
             $fromHash = null;
             $toHash = null;
             $stashed = false;
@@ -141,13 +141,22 @@ class DeploymentService
 
                 $toHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
 
-                $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
+                if (! $permissionsStep && ! $forceStaged && $this->needsPermissionFix($project, $executionPath)) {
+                    $output[] = 'Permission issues detected. Running Fix Permissions.';
+                    $this->attemptFixPermissions($project, $executionPath, $output, false);
+                    $permissionsStep = true;
+                    $forceStaged = true;
+                    $output[] = 'Continuing with staged installs after permissions step.';
+                }
+
+                $this->runWithSingleRetry(function () use ($project, $executionPath, &$output, &$forceStaged): void {
                     if ($project->run_composer_install) {
                         $this->runComposerCommandWithFallback(
                             $executionPath,
                             $output,
                             'Composer install',
-                            ['composer', 'install', '--no-dev', '--optimize-autoloader']
+                            ['composer', 'install', '--no-dev', '--optimize-autoloader'],
+                            $forceStaged
                         );
                     }
 
@@ -156,7 +165,8 @@ class DeploymentService
                             $executionPath,
                             $output,
                             'Npm install',
-                            $this->npmInstallCommand($executionPath)
+                            $this->npmInstallCommand($executionPath),
+                            $forceStaged
                         );
                     }
 
@@ -172,7 +182,9 @@ class DeploymentService
                     }
 
                     $this->maybeRunLaravelClearCache($project, $output);
-                }, $output, 'Post-deploy tasks');
+                }, $output, 'Post-deploy tasks', function (\Throwable $exception) use (&$output): bool {
+                    return ! $this->isPermissionError($exception, $output);
+                });
 
                 if ($stashed) {
                     $this->restoreStashOrReset($repoPath, $output, $toHash ?? 'HEAD');
@@ -203,8 +215,12 @@ class DeploymentService
                     $this->restoreStashOrReset($repoPath, $output, $fromHash ?? 'HEAD');
                 }
 
-                if ($attempts < 2) {
-                    $output[] = 'Deploy failed. Retrying once.';
+                if (! $permissionsStep && $this->isPermissionError($exception, $output)) {
+                    $output[] = 'Permission error detected. Running Fix Permissions.';
+                    $this->attemptFixPermissions($project, $executionPath, $output, false);
+                    $permissionsStep = true;
+                    $forceStaged = true;
+                    $output[] = 'Retrying deployment using staged installs.';
                     continue;
                 }
 
@@ -569,60 +585,7 @@ class DeploymentService
     public function fixPermissions(Project $project, ?User $user = null): Deployment
     {
         return $this->runMaintenanceAction($project, $user, 'fix_permissions', function (string $path, array &$output) use ($project): void {
-            if (PHP_OS_FAMILY === 'Windows') {
-                $output[] = 'Permission fix skipped on Windows.';
-                $project->permissions_locked = false;
-                $project->permissions_issue_message = null;
-                $project->permissions_checked_at = now();
-                $project->save();
-                return;
-            }
-
-            $laravelRoot = $this->findLaravelRoot($project->local_path)
-                ?? $this->findLaravelRoot($path)
-                ?? $path;
-            $isLaravel = $this->findLaravelRoot($project->local_path) !== null || $this->findLaravelRoot($path) !== null;
-            $needsComposer = $project->run_composer_install || is_file($laravelRoot.DIRECTORY_SEPARATOR.'composer.json');
-            $needsNpm = $project->run_npm_install || is_file($laravelRoot.DIRECTORY_SEPARATOR.'package.json');
-            $needsBuild = $project->run_build_command || is_dir($laravelRoot.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'build');
-
-            $targets = [
-                ['label' => 'Project directory', 'path' => $laravelRoot, 'required' => true],
-                ['label' => 'Vendor directory', 'path' => $laravelRoot.DIRECTORY_SEPARATOR.'vendor', 'required' => $needsComposer],
-                ['label' => 'Storage directory', 'path' => $laravelRoot.DIRECTORY_SEPARATOR.'storage', 'required' => $isLaravel],
-                ['label' => 'Bootstrap cache directory', 'path' => $laravelRoot.DIRECTORY_SEPARATOR.'bootstrap'.DIRECTORY_SEPARATOR.'cache', 'required' => $isLaravel],
-                ['label' => 'Build directory', 'path' => $laravelRoot.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'build', 'required' => $needsBuild],
-                ['label' => 'Build assets directory', 'path' => $laravelRoot.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'build'.DIRECTORY_SEPARATOR.'assets', 'required' => $needsBuild],
-                ['label' => 'Node modules directory', 'path' => $laravelRoot.DIRECTORY_SEPARATOR.'node_modules', 'required' => $needsNpm],
-            ];
-
-            $failures = [];
-            foreach ($targets as $target) {
-                $targetPath = $target['path'];
-                if (! $target['required'] && ! is_dir($targetPath)) {
-                    continue;
-                }
-
-                $this->ensureWritableDirectory($targetPath, $output, $target['label']);
-                if (! is_writable($targetPath)) {
-                    $failures[] = $target['label'].': '.$targetPath;
-                    continue;
-                }
-
-                $output[] = 'Adjusted permissions for: '.$targetPath;
-            }
-
-            $project->permissions_checked_at = now();
-            if ($failures !== []) {
-                $project->permissions_locked = true;
-                $project->permissions_issue_message = 'Still not writable: '.implode(' | ', $failures);
-                $project->save();
-                throw new \RuntimeException('Permission fix incomplete. '.implode(' | ', $failures));
-            }
-
-            $project->permissions_locked = false;
-            $project->permissions_issue_message = null;
-            $project->save();
+            $this->attemptFixPermissions($project, $path, $output, true);
         });
     }
 
@@ -1399,11 +1362,14 @@ class DeploymentService
         return $hash !== '' ? $hash : null;
     }
 
-    private function runWithSingleRetry(callable $callback, array &$output, string $label): void
+    private function runWithSingleRetry(callable $callback, array &$output, string $label, ?callable $shouldRetry = null): void
     {
         try {
             $callback();
         } catch (\Throwable $exception) {
+            if ($shouldRetry && ! $shouldRetry($exception)) {
+                throw $exception;
+            }
             $output[] = $label.' failed. Retrying once.';
             $callback();
         }
@@ -2207,21 +2173,32 @@ class DeploymentService
         $this->maybeStreamOutput($output);
     }
 
-    private function runComposerCommandWithFallback(string $path, array &$output, string $label, array $command): void
+    private function runComposerCommandWithFallback(string $path, array &$output, string $label, array $command, bool $forceStaged = false): void
     {
         $vendorPath = $path.DIRECTORY_SEPARATOR.'vendor';
         $projectWritable = is_writable($path);
         $vendorWritable = is_dir($vendorPath) ? is_writable($vendorPath) : $projectWritable;
 
         $this->ensureWritableDirectory($path, $output, 'Project directory');
-        if ($vendorWritable) {
+        if ($forceStaged) {
+            $output[] = 'Running composer command using staged install.';
+        } elseif ($vendorWritable) {
             $this->ensureWritableDirectory($vendorPath, $output, 'Vendor directory');
-            $this->logStep($output, $label, $path, implode(' ', $command));
-            $this->runProjectProcess($command, $output, $path);
-            return;
+            try {
+                $this->logStep($output, $label, $path, implode(' ', $command));
+                $this->runProjectProcess($command, $output, $path);
+                return;
+            } catch (ProcessFailedException $exception) {
+                if (! $this->isPermissionError($exception, $output)) {
+                    throw $exception;
+                }
+
+                $output[] = 'Composer command failed with permission errors. Attempting staged install.';
+            }
+        } else {
+            $output[] = 'Vendor directory is not writable. Attempting staged install.';
         }
 
-        $output[] = 'Vendor directory is not writable. Attempting staged install.';
         $tempRoot = $this->createTempPath($path, 'composer');
         $tempVendor = $tempRoot.DIRECTORY_SEPARATOR.'vendor';
         $this->ensurePath($tempRoot);
@@ -2244,25 +2221,43 @@ class DeploymentService
         }
     }
 
-    private function runNpmInstallWithFallback(string $path, array &$output, string $label, array $command): void
+    private function runNpmInstallWithFallback(string $path, array &$output, string $label, array $command, bool $forceStaged = false): void
     {
-        $this->runNpmCommandWithFallback($path, $output, $label, $command, false);
+        $this->runNpmCommandWithFallback($path, $output, $label, $command, false, $forceStaged);
     }
 
-    private function runNpmCommandWithFallback(string $path, array &$output, string $label, array $command, bool $syncManifestFiles): void
+    private function runNpmCommandWithFallback(string $path, array &$output, string $label, array $command, bool $syncManifestFiles, bool $forceStaged = false): void
     {
         $modulesPath = $path.DIRECTORY_SEPARATOR.'node_modules';
         $projectWritable = is_writable($path);
         $modulesWritable = is_dir($modulesPath) ? is_writable($modulesPath) : $projectWritable;
+        $commandVerb = strtolower((string) ($command[1] ?? ''));
 
         $this->ensureWritableDirectory($path, $output, 'Project directory');
-        if ($modulesWritable) {
-            $this->logStep($output, $label, $path, implode(' ', $command));
-            $this->runProjectProcess($command, $output, $path);
-            return;
+        $useStagedInstall = $forceStaged || ($commandVerb === 'ci' && is_dir($modulesPath));
+        if ($useStagedInstall) {
+            $output[] = $forceStaged
+                ? 'Running npm command using staged install.'
+                : 'Node modules directory exists. Running npm ci in staged mode to avoid permission conflicts.';
+        }
+        if ($modulesWritable && ! $useStagedInstall) {
+            $this->ensureWritableDirectory($modulesPath, $output, 'Node modules directory');
+            try {
+                $this->logStep($output, $label, $path, implode(' ', $command));
+                $this->runProjectProcess($command, $output, $path);
+                return;
+            } catch (ProcessFailedException $exception) {
+                if (! $this->isPermissionError($exception, $output)) {
+                    throw $exception;
+                }
+
+                $output[] = 'Npm command failed with permission errors. Attempting staged install.';
+            }
         }
 
-        $output[] = 'Node modules directory is not writable. Attempting staged install.';
+        if (! $useStagedInstall) {
+            $output[] = 'Node modules directory is not writable. Attempting staged install.';
+        }
         $tempRoot = $this->createTempPath($path, 'npm');
         $this->ensurePath($tempRoot);
         $this->copyNpmManifestFiles($path, $tempRoot, $output);
@@ -2379,6 +2374,117 @@ class DeploymentService
         if (! is_writable($path)) {
             $output[] = 'Warning: '.$label.' is not writable: '.$path.'. Run Fix Permissions or ensure the web user owns this path.';
         }
+    }
+
+    private function attemptFixPermissions(Project $project, string $path, array &$output, bool $throwOnFailure): bool
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            $output[] = 'Permission fix skipped on Windows.';
+            $project->permissions_locked = false;
+            $project->permissions_issue_message = null;
+            $project->permissions_checked_at = now();
+            $project->save();
+            return true;
+        }
+
+        $laravelRoot = $this->findLaravelRoot($project->local_path)
+            ?? $this->findLaravelRoot($path)
+            ?? $path;
+        $isLaravel = $this->findLaravelRoot($project->local_path) !== null || $this->findLaravelRoot($path) !== null;
+        $needsComposer = $project->run_composer_install || is_file($laravelRoot.DIRECTORY_SEPARATOR.'composer.json');
+        $needsNpm = $project->run_npm_install || is_file($laravelRoot.DIRECTORY_SEPARATOR.'package.json');
+        $needsBuild = $project->run_build_command || is_dir($laravelRoot.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'build');
+
+        $targets = [
+            ['label' => 'Project directory', 'path' => $laravelRoot, 'required' => true],
+            ['label' => 'Vendor directory', 'path' => $laravelRoot.DIRECTORY_SEPARATOR.'vendor', 'required' => $needsComposer],
+            ['label' => 'Storage directory', 'path' => $laravelRoot.DIRECTORY_SEPARATOR.'storage', 'required' => $isLaravel],
+            ['label' => 'Bootstrap cache directory', 'path' => $laravelRoot.DIRECTORY_SEPARATOR.'bootstrap'.DIRECTORY_SEPARATOR.'cache', 'required' => $isLaravel],
+            ['label' => 'Build directory', 'path' => $laravelRoot.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'build', 'required' => $needsBuild],
+            ['label' => 'Build assets directory', 'path' => $laravelRoot.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'build'.DIRECTORY_SEPARATOR.'assets', 'required' => $needsBuild],
+            ['label' => 'Node modules directory', 'path' => $laravelRoot.DIRECTORY_SEPARATOR.'node_modules', 'required' => $needsNpm],
+        ];
+
+        $failures = [];
+        foreach ($targets as $target) {
+            $targetPath = $target['path'];
+            if (! $target['required'] && ! is_dir($targetPath)) {
+                continue;
+            }
+
+            $this->ensureWritableDirectory($targetPath, $output, $target['label']);
+            if (! is_writable($targetPath)) {
+                $failures[] = $target['label'].': '.$targetPath;
+                continue;
+            }
+
+            $output[] = 'Adjusted permissions for: '.$targetPath;
+        }
+
+        $project->permissions_checked_at = now();
+        if ($failures !== []) {
+            $project->permissions_locked = true;
+            $project->permissions_issue_message = 'Still not writable: '.implode(' | ', $failures);
+            $project->save();
+
+            if ($throwOnFailure) {
+                throw new \RuntimeException('Permission fix incomplete. '.implode(' | ', $failures));
+            }
+
+            return false;
+        }
+
+        $project->permissions_locked = false;
+        $project->permissions_issue_message = null;
+        $project->save();
+
+        return true;
+    }
+
+    private function needsPermissionFix(Project $project, string $executionPath): bool
+    {
+        if ($project->run_composer_install) {
+            $vendorPath = $executionPath.DIRECTORY_SEPARATOR.'vendor';
+            if ((is_dir($vendorPath) && ! is_writable($vendorPath)) || (! is_dir($vendorPath) && ! is_writable($executionPath))) {
+                return true;
+            }
+        }
+
+        if ($project->run_npm_install) {
+            $modulesPath = $executionPath.DIRECTORY_SEPARATOR.'node_modules';
+            if ((is_dir($modulesPath) && ! is_writable($modulesPath)) || (! is_dir($modulesPath) && ! is_writable($executionPath))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function isPermissionError(\Throwable $exception, array $output): bool
+    {
+        $message = $exception->getMessage();
+        if ($exception instanceof ProcessFailedException) {
+            $process = $exception->getProcess();
+            $message .= "\n".$process->getErrorOutput()."\n".$process->getOutput();
+        }
+
+        $haystack = strtolower($message."\n".implode("\n", $output));
+        $needles = [
+            'eacces',
+            'eperm',
+            'permission denied',
+            'access denied',
+            'operation was rejected by your operating system',
+            'not permitted',
+        ];
+
+        foreach ($needles as $needle) {
+            if (str_contains($haystack, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function ensureBuildOutputWritable(string $rootPath, array &$output): void

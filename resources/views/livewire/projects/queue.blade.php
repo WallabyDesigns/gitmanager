@@ -1,4 +1,4 @@
-<div class="py-10" wire:poll.5s>
+<div class="py-10" wire:poll.5s="$refresh">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
         @include('livewire.projects.partials.tabs')
 
@@ -91,7 +91,7 @@
 
         <div class="space-y-3">
             @forelse ($items as $item)
-                <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4 flex flex-col gap-3">
+                <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4 flex flex-col gap-3" wire:key="queue-item-{{ $item->id }}">
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <div class="flex items-center gap-2">
@@ -102,6 +102,11 @@
                             @if ($item->project?->permissions_locked)
                                 <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
                                     Permissions
+                                </span>
+                            @endif
+                            @if ($item->project_id && $runningDeployments->has($item->project_id))
+                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
+                                    Build in process
                                 </span>
                             @endif
                         </div>
