@@ -1727,6 +1727,17 @@ class DeploymentService
     private function normalizeCommand(array $command): array
     {
         $binary = $command[0] ?? '';
+        if ($binary === 'composer') {
+            $composerPath = $this->resolveComposerBinaryPath();
+            $phpBinary = $this->phpBinary();
+            if ($composerPath !== '' && $phpBinary !== '') {
+                array_shift($command);
+                array_unshift($command, $composerPath);
+                array_unshift($command, $phpBinary);
+                return $command;
+            }
+        }
+
         $command[0] = match ($binary) {
             'git' => $this->gitBinary(),
             'composer' => $this->composerBinary(),
@@ -1752,6 +1763,68 @@ class DeploymentService
         $configured = trim($configured, "\"' ");
 
         return $configured !== '' ? $configured : 'composer';
+    }
+
+    private function resolveComposerBinaryPath(): string
+    {
+        $configured = trim($this->composerBinary());
+        $configured = trim($configured, "\"' ");
+        if ($configured === '') {
+            return '';
+        }
+
+        if ($this->isAbsolutePath($configured) && file_exists($configured)) {
+            return $configured;
+        }
+
+        if (str_contains($configured, DIRECTORY_SEPARATOR) && file_exists($configured)) {
+            return $configured;
+        }
+
+        $resolved = $this->resolveBinaryFromPath($configured);
+        return $resolved ?: '';
+    }
+
+    private function resolveBinaryFromPath(string $binary): ?string
+    {
+        $binary = trim($binary);
+        if ($binary === '') {
+            return null;
+        }
+
+        if ($this->isAbsolutePath($binary)) {
+            return $binary;
+        }
+
+        if (str_contains($binary, DIRECTORY_SEPARATOR) && file_exists($binary)) {
+            return $binary;
+        }
+
+        $path = getenv('PATH') ?: ($_SERVER['PATH'] ?? '');
+        if ($path === '') {
+            return null;
+        }
+
+        $extensions = [''];
+        if (PHP_OS_FAMILY === 'Windows') {
+            $extensions = ['', '.exe', '.bat', '.cmd'];
+        }
+
+        foreach (explode(PATH_SEPARATOR, $path) as $dir) {
+            $dir = trim($dir);
+            if ($dir === '') {
+                continue;
+            }
+
+            foreach ($extensions as $ext) {
+                $candidate = rtrim($dir, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.$binary.$ext;
+                if (is_file($candidate) && is_executable($candidate)) {
+                    return $candidate;
+                }
+            }
+        }
+
+        return null;
     }
 
     private function npmBinary(): string
