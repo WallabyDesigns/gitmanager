@@ -2287,6 +2287,7 @@ class DeploymentService
             }
 
             $this->swapDirectory($tempVendor, $vendorPath, $output, 'Vendor directory');
+            $this->applyOwnershipFromReference($vendorPath, $path, $output, 'Vendor directory');
         } finally {
             if (is_dir($tempRoot)) {
                 $this->deleteDirectory($tempRoot);
@@ -2349,6 +2350,7 @@ class DeploymentService
             }
 
             $this->swapDirectory($tempModules, $modulesPath, $output, 'Node modules directory');
+            $this->applyOwnershipFromReference($modulesPath, $path, $output, 'Node modules directory');
         } finally {
             if (is_dir($tempRoot)) {
                 $this->deleteDirectory($tempRoot);
@@ -2447,6 +2449,57 @@ class DeploymentService
         if (! is_writable($path)) {
             $output[] = 'Warning: '.$label.' is not writable: '.$path.'. Run Fix Permissions or ensure the web user owns this path.';
         }
+    }
+
+    private function applyOwnershipFromReference(string $targetPath, string $referencePath, array &$output, string $label): void
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            return;
+        }
+
+        if (! is_dir($targetPath)) {
+            return;
+        }
+
+        $referencePath = is_dir($referencePath) ? $referencePath : dirname($referencePath);
+        $owner = @fileowner($referencePath);
+        $group = @filegroup($referencePath);
+        if ($owner === false || $group === false) {
+            $output[] = 'Warning: unable to read ownership for '.$label.'.';
+            return;
+        }
+
+        if (function_exists('posix_geteuid')) {
+            $euid = posix_geteuid();
+            if ($euid !== 0 && $euid !== $owner) {
+                $output[] = 'Warning: unable to change ownership for '.$label.' (not running as root).';
+                return;
+            }
+        }
+
+        $this->chownRecursivePath($targetPath, (int) $owner, (int) $group);
+        $output[] = 'Aligned ownership for '.$label.' with project directory.';
+    }
+
+    private function chownRecursivePath(string $path, int $owner, int $group): void
+    {
+        if (! is_dir($path)) {
+            return;
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            $target = $item->getPathname();
+            @chown($target, $owner);
+            @chgrp($target, $group);
+        }
+
+        @chown($path, $owner);
+        @chgrp($path, $group);
     }
 
     private function attemptFixPermissions(Project $project, string $path, array &$output, bool $throwOnFailure): bool

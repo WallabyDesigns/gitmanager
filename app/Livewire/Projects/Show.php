@@ -8,6 +8,7 @@ use App\Models\DeploymentQueueItem;
 use App\Services\DeploymentService;
 use App\Services\DeploymentQueueService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
@@ -31,7 +32,13 @@ class Show extends Component
     {
         $dependencyActions = $this->dependencyActions();
 
-        $deployments = $this->project->deployments()->orderByDesc('started_at');
+        $logLimit = $this->logPreviewLimit();
+        $logPreview = DB::raw($this->logPreviewSql('deployments.output_log', $logLimit).' as output_log');
+
+        $deployments = $this->project->deployments()
+            ->select($this->deploymentColumns())
+            ->addSelect($logPreview)
+            ->orderByDesc('started_at');
         $lastSuccessfulDeploy = (clone $deployments)
             ->where('action', 'deploy')
             ->where('status', 'success')
@@ -162,6 +169,34 @@ class Show extends Component
             ->where('project_id', $projectId)
             ->where('status', 'running')
             ->exists();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function deploymentColumns(): array
+    {
+        return [
+            'deployments.id',
+            'deployments.project_id',
+            'deployments.triggered_by',
+            'deployments.action',
+            'deployments.status',
+            'deployments.from_hash',
+            'deployments.to_hash',
+            'deployments.started_at',
+            'deployments.finished_at',
+        ];
+    }
+
+    private function logPreviewLimit(): int
+    {
+        return 120000;
+    }
+
+    private function logPreviewSql(string $column, int $limit): string
+    {
+        return "CASE WHEN length({$column}) > {$limit} THEN substr({$column}, length({$column}) - {$limit} + 1) ELSE {$column} END";
     }
 
     private function blockIfPermissionsLocked(string $context = 'deployments'): bool

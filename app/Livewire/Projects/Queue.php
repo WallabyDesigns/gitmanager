@@ -7,6 +7,7 @@ use App\Models\Deployment;
 use App\Services\DeploymentQueueService;
 use App\Services\SchedulerService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\WithPagination;
 use Livewire\Component;
@@ -97,9 +98,17 @@ class Queue extends Component
     public function render()
     {
         $userId = Auth::id();
+        $logLimit = $this->logPreviewLimit();
+        $logPreview = DB::raw($this->logPreviewSql('output_log', $logLimit).' as output_log');
+        $deploymentColumns = $this->deploymentColumns();
 
         $items = DeploymentQueueItem::query()
-            ->with(['project', 'deployment'])
+            ->with([
+                'project',
+                'deployment' => function ($query) use ($deploymentColumns, $logPreview) {
+                    $query->select($deploymentColumns)->addSelect($logPreview);
+                },
+            ])
             ->whereHas('project', fn ($query) => $query->where('user_id', $userId))
             ->when($this->statusFilter !== 'all', fn ($query) => $query->where('status', $this->statusFilter))
             ->when($this->actionFilter !== 'all', fn ($query) => $query->where('action', $this->actionFilter))
@@ -123,6 +132,8 @@ class Queue extends Component
 
         $runningDeployments = $projectIds
             ? Deployment::query()
+                ->select($deploymentColumns)
+                ->addSelect($logPreview)
                 ->whereIn('project_id', $projectIds)
                 ->where('status', 'running')
                 ->latest('started_at')
@@ -159,5 +170,33 @@ class Queue extends Component
         $item = DeploymentQueueItem::findOrFail($id);
         $this->authorize('update', $item);
         $queue->moveDown($item);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function deploymentColumns(): array
+    {
+        return [
+            'id',
+            'project_id',
+            'triggered_by',
+            'action',
+            'status',
+            'from_hash',
+            'to_hash',
+            'started_at',
+            'finished_at',
+        ];
+    }
+
+    private function logPreviewLimit(): int
+    {
+        return 120000;
+    }
+
+    private function logPreviewSql(string $column, int $limit): string
+    {
+        return "CASE WHEN length({$column}) > {$limit} THEN substr({$column}, length({$column}) - {$limit} + 1) ELSE {$column} END";
     }
 }
