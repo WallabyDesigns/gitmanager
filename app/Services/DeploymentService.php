@@ -175,10 +175,7 @@ class DeploymentService
                 }, $output, 'Post-deploy tasks');
 
                 if ($stashed) {
-                    $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
-                    if (! $pop->isSuccessful()) {
-                        $output[] = 'Warning: stashed changes could not be restored.';
-                    }
+                    $this->restoreStashOrReset($repoPath, $output, $toHash ?? 'HEAD');
                 }
 
                 $deployment->status = 'success';
@@ -203,10 +200,7 @@ class DeploymentService
                 }
 
                 if ($stashed) {
-                    $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
-                    if (! $pop->isSuccessful()) {
-                        $output[] = 'Warning: stashed changes could not be restored.';
-                    }
+                    $this->restoreStashOrReset($repoPath, $output, $fromHash ?? 'HEAD');
                 }
 
                 if ($attempts < 2) {
@@ -332,10 +326,7 @@ class DeploymentService
                 }, $output, 'Post-rollback tasks');
 
                 if ($stashed) {
-                    $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
-                    if (! $pop->isSuccessful()) {
-                        $output[] = 'Warning: stashed changes could not be restored.';
-                    }
+                    $this->restoreStashOrReset($repoPath, $output, $toHash ?? 'HEAD');
                 }
 
                 $deployment->status = 'success';
@@ -359,10 +350,7 @@ class DeploymentService
                 }
 
                 if ($stashed) {
-                    $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
-                    if (! $pop->isSuccessful()) {
-                        $output[] = 'Warning: stashed changes could not be restored.';
-                    }
+                    $this->restoreStashOrReset($repoPath, $output, $fromHash ?? 'HEAD');
                 }
 
                 if ($attempts < 2) {
@@ -868,6 +856,18 @@ class DeploymentService
         }
 
         return true;
+    }
+
+    private function restoreStashOrReset(string $repoPath, array &$output, ?string $resetTo = null): void
+    {
+        $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
+        if ($pop->isSuccessful()) {
+            return;
+        }
+
+        $output[] = 'Warning: stashed changes could not be restored. Leaving stash intact and resetting working tree.';
+        $target = $resetTo ?: 'HEAD';
+        $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', $target], $output, null, false);
     }
 
     private function resetToRemote(Project $project, string $repoPath, string $branch, array &$output, bool $forceClean): void
