@@ -1895,10 +1895,50 @@ class DeploymentService
 
     private function phpBinary(): string
     {
+        $override = $this->resolveEnvOverride([
+            'GWM_PHP_PATH',
+            'GWM_PHP_BINARY',
+            'GPM_PHP_PATH',
+            'GPM_PHP_BINARY',
+        ]);
+        if ($override !== null) {
+            return $override;
+        }
+
         $configured = trim((string) config('gitmanager.php_binary', 'php'));
         $configured = trim($configured, "\"' ");
 
         return $configured !== '' ? $configured : 'php';
+    }
+
+    private function resolveEnvOverride(array $keys): ?string
+    {
+        foreach ($keys as $key) {
+            $value = $this->readEnvOverride($key);
+            if ($value !== null) {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    private function readEnvOverride(string $key): ?string
+    {
+        $value = getenv($key);
+        if ($value === false || $value === '') {
+            $value = $_SERVER[$key] ?? ($_ENV[$key] ?? '');
+        }
+
+        $value = is_string($value) ? trim($value) : '';
+        if ($value !== '') {
+            return $value;
+        }
+
+        $fromEnvFile = $this->getManagerEnvValue($key);
+        $fromEnvFile = $fromEnvFile !== null ? trim($fromEnvFile) : '';
+
+        return $fromEnvFile !== '' ? $fromEnvFile : null;
     }
 
     private function gitEnv(): array
@@ -2309,6 +2349,10 @@ class DeploymentService
         $vendorPath = $path.DIRECTORY_SEPARATOR.'vendor';
         $projectWritable = is_writable($path);
         $vendorWritable = is_dir($vendorPath) ? is_writable($vendorPath) : $projectWritable;
+        $phpBinary = $this->phpBinary();
+        if ($phpBinary !== '') {
+            $output[] = 'Composer will use PHP binary: '.$phpBinary;
+        }
 
         $this->ensureWritableDirectory($path, $output, 'Project directory');
         if ($forceStaged) {
@@ -2848,6 +2892,10 @@ class DeploymentService
             'access denied',
             'operation was rejected by your operating system',
             'not permitted',
+            'could not delete',
+            'failed to delete',
+            'failed to remove',
+            'unlink',
         ];
 
         foreach ($needles as $needle) {
@@ -2954,6 +3002,11 @@ class DeploymentService
     private function getLaravelAppUrl(string $path): ?string
     {
         return $this->getLaravelEnvValue($path, 'APP_URL');
+    }
+
+    private function getManagerEnvValue(string $key): ?string
+    {
+        return $this->getLaravelEnvValue(base_path(), $key);
     }
 
     private function getLaravelEnvValue(string $path, string $key): ?string

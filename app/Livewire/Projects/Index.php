@@ -7,6 +7,7 @@ use App\Models\DeploymentQueueItem;
 use App\Services\DeploymentService;
 use App\Services\DeploymentQueueService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Carbon;
 use Livewire\Component;
 
 class Index extends Component
@@ -31,7 +32,12 @@ class Index extends Component
                 $service->checkHealth($project);
             }
 
-            if (! $project->updates_checked_at || $project->updates_checked_at->lt(now()->subMinutes(5))) {
+            $updatesCheckedAt = $project->updates_checked_at;
+            if (is_string($updatesCheckedAt)) {
+                $updatesCheckedAt = Carbon::parse($updatesCheckedAt);
+            }
+
+            if (! $updatesCheckedAt || $updatesCheckedAt->lt(now()->subMinutes(5))) {
                 $wasAvailable = (bool) $project->updates_available;
                 $hasUpdates = $service->checkForUpdates($project);
 

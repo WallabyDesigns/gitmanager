@@ -9,6 +9,7 @@ use App\Services\DeploymentService;
 use App\Services\DeploymentQueueService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
@@ -74,7 +75,12 @@ class Show extends Component
             $this->project->refresh();
         }
 
-        if (! $this->project->updates_checked_at || $this->project->updates_checked_at->lt(now()->subMinutes(5))) {
+        $updatesCheckedAt = $this->project->updates_checked_at;
+        if (is_string($updatesCheckedAt)) {
+            $updatesCheckedAt = Carbon::parse($updatesCheckedAt);
+        }
+
+        if (! $updatesCheckedAt || $updatesCheckedAt->lt(now()->subMinutes(5))) {
             $wasAvailable = (bool) $this->project->updates_available;
             $hasUpdates = $service->checkForUpdates($this->project);
             $this->project->refresh();
