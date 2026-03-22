@@ -23,9 +23,23 @@ return [
         'enabled' => env('GWM_DEPLOY_QUEUE_ENABLED', true),
         'stale_seconds' => env('GWM_DEPLOY_QUEUE_STALE_SECONDS', 900),
     ],
+    'deployments' => [
+        'stale_seconds' => env('GWM_DEPLOYMENT_STALE_SECONDS', 3600),
+    ],
     'deploy_staging' => [
         'enabled' => env('GWM_DEPLOY_STAGING_ENABLED', true),
         'path' => env('GWM_DEPLOY_STAGING_PATH', storage_path('app/deploy-staging')),
+    ],
+    'ssh' => [
+        'binary' => env('GWM_SSH_BINARY', 'ssh'),
+        'pass_binary' => env('GWM_SSH_PASS_BINARY', ''),
+        'known_hosts' => env('GWM_SSH_KNOWN_HOSTS', storage_path('app/ssh_known_hosts')),
+        'strict_host_key_checking' => env('GWM_SSH_STRICT_HOST_KEY', 'accept-new'),
+        'key_path' => env('GWM_SSH_KEY_PATH', ''),
+    ],
+    'sudo' => [
+        'enabled' => env('GWM_SUDO_ENABLED', false),
+        'binary' => env('GWM_SUDO_BINARY', 'sudo'),
     ],
     'scheduler' => [
         'stale_seconds' => env('GWM_SCHEDULER_STALE_SECONDS', 120),

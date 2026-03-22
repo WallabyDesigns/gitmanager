@@ -8,6 +8,7 @@ use App\Livewire\Projects\Index as ProjectsIndex;
 use App\Livewire\Projects\Queue as ProjectsQueue;
 use App\Livewire\Projects\Scheduler as ProjectsScheduler;
 use App\Livewire\Projects\Show as ProjectsShow;
+use App\Livewire\FtpAccounts\Index as FtpAccountsIndex;
 use App\Livewire\Security\Index as SecurityIndex;
 use App\Livewire\System\EmailSettings as SystemEmailSettings;
 use App\Livewire\Users\Index as UsersIndex;
@@ -34,6 +35,7 @@ Route::middleware(['auth', 'verified', EnsurePasswordChanged::class])->group(fun
         Route::get('/system/security', SecurityIndex::class)->name('system.security');
         Route::get('/system/email', SystemEmailSettings::class)->name('system.email');
         Route::get('/workflows', WorkflowsIndex::class)->name('workflows.index');
+        Route::get('/ftp-accounts', FtpAccountsIndex::class)->name('ftp-accounts.index');
     });
 
     Route::redirect('/app-updates', '/system')->name('app-updates.index');

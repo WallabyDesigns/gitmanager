@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\FtpAccount;
 
 class Project extends Model
 {
@@ -36,6 +37,13 @@ class Project extends Model
         'test_command',
         'allow_dependency_updates',
         'exclude_paths',
+        'ftp_account_id',
+        'ftp_root_path',
+        'ftp_enabled',
+        'ssh_enabled',
+        'ssh_port',
+        'ssh_root_path',
+        'ssh_commands',
     ];
 
     protected $casts = [
@@ -53,11 +61,18 @@ class Project extends Model
         'updates_checked_at' => 'datetime',
         'permissions_locked' => 'boolean',
         'permissions_checked_at' => 'datetime',
+        'ftp_enabled' => 'boolean',
+        'ssh_enabled' => 'boolean',
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function ftpAccount(): BelongsTo
+    {
+        return $this->belongsTo(FtpAccount::class);
     }
 
     public function deployments(): HasMany

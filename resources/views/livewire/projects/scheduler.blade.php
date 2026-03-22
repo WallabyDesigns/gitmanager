@@ -40,13 +40,16 @@
                     </p>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <button type="button" wire:click="refreshStatus" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white">
+                    <button type="button" wire:click="refreshStatus" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white inline-flex items-center">
+                        <x-loading-spinner target="refreshStatus" />
                         Refresh Status
                     </button>
-                    <button type="button" wire:click="runScheduler" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white">
+                    <button type="button" wire:click="runScheduler" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white inline-flex items-center">
+                        <x-loading-spinner target="runScheduler" />
                         Run Scheduler Now
                     </button>
-                    <button type="button" wire:click="processQueue" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white">
+                    <button type="button" wire:click="processQueue" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white inline-flex items-center">
+                        <x-loading-spinner target="processQueue" />
                         Process Queue Now
                     </button>
                 </div>
@@ -69,7 +72,8 @@
                 {{ $cronCommand }}
             </div>
             <div class="flex flex-wrap gap-2">
-                <button type="button" wire:click="installCron" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white">
+                <button type="button" wire:click="installCron" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white inline-flex items-center">
+                    <x-loading-spinner target="installCron" />
                     Install Cron (Best Effort)
                 </button>
             </div>

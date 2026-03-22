@@ -35,6 +35,20 @@
                                 $healthClass = $healthStatus === 'ok'
                                     ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
                                     : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300';
+                                $ftpNeedsTest = $project->ftp_enabled
+                                    && $project->ftpAccount
+                                    && $project->ftpAccount->ftpNeedsTest();
+                                $sshNeedsTest = $project->ssh_enabled
+                                    && $project->ftpAccount
+                                    && $project->ftpAccount->sshNeedsTest();
+                                $ftpIssue = $project->ftp_enabled
+                                    && $project->ftpAccount
+                                    && in_array($project->ftpAccount->ftp_test_status, ['error', 'warning'], true)
+                                    && ! $ftpNeedsTest;
+                                $sshIssue = $project->ssh_enabled
+                                    && $project->ftpAccount
+                                    && in_array($project->ftpAccount->ssh_test_status, ['error', 'warning'], true)
+                                    && ! $sshNeedsTest;
                             @endphp
                             <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $healthClass }}">
                                 {{ $healthLabel }}
@@ -47,6 +61,31 @@
                             @if ($project->updates_available)
                                 <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
                                     Updates Available
+                                </span>
+                            @endif
+                            @if ($project->ftp_enabled)
+                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
+                                    FTPS
+                                </span>
+                            @endif
+                            @if ($ftpNeedsTest)
+                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                    FTP Needs Test
+                                </span>
+                            @endif
+                            @if ($sshNeedsTest)
+                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                    SSH Needs Test
+                                </span>
+                            @endif
+                            @if ($ftpIssue)
+                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+                                    FTP Issue
+                                </span>
+                            @endif
+                            @if ($sshIssue)
+                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+                                    SSH Issue
                                 </span>
                             @endif
                             @if (in_array($project->id, $queueProjects ?? [], true))

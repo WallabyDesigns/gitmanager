@@ -13,6 +13,12 @@ class Create extends Component
 
     public array $form = [];
     public int $step = 1;
+    public bool $checkPermissions = false;
+    public ?string $permissionStatus = null;
+    public ?string $permissionMessage = null;
+    public ?string $permissionParent = null;
+    public ?string $ftpTestStatus = null;
+    public ?string $ftpTestMessage = null;
 
     /**
      * @var array<int, array{value: string, label: string, description: string}>
@@ -58,6 +64,13 @@ class Create extends Component
             'test_command' => 'php artisan test',
             'allow_dependency_updates' => true,
             'exclude_paths' => '',
+            'ftp_enabled' => false,
+            'ftp_account_id' => null,
+            'ftp_root_path' => '',
+            'ssh_enabled' => false,
+            'ssh_port' => 22,
+            'ssh_root_path' => '',
+            'ssh_commands' => '',
         ];
 
         $this->applyProjectTypeDefaults('laravel');
@@ -65,7 +78,9 @@ class Create extends Component
 
     public function render()
     {
-        return view('livewire.projects.create')
+        return view('livewire.projects.create', [
+            'ftpAccounts' => \App\Models\FtpAccount::query()->orderBy('name')->get(),
+        ])
             ->layout('layouts.app', [
                 'header' => view('livewire.projects.partials.create-header'),
             ]);
@@ -74,6 +89,58 @@ class Create extends Component
     public function updatedFormProjectType(string $value): void
     {
         $this->applyProjectTypeDefaults($value);
+    }
+
+    public function updatedCheckPermissions(bool $value): void
+    {
+        if (! $value) {
+            $this->clearPermissionCheck();
+            return;
+        }
+
+        $this->checkPathPermissions();
+    }
+
+    public function updatedFormLocalPath(string $value): void
+    {
+        if (! $this->checkPermissions) {
+            return;
+        }
+
+        $this->checkPathPermissions();
+    }
+
+    public function updatedFormFtpAccountId(): void
+    {
+        if (! ($this->form['ftp_enabled'] ?? false)) {
+            return;
+        }
+
+        $this->testFtpConnection();
+    }
+
+    public function updatedFormFtpEnabled(bool $value): void
+    {
+        if (! $value) {
+            $this->ftpTestStatus = null;
+            $this->ftpTestMessage = null;
+            return;
+        }
+
+        if (! empty($this->form['ftp_account_id'])) {
+            $this->testFtpConnection();
+        }
+    }
+
+    public function updatedFormSshEnabled(bool $value): void
+    {
+        if (! $value) {
+            return;
+        }
+
+        if (empty($this->form['ftp_account_id'] ?? null)) {
+            $this->dispatch('notify', message: 'Select an FTP/SSH access record to use for SSH deployments.');
+        }
     }
 
     public function nextStep(): void
@@ -110,6 +177,39 @@ class Create extends Component
         $this->redirectRoute('projects.index', navigate: true);
     }
 
+    public function checkPathPermissions(): void
+    {
+        $path = (string) ($this->form['local_path'] ?? '');
+        $result = app(\App\Services\DeploymentService::class)->checkPathPermissions($path);
+
+        $this->permissionStatus = $result['status'] ?? null;
+        $this->permissionMessage = $result['message'] ?? null;
+        $this->permissionParent = $result['parent'] ?? null;
+    }
+
+    public function testFtpConnection(): void
+    {
+        $accountId = $this->form['ftp_account_id'] ?? null;
+        if (! $accountId) {
+            $this->ftpTestStatus = 'error';
+            $this->ftpTestMessage = 'Select an FTP/SSH access record to test.';
+            return;
+        }
+
+        $account = \App\Models\FtpAccount::query()->find($accountId);
+        if (! $account) {
+            $this->ftpTestStatus = 'error';
+            $this->ftpTestMessage = 'FTP/SSH access record not found.';
+            return;
+        }
+
+        $rootPath = trim((string) ($this->form['ftp_root_path'] ?? ''));
+        $result = app(\App\Services\FtpService::class)->testAccount($account, $rootPath !== '' ? $rootPath : null);
+
+        $this->ftpTestStatus = $result['status'] ?? 'error';
+        $this->ftpTestMessage = $result['message'] ?? 'Unable to test FTP connection.';
+    }
+
     private function rules(): array
     {
         return [
@@ -143,6 +243,17 @@ class Create extends Component
             ],
             'form.allow_dependency_updates' => ['boolean'],
             'form.exclude_paths' => ['nullable', 'string'],
+            'form.ftp_enabled' => ['boolean'],
+            'form.ftp_account_id' => [
+                'nullable',
+                Rule::requiredIf(fn () => (bool) ($this->form['ftp_enabled'] ?? false) || (bool) ($this->form['ssh_enabled'] ?? false)),
+                'exists:ftp_accounts,id',
+            ],
+            'form.ftp_root_path' => ['nullable', 'string', 'max:255'],
+            'form.ssh_enabled' => ['boolean'],
+            'form.ssh_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
+            'form.ssh_root_path' => ['nullable', 'string', 'max:255'],
+            'form.ssh_commands' => ['nullable', 'string'],
         ];
     }
 
@@ -162,6 +273,17 @@ class Create extends Component
                 'form.default_branch' => ['required', 'string', 'max:255'],
                 'form.health_url' => ['nullable', 'string', 'max:255'],
                 'form.exclude_paths' => ['nullable', 'string'],
+                'form.ftp_enabled' => ['boolean'],
+                'form.ftp_account_id' => [
+                    'nullable',
+                    Rule::requiredIf(fn () => (bool) ($this->form['ftp_enabled'] ?? false) || (bool) ($this->form['ssh_enabled'] ?? false)),
+                    'exists:ftp_accounts,id',
+                ],
+                'form.ftp_root_path' => ['nullable', 'string', 'max:255'],
+                'form.ssh_enabled' => ['boolean'],
+                'form.ssh_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
+                'form.ssh_root_path' => ['nullable', 'string', 'max:255'],
+                'form.ssh_commands' => ['nullable', 'string'],
             ];
         }
 
@@ -218,5 +340,12 @@ class Create extends Component
         foreach ($defaults as $key => $value) {
             $this->form[$key] = $value;
         }
+    }
+
+    private function clearPermissionCheck(): void
+    {
+        $this->permissionStatus = null;
+        $this->permissionMessage = null;
+        $this->permissionParent = null;
     }
 }

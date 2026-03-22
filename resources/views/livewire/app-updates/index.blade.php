@@ -16,8 +16,9 @@
                         type="button"
                         wire:click="refreshUpdateStatus"
                         wire:loading.attr="disabled"
-                        class="px-3 py-1.5 rounded-md border border-slate-300 text-slate-600 text-sm hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 disabled:opacity-60 disabled:cursor-not-allowed"
+                        class="px-3 py-1.5 rounded-md border border-slate-300 text-slate-600 text-sm hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center"
                     >
+                        <x-loading-spinner target="refreshUpdateStatus" />
                         Check Now
                     </button>
                 </div>
@@ -62,8 +63,9 @@
                         wire:click="runUpdate"
                         wire:loading.attr="disabled"
                         @if (! $selfUpdateEnabled) disabled @endif
-                        class="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                        class="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center"
                     >
+                        <x-loading-spinner target="runUpdate" />
                         Update App
                     </button>
                     @if ($latest && $latest->status === 'failed')
@@ -73,8 +75,9 @@
                             wire:loading.attr="disabled"
                             @if (! $selfUpdateEnabled) disabled @endif
                             onclick="return confirm('Force update will discard local code changes and re-sync with the remote repo (protected files like .env are preserved). Continue?')"
-                            class="px-4 py-2 rounded-md border border-rose-500/70 text-rose-200 text-sm hover:text-white hover:bg-rose-500/10 disabled:opacity-60 disabled:cursor-not-allowed"
+                            class="px-4 py-2 rounded-md border border-rose-500/70 text-rose-200 text-sm hover:text-white hover:bg-rose-500/10 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center"
                         >
+                            <x-loading-spinner target="runForceUpdate" />
                             Force Update
                         </button>
                     @endif

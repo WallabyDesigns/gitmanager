@@ -50,8 +50,12 @@ class Index extends Component
 
     public function render()
     {
+        app(DeploymentService::class)->releaseStaleRunningDeployments();
+        app(DeploymentQueueService::class)->releaseStaleRunning();
+
         $baseQuery = Auth::user()
             ->projects()
+            ->with('ftpAccount')
             ->addSelect([
                 'last_successful_deploy_at' => Deployment::query()
                     ->select('started_at')

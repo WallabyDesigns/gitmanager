@@ -82,7 +82,18 @@
           <li><code>GWM_DEPLOY_QUEUE_ENABLED</code> to enable queued deployments.</li>
           <li><code>GWM_SCHEDULER_STALE_SECONDS</code> to control scheduler heartbeat grace period.</li>
           <li><code>GWM_DEPLOY_QUEUE_STALE_SECONDS</code> to mark stuck running queue items as failed.</li>
+          <li><code>GWM_DEPLOYMENT_STALE_SECONDS</code> to mark stale running deployments as failed (controls “build in process” badge cleanup).</li>
         </ul>
+      </section>
+
+      <section class="card">
+        <h2>Privileged Path Creation</h2>
+        <p>If your GWM instance needs to create projects under other system users, you can enable sudo-assisted directory creation.</p>
+        <ul>
+          <li><code>GWM_SUDO_ENABLED</code> to allow non-interactive sudo for mkdir/chown.</li>
+          <li><code>GWM_SUDO_BINARY</code> to override the sudo path.</li>
+        </ul>
+        <p class="muted">Your web user must have passwordless sudo permission for <code>mkdir</code> and <code>chown</code> when this is enabled.</p>
       </section>
 
       <section class="card">
@@ -91,6 +102,42 @@
           <li><code>GWM_DEPLOY_STAGING_ENABLED</code> to enable staged build/test validation.</li>
           <li><code>GWM_DEPLOY_STAGING_PATH</code> to set the staging worktree directory.</li>
         </ul>
+      </section>
+
+      <section class="card">
+        <h2>SSH Deployments</h2>
+        <p>Remote deployments run git + build steps over SSH using the credentials saved in FTP/SSH Access.</p>
+        <ul>
+          <li><code>GWM_SSH_BINARY</code> to override the SSH binary.</li>
+          <li><code>GWM_SSH_PASS_BINARY</code> to point to <code>sshpass</code> for password-based auth.</li>
+          <li><code>GWM_SSH_KEY_PATH</code> to use a specific private key.</li>
+          <li><code>GWM_SSH_KNOWN_HOSTS</code> to control the known_hosts file path.</li>
+          <li><code>GWM_SSH_STRICT_HOST_KEY</code> to set strict host key checking (default: <code>accept-new</code>).</li>
+        </ul>
+        <p class="muted">You can also override <code>sshpass</code> and key paths per FTP/SSH Access record; the env values act as fallbacks.</p>
+      </section>
+
+      <section class="card">
+        <h2>FTP/SSH Access Checks</h2>
+        <p>Each FTP/SSH Access record stores the latest FTP and SSH test results so projects can surface health badges.</p>
+        <ul>
+          <li>Tests run automatically when a new access record is created.</li>
+          <li>SSH tests default to the FTP username/password unless you provide SSH overrides.</li>
+          <li>If access settings change, badges show <strong>Needs Test</strong> until you retest.</li>
+        </ul>
+        <p class="muted">Password-based SSH uses the built-in askpass helper by default; optional <code>sshpass</code> or key paths can be set per access record.</p>
+      </section>
+
+      <section class="card">
+        <h2>FTP-Only Deployments</h2>
+        <p>When FTP is enabled and SSH is disabled, GWM runs a local build and syncs the result over FTPS. It compares dependency files on the remote host to avoid unnecessary installs and uploads.</p>
+        <ul>
+          <li>Composer: compares <code>composer.lock</code> when present, otherwise falls back to <code>composer.json</code>.</li>
+          <li>Npm: compares lock files (<code>package-lock.json</code> or <code>npm-shrinkwrap.json</code>) when present, otherwise falls back to <code>package.json</code>.</li>
+          <li>If dependency files match and local <code>vendor</code>/<code>node_modules</code> exist, installs are skipped and those directories are excluded from sync.</li>
+          <li>If dependency files differ, local installs run and dependency folders are synced.</li>
+        </ul>
+        <p class="muted">FTP-only deployments are a fallback for hosts without SSH. They work, but are less efficient than SSH because dependency folders may need to be uploaded.</p>
       </section>
 
       <section class="card">
