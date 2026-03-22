@@ -172,6 +172,8 @@ class Show extends Component
     {
         $projectId = $this->project->id;
 
+        app(DeploymentQueueService::class)->releaseStaleRunning();
+
         $runningDeployment = Deployment::query()
             ->where('project_id', $projectId)
             ->where('status', 'running')

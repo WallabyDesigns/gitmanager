@@ -21,6 +21,7 @@ return [
 
     'deploy_queue' => [
         'enabled' => env('GWM_DEPLOY_QUEUE_ENABLED', true),
+        'stale_seconds' => env('GWM_DEPLOY_QUEUE_STALE_SECONDS', 900),
     ],
     'deploy_staging' => [
         'enabled' => env('GWM_DEPLOY_STAGING_ENABLED', true),

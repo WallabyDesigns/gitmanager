@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\DeploymentQueueItem;
+use App\Models\Deployment;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -141,6 +142,60 @@ class DeploymentQueueService
         $item->status = 'cancelled';
         $item->finished_at = now();
         $item->save();
+    }
+
+    public function forceCancel(DeploymentQueueItem $item): void
+    {
+        if (! in_array($item->status, ['queued', 'running'], true)) {
+            return;
+        }
+
+        $item->status = 'cancelled';
+        $item->finished_at = now();
+        $item->save();
+    }
+
+    public function releaseStaleRunning(?int $graceSeconds = null): int
+    {
+        $grace = $graceSeconds ?? (int) config('gitmanager.deploy_queue.stale_seconds', 900);
+        if ($grace <= 0) {
+            return 0;
+        }
+
+        $cutoff = now()->subSeconds($grace);
+        $items = DeploymentQueueItem::query()
+            ->with('deployment')
+            ->where('status', 'running')
+            ->whereNotNull('started_at')
+            ->where('started_at', '<', $cutoff)
+            ->get();
+
+        $released = 0;
+        foreach ($items as $item) {
+            if ($item->deployment && $item->deployment->status !== 'running') {
+                $item->status = $item->deployment->status === 'success' ? 'completed' : 'failed';
+                $item->finished_at = $item->deployment->finished_at ?? now();
+                $item->save();
+                $released++;
+                continue;
+            }
+
+            $hasRunningDeployment = Deployment::query()
+                ->where('project_id', $item->project_id)
+                ->where('status', 'running')
+                ->exists();
+
+            if ($hasRunningDeployment) {
+                continue;
+            }
+
+            $item->status = 'failed';
+            $item->finished_at = now();
+            $item->save();
+            $released++;
+        }
+
+        return $released;
     }
 
     public function moveUp(DeploymentQueueItem $item): void

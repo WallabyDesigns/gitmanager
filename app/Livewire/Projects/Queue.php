@@ -98,6 +98,7 @@ class Queue extends Component
     public function render()
     {
         $userId = Auth::id();
+        app(DeploymentQueueService::class)->releaseStaleRunning();
         $logLimit = $this->logPreviewLimit();
         $logPreview = DB::raw($this->logPreviewSql('output_log', $logLimit).' as output_log');
         $deploymentColumns = $this->deploymentColumns();
@@ -144,6 +145,7 @@ class Queue extends Component
         return view('livewire.projects.queue', [
             'items' => $items,
             'runningDeployments' => $runningDeployments,
+            'staleSeconds' => (int) config('gitmanager.deploy_queue.stale_seconds', 900),
         ])->layout('layouts.app', [
             'header' => view('livewire.projects.partials.queue-header'),
         ]);
@@ -170,6 +172,15 @@ class Queue extends Component
         $item = DeploymentQueueItem::findOrFail($id);
         $this->authorize('update', $item);
         $queue->moveDown($item);
+    }
+
+    public function forceCancel(int $id, DeploymentQueueService $queue): void
+    {
+        $item = DeploymentQueueItem::findOrFail($id);
+        $this->authorize('update', $item);
+        $queue->forceCancel($item);
+        $this->dispatch('notify', message: 'Queue item cancelled.');
+        $this->resetPage();
     }
 
     /**

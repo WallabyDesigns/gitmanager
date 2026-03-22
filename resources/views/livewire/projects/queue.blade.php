@@ -125,6 +125,17 @@
                             <button type="button" wire:click="cancel({{ $item->id }})" class="px-3 py-1.5 text-xs rounded-md border border-rose-500/60 text-rose-200 hover:text-white hover:bg-rose-500/10">
                                 Cancel
                             </button>
+                        @elseif ($item->status === 'running')
+                            @php($staleCutoff = now()->subSeconds($staleSeconds ?? 900))
+                            <button type="button"
+                                    wire:click="forceCancel({{ $item->id }})"
+                                    onclick="return confirm('Force cancel this running item? This will release the queue lock but may not stop the underlying process.') || event.stopImmediatePropagation()"
+                                    class="px-3 py-1.5 text-xs rounded-md border border-rose-500/60 text-rose-200 hover:text-white hover:bg-rose-500/10">
+                                Force Cancel
+                            </button>
+                            @if ($item->started_at && $item->started_at->lt($staleCutoff))
+                                <span class="text-xs text-amber-200">Stale</span>
+                            @endif
                         @else
                             <span class="text-xs text-slate-400 dark:text-slate-500">Queue locked</span>
                         @endif
