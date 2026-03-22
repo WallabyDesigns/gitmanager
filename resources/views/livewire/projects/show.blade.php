@@ -152,7 +152,12 @@
                                     @toggle="open = $el.open; localStorage.setItem(key, open)"
                                 >
                                     <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">View log</summary>
-                                    <pre class="mt-2 max-h-80 overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800">{{ $deployment->output_log }}</pre>
+                                    @include('livewire.projects.partials.grouped-log', [
+                                        'log' => $deployment->output_log,
+                                        'maxHeight' => 'max-h-80',
+                                        'autoScroll' => false,
+                                        'placeholder' => 'No output yet.',
+                                    ])
                                 </details>
                             @endif
                         </div>
@@ -322,7 +327,12 @@
                                     @toggle="open = $el.open; localStorage.setItem(key, open)"
                                 >
                                     <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">View log</summary>
-                                    <pre class="mt-2 max-h-80 overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800">{{ $deployment->output_log }}</pre>
+                                    @include('livewire.projects.partials.grouped-log', [
+                                        'log' => $deployment->output_log,
+                                        'maxHeight' => 'max-h-80',
+                                        'autoScroll' => false,
+                                        'placeholder' => 'No output yet.',
+                                    ])
                                 </details>
                             @endif
                         </div>
@@ -372,7 +382,12 @@
                                 @toggle="open = $el.open; localStorage.setItem(key, open)"
                             >
                                 <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">View log</summary>
-                                <pre class="mt-2 max-h-80 overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800">{{ $deployment->output_log }}</pre>
+                                @include('livewire.projects.partials.grouped-log', [
+                                    'log' => $deployment->output_log,
+                                    'maxHeight' => 'max-h-80',
+                                    'autoScroll' => false,
+                                    'placeholder' => 'No output yet.',
+                                ])
                             </details>
                         @endif
                     </div>

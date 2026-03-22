@@ -73,6 +73,16 @@ class Show extends Component
             $service->checkHealth($this->project);
             $this->project->refresh();
         }
+
+        if (! $this->project->updates_checked_at || $this->project->updates_checked_at->lt(now()->subMinutes(5))) {
+            $wasAvailable = (bool) $this->project->updates_available;
+            $hasUpdates = $service->checkForUpdates($this->project);
+            $this->project->refresh();
+
+            if (! $wasAvailable && $hasUpdates && $this->project->auto_deploy && $this->queueEnabled()) {
+                app(DeploymentQueueService::class)->enqueue($this->project, 'deploy', ['reason' => 'auto_update'], Auth::user());
+            }
+        }
     }
 
     public function deploy(DeploymentService $service): void
@@ -213,6 +223,12 @@ class Show extends Component
     {
         $hasUpdates = $service->checkForUpdates($this->project);
         $this->project->refresh();
+        if ($hasUpdates && $this->queueEnabled()) {
+            app(DeploymentQueueService::class)->enqueue($this->project, 'deploy', ['reason' => 'manual_update_check'], Auth::user());
+            $this->dispatch('notify', message: 'Updates available. Deployment queued.');
+            return;
+        }
+
         $this->dispatch('notify', message: $hasUpdates
             ? 'Updates available for this project.'
             : 'No updates detected.');

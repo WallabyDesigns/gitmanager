@@ -5,6 +5,7 @@ namespace App\Livewire\Projects;
 use App\Models\Deployment;
 use App\Models\DeploymentQueueItem;
 use App\Services\DeploymentService;
+use App\Services\DeploymentQueueService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
@@ -28,6 +29,15 @@ class Index extends Component
         foreach ($projects as $project) {
             if (! $project->health_checked_at || $project->health_checked_at->lt(now()->subMinute())) {
                 $service->checkHealth($project);
+            }
+
+            if (! $project->updates_checked_at || $project->updates_checked_at->lt(now()->subMinutes(5))) {
+                $wasAvailable = (bool) $project->updates_available;
+                $hasUpdates = $service->checkForUpdates($project);
+
+                if (! $wasAvailable && $hasUpdates && $project->auto_deploy && $this->queueEnabled()) {
+                    app(DeploymentQueueService::class)->enqueue($project, 'deploy', ['reason' => 'auto_update'], Auth::user());
+                }
             }
         }
     }
@@ -70,6 +80,13 @@ class Index extends Component
             ->get();
 
         $projectIds = $projects->pluck('id')->all();
+        $queueProjectIds = $projectIds === []
+            ? []
+            : DeploymentQueueItem::query()
+                ->whereIn('project_id', $projectIds)
+                ->whereIn('status', ['queued', 'running'])
+                ->pluck('project_id')
+                ->all();
         $runningDeployments = $projectIds === []
             ? []
             : Deployment::query()
@@ -91,6 +108,7 @@ class Index extends Component
         return view('livewire.projects.index', [
             'projects' => $projects,
             'buildInProcess' => $buildInProcess,
+            'queueProjects' => $queueProjectIds,
             'counts' => [
                 'all' => Auth::user()->projects()->count(),
                 'health' => Auth::user()
@@ -105,6 +123,11 @@ class Index extends Component
         ])->layout('layouts.app', [
             'header' => view('livewire.projects.partials.index-header'),
         ]);
+    }
+
+    private function queueEnabled(): bool
+    {
+        return (bool) config('gitmanager.deploy_queue.enabled', true);
     }
 
 }

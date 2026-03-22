@@ -23,6 +23,8 @@ class Project extends Model
         'last_deployed_at',
         'last_deployed_hash',
         'last_error_message',
+        'updates_available',
+        'updates_checked_at',
         'permissions_locked',
         'permissions_issue_message',
         'permissions_checked_at',
@@ -47,6 +49,8 @@ class Project extends Model
         'last_checked_at' => 'datetime',
         'last_deployed_at' => 'datetime',
         'last_successful_deploy_at' => 'datetime',
+        'updates_available' => 'boolean',
+        'updates_checked_at' => 'datetime',
         'permissions_locked' => 'boolean',
         'permissions_checked_at' => 'datetime',
     ];

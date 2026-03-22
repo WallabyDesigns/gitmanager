@@ -15,6 +15,7 @@ class DeploymentService
     private ?Deployment $activeDeployment = null;
     private int $lastOutputCount = 0;
     private float $lastStreamAt = 0.0;
+    private int $processCounter = 0;
 
     public function hasComposer(Project $project): bool
     {
@@ -52,10 +53,13 @@ class DeploymentService
             'origin/'.$project->default_branch,
         ])->getOutput());
 
+        $hasUpdates = $head !== $remote;
         $project->last_checked_at = now();
+        $project->updates_checked_at = now();
+        $project->updates_available = $hasUpdates;
         $project->save();
 
-        return $head !== $remote;
+        return $hasUpdates;
     }
 
     public function deploy(Project $project, ?User $user = null, bool $allowDirty = false, bool $ignorePermissionsLock = false): Deployment
@@ -201,6 +205,8 @@ class DeploymentService
                 $project->last_deployed_at = now();
                 $project->last_deployed_hash = $toHash;
                 $project->last_error_message = null;
+                $project->updates_available = false;
+                $project->updates_checked_at = now();
                 $project->last_checked_at = now();
                 $project->save();
 
@@ -1380,6 +1386,7 @@ class DeploymentService
         $this->activeDeployment = $deployment;
         $this->lastOutputCount = 0;
         $this->lastStreamAt = microtime(true);
+        $this->processCounter = 0;
         $this->activeDeployment->output_log = '';
         $this->activeDeployment->save();
     }
@@ -1633,12 +1640,14 @@ class DeploymentService
     private function runProcess(array $command, array &$output = [], ?string $workingDir = null, bool $throwOnFailure = true): Process
     {
         $command = $this->normalizeCommand($command);
+        $processId = $this->logProcessStart($command, $workingDir, $output);
         $process = new Process($command, $workingDir, array_merge($this->baseEnv(), $this->gitEnv()));
         $process->setTimeout(600);
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
             $this->maybeStreamOutput($output);
         });
+        $this->logProcessEnd($processId, $process, $output);
 
         if ($throwOnFailure && ! $process->isSuccessful()) {
             throw new ProcessFailedException($process);
@@ -1650,12 +1659,14 @@ class DeploymentService
     private function runProjectProcess(array $command, array &$output = [], ?string $workingDir = null, bool $throwOnFailure = true): Process
     {
         $command = $this->normalizeCommand($command);
+        $processId = $this->logProcessStart($command, $workingDir, $output);
         $process = new Process($command, $workingDir, $this->projectEnvForPath($workingDir));
         $process->setTimeout(600);
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
             $this->maybeStreamOutput($output);
         });
+        $this->logProcessEnd($processId, $process, $output);
 
         if ($throwOnFailure && ! $process->isSuccessful()) {
             throw new ProcessFailedException($process);
@@ -1668,12 +1679,14 @@ class DeploymentService
     {
         $command = $this->normalizeCommand($command);
         $env = array_merge($this->projectEnvForPath($workingDir), $extraEnv);
+        $processId = $this->logProcessStart($command, $workingDir, $output);
         $process = new Process($command, $workingDir, $env);
         $process->setTimeout(600);
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
             $this->maybeStreamOutput($output);
         });
+        $this->logProcessEnd($processId, $process, $output);
 
         if ($throwOnFailure && ! $process->isSuccessful()) {
             throw new ProcessFailedException($process);
@@ -1689,12 +1702,14 @@ class DeploymentService
             $command = $this->phpBinary().' '.substr($trimmed, 4);
         }
 
+        $processId = $this->logProcessStartShell($command, $workingDir, $output);
         $process = Process::fromShellCommandline($command, $workingDir, $this->projectEnvForPath($workingDir));
         $process->setTimeout(600);
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
             $this->maybeStreamOutput($output);
         });
+        $this->logProcessEnd($processId, $process, $output);
 
         if ($throwOnFailure && ! $process->isSuccessful()) {
             throw new ProcessFailedException($process);
@@ -1710,12 +1725,14 @@ class DeploymentService
             $command = $this->phpBinary().' '.substr($trimmed, 4);
         }
 
+        $processId = $this->logProcessStartShell($command, $workingDir, $output);
         $process = Process::fromShellCommandline($command, $workingDir, array_merge($this->baseEnv(), $this->gitEnv()));
         $process->setTimeout(600);
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
             $this->maybeStreamOutput($output);
         });
+        $this->logProcessEnd($processId, $process, $output);
 
         if (! $process->isSuccessful()) {
             throw new ProcessFailedException($process);
@@ -1747,6 +1764,47 @@ class DeploymentService
         };
 
         return $command;
+    }
+
+    private function logProcessStart(array $command, ?string $workingDir, array &$output): int
+    {
+        $this->processCounter++;
+        $line = 'Process #'.$this->processCounter.' started: '.$this->formatCommand($command);
+        if ($workingDir) {
+            $line .= ' (path: '.$workingDir.')';
+        }
+        $output[] = $line;
+        $this->maybeStreamOutput($output, true);
+
+        return $this->processCounter;
+    }
+
+    private function logProcessStartShell(string $command, ?string $workingDir, array &$output): int
+    {
+        $this->processCounter++;
+        $line = 'Process #'.$this->processCounter.' started: '.$command;
+        if ($workingDir) {
+            $line .= ' (path: '.$workingDir.')';
+        }
+        $output[] = $line;
+        $this->maybeStreamOutput($output, true);
+
+        return $this->processCounter;
+    }
+
+    private function logProcessEnd(int $processId, Process $process, array &$output): void
+    {
+        $code = $process->getExitCode();
+        $output[] = 'Process #'.$processId.' finished with exit code '.($code ?? 'null').'.';
+        $this->maybeStreamOutput($output, true);
+    }
+
+    private function formatCommand(array $command): string
+    {
+        return implode(' ', array_map(static function ($part) {
+            $part = (string) $part;
+            return str_contains($part, ' ') ? '"'.$part.'"' : $part;
+        }, $command));
     }
 
     private function gitBinary(): string
@@ -2288,6 +2346,14 @@ class DeploymentService
 
             $this->swapDirectory($tempVendor, $vendorPath, $output, 'Vendor directory');
             $this->applyOwnershipFromReference($vendorPath, $path, $output, 'Vendor directory');
+        } catch (\Throwable $exception) {
+            if ($this->shouldAttemptComposerCleanReinstall($exception, $output)) {
+                $output[] = 'Staged composer install failed due to permissions. Attempting clean reinstall.';
+                $this->attemptComposerCleanReinstall($path, $output, $label, $command);
+                return;
+            }
+
+            throw $exception;
         } finally {
             if (is_dir($tempRoot)) {
                 $this->deleteDirectory($tempRoot);
@@ -2351,6 +2417,14 @@ class DeploymentService
 
             $this->swapDirectory($tempModules, $modulesPath, $output, 'Node modules directory');
             $this->applyOwnershipFromReference($modulesPath, $path, $output, 'Node modules directory');
+        } catch (\Throwable $exception) {
+            if ($this->shouldAttemptNpmCleanReinstall($exception, $output)) {
+                $output[] = 'Staged npm install failed due to permissions. Attempting clean reinstall.';
+                $this->attemptNpmCleanReinstall($path, $output, $label, $command);
+                return;
+            }
+
+            throw $exception;
         } finally {
             if (is_dir($tempRoot)) {
                 $this->deleteDirectory($tempRoot);
@@ -2449,6 +2523,178 @@ class DeploymentService
         if (! is_writable($path)) {
             $output[] = 'Warning: '.$label.' is not writable: '.$path.'. Run Fix Permissions or ensure the web user owns this path.';
         }
+    }
+
+    private function attemptNpmCleanReinstall(string $path, array &$output, string $label, array $command): void
+    {
+        $modulesPath = $path.DIRECTORY_SEPARATOR.'node_modules';
+
+        if (! is_dir($modulesPath)) {
+            $output[] = 'Starting npm clean reinstall (no existing node_modules).';
+            $this->logStep($output, $label.' (clean reinstall)', $path, implode(' ', $command));
+            $this->runProjectProcess($command, $output, $path);
+            $this->applyOwnershipFromReference($modulesPath, $path, $output, 'Node modules directory');
+            $output[] = 'Npm clean reinstall completed.';
+            return;
+        }
+
+        $backup = $this->backupDirectory($modulesPath, $output, 'Node modules directory');
+        if (! $backup) {
+            throw new \RuntimeException('Unable to backup node_modules for clean reinstall.');
+        }
+
+        try {
+            $output[] = 'Starting npm clean reinstall.';
+            $this->logStep($output, $label.' (clean reinstall)', $path, implode(' ', $command));
+            $this->runProjectProcess($command, $output, $path);
+            if (is_dir($backup)) {
+                $this->deleteDirectory($backup);
+            }
+            $output[] = 'Npm clean reinstall completed.';
+        } catch (\Throwable $exception) {
+            if (is_dir($modulesPath)) {
+                $this->deleteDirectory($modulesPath);
+            }
+
+            $this->restoreDirectoryBackup($backup, $modulesPath, $output, 'Node modules directory');
+            $output[] = 'Npm clean reinstall failed; restored node_modules backup.';
+            throw $exception;
+        }
+
+        $this->applyOwnershipFromReference($modulesPath, $path, $output, 'Node modules directory');
+    }
+
+    private function attemptComposerCleanReinstall(string $path, array &$output, string $label, array $command): void
+    {
+        $vendorPath = $path.DIRECTORY_SEPARATOR.'vendor';
+
+        if (! is_dir($vendorPath)) {
+            $output[] = 'Starting composer clean reinstall (no existing vendor directory).';
+            $this->logStep($output, $label.' (clean reinstall)', $path, implode(' ', $command));
+            $this->runProjectProcess($command, $output, $path);
+            $this->applyOwnershipFromReference($vendorPath, $path, $output, 'Vendor directory');
+            $output[] = 'Composer clean reinstall completed.';
+            return;
+        }
+
+        $backup = $this->backupDirectory($vendorPath, $output, 'Vendor directory');
+        if (! $backup) {
+            throw new \RuntimeException('Unable to backup vendor for clean reinstall.');
+        }
+
+        try {
+            $output[] = 'Starting composer clean reinstall.';
+            $this->logStep($output, $label.' (clean reinstall)', $path, implode(' ', $command));
+            $this->runProjectProcess($command, $output, $path);
+            if (is_dir($backup)) {
+                $this->deleteDirectory($backup);
+            }
+            $output[] = 'Composer clean reinstall completed.';
+        } catch (\Throwable $exception) {
+            if (is_dir($vendorPath)) {
+                $this->deleteDirectory($vendorPath);
+            }
+
+            $this->restoreDirectoryBackup($backup, $vendorPath, $output, 'Vendor directory');
+            $output[] = 'Composer clean reinstall failed; restored vendor backup.';
+            throw $exception;
+        }
+
+        $this->applyOwnershipFromReference($vendorPath, $path, $output, 'Vendor directory');
+    }
+
+    private function shouldAttemptComposerCleanReinstall(\Throwable $exception, array $output): bool
+    {
+        if ($this->isPermissionError($exception, $output)) {
+            return true;
+        }
+
+        $message = strtolower($exception->getMessage());
+        return str_contains($message, 'unable to move existing vendor directory')
+            || str_contains($message, 'unable to replace vendor directory');
+    }
+
+    private function shouldAttemptNpmCleanReinstall(\Throwable $exception, array $output): bool
+    {
+        if ($this->isPermissionError($exception, $output)) {
+            return true;
+        }
+
+        $message = strtolower($exception->getMessage());
+        return str_contains($message, 'unable to move existing node modules directory')
+            || str_contains($message, 'unable to replace node modules directory');
+    }
+
+    private function backupDirectory(string $path, array &$output, string $label): ?string
+    {
+        if (! is_dir($path)) {
+            return null;
+        }
+
+        $backup = $path.'-gwm-backup-'.date('YmdHis');
+        if (@rename($path, $backup)) {
+            $output[] = 'Backed up '.$label.' to '.$backup.'.';
+            return $backup;
+        }
+
+        $output[] = 'Warning: unable to rename '.$label.' for backup. Attempting copy instead.';
+        if (! $this->copyDirectory($path, $backup)) {
+            $output[] = 'Warning: unable to copy '.$label.' for backup.';
+            return null;
+        }
+
+        $this->deleteDirectory($path);
+        $output[] = 'Copied '.$label.' to '.$backup.'.';
+        return $backup;
+    }
+
+    private function restoreDirectoryBackup(string $backup, string $destination, array &$output, string $label): void
+    {
+        if (! is_dir($backup)) {
+            return;
+        }
+
+        if (@rename($backup, $destination)) {
+            $output[] = 'Restored '.$label.' from backup.';
+            return;
+        }
+
+        $output[] = 'Warning: unable to rename backup for '.$label.'. Attempting copy instead.';
+        if ($this->copyDirectory($backup, $destination)) {
+            $this->deleteDirectory($backup);
+            $output[] = 'Restored '.$label.' from backup.';
+        }
+    }
+
+    private function copyDirectory(string $source, string $destination): bool
+    {
+        if (! is_dir($source)) {
+            return false;
+        }
+
+        if (! is_dir($destination) && ! @mkdir($destination, 0775, true) && ! is_dir($destination)) {
+            return false;
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($source, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            $target = $destination.DIRECTORY_SEPARATOR.$iterator->getSubPathName();
+            if ($item->isDir()) {
+                if (! is_dir($target) && ! @mkdir($target, 0775, true) && ! is_dir($target)) {
+                    return false;
+                }
+            } else {
+                if (! @copy($item->getPathname(), $target)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     private function applyOwnershipFromReference(string $targetPath, string $referencePath, array &$output, string $label): void

@@ -44,6 +44,16 @@
                                     Permissions
                                 </span>
                             @endif
+                            @if ($project->updates_available)
+                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
+                                    Updates Available
+                                </span>
+                            @endif
+                            @if (in_array($project->id, $queueProjects ?? [], true))
+                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                                    In Queue
+                                </span>
+                            @endif
                             @if (in_array($project->id, $buildInProcess ?? [], true))
                                 <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
                                     Build in process
