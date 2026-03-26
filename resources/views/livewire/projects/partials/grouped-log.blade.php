@@ -6,7 +6,7 @@
 @endphp
 
 <div
-    class="mt-2 {{ $maxHeight }} overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800"
+    class="mt-1 {{ $maxHeight }} overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800"
     x-data="{
         raw: @js($logText),
         sections: [],
@@ -87,17 +87,22 @@
         <pre class="whitespace-pre-wrap">{{ $placeholder }}</pre>
     </template>
     <template x-for="section in sections" :key="section.key">
-        <details class="rounded-md border border-slate-200/70 dark:border-slate-800 bg-white/70 dark:bg-slate-900/40 p-2 mb-2" :open="section.open">
-            <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">
-                <span x-text="section.title"></span>
-                <template x-if="section.command">
-                    <span class="text-[10px] text-slate-400"> — <span x-text="section.command"></span></span>
-                </template>
-                <template x-if="section.exit !== null">
-                    <span class="text-[10px] text-slate-400"> (exit <span x-text="section.exit"></span>)</span>
-                </template>
-            </summary>
-            <pre class="mt-2 whitespace-pre-wrap text-slate-600 dark:text-slate-300" x-text="section.lines.join('\n')"></pre>
-        </details>
+        <template x-if="section.key === 'general'">
+            <pre class="whitespace-pre-wrap text-slate-600 dark:text-slate-300 mb-2" x-text="section.lines.join('\n')"></pre>
+        </template>
+        <template x-if="section.key !== 'general'">
+            <details class="rounded-md border border-slate-200/70 dark:border-slate-800 bg-white/70 dark:bg-slate-900/40 p-2 mb-2" :open="section.open">
+                <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">
+                    <span x-text="section.title"></span>
+                    <template x-if="section.command">
+                        <span class="text-[10px] text-slate-400"> — <span x-text="section.command"></span></span>
+                    </template>
+                    <template x-if="section.exit !== null">
+                        <span class="text-[10px] text-slate-400"> (exit <span x-text="section.exit"></span>)</span>
+                    </template>
+                </summary>
+                <pre class="mt-2 whitespace-pre-wrap text-slate-600 dark:text-slate-300" x-text="section.lines.join('\n')"></pre>
+            </details>
+        </template>
     </template>
 </div>

@@ -40,7 +40,8 @@
         <div class="flex flex-wrap gap-2 border-b border-slate-200/70 dark:border-slate-800">
             @foreach ($queueTabs as $value => $label)
                 <button type="button"
-                        wire:click="$set('statusFilter','{{ $value }}')"
+                        wire:key="queue-status-{{ $value }}"
+                        wire:click="setStatusFilter('{{ $value }}')"
                         class="px-3 py-2 text-sm border-b-2 {{ $statusFilter === $value ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
                     {{ $label }}
                 </button>
@@ -114,7 +115,24 @@
                             @endif
                         </div>
                         <div class="text-xs text-slate-400 dark:text-slate-500">
+                            @php
+                                $timestampLabel = match ($item->status) {
+                                    'queued' => 'Queued',
+                                    'running' => 'Started',
+                                    'completed', 'failed', 'cancelled' => 'Finished',
+                                    default => 'Updated',
+                                };
+                                $timestampValue = match ($item->status) {
+                                    'queued' => $item->created_at,
+                                    'running' => $item->started_at ?? $item->created_at,
+                                    'completed', 'failed', 'cancelled' => $item->finished_at ?? $item->started_at ?? $item->created_at,
+                                    default => $item->updated_at ?? $item->created_at,
+                                };
+                            @endphp
                             Action: {{ $item->action }} • Position: {{ $item->position }}
+                            @if ($timestampValue)
+                                • {{ $timestampLabel }}: {{ $timestampValue->format('M j, Y g:i a') }}
+                            @endif
                         </div>
                     </div>
                     <div class="flex flex-wrap gap-2">
@@ -139,8 +157,6 @@
                             @if ($item->started_at && $item->started_at->lt($staleCutoff))
                                 <span class="text-xs text-amber-200">Stale</span>
                             @endif
-                        @else
-                            <span class="text-xs text-slate-400 dark:text-slate-500">Queue locked</span>
                         @endif
                     </div>
                     </div>

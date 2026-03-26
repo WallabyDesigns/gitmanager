@@ -17,6 +17,8 @@ class Queue extends Component
     use AuthorizesRequests;
     use WithPagination;
 
+    private const STATUS_FILTERS = ['queued', 'running', 'failed', 'completed', 'cancelled', 'all'];
+
     public string $projectsTab = 'queue';
     public int $perPage = 25;
     public string $statusFilter = 'queued';
@@ -77,6 +79,16 @@ class Queue extends Component
         $this->statusFilter = 'queued';
         $this->actionFilter = 'all';
         $this->search = '';
+        $this->resetPage();
+    }
+
+    public function setStatusFilter(string $status): void
+    {
+        if (! in_array($status, self::STATUS_FILTERS, true)) {
+            return;
+        }
+
+        $this->statusFilter = $status;
         $this->resetPage();
     }
 
