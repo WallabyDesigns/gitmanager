@@ -1,3 +1,16 @@
+@php
+    $reverseLog = function (?string $text): ?string {
+        if ($text === null || $text === '') {
+            return null;
+        }
+        $lines = preg_split('/\r\n|\r|\n/', $text);
+        if ($lines === false) {
+            return $text;
+        }
+        return implode("\n", array_reverse($lines));
+    };
+@endphp
+
 <div class="py-10">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
         @include('livewire.system.partials.tabs')
@@ -133,7 +146,7 @@
 
                     <div>
                         <div class="text-xs uppercase text-slate-400 dark:text-slate-500">Output</div>
-                        <pre class="mt-2 max-h-80 overflow-auto rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-950/70 p-4 text-xs text-slate-200 whitespace-pre-wrap break-words">{{ $latest->output_log ?? 'No output captured.' }}</pre>
+                        <pre class="mt-2 max-h-80 overflow-auto rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-950/70 p-4 text-xs text-slate-200 whitespace-pre-wrap break-words">{{ $reverseLog($latest->output_log) ?? 'No output captured.' }}</pre>
                     </div>
                 @endif
             </div>
@@ -165,7 +178,7 @@
                         @if ($update->output_log)
                             <details class="mt-3">
                                 <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">View log</summary>
-                                <pre class="mt-2 max-h-80 overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap break-words bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800">{{ $update->output_log }}</pre>
+                                <pre class="mt-2 max-h-80 overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap break-words bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800">{{ $reverseLog($update->output_log) }}</pre>
                             </details>
                         @endif
                     </div>

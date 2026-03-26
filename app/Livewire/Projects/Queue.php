@@ -132,8 +132,8 @@ class Queue extends Component
                         ->orWhereHas('project', fn ($project) => $project->where('name', 'like', $term));
                 });
             })
-            ->orderBy('status')
-            ->orderBy('position')
+            ->orderByDesc(DB::raw('COALESCE(finished_at, started_at, created_at)'))
+            ->orderByDesc('id')
             ->paginate($this->perPage);
 
         $projectIds = $items->getCollection()

@@ -165,6 +165,7 @@
                                         'log' => $deployment->output_log,
                                         'maxHeight' => 'max-h-80',
                                         'autoScroll' => false,
+                                        'reverse' => true,
                                         'placeholder' => 'No output yet.',
                                     ])
                                 </details>
@@ -315,7 +316,13 @@
                         Clear
                     </button>
                 </div>
-                <pre class="mt-2 max-h-64 overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800">{{ $latestDependencyLog?->output_log ?? 'No output yet.' }}</pre>
+                @php
+                    $latestDependencyOutput = $latestDependencyLog?->output_log;
+                    $latestDependencyOutput = $latestDependencyOutput
+                        ? implode("\n", array_reverse(preg_split('/\r\n|\r|\n/', $latestDependencyOutput)))
+                        : null;
+                @endphp
+                <pre class="mt-2 max-h-64 overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800">{{ $latestDependencyOutput ?? 'No output yet.' }}</pre>
             </div>
 
             <div>
@@ -355,6 +362,7 @@
                                         'log' => $deployment->output_log,
                                         'maxHeight' => 'max-h-80',
                                         'autoScroll' => false,
+                                        'reverse' => true,
                                         'placeholder' => 'No output yet.',
                                     ])
                                 </details>
@@ -406,15 +414,16 @@
                                 @toggle="open = $el.open; localStorage.setItem(key, open)"
                             >
                                 <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">View log</summary>
-                                @include('livewire.projects.partials.grouped-log', [
-                                    'log' => $deployment->output_log,
-                                    'maxHeight' => 'max-h-80',
-                                    'autoScroll' => false,
-                                    'placeholder' => 'No output yet.',
-                                ])
-                            </details>
-                        @endif
-                    </div>
+                            @include('livewire.projects.partials.grouped-log', [
+                                'log' => $deployment->output_log,
+                                'maxHeight' => 'max-h-80',
+                                'autoScroll' => false,
+                                'reverse' => true,
+                                'placeholder' => 'No output yet.',
+                            ])
+                        </details>
+                    @endif
+                </div>
                 @empty
                     <p class="text-sm text-slate-500 dark:text-slate-400">No deployments yet.</p>
                 @endforelse
