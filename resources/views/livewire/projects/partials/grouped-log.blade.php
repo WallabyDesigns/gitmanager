@@ -3,6 +3,7 @@
     $maxHeight = $maxHeight ?? 'max-h-80';
     $placeholder = $placeholder ?? 'No output yet.';
     $autoScroll = $autoScroll ?? false;
+    $reverse = $reverse ?? false;
 @endphp
 
 <div
@@ -11,10 +12,14 @@
         raw: @js($logText),
         sections: [],
         autoScroll: @js($autoScroll),
+        reverse: @js($reverse),
         init() {
             this.sections = this.buildSections(this.raw);
             if (this.autoScroll && this.sections.length) {
-                this.sections[this.sections.length - 1].open = true;
+                const openIndex = this.reverse ? 0 : (this.sections.length - 1);
+                if (this.sections[openIndex]) {
+                    this.sections[openIndex].open = true;
+                }
             }
         },
         buildSections(raw) {
@@ -24,11 +29,19 @@
             const lines = raw.split(/\\r?\\n/);
             const sections = [];
             let current = null;
-            const general = { key: 'general', title: 'Log output', command: null, lines: [], exit: null, open: true };
+            let general = null;
+            let generalIndex = 0;
+            const flushGeneral = () => {
+                if (general && general.lines.length) {
+                    sections.push(general);
+                    general = null;
+                }
+            };
 
             for (const line of lines) {
                 const startMatch = line.match(/^Process #(\\d+) started: (.*)$/);
                 if (startMatch) {
+                    flushGeneral();
                     if (current) {
                         sections.push(current);
                     }
@@ -39,6 +52,7 @@
                         lines: [line],
                         exit: null,
                         open: false,
+                        isGeneral: false,
                     };
                     continue;
                 }
@@ -57,6 +71,17 @@
                 if (current) {
                     current.lines.push(line);
                 } else {
+                    if (! general) {
+                        general = {
+                            key: `general-${generalIndex++}`,
+                            title: 'Log output',
+                            command: null,
+                            lines: [],
+                            exit: null,
+                            open: true,
+                            isGeneral: true,
+                        };
+                    }
                     general.lines.push(line);
                 }
             }
@@ -65,8 +90,13 @@
                 sections.push(current);
             }
 
-            if (general.lines.length) {
-                sections.unshift(general);
+            flushGeneral();
+
+            if (this.reverse) {
+                for (const section of sections) {
+                    section.lines = section.lines.slice().reverse();
+                }
+                sections.reverse();
             }
 
             return sections;
@@ -75,9 +105,9 @@
     x-init="
         if (autoScroll) {
             const el = $el;
-            const scrollToBottom = () => { el.scrollTop = el.scrollHeight; };
-            scrollToBottom();
-            const observer = new MutationObserver(scrollToBottom);
+            const scrollToEdge = () => { el.scrollTop = reverse ? 0 : el.scrollHeight; };
+            scrollToEdge();
+            const observer = new MutationObserver(scrollToEdge);
             observer.observe(el, { childList: true, characterData: true, subtree: true });
             $cleanup(() => observer.disconnect());
         }
@@ -87,10 +117,10 @@
         <pre class="whitespace-pre-wrap">{{ $placeholder }}</pre>
     </template>
     <template x-for="section in sections" :key="section.key">
-        <template x-if="section.key === 'general'">
+        <template x-if="section.isGeneral">
             <pre class="whitespace-pre-wrap text-slate-600 dark:text-slate-300 mb-2" x-text="section.lines.join('\n')"></pre>
         </template>
-        <template x-if="section.key !== 'general'">
+        <template x-if="!section.isGeneral">
             <details class="rounded-md border border-slate-200/70 dark:border-slate-800 bg-white/70 dark:bg-slate-900/40 p-2 mb-2" :open="section.open">
                 <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">
                     <span x-text="section.title"></span>

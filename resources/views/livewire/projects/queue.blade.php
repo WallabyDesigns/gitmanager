@@ -183,6 +183,7 @@
                                 'log' => $log,
                                 'maxHeight' => 'max-h-[calc(100vh-18rem)]',
                                 'autoScroll' => true,
+                                'reverse' => true,
                                 'placeholder' => 'No output yet. Refreshing...',
                             ])
                         </details>
