@@ -20,6 +20,7 @@ class Project extends Model
         'health_url',
         'health_status',
         'health_issue_message',
+        'health_log',
         'health_checked_at',
         'last_checked_at',
         'last_deployed_at',

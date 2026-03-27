@@ -9,57 +9,112 @@ class HealthCheckService
 {
     public function __construct(
         private readonly LaravelDeploymentCheckService $laravelDeploymentCheckService,
+        private readonly PermissionService $permissionService,
     ) {}
 
     public function checkHealth(Project $project): string
     {
-        $laravelIssue = $this->runLaravelHealthChecks($project);
+        $healthLog = [];
+        $laravelIssue = $this->runLaravelHealthChecks($project, $healthLog);
 
         $healthUrl = $this->resolveHealthUrl($project);
 
         if ($laravelIssue !== null) {
-            $project->health_status = 'na';
-            $project->health_issue_message = $laravelIssue;
-            $project->health_checked_at = now();
-            $project->save();
+            $healthLog[] = 'Laravel checks failed: '.$laravelIssue;
 
-            return 'na';
+            return $this->saveHealthStatus($project, 'na', $laravelIssue, $healthLog);
         }
 
         if (! $healthUrl) {
-            $project->health_status = 'na';
-            $project->health_issue_message = null;
-            $project->health_checked_at = now();
-            $project->save();
+            $healthLog[] = 'Health check URL not configured.';
 
-            return 'na';
+            return $this->saveHealthStatus($project, 'na', null, $healthLog);
         }
 
         try {
             $response = Http::timeout(10)->get($healthUrl);
-            $status = $response->successful() ? 'ok' : 'na';
+            if ($response->successful()) {
+                $healthLog[] = 'HTTP health check OK ('.$response->status().').';
+                $status = 'ok';
+            } else {
+                $healthLog[] = 'HTTP health check failed ('.$response->status().').';
+                $status = 'na';
+            }
         } catch (\Throwable $exception) {
+            $healthLog[] = 'HTTP health check failed: '.$exception->getMessage();
             $status = 'na';
         }
 
+        return $this->saveHealthStatus($project, $status, null, $healthLog);
+    }
+
+    private function runLaravelHealthChecks(Project $project, array &$output): ?string
+    {
+        $path = (string) $project->local_path;
+
+        try {
+            $this->laravelDeploymentCheckService->run($project, $path, $output);
+
+            return null;
+        } catch (\Throwable $exception) {
+            $output[] = 'Laravel checks failed: '.$exception->getMessage();
+            $output[] = 'Attempting Laravel repair before retry.';
+            $this->attemptLaravelRepair($project, $path, $output);
+        }
+
+        try {
+            $output[] = 'Retrying Laravel checks after repair.';
+            $this->laravelDeploymentCheckService->run($project, $path, $output);
+
+            return null;
+        } catch (\Throwable $retryException) {
+            $output[] = 'Laravel checks failed after repair: '.$retryException->getMessage();
+
+            return $retryException->getMessage();
+        }
+    }
+
+    private function attemptLaravelRepair(Project $project, string $path, array &$output): void
+    {
+        try {
+            $this->permissionService->attemptFixPermissions($project, $path, $output, false);
+        } catch (\Throwable $exception) {
+            $output[] = 'Laravel repair attempt failed: '.$exception->getMessage();
+        }
+    }
+
+    private function saveHealthStatus(Project $project, string $status, ?string $issueMessage, array $log): string
+    {
         $project->health_status = $status;
-        $project->health_issue_message = null;
+        $project->health_issue_message = $issueMessage;
+        $project->health_log = $this->formatHealthLog($log);
         $project->health_checked_at = now();
         $project->save();
 
         return $status;
     }
 
-    private function runLaravelHealthChecks(Project $project): ?string
+    private function formatHealthLog(array $log): ?string
     {
-        $output = [];
-        try {
-            $this->laravelDeploymentCheckService->run($project, (string) $project->local_path, $output);
-        } catch (\Throwable $exception) {
-            return $exception->getMessage();
+        $lines = [];
+        foreach ($log as $line) {
+            $line = trim((string) $line);
+            if ($line === '') {
+                continue;
+            }
+            $lines[] = $line;
         }
 
-        return null;
+        if ($lines === []) {
+            return null;
+        }
+
+        $maxLines = 200;
+        if (count($lines) > $maxLines) {
+            $lines = array_slice($lines, -$maxLines);
+        }
+
+        return implode("\n", $lines);
     }
 
     private function resolveHealthUrl(Project $project): ?string
