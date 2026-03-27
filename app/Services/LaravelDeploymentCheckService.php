@@ -27,6 +27,7 @@ class LaravelDeploymentCheckService
         }
 
         $output[] = 'Running Laravel deployment checks.';
+        $this->ensureLaravelEnvFile($laravelRoot, $output);
         $this->ensureLaravelCacheDirectories($laravelRoot, $output);
         $this->ensureLaravelHtaccessFiles($laravelRoot, $output);
         $this->ensureLaravelPublicIndexPriority($laravelRoot, $output);
@@ -57,6 +58,30 @@ class LaravelDeploymentCheckService
         if (! is_dir($bootstrapCache) || ! is_writable($bootstrapCache)) {
             throw new \RuntimeException('Bootstrap cache directory is not writable: '.$bootstrapCache);
         }
+    }
+
+    /**
+     * @param array<int, string> $output
+     */
+    private function ensureLaravelEnvFile(string $laravelRoot, array &$output): void
+    {
+        $envPath = $laravelRoot.DIRECTORY_SEPARATOR.'.env';
+        if (is_file($envPath)) {
+            $contents = @file_get_contents($envPath);
+            if ($contents === false || trim($contents) === '') {
+                throw new \RuntimeException('Laravel .env file is empty: '.$envPath);
+            }
+            $output[] = 'Laravel .env file found.';
+
+            return;
+        }
+
+        $example = $laravelRoot.DIRECTORY_SEPARATOR.'.env.example';
+        if (is_file($example)) {
+            throw new \RuntimeException('Laravel .env file missing at '.$envPath.'. Copy .env.example and configure it before deploying.');
+        }
+
+        throw new \RuntimeException('Laravel .env file missing at '.$envPath.'. Create one before deploying.');
     }
 
     /**

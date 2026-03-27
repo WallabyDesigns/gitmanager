@@ -173,6 +173,10 @@ class Create extends Component
             }
         }
 
+        if ($warning = $this->envSetupWarning($project)) {
+            $message .= ' '.$warning;
+        }
+
         $this->dispatch('notify', message: $message);
         $this->redirectRoute('projects.index', navigate: true);
     }
@@ -347,5 +351,45 @@ class Create extends Component
         $this->permissionStatus = null;
         $this->permissionMessage = null;
         $this->permissionParent = null;
+    }
+
+    private function envSetupWarning(\App\Models\Project $project): ?string
+    {
+        if (($project->project_type ?? '') !== 'laravel') {
+            return null;
+        }
+
+        $path = trim((string) $project->local_path);
+        if ($path === '' || ! is_dir($path)) {
+            return null;
+        }
+
+        $laravelRoot = $this->findLaravelRoot($path) ?? $path;
+        $envPath = $laravelRoot.DIRECTORY_SEPARATOR.'.env';
+        if (is_file($envPath)) {
+            return null;
+        }
+
+        return 'Missing .env file. Open the Environment tab to create it before deploying.';
+    }
+
+    private function findLaravelRoot(string $path): ?string
+    {
+        $cursor = $path;
+
+        while (true) {
+            if (is_file($cursor.DIRECTORY_SEPARATOR.'artisan')) {
+                return $cursor;
+            }
+
+            $parent = dirname($cursor);
+            if (! $parent || $parent === $cursor) {
+                break;
+            }
+
+            $cursor = $parent;
+        }
+
+        return null;
     }
 }

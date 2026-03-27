@@ -549,7 +549,7 @@ trait ManagesRemoteDeployments
 
         $this->runSshCommand(
             $connection,
-            'if [ -f artisan ]; then php artisan migrate --force; fi',
+            'if [ -f artisan ]; then if [ -f .env ]; then php artisan migrate --force; else echo ".env missing; skipping migrations."; fi; fi',
             $output
         );
     }

@@ -661,6 +661,13 @@ trait ManagesDependencies
 
     private function laravelDatabaseIsAvailable(string $laravelRoot, array &$output, string $label): bool
     {
+        $envPath = $laravelRoot.DIRECTORY_SEPARATOR.'.env';
+        if (! is_file($envPath)) {
+            $output[] = 'Skipping '.$label.': .env file not found at '.$envPath.'.';
+
+            return false;
+        }
+
         $connection = $this->getLaravelEnvValue($laravelRoot, 'DB_CONNECTION');
         if ($connection === null || trim($connection) === '') {
             $output[] = 'Skipping '.$label.': DB_CONNECTION not set in project .env.';
