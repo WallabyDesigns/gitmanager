@@ -85,6 +85,7 @@ trait ManagesRemoteDeployments
                     $this->runSshCommand($connection, $project->test_command, $output);
                 }
 
+                $this->maybeRunLaravelMigrationsOverSsh($project, $connection, $output);
                 $this->maybeRunLaravelClearCacheOverSsh($project, $connection, $output);
             }, $output, 'SSH post-deploy tasks');
 
@@ -535,6 +536,22 @@ trait ManagesRemoteDeployments
             $output[] = 'Warning: app:clear-cache over SSH failed: '.$exception->getMessage();
             $this->maybeStreamOutput($output, true);
         }
+    }
+
+    private function maybeRunLaravelMigrationsOverSsh(Project $project, array $connection, array &$output): void
+    {
+        if (($project->project_type ?? '') !== 'laravel') {
+            return;
+        }
+
+        $output[] = 'Running Laravel migrations over SSH.';
+        $this->maybeStreamOutput($output, true);
+
+        $this->runSshCommand(
+            $connection,
+            'if [ -f artisan ]; then php artisan migrate --force; fi',
+            $output
+        );
     }
 
     private function maybeRunSshCommands(Project $project, array &$output): void

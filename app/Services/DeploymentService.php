@@ -240,6 +240,7 @@ class DeploymentService
                         $this->runTestCommand($project, $project->test_command, $executionPath, $output);
                     }
 
+                    $this->maybeRunLaravelMigrations($project, $executionPath, $output);
                     $this->maybeRunLaravelClearCache($project, $output);
                 }, $output, 'Post-deploy tasks', function (\Throwable $exception) use (&$output): bool {
                     return ! $this->permissionService->isPermissionError($exception, $output);

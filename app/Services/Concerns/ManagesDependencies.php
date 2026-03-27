@@ -628,19 +628,52 @@ trait ManagesDependencies
 
         $this->clearLaravelConfigCache($laravelRoot, $output);
 
+        if (! $this->laravelDatabaseIsAvailable($laravelRoot, $output, 'app:clear-cache')) {
+            return;
+        }
+
+        try {
+            $this->runProjectProcess(['php', 'artisan', 'app:clear-cache'], $output, $laravelRoot);
+        } catch (\Throwable $exception) {
+            $output[] = 'Warning: app:clear-cache failed: '.$exception->getMessage();
+        }
+    }
+
+    private function maybeRunLaravelMigrations(Project $project, string $executionPath, array &$output): void
+    {
+        $laravelRoot = $this->findLaravelRoot($executionPath)
+            ?? $this->findLaravelRoot($project->local_path);
+        if (! $laravelRoot) {
+            return;
+        }
+
+        if (! $this->artisanCommandExists($laravelRoot, 'migrate', $output)) {
+            return;
+        }
+
+        if (! $this->laravelDatabaseIsAvailable($laravelRoot, $output, 'migrate')) {
+            return;
+        }
+
+        $this->logStep($output, 'Laravel migrate', $laravelRoot, 'php artisan migrate --force');
+        $this->runProjectProcess(['php', 'artisan', 'migrate', '--force'], $output, $laravelRoot);
+    }
+
+    private function laravelDatabaseIsAvailable(string $laravelRoot, array &$output, string $label): bool
+    {
         $connection = $this->getLaravelEnvValue($laravelRoot, 'DB_CONNECTION');
         if ($connection === null || trim($connection) === '') {
-            $output[] = 'Skipping app:clear-cache: DB_CONNECTION not set in project .env.';
+            $output[] = 'Skipping '.$label.': DB_CONNECTION not set in project .env.';
 
-            return;
+            return false;
         }
 
         if (strtolower($connection) === 'sqlite') {
             $database = $this->getLaravelEnvValue($laravelRoot, 'DB_DATABASE');
             if ($database === null || trim($database) === '') {
-                $output[] = 'Skipping app:clear-cache: sqlite database path not set.';
+                $output[] = 'Skipping '.$label.': sqlite database path not set.';
 
-                return;
+                return false;
             }
 
             $database = trim($database);
@@ -650,18 +683,14 @@ trait ManagesDependencies
                     : $laravelRoot.DIRECTORY_SEPARATOR.$database;
 
                 if (! file_exists($resolved)) {
-                    $output[] = 'Skipping app:clear-cache: sqlite database file not found at '.$resolved;
+                    $output[] = 'Skipping '.$label.': sqlite database file not found at '.$resolved;
 
-                    return;
+                    return false;
                 }
             }
         }
 
-        try {
-            $this->runProjectProcess(['php', 'artisan', 'app:clear-cache'], $output, $laravelRoot);
-        } catch (\Throwable $exception) {
-            $output[] = 'Warning: app:clear-cache failed: '.$exception->getMessage();
-        }
+        return true;
     }
 
     private function artisanCommandExists(string $path, string $command, array &$output): bool

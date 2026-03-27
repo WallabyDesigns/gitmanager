@@ -62,8 +62,16 @@
 
     <div>
         <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Manual Command</h4>
-        <div class="mt-2 flex flex-wrap gap-3">
-            <x-text-input id="custom_command" class="block w-full sm:max-w-2xl {{ $actionDisabledClass }}" wire:model.live="customCommand" placeholder="npm run build" {{ $permissionsLocked ? 'disabled' : '' }} />
+        <div class="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <label class="sr-only" for="custom_command">Command</label>
+            <input
+                id="custom_command"
+                type="text"
+                class="w-full sm:flex-1 border-slate-300 bg-white text-slate-900 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 {{ $actionDisabledClass }}"
+                wire:model.live="customCommand"
+                placeholder="npm run build"
+                {{ $permissionsLocked ? 'disabled' : '' }}
+            />
             <button type="button" wire:click="runCustomCommand" class="px-3 py-2 text-sm rounded-md bg-slate-900 text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
                 <x-loading-spinner target="runCustomCommand" />
                 Run Command
