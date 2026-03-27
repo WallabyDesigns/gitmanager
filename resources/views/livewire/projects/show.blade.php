@@ -58,18 +58,6 @@
                             Laravel check: {{ $project->health_issue_message }}
                         </span>
                     @endif
-                    @if ($project->health_log)
-                        <details class="mt-2 w-full">
-                            <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">Health check log</summary>
-                            @include('livewire.projects.partials.grouped-log', [
-                                'log' => $project->health_log,
-                                'maxHeight' => 'max-h-48',
-                                'autoScroll' => false,
-                                'reverse' => true,
-                                'placeholder' => 'No health check log.',
-                            ])
-                        </details>
-                    @endif
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <button type="button" wire:click="deploy" class="px-3 py-2 text-sm rounded-md bg-slate-900 text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>

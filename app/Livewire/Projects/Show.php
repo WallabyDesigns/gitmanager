@@ -248,7 +248,7 @@ class Show extends Component
 
     public function checkHealth(DeploymentService $service): void
     {
-        $status = $service->checkHealth($this->project);
+        $status = $service->checkHealth($this->project, true);
         $this->project->refresh();
         $this->dispatch('notify', message: match ($status) {
             'ok' => 'Health check passed.',

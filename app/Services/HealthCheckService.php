@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Project;
+use App\Models\Deployment;
 use Illuminate\Support\Facades\Http;
 
 class HealthCheckService
@@ -12,23 +13,35 @@ class HealthCheckService
         private readonly PermissionService $permissionService,
     ) {}
 
-    public function checkHealth(Project $project): string
+    public function checkHealth(Project $project, bool $log = false): string
     {
-        $healthLog = [];
+        $previousStatus = $project->health_status;
+        $previousIssue = $project->health_issue_message;
+        $healthLog = ['Health check started at '.now()->toDateTimeString().'.'];
         $laravelIssue = $this->runLaravelHealthChecks($project, $healthLog);
 
         $healthUrl = $this->resolveHealthUrl($project);
 
         if ($laravelIssue !== null) {
             $healthLog[] = 'Laravel checks failed: '.$laravelIssue;
+            $status = 'na';
+            $issueMessage = $laravelIssue;
+            $logText = $this->formatHealthLog($healthLog);
+            $this->saveHealthStatus($project, $status, $issueMessage, $logText);
+            $this->maybeLogHealthCheck($project, $status, $issueMessage, $logText, $log, $previousStatus, $previousIssue);
 
-            return $this->saveHealthStatus($project, 'na', $laravelIssue, $healthLog);
+            return $status;
         }
 
         if (! $healthUrl) {
             $healthLog[] = 'Health check URL not configured.';
+            $status = 'na';
+            $issueMessage = null;
+            $logText = $this->formatHealthLog($healthLog);
+            $this->saveHealthStatus($project, $status, $issueMessage, $logText);
+            $this->maybeLogHealthCheck($project, $status, $issueMessage, $logText, $log, $previousStatus, $previousIssue);
 
-            return $this->saveHealthStatus($project, 'na', null, $healthLog);
+            return $status;
         }
 
         try {
@@ -45,7 +58,12 @@ class HealthCheckService
             $status = 'na';
         }
 
-        return $this->saveHealthStatus($project, $status, null, $healthLog);
+        $issueMessage = null;
+        $logText = $this->formatHealthLog($healthLog);
+        $this->saveHealthStatus($project, $status, $issueMessage, $logText);
+        $this->maybeLogHealthCheck($project, $status, $issueMessage, $logText, $log, $previousStatus, $previousIssue);
+
+        return $status;
     }
 
     private function runLaravelHealthChecks(Project $project, array &$output): ?string
@@ -83,15 +101,13 @@ class HealthCheckService
         }
     }
 
-    private function saveHealthStatus(Project $project, string $status, ?string $issueMessage, array $log): string
+    private function saveHealthStatus(Project $project, string $status, ?string $issueMessage, ?string $logText): void
     {
         $project->health_status = $status;
         $project->health_issue_message = $issueMessage;
-        $project->health_log = $this->formatHealthLog($log);
+        $project->health_log = $logText;
         $project->health_checked_at = now();
         $project->save();
-
-        return $status;
     }
 
     private function formatHealthLog(array $log): ?string
@@ -115,6 +131,50 @@ class HealthCheckService
         }
 
         return implode("\n", $lines);
+    }
+
+    private function maybeLogHealthCheck(
+        Project $project,
+        string $status,
+        ?string $issueMessage,
+        ?string $logText,
+        bool $forceLog,
+        ?string $previousStatus,
+        ?string $previousIssue
+    ): void {
+        if (! $this->shouldLogHealthCheck($forceLog, $status, $issueMessage, $previousStatus, $previousIssue)) {
+            return;
+        }
+
+        $outputLog = $logText ?: 'Health check completed.';
+
+        Deployment::create([
+            'project_id' => $project->id,
+            'triggered_by' => null,
+            'action' => 'health_check',
+            'status' => $status === 'ok' ? 'success' : 'failed',
+            'output_log' => $outputLog,
+            'started_at' => now(),
+            'finished_at' => now(),
+        ]);
+    }
+
+    private function shouldLogHealthCheck(
+        bool $forceLog,
+        string $status,
+        ?string $issueMessage,
+        ?string $previousStatus,
+        ?string $previousIssue
+    ): bool {
+        if ($forceLog) {
+            return true;
+        }
+
+        if ($previousStatus !== $status) {
+            return true;
+        }
+
+        return ($previousIssue ?? '') !== ($issueMessage ?? '');
     }
 
     private function resolveHealthUrl(Project $project): ?string

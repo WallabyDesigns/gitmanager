@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Project;
+use Symfony\Component\Process\Process;
 
 class LaravelDeploymentCheckService
 {
@@ -69,17 +70,13 @@ class LaravelDeploymentCheckService
             throw new \RuntimeException('Laravel public directory missing: '.$publicDir);
         }
 
+        if ($this->storageLinkIsValid($linkPath, $targetPath)) {
+            $output[] = 'Laravel storage link exists.';
+
+            return;
+        }
+
         if (is_link($linkPath)) {
-            $linkTarget = readlink($linkPath);
-            if ($linkTarget !== false) {
-                $resolved = $this->resolveLinkTarget($linkPath, $linkTarget);
-                if ($resolved !== null && is_dir($resolved)) {
-                    $output[] = 'Laravel storage link exists.';
-
-                    return;
-                }
-            }
-
             $output[] = 'Laravel storage link is broken. Recreating.';
             @unlink($linkPath);
         } elseif (file_exists($linkPath)) {
@@ -92,13 +89,89 @@ class LaravelDeploymentCheckService
             return;
         }
 
-        if (PHP_OS_FAMILY === 'Windows') {
-            $output[] = 'Warning: unable to create Laravel storage link on Windows. Run php artisan storage:link manually.';
+        $output[] = 'Symlink creation failed. Attempting php artisan storage:link.';
+        if ($this->tryArtisanStorageLink($laravelRoot, $output) && $this->storageLinkIsValid($linkPath, $targetPath)) {
+            $output[] = 'Laravel storage link created by artisan.';
 
             return;
         }
 
+        if (PHP_OS_FAMILY === 'Windows') {
+            $output[] = 'Attempting Windows junction for storage link.';
+            if ($this->tryWindowsJunction($linkPath, $targetPath, $output) && $this->storageLinkIsValid($linkPath, $targetPath)) {
+                $output[] = 'Laravel storage link created as a Windows junction.';
+
+                return;
+            }
+        }
+
         throw new \RuntimeException('Unable to create Laravel storage link. Run php artisan storage:link.');
+    }
+
+    private function storageLinkIsValid(string $linkPath, string $targetPath): bool
+    {
+        if (is_link($linkPath)) {
+            $linkTarget = readlink($linkPath);
+            if ($linkTarget === false) {
+                return false;
+            }
+
+            $resolved = $this->resolveLinkTarget($linkPath, $linkTarget);
+            return $resolved !== null && is_dir($resolved);
+        }
+
+        if (is_dir($linkPath)) {
+            $linkReal = realpath($linkPath);
+            $targetReal = realpath($targetPath);
+            if ($linkReal && $targetReal) {
+                return PHP_OS_FAMILY === 'Windows'
+                    ? strcasecmp($linkReal, $targetReal) === 0
+                    : $linkReal === $targetReal;
+            }
+        }
+
+        return false;
+    }
+
+    private function tryArtisanStorageLink(string $laravelRoot, array &$output): bool
+    {
+        $phpBinary = $this->phpBinary();
+        $command = [$phpBinary, 'artisan', 'storage:link'];
+
+        $process = new Process($command, $laravelRoot);
+        $process->setTimeout(120);
+        $process->run();
+
+        $stdout = trim($process->getOutput());
+        if ($stdout !== '') {
+            $output[] = $stdout;
+        }
+
+        $stderr = trim($process->getErrorOutput());
+        if ($stderr !== '') {
+            $output[] = $stderr;
+        }
+
+        return $process->isSuccessful();
+    }
+
+    private function tryWindowsJunction(string $linkPath, string $targetPath, array &$output): bool
+    {
+        $process = new Process(['cmd', '/c', 'mklink', '/J', $linkPath, $targetPath]);
+        $process->setTimeout(120);
+        $process->run();
+
+        $stdout = trim($process->getOutput());
+        if ($stdout !== '') {
+            $output[] = $stdout;
+        }
+
+        $stderr = trim($process->getErrorOutput());
+        if ($stderr !== '') {
+            $output[] = $stderr;
+        }
+
+        return $process->isSuccessful();
     }
 
     private function resolveLinkTarget(string $linkPath, string $target): ?string
@@ -146,5 +219,13 @@ class LaravelDeploymentCheckService
         }
 
         return (bool) preg_match('/^[A-Za-z]:\\\\|^[A-Za-z]:\\//', $path);
+    }
+
+    private function phpBinary(): string
+    {
+        $configured = trim((string) config('gitmanager.php_binary', 'php'));
+        $configured = trim($configured, "\"' ");
+
+        return $configured !== '' ? $configured : 'php';
     }
 }
