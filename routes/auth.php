@@ -2,11 +2,13 @@
 
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Middleware\EnsureFirstUserRegistration;
+use App\Http\Middleware\EnsureUsersExist;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
 Route::middleware('guest')->group(function () {
     Volt::route('login', 'pages.auth.login')
+        ->middleware(EnsureUsersExist::class)
         ->name('login');
 
     Volt::route('register', 'pages.auth.register')
@@ -14,9 +16,11 @@ Route::middleware('guest')->group(function () {
         ->name('register');
 
     Volt::route('forgot-password', 'pages.auth.forgot-password')
+        ->middleware(EnsureUsersExist::class)
         ->name('password.request');
 
     Volt::route('reset-password/{token}', 'pages.auth.reset-password')
+        ->middleware(EnsureUsersExist::class)
         ->name('password.reset');
 });
 
