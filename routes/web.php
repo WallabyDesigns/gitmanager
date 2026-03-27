@@ -15,9 +15,21 @@ use App\Livewire\Users\Index as UsersIndex;
 use App\Livewire\Workflows\Index as WorkflowsIndex;
 use App\Http\Middleware\EnsureAdminUser;
 use App\Http\Middleware\EnsurePasswordChanged;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/projects');
+Route::get('/', function () {
+    if (! User::query()->exists()) {
+        return redirect()->route('register');
+    }
+
+    if (Auth::check()) {
+        return redirect()->route('projects.index');
+    }
+
+    return redirect()->route('login');
+});
 
 Route::post('/webhooks/github', GitHubWebhookController::class)
     ->middleware('throttle:60,1')

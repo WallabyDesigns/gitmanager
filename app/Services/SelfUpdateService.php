@@ -638,6 +638,7 @@ class SelfUpdateService
         }
 
         if (is_file(base_path('package.json'))) {
+            $this->applyPostUpdatePermissions($repoPath, $output);
             if ($this->canRunNpm($output)) {
                 try {
                     $shouldInstall = $this->shouldRunNpmInstall($repoPath, $fromHash, $toHash, $output);
@@ -655,7 +656,8 @@ class SelfUpdateService
                                 $this->runProcess(['npm', 'run', 'build'], $output, $repoPath);
                             } catch (\Throwable $buildException) {
                                 if ($this->isBuildPermissionError($buildException)) {
-                                    $output[] = 'Build failed due to permissions; retrying after fixing build directory.';
+                                    $output[] = 'Build failed due to permissions; retrying after fixing build directory and node_modules.';
+                                    $this->applyPostUpdatePermissions($repoPath, $output);
                                     $this->prepareViteBuildDirectory($repoPath, $output, true);
                                     try {
                                         $this->runProcess(['npm', 'run', 'build'], $output, $repoPath);
@@ -1315,7 +1317,8 @@ class SelfUpdateService
         $message = strtolower($message);
         return str_contains($message, 'permission denied')
             || str_contains($message, 'eacces')
-            || str_contains($message, 'public/build');
+            || str_contains($message, 'public/build')
+            || str_contains($message, 'node_modules');
     }
 
     private function chmodRecursive(string $path, int $mode): void
