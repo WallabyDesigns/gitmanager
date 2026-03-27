@@ -14,7 +14,7 @@ class LaravelDeploymentCheckService
     /**
      * @param array<int, string> $output
      */
-    public function run(Project $project, string $path, array &$output): void
+    public function run(Project $project, string $path, array &$output, bool $requireEnv = true): void
     {
         $projectType = trim((string) ($project->project_type ?? ''));
         if ($projectType !== '' && $projectType !== 'laravel') {
@@ -27,7 +27,11 @@ class LaravelDeploymentCheckService
         }
 
         $output[] = 'Running Laravel deployment checks.';
-        $this->ensureLaravelEnvFile($laravelRoot, $output);
+        if ($requireEnv) {
+            $this->ensureLaravelEnvFile($laravelRoot, $output);
+        } else {
+            $output[] = 'Skipping Laravel .env check for staging.';
+        }
         $this->ensureLaravelCacheDirectories($laravelRoot, $output);
         $this->ensureLaravelHtaccessFiles($laravelRoot, $output);
         $this->ensureLaravelPublicIndexPriority($laravelRoot, $output);

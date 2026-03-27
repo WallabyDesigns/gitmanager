@@ -687,7 +687,7 @@ class DeploymentService
             $this->runProcess(['git', '-C', $repoPath, 'worktree', 'add', '--force', $stagePath, $hash], $output);
 
             $this->runWithSingleRetry(function () use ($project, $stagePath, &$output): void {
-                $this->laravelDeploymentCheckService->run($project, $stagePath, $output);
+                $this->laravelDeploymentCheckService->run($project, $stagePath, $output, false);
                 if ($project->run_composer_install) {
                     $this->runComposerCommandWithFallback(
                         $stagePath,
