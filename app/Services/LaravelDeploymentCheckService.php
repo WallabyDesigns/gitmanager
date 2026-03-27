@@ -29,6 +29,7 @@ class LaravelDeploymentCheckService
         $output[] = 'Running Laravel deployment checks.';
         $this->ensureLaravelCacheDirectories($laravelRoot, $output);
         $this->ensureLaravelHtaccessFiles($laravelRoot, $output);
+        $this->ensureLaravelPublicIndexPriority($laravelRoot, $output);
         $this->ensureLaravelStorageLink($laravelRoot, $output);
         $output[] = 'Laravel deployment checks completed.';
     }
@@ -83,6 +84,54 @@ class LaravelDeploymentCheckService
             $output,
             'Public .htaccess'
         );
+    }
+
+    /**
+     * @param array<int, string> $output
+     */
+    private function ensureLaravelPublicIndexPriority(string $laravelRoot, array &$output): void
+    {
+        $publicDir = $laravelRoot.DIRECTORY_SEPARATOR.'public';
+        $indexPhp = $publicDir.DIRECTORY_SEPARATOR.'index.php';
+
+        if (! is_file($indexPhp)) {
+            return;
+        }
+
+        $candidates = [
+            $publicDir.DIRECTORY_SEPARATOR.'index.html',
+            $publicDir.DIRECTORY_SEPARATOR.'index.htm',
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (! is_file($candidate)) {
+                continue;
+            }
+
+            $backupPath = $this->uniqueBackupPath($candidate);
+            if (! @rename($candidate, $backupPath)) {
+                throw new \RuntimeException('Unable to rename '.$candidate.' so Laravel can serve index.php.');
+            }
+
+            $output[] = 'Renamed '.basename($candidate).' to '.basename($backupPath).' so Laravel index.php takes priority.';
+        }
+    }
+
+    private function uniqueBackupPath(string $path): string
+    {
+        $dir = dirname($path);
+        $base = basename($path);
+        $timestamp = date('Ymd_His');
+        $suffix = $base.'.gwm-backup-'.$timestamp;
+        $candidate = $dir.DIRECTORY_SEPARATOR.$suffix;
+        $counter = 1;
+
+        while (file_exists($candidate)) {
+            $candidate = $dir.DIRECTORY_SEPARATOR.$suffix.'-'.$counter;
+            $counter++;
+        }
+
+        return $candidate;
     }
 
     /**
