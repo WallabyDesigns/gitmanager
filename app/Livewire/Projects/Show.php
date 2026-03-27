@@ -12,15 +12,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class Show extends Component
 {
     use AuthorizesRequests;
+    use WithPagination;
 
     public string $projectsTab = 'list';
 
     public Project $project;
-    public string $customCommand = '';
     public string $previewCommit = '';
 
     public function mount(Project $project): void
@@ -31,8 +32,6 @@ class Show extends Component
 
     public function render()
     {
-        $dependencyActions = $this->dependencyActions();
-
         $logLimit = $this->logPreviewLimit();
         $logPreview = DB::raw($this->logPreviewSql('deployments.output_log', $logLimit).' as output_log');
 
@@ -44,7 +43,6 @@ class Show extends Component
             ->where('action', 'deploy')
             ->where('status', 'success')
             ->first();
-        $dependencyLogs = (clone $deployments)->whereIn('action', $dependencyActions)->take(10)->get();
 
         $service = app(DeploymentService::class);
         $commits = $service->getRecentCommits($this->project, 3);
@@ -60,16 +58,12 @@ class Show extends Component
             : false;
 
         return view('livewire.projects.show', [
-            'deployments' => (clone $deployments)->take(20)->get(),
+            'deployments' => (clone $deployments)->paginate(20),
             'recentDebug' => (clone $deployments)->take(3)->get(),
-            'dependencyLogs' => $dependencyLogs,
-            'latestDependencyLog' => $dependencyLogs->first(),
             'commits' => $commits,
             'activeCommit' => $activeCommit,
             'lastSuccessfulDeploy' => $lastSuccessfulDeploy,
             'rollbackAvailable' => $rollbackAvailable,
-            'hasComposer' => $service->hasComposer($this->project),
-            'hasNpm' => $service->hasNpm($this->project),
         ])->layout('layouts.app', [
             'header' => view('livewire.projects.partials.show-header', [
                 'project' => $this->project,
@@ -262,152 +256,6 @@ class Show extends Component
         });
     }
 
-    public function updateDependencies(DeploymentService $service): void
-    {
-        if ($this->blockIfPermissionsLocked('dependency actions')) {
-            return;
-        }
-
-        $deployment = $service->updateDependencies($this->project, Auth::user());
-        $this->project->refresh();
-        $this->dispatch('notify', message: $deployment->status === 'success'
-            ? 'Dependency update completed.'
-            : 'Dependency update failed. Check logs below.');
-    }
-
-    public function clearLatestDependencyOutput(): void
-    {
-        $latest = $this->project
-            ->deployments()
-            ->whereIn('action', $this->dependencyActions())
-            ->orderByDesc('started_at')
-            ->first();
-
-        if ($latest && $latest->output_log) {
-            $latest->output_log = null;
-            $latest->save();
-        }
-
-        $this->dispatch('notify', message: 'Latest output cleared.');
-    }
-
-    public function composerInstall(DeploymentService $service): void
-    {
-        if ($this->blockIfPermissionsLocked('composer install')) {
-            return;
-        }
-
-        $deployment = $service->composerInstall($this->project, Auth::user());
-        $this->project->refresh();
-        $this->dispatch('notify', message: $deployment->status === 'success'
-            ? 'Composer install completed.'
-            : 'Composer install failed. Check logs below.');
-    }
-
-    public function composerUpdate(DeploymentService $service): void
-    {
-        if ($this->blockIfPermissionsLocked('composer update')) {
-            return;
-        }
-
-        $deployment = $service->composerUpdate($this->project, Auth::user());
-        $this->project->refresh();
-        $this->dispatch('notify', message: $deployment->status === 'success'
-            ? 'Composer update completed.'
-            : 'Composer update failed. Check logs below.');
-    }
-
-    public function composerAudit(DeploymentService $service): void
-    {
-        if ($this->blockIfPermissionsLocked('composer audit')) {
-            return;
-        }
-
-        $deployment = $service->composerAudit($this->project, Auth::user());
-        $this->project->refresh();
-        $this->dispatch('notify', message: $deployment->status === 'success'
-            ? 'Composer audit completed.'
-            : 'Composer audit failed. Check logs below.');
-    }
-
-    public function appClearCache(DeploymentService $service): void
-    {
-        if ($this->blockIfPermissionsLocked('cache clearing')) {
-            return;
-        }
-
-        $deployment = $service->appClearCache($this->project, Auth::user());
-        $this->project->refresh();
-        $this->dispatch('notify', message: $deployment->status === 'success'
-            ? 'app:clear-cache completed.'
-            : 'app:clear-cache failed. Check logs below.');
-    }
-
-    public function npmInstall(DeploymentService $service): void
-    {
-        if ($this->blockIfPermissionsLocked('npm install')) {
-            return;
-        }
-
-        $deployment = $service->npmInstall($this->project, Auth::user());
-        $this->project->refresh();
-        $this->dispatch('notify', message: $deployment->status === 'success'
-            ? 'Npm install completed.'
-            : 'Npm install failed. Check logs below.');
-    }
-
-    public function npmUpdate(DeploymentService $service): void
-    {
-        if ($this->blockIfPermissionsLocked('npm update')) {
-            return;
-        }
-
-        $deployment = $service->npmUpdate($this->project, Auth::user());
-        $this->project->refresh();
-        $this->dispatch('notify', message: $deployment->status === 'success'
-            ? 'Npm update completed.'
-            : 'Npm update failed. Check logs below.');
-    }
-
-    public function npmAuditFix(DeploymentService $service): void
-    {
-        if ($this->blockIfPermissionsLocked('npm audit fix')) {
-            return;
-        }
-
-        $deployment = $service->npmAuditFix($this->project, Auth::user(), false);
-        $this->project->refresh();
-        $this->dispatch('notify', message: $deployment->status === 'success'
-            ? 'Npm audit fix completed.'
-            : 'Npm audit fix failed. Check logs below.');
-    }
-
-    public function npmAuditFixForce(DeploymentService $service): void
-    {
-        if ($this->blockIfPermissionsLocked('npm audit fix')) {
-            return;
-        }
-
-        $deployment = $service->npmAuditFix($this->project, Auth::user(), true);
-        $this->project->refresh();
-        $this->dispatch('notify', message: $deployment->status === 'success'
-            ? 'Npm audit fix (force) completed.'
-            : 'Npm audit fix (force) failed. Check logs below.');
-    }
-
-    public function runCustomCommand(DeploymentService $service): void
-    {
-        if ($this->blockIfPermissionsLocked('custom commands')) {
-            return;
-        }
-
-        $deployment = $service->runCustomCommand($this->project, Auth::user(), $this->customCommand);
-        $this->project->refresh();
-        $this->dispatch('notify', message: $deployment->status === 'success'
-            ? 'Command completed.'
-            : 'Command failed. Check logs below.');
-    }
-
     public function fixPermissions(DeploymentService $service): void
     {
         $deployment = $service->fixPermissions($this->project, Auth::user());
@@ -487,19 +335,4 @@ class Show extends Component
         $this->redirectRoute('projects.index', navigate: true);
     }
 
-    private function dependencyActions(): array
-    {
-        return [
-            'dependency_update',
-            'composer_install',
-            'composer_update',
-            'composer_audit',
-            'app_clear_cache',
-            'npm_install',
-            'npm_update',
-            'npm_audit_fix',
-            'npm_audit_fix_force',
-            'custom_command',
-        ];
-    }
 }

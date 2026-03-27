@@ -19,7 +19,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/projects');
 
-Route::post('/webhooks/github', GitHubWebhookController::class)->name('webhooks.github');
+Route::post('/webhooks/github', GitHubWebhookController::class)
+    ->middleware('throttle:60,1')
+    ->name('webhooks.github');
 
 Route::middleware(['auth', 'verified', EnsurePasswordChanged::class])->group(function () {
     Route::get('/projects', ProjectsIndex::class)->name('projects.index');

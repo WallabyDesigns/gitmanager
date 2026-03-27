@@ -11,3 +11,4 @@ Artisan::command('inspire', function () {
 Schedule::command('projects:auto-deploy')->everyFiveMinutes();
 Schedule::command('security:sync')->hourly();
 Schedule::command('dependabot:auto-merge')->hourly();
+Schedule::command('workspaces:clean')->weekly();

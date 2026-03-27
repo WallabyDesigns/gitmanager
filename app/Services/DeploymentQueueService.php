@@ -170,6 +170,18 @@ class DeploymentQueueService
             ->where('started_at', '<', $cutoff)
             ->get();
 
+        if ($items->isEmpty()) {
+            return 0;
+        }
+
+        $projectIds = $items->pluck('project_id')->unique()->all();
+        $projectsWithRunning = Deployment::query()
+            ->whereIn('project_id', $projectIds)
+            ->where('status', 'running')
+            ->pluck('project_id')
+            ->flip()
+            ->all();
+
         $released = 0;
         foreach ($items as $item) {
             if ($item->deployment && $item->deployment->status !== 'running') {
@@ -180,12 +192,7 @@ class DeploymentQueueService
                 continue;
             }
 
-            $hasRunningDeployment = Deployment::query()
-                ->where('project_id', $item->project_id)
-                ->where('status', 'running')
-                ->exists();
-
-            if ($hasRunningDeployment) {
+            if (isset($projectsWithRunning[$item->project_id])) {
                 continue;
             }
 

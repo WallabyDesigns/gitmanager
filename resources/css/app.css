@@ -26,15 +26,6 @@
   color: var(--muted);
 }
 
-.wallaby img {
-    width: 175px;
-}
-
-.wallaby img:hover{
-    filter: brightness(0) saturate(100%) invert(70%) sepia(26%) saturate(1784%) hue-rotate(335deg) brightness(102%) contrast(102%);
-    cursor: pointer;
-}
-
 .footer-disclaimer {
   margin: 0 1.5rem 1.5rem;
   padding-top: 0.5rem;
