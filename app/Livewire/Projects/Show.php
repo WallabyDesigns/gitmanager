@@ -64,6 +64,7 @@ class Show extends Component
             'activeCommit' => $activeCommit,
             'lastSuccessfulDeploy' => $lastSuccessfulDeploy,
             'rollbackAvailable' => $rollbackAvailable,
+            'envTabEnabled' => $this->envTabEnabled(),
         ])->layout('layouts.app', [
             'header' => view('livewire.projects.partials.show-header', [
                 'project' => $this->project,
@@ -229,6 +230,44 @@ class Show extends Component
 
         $this->dispatch('notify', message: 'Permissions need fixing before running '.$context.'.');
         return true;
+    }
+
+    private function envTabEnabled(): bool
+    {
+        $path = trim((string) ($this->project->local_path ?? ''));
+        if ($path === '' || ! is_dir($path)) {
+            return false;
+        }
+
+        $root = $path;
+        if (($this->project->project_type ?? '') === 'laravel') {
+            $root = $this->findLaravelRoot($path) ?? $path;
+        }
+
+        $envPath = $root.DIRECTORY_SEPARATOR.'.env';
+        $examplePath = $root.DIRECTORY_SEPARATOR.'.env.example';
+
+        return is_file($envPath) || is_file($examplePath);
+    }
+
+    private function findLaravelRoot(string $path): ?string
+    {
+        $cursor = $path;
+
+        while (true) {
+            if (is_file($cursor.DIRECTORY_SEPARATOR.'artisan')) {
+                return $cursor;
+            }
+
+            $parent = dirname($cursor);
+            if (! $parent || $parent === $cursor) {
+                break;
+            }
+
+            $cursor = $parent;
+        }
+
+        return null;
     }
 
     public function checkUpdates(DeploymentService $service): void

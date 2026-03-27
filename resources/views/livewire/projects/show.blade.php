@@ -11,9 +11,15 @@
             <button type="button" @click="tab = 'dependencies'" :class="tab === 'dependencies' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300'" class="px-3 py-2 text-sm rounded-md">
                 Dependency Actions
             </button>
-            <button type="button" @click="tab = 'env'" :class="tab === 'env' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300'" class="px-3 py-2 text-sm rounded-md">
-                Environment
-            </button>
+            @if ($envTabEnabled)
+                <button type="button" @click="tab = 'env'" :class="tab === 'env' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300'" class="px-3 py-2 text-sm rounded-md">
+                    Environment
+                </button>
+            @else
+                <button type="button" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-400 dark:border-slate-700 dark:text-slate-500 opacity-60 cursor-not-allowed" disabled title="No .env or .env.example detected">
+                    Environment
+                </button>
+            @endif
             <button type="button" @click="tab = 'debug'" :class="tab === 'debug' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300'" class="px-3 py-2 text-sm rounded-md">
                 Debug
             </button>
@@ -256,9 +262,11 @@
             @livewire('projects.dependency-actions', ['project' => $project], key('dep-actions-'.$project->id))
         </div>
 
-        <div x-show="tab === 'env'" x-cloak class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
-            @livewire('projects.env-editor', ['project' => $project], key('env-editor-'.$project->id))
-        </div>
+        @if ($envTabEnabled)
+            <div x-show="tab === 'env'" x-cloak class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
+                @livewire('projects.env-editor', ['project' => $project], key('env-editor-'.$project->id))
+            </div>
+        @endif
 
         <div x-show="tab === 'debug'" x-cloak class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
             <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Debug Logs</h3>

@@ -2,8 +2,13 @@
 
 namespace App\Livewire\Projects;
 
+use App\Models\Deployment;
+use App\Models\DeploymentQueueItem;
 use App\Models\Project;
+use App\Services\DeploymentQueueService;
+use App\Services\DeploymentService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
 class EnvEditor extends Component
@@ -37,6 +42,7 @@ class EnvEditor extends Component
 
     public function createFromExample(): void
     {
+        $shouldAutoDeploy = $this->shouldAutoDeployAfterEnvSave();
         [$root, $error] = $this->resolveProjectRoot();
         if ($error) {
             $this->dispatch('notify', message: $error);
@@ -63,10 +69,13 @@ class EnvEditor extends Component
 
         $this->loadEnv();
         $this->dispatch('notify', message: '.env created from .env.example.');
+        $this->dispatch('env-updated');
+        $this->maybeTriggerDeployAfterEnvSave($shouldAutoDeploy);
     }
 
     public function save(): void
     {
+        $shouldAutoDeploy = $this->shouldAutoDeployAfterEnvSave();
         [$root, $error] = $this->resolveProjectRoot();
         if ($error) {
             $this->dispatch('notify', message: $error);
@@ -91,6 +100,8 @@ class EnvEditor extends Component
 
         $this->loadEnv();
         $this->dispatch('notify', message: '.env saved.');
+        $this->dispatch('env-updated');
+        $this->maybeTriggerDeployAfterEnvSave($shouldAutoDeploy);
     }
 
     private function loadEnv(): void
@@ -144,6 +155,75 @@ class EnvEditor extends Component
         }
 
         return [$path, null];
+    }
+
+    private function maybeTriggerDeployAfterEnvSave(bool $shouldAutoDeploy): void
+    {
+        if (! $shouldAutoDeploy) {
+            return;
+        }
+
+        if ($this->project->permissions_locked && ! $this->project->ssh_enabled) {
+            $this->dispatch('notify', message: '.env saved, but permissions are locked. Fix permissions before deploying.');
+            return;
+        }
+
+        if ($this->deploymentInProgress()) {
+            $this->dispatch('notify', message: '.env saved, but a deployment is already running.');
+            return;
+        }
+
+        app(DeploymentQueueService::class)->cancelQueuedGroup($this->project, 'deploy');
+        $deployment = app(DeploymentService::class)->deploy($this->project, Auth::user());
+        $this->project->refresh();
+
+        $this->dispatch('notify', message: $deployment->status === 'success'
+            ? 'Deployment completed after .env update.'
+            : 'Deployment failed after .env update. Check logs below.');
+    }
+
+    private function shouldAutoDeployAfterEnvSave(): bool
+    {
+        $message = $this->project->last_error_message;
+        if (is_string($message) && $this->isEnvBlockingMessage($message)) {
+            return true;
+        }
+
+        $healthMessage = $this->project->health_issue_message;
+        if (is_string($healthMessage) && $this->isEnvBlockingMessage($healthMessage)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function isEnvBlockingMessage(string $message): bool
+    {
+        $message = strtolower($message);
+
+        return str_contains($message, '.env')
+            || str_contains($message, 'env file')
+            || str_contains($message, 'update .env');
+    }
+
+    private function deploymentInProgress(): bool
+    {
+        $projectId = $this->project->id;
+
+        app(DeploymentService::class)->releaseStaleRunningDeployments();
+        app(DeploymentQueueService::class)->releaseStaleRunning();
+
+        if (Deployment::query()
+            ->where('project_id', $projectId)
+            ->where('status', 'running')
+            ->exists()) {
+            return true;
+        }
+
+        return DeploymentQueueItem::query()
+            ->where('project_id', $projectId)
+            ->whereIn('status', ['queued', 'running'])
+            ->exists();
     }
 
     private function findLaravelRoot(string $path): ?string

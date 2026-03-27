@@ -124,21 +124,24 @@ class LaravelDeploymentCheckService
         }
 
         $candidates = [
-            $publicDir.DIRECTORY_SEPARATOR.'index.html',
-            $publicDir.DIRECTORY_SEPARATOR.'index.htm',
+            ['path' => $laravelRoot.DIRECTORY_SEPARATOR.'index.html', 'label' => 'Root index.html'],
+            ['path' => $laravelRoot.DIRECTORY_SEPARATOR.'index.htm', 'label' => 'Root index.htm'],
+            ['path' => $publicDir.DIRECTORY_SEPARATOR.'index.html', 'label' => 'Public index.html'],
+            ['path' => $publicDir.DIRECTORY_SEPARATOR.'index.htm', 'label' => 'Public index.htm'],
         ];
 
         foreach ($candidates as $candidate) {
-            if (! is_file($candidate)) {
+            $path = $candidate['path'];
+            if (! is_file($path)) {
                 continue;
             }
 
-            $backupPath = $this->uniqueBackupPath($candidate);
-            if (! @rename($candidate, $backupPath)) {
-                throw new \RuntimeException('Unable to rename '.$candidate.' so Laravel can serve index.php.');
+            $backupPath = $this->uniqueBackupPath($path);
+            if (! @rename($path, $backupPath)) {
+                throw new \RuntimeException('Unable to rename '.$path.' so Laravel can serve index.php.');
             }
 
-            $output[] = 'Renamed '.basename($candidate).' to '.basename($backupPath).' so Laravel index.php takes priority.';
+            $output[] = $candidate['label'].' renamed to '.basename($backupPath).' so Laravel index.php takes priority.';
         }
     }
 

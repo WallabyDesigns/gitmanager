@@ -28,6 +28,12 @@
                             <x-loading-spinner target="appClearCache" />
                             Clear Cache
                         </button>
+                        @if ($hasLaravel)
+                            <button type="button" wire:click="laravelMigrate" class="px-3 py-2 text-sm rounded-md border border-sky-300 text-sky-700 hover:text-sky-900 dark:border-sky-500/50 dark:text-sky-300 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
+                                <x-loading-spinner target="laravelMigrate" />
+                                Migrate
+                            </button>
+                        @endif
                     </div>
                 </div>
             @endif

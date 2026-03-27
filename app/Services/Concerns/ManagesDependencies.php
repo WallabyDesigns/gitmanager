@@ -181,6 +181,28 @@ trait ManagesDependencies
         });
     }
 
+    public function laravelMigrate(Project $project, ?User $user = null): Deployment
+    {
+        return $this->runMaintenanceAction($project, $user, 'laravel_migrate', function (string $path, array &$output) use ($project): void {
+            $laravelRoot = $this->findLaravelRoot($project->local_path)
+                ?? $this->findLaravelRoot($path);
+
+            if (! $laravelRoot) {
+                throw new \RuntimeException('Laravel app not found for this project.');
+            }
+
+            if (! $this->artisanCommandExists($laravelRoot, 'migrate', $output)) {
+                throw new \RuntimeException('Command migrate not found.');
+            }
+
+            if (! $this->laravelDatabaseIsAvailable($laravelRoot, $output, 'migrate')) {
+                throw new \RuntimeException('Database configuration missing; update .env before running migrations.');
+            }
+
+            $this->runProjectProcess(['php', 'artisan', 'migrate', '--force'], $output, $laravelRoot);
+        });
+    }
+
     public function npmInstall(Project $project, ?User $user = null): Deployment
     {
         return $this->runMaintenanceAction($project, $user, 'npm_install', function (string $path, array &$output): void {

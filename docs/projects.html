@@ -45,6 +45,18 @@
       </section>
 
       <section class="card">
+        <h2>Environment Tab</h2>
+        <p>Each project includes an Environment tab for editing the project’s <code>.env</code> file directly.</p>
+        <ul>
+          <li>Edit and save <code>.env</code> values without leaving the UI.</li>
+          <li>Create <code>.env</code> from <code>.env.example</code> when available.</li>
+          <li>If an existing <code>.env</code> is detected, it is used immediately with no additional setup.</li>
+          <li>When a deployment or health check failed due to a missing <code>.env</code>, saving the file triggers an automatic deploy retry.</li>
+          <li>Laravel deploy checks require a valid <code>.env</code> before running artisan tasks such as migrations.</li>
+        </ul>
+      </section>
+
+      <section class="card">
         <h2>Deploy Actions</h2>
         <ul>
           <li><strong>Deploy</strong> – standard update with change preservation.</li>
@@ -73,4 +85,3 @@ public/uploads/
   <div data-include="partials/footer.html"></div>
 </body>
 </html>
-

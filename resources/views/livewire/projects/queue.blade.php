@@ -81,6 +81,7 @@
                         <option value="npm_audit_fix">Npm Audit Fix</option>
                         <option value="npm_audit_fix_force">Npm Audit Fix (Force)</option>
                         <option value="app_clear_cache">App Clear Cache</option>
+                        <option value="laravel_migrate">Laravel Migrate</option>
                         <option value="preview_build">Preview Build</option>
                         <option value="custom_command">Custom Command</option>
                     </select>

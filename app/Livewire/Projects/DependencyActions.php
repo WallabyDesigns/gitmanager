@@ -11,6 +11,13 @@ class DependencyActions extends Component
 {
     public Project $project;
     public string $customCommand = '';
+    public bool $hasComposer = false;
+    public bool $hasNpm = false;
+    public bool $hasLaravel = false;
+
+    protected $listeners = [
+        'env-updated' => '$refresh',
+    ];
 
     public function mount(Project $project): void
     {
@@ -19,8 +26,8 @@ class DependencyActions extends Component
 
     public function render()
     {
-        $service = app(DeploymentService::class);
         $dependencyActions = $this->dependencyActions();
+        [$this->hasComposer, $this->hasNpm, $this->hasLaravel] = $this->detectProjectFeatures();
 
         $dependencyLogs = $this->project->deployments()
             ->whereIn('action', $dependencyActions)
@@ -31,8 +38,9 @@ class DependencyActions extends Component
         return view('livewire.projects.dependency-actions', [
             'dependencyLogs' => $dependencyLogs,
             'latestDependencyLog' => $dependencyLogs->first(),
-            'hasComposer' => $service->hasComposer($this->project),
-            'hasNpm' => $service->hasNpm($this->project),
+            'hasComposer' => $this->hasComposer,
+            'hasNpm' => $this->hasNpm,
+            'hasLaravel' => $this->hasLaravel,
             'permissionsLocked' => (bool) $this->project->permissions_locked,
         ]);
     }
@@ -118,6 +126,19 @@ class DependencyActions extends Component
             : 'app:clear-cache failed. Check logs below.');
     }
 
+    public function laravelMigrate(DeploymentService $service): void
+    {
+        if ($this->blockIfPermissionsLocked('migrations')) {
+            return;
+        }
+
+        $deployment = $service->laravelMigrate($this->project, Auth::user());
+        $this->project->refresh();
+        $this->dispatch('notify', message: $deployment->status === 'success'
+            ? 'Migrations completed.'
+            : 'Migrations failed. Check logs below.');
+    }
+
     public function npmInstall(DeploymentService $service): void
     {
         if ($this->blockIfPermissionsLocked('npm install')) {
@@ -201,11 +222,52 @@ class DependencyActions extends Component
             'composer_update',
             'composer_audit',
             'app_clear_cache',
+            'laravel_migrate',
             'npm_install',
             'npm_update',
             'npm_audit_fix',
             'npm_audit_fix_force',
             'custom_command',
         ];
+    }
+
+    /**
+     * @return array{0: bool, 1: bool, 2: bool}
+     */
+    private function detectProjectFeatures(): array
+    {
+        $path = trim((string) ($this->project->local_path ?? ''));
+        if ($path === '' || ! is_dir($path)) {
+            return [false, false, false];
+        }
+
+        $laravelRoot = $this->findLaravelRoot($path);
+        $root = $laravelRoot ?? $path;
+
+        $hasComposer = is_file($root.DIRECTORY_SEPARATOR.'composer.json');
+        $hasNpm = is_file($root.DIRECTORY_SEPARATOR.'package.json');
+        $hasLaravel = $laravelRoot !== null;
+
+        return [$hasComposer, $hasNpm, $hasLaravel];
+    }
+
+    private function findLaravelRoot(string $path): ?string
+    {
+        $cursor = $path;
+
+        while (true) {
+            if (is_file($cursor.DIRECTORY_SEPARATOR.'artisan')) {
+                return $cursor;
+            }
+
+            $parent = dirname($cursor);
+            if (! $parent || $parent === $cursor) {
+                break;
+            }
+
+            $cursor = $parent;
+        }
+
+        return null;
     }
 }
