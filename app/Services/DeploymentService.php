@@ -27,6 +27,7 @@ class DeploymentService
     public function __construct(
         private readonly HealthCheckService $healthCheckService,
         private readonly PermissionService $permissionService,
+        private readonly LaravelDeploymentCheckService $laravelDeploymentCheckService,
     ) {}
 
     public function checkHealth(Project $project): string
@@ -186,6 +187,8 @@ class DeploymentService
                 $this->resetToRemote($project, $repoPath, $project->default_branch, $output, $allowDirty);
 
                 $toHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
+
+                $this->laravelDeploymentCheckService->run($project, $executionPath, $output);
 
                 $ftpPlan = $this->planFtpOnlyDependencySync($project, $executionPath, $output);
 
@@ -683,6 +686,7 @@ class DeploymentService
             $this->runProcess(['git', '-C', $repoPath, 'worktree', 'add', '--force', $stagePath, $hash], $output);
 
             $this->runWithSingleRetry(function () use ($project, $stagePath, &$output): void {
+                $this->laravelDeploymentCheckService->run($project, $stagePath, $output);
                 if ($project->run_composer_install) {
                     $this->runComposerCommandWithFallback(
                         $stagePath,

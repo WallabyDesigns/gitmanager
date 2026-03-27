@@ -41,6 +41,16 @@
       </section>
 
       <section class="card">
+        <h2>Laravel Health Check</h2>
+        <p>For Laravel projects, GWM runs a quick filesystem check before the HTTP request.</p>
+        <ul>
+          <li>Ensures <code>storage/framework/cache/data</code>, <code>bootstrap/cache</code>, and <code>storage/app/public</code> exist and are writable.</li>
+          <li>Verifies <code>public/storage</code> is a symlink to <code>storage/app/public</code> (and attempts to create it if missing).</li>
+        </ul>
+        <p>If these checks fail, the health status is marked as not available and the reason appears on the project overview screen.</p>
+      </section>
+
+      <section class="card">
         <h2>Refresh Timing</h2>
         <p>Health status refreshes every minute on the projects list and on project detail views. Manual refresh is also available.</p>
       </section>
@@ -55,5 +65,4 @@
   <div data-include="partials/footer.html"></div>
 </body>
 </html>
-
 

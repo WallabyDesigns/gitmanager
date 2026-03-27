@@ -53,6 +53,11 @@
                         {{ $healthLabel }}
                     </span>
                     <span class="text-xs text-slate-500 dark:text-slate-400">Last checked: {{ $project->health_checked_at?->format('M j, Y g:i a') ?? 'Never' }}</span>
+                    @if ($project->health_issue_message)
+                        <span class="text-xs text-amber-700 dark:text-amber-300">
+                            Laravel check: {{ $project->health_issue_message }}
+                        </span>
+                    @endif
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <button type="button" wire:click="deploy" class="px-3 py-2 text-sm rounded-md bg-slate-900 text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>

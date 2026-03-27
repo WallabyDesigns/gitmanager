@@ -19,6 +19,7 @@ class Project extends Model
         'auto_deploy',
         'health_url',
         'health_status',
+        'health_issue_message',
         'health_checked_at',
         'last_checked_at',
         'last_deployed_at',

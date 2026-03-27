@@ -7,12 +7,28 @@ use Illuminate\Support\Facades\Http;
 
 class HealthCheckService
 {
+    public function __construct(
+        private readonly LaravelDeploymentCheckService $laravelDeploymentCheckService,
+    ) {}
+
     public function checkHealth(Project $project): string
     {
+        $laravelIssue = $this->runLaravelHealthChecks($project);
+
         $healthUrl = $this->resolveHealthUrl($project);
+
+        if ($laravelIssue !== null) {
+            $project->health_status = 'na';
+            $project->health_issue_message = $laravelIssue;
+            $project->health_checked_at = now();
+            $project->save();
+
+            return 'na';
+        }
 
         if (! $healthUrl) {
             $project->health_status = 'na';
+            $project->health_issue_message = null;
             $project->health_checked_at = now();
             $project->save();
 
@@ -27,10 +43,23 @@ class HealthCheckService
         }
 
         $project->health_status = $status;
+        $project->health_issue_message = null;
         $project->health_checked_at = now();
         $project->save();
 
         return $status;
+    }
+
+    private function runLaravelHealthChecks(Project $project): ?string
+    {
+        $output = [];
+        try {
+            $this->laravelDeploymentCheckService->run($project, (string) $project->local_path, $output);
+        } catch (\Throwable $exception) {
+            return $exception->getMessage();
+        }
+
+        return null;
     }
 
     private function resolveHealthUrl(Project $project): ?string
