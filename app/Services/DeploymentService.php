@@ -230,9 +230,7 @@ class DeploymentService
                     }
 
                     if ($project->run_build_command && $project->build_command) {
-                        $this->ensureBuildOutputWritable($executionPath, $output);
-                        $this->logStep($output, 'Build command', $executionPath, $project->build_command);
-                        $this->runProjectShellCommand($project->build_command, $output, $executionPath);
+                        $this->runBuildCommandWithNpmRecovery($project, $executionPath, $output);
                     }
 
                     if ($project->run_test_command && $project->test_command) {
@@ -439,9 +437,7 @@ class DeploymentService
                     }
 
                     if ($project->run_build_command && $project->build_command) {
-                        $this->ensureBuildOutputWritable($executionPath, $output);
-                        $this->logStep($output, 'Build command', $executionPath, $project->build_command);
-                        $this->runProjectShellCommand($project->build_command, $output, $executionPath);
+                        $this->runBuildCommandWithNpmRecovery($project, $executionPath, $output);
                     }
 
                     $this->maybeRunLaravelClearCache($project, $output);
@@ -707,9 +703,7 @@ class DeploymentService
                 }
 
                 if ($project->run_build_command && $project->build_command) {
-                    $this->ensureBuildOutputWritable($stagePath, $output);
-                    $this->logStep($output, 'Staging build command', $stagePath, $project->build_command);
-                    $this->runProjectShellCommand($project->build_command, $output, $stagePath);
+                    $this->runBuildCommandWithNpmRecovery($project, $stagePath, $output, 'Staging build command');
                 }
 
                 if ($project->run_test_command && $project->test_command) {

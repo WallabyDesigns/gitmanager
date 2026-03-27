@@ -78,7 +78,7 @@ trait ManagesRemoteDeployments
                 }
 
                 if ($project->run_build_command && $project->build_command) {
-                    $this->runSshCommand($connection, $project->build_command, $output);
+                    $this->runSshBuildCommandWithNpmRecovery($project, $connection, $output);
                 }
 
                 if ($project->run_test_command && $project->test_command) {
@@ -222,7 +222,7 @@ trait ManagesRemoteDeployments
                     }
 
                     if ($project->run_build_command && $project->build_command) {
-                        $this->runSshCommand($connection, $project->build_command, $output);
+                        $this->runSshBuildCommandWithNpmRecovery($project, $connection, $output);
                     }
 
                     $this->maybeRunLaravelClearCacheOverSsh($project, $connection, $output);
@@ -518,6 +518,42 @@ trait ManagesRemoteDeployments
     private function remoteNpmInstallCommand(): string
     {
         return 'if [ -f package-lock.json ]; then npm ci; else npm install; fi';
+    }
+
+    private function runSshBuildCommandWithNpmRecovery(Project $project, array $connection, array &$output): void
+    {
+        $command = trim((string) $project->build_command);
+        if ($command === '') {
+            return;
+        }
+
+        try {
+            $this->runSshCommand($connection, $command, $output);
+        } catch (\Throwable $exception) {
+            $manager = $this->detectBuildPackageManager($command);
+            if (! $manager) {
+                throw $exception;
+            }
+
+            $labelPrefix = strtoupper($manager);
+            $output[] = $labelPrefix.' build failed over SSH. Removing node_modules and reinstalling dependencies.';
+            $this->maybeStreamOutput($output, true);
+
+            $this->runSshCommand($connection, 'rm -rf node_modules', $output);
+            $this->runSshCommand($connection, $this->remoteInstallCommandForManager($manager), $output);
+            $output[] = 'Retrying '.$labelPrefix.' build command over SSH.';
+            $this->maybeStreamOutput($output, true);
+            $this->runSshCommand($connection, $command, $output);
+        }
+    }
+
+    private function remoteInstallCommandForManager(string $manager): string
+    {
+        return match ($manager) {
+            'yarn' => 'yarn install',
+            'pnpm' => 'pnpm install',
+            default => $this->remoteNpmInstallCommand(),
+        };
     }
 
     private function maybeRunLaravelClearCacheOverSsh(Project $project, array $connection, array &$output): void

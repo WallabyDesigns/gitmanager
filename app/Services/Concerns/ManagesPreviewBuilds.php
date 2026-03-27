@@ -75,8 +75,7 @@ trait ManagesPreviewBuilds
                         }
 
                         if ($project->run_build_command && $project->build_command) {
-                            $this->ensureBuildOutputWritable($previewPath, $output);
-                            $this->runProjectShellCommand($project->build_command, $output, $previewPath);
+                            $this->runBuildCommandWithNpmRecovery($project, $previewPath, $output, 'Preview build command');
                         }
 
                         if ($project->run_test_command && $project->test_command) {

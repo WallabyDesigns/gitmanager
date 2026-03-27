@@ -82,9 +82,7 @@ trait ManagesDependencies
                     }
 
                     if ($project->run_build_command && $project->build_command) {
-                        $this->ensureBuildOutputWritable($executionPath, $output);
-                        $this->logStep($output, 'Build command', $executionPath, $project->build_command);
-                        $this->runProjectShellCommand($project->build_command, $output, $executionPath);
+                        $this->runBuildCommandWithNpmRecovery($project, $executionPath, $output);
                     }
 
                     if ($project->run_test_command && $project->test_command) {
@@ -448,16 +446,18 @@ trait ManagesDependencies
         return ['npm', 'install'];
     }
 
-    private function attemptNpmCleanReinstall(string $path, array &$output, string $label, array $command): void
+    private function attemptNpmCleanReinstall(string $path, array &$output, string $label, array $command, string $managerLabel = 'Npm'): void
     {
         $modulesPath = $path.DIRECTORY_SEPARATOR.'node_modules';
 
+        $managerLabel = trim($managerLabel) !== '' ? $managerLabel : 'Npm';
+
         if (! is_dir($modulesPath)) {
-            $output[] = 'Starting npm clean reinstall (no existing node_modules).';
+            $output[] = 'Starting '.$managerLabel.' clean reinstall (no existing node_modules).';
             $this->logStep($output, $label.' (clean reinstall)', $path, implode(' ', $command));
             $this->runProjectProcess($command, $output, $path);
             $this->permissionService->applyOwnershipFromReference($modulesPath, $path, $output, 'Node modules directory');
-            $output[] = 'Npm clean reinstall completed.';
+            $output[] = $managerLabel.' clean reinstall completed.';
 
             return;
         }
@@ -468,20 +468,20 @@ trait ManagesDependencies
         }
 
         try {
-            $output[] = 'Starting npm clean reinstall.';
+            $output[] = 'Starting '.$managerLabel.' clean reinstall.';
             $this->logStep($output, $label.' (clean reinstall)', $path, implode(' ', $command));
             $this->runProjectProcess($command, $output, $path);
             if (is_dir($backup)) {
                 $this->deleteDirectory($backup);
             }
-            $output[] = 'Npm clean reinstall completed.';
+            $output[] = $managerLabel.' clean reinstall completed.';
         } catch (\Throwable $exception) {
             if (is_dir($modulesPath)) {
                 $this->deleteDirectory($modulesPath);
             }
 
             $this->restoreDirectoryBackup($backup, $modulesPath, $output, 'Node modules directory');
-            $output[] = 'Npm clean reinstall failed; restored node_modules backup.';
+            $output[] = $managerLabel.' clean reinstall failed; restored node_modules backup.';
             throw $exception;
         }
 
@@ -626,6 +626,71 @@ trait ManagesDependencies
         }
 
         return true;
+    }
+
+    private function runBuildCommandWithNpmRecovery(Project $project, string $path, array &$output, string $label = 'Build command'): void
+    {
+        $command = trim((string) $project->build_command);
+        if ($command === '') {
+            return;
+        }
+
+        $this->ensureBuildOutputWritable($path, $output);
+        $this->logStep($output, $label, $path, $command);
+
+        try {
+            $this->runProjectShellCommand($command, $output, $path);
+        } catch (\Throwable $exception) {
+            $manager = $this->detectBuildPackageManager($command);
+            if (! $manager) {
+                throw $exception;
+            }
+
+            if (! is_file($path.DIRECTORY_SEPARATOR.'package.json')) {
+                throw $exception;
+            }
+
+            $labelPrefix = strtoupper($manager);
+            $output[] = $labelPrefix.' build failed. Removing node_modules and reinstalling dependencies.';
+            $installCommand = $this->installCommandForPackageManager($manager, $path);
+            $this->attemptNpmCleanReinstall($path, $output, $labelPrefix.' install', $installCommand, $labelPrefix);
+            $this->logStep($output, $label.' (retry)', $path, $command);
+            $this->runProjectShellCommand($command, $output, $path);
+        }
+    }
+
+    private function detectBuildPackageManager(string $command): ?string
+    {
+        $normalized = strtolower(trim($command));
+        if ($normalized === '') {
+            return null;
+        }
+
+        $patterns = [
+            'npm' => '/\bnpm\b.*\bbuild\b/',
+            'yarn' => '/\byarn\b.*\bbuild\b/',
+            'pnpm' => '/\bpnpm\b.*\bbuild\b/',
+        ];
+
+        foreach ($patterns as $manager => $pattern) {
+            if (preg_match($pattern, $normalized)) {
+                return $manager;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function installCommandForPackageManager(string $manager, string $path): array
+    {
+        return match ($manager) {
+            'yarn' => ['yarn', 'install'],
+            'pnpm' => ['pnpm', 'install'],
+            default => $this->npmInstallCommand($path),
+        };
     }
 
     private function ensureBuildOutputWritable(string $rootPath, array &$output): void
