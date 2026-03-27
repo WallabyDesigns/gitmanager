@@ -28,6 +28,7 @@ class LaravelDeploymentCheckService
 
         $output[] = 'Running Laravel deployment checks.';
         $this->ensureLaravelCacheDirectories($laravelRoot, $output);
+        $this->ensureLaravelHtaccessFiles($laravelRoot, $output);
         $this->ensureLaravelStorageLink($laravelRoot, $output);
         $output[] = 'Laravel deployment checks completed.';
     }
@@ -55,6 +56,167 @@ class LaravelDeploymentCheckService
         if (! is_dir($bootstrapCache) || ! is_writable($bootstrapCache)) {
             throw new \RuntimeException('Bootstrap cache directory is not writable: '.$bootstrapCache);
         }
+    }
+
+    /**
+     * @param array<int, string> $output
+     */
+    private function ensureLaravelHtaccessFiles(string $laravelRoot, array &$output): void
+    {
+        $publicDir = $laravelRoot.DIRECTORY_SEPARATOR.'public';
+        if (! is_dir($publicDir)) {
+            throw new \RuntimeException('Laravel public directory missing: '.$publicDir);
+        }
+
+        $rootHtaccess = $laravelRoot.DIRECTORY_SEPARATOR.'.htaccess';
+        $publicHtaccess = $publicDir.DIRECTORY_SEPARATOR.'.htaccess';
+
+        $this->ensureHtaccessFile(
+            $rootHtaccess,
+            $this->rootHtaccessTemplate($laravelRoot),
+            $output,
+            'Root .htaccess'
+        );
+        $this->ensureHtaccessFile(
+            $publicHtaccess,
+            $this->publicHtaccessTemplate(),
+            $output,
+            'Public .htaccess'
+        );
+    }
+
+    /**
+     * @param array<int, string> $output
+     */
+    private function ensureHtaccessFile(string $path, ?string $template, array &$output, string $label): void
+    {
+        if (is_file($path)) {
+            $contents = @file_get_contents($path);
+            if ($contents === false || trim($contents) === '') {
+                $output[] = $label.' exists but is empty. Recreating.';
+                $this->writeHtaccessFile($path, $template, $output, $label);
+            } else {
+                $output[] = $label.' exists.';
+            }
+
+            return;
+        }
+
+        if (file_exists($path)) {
+            throw new \RuntimeException($label.' exists but is not a file: '.$path);
+        }
+
+        $output[] = $label.' missing. Creating.';
+        $this->writeHtaccessFile($path, $template, $output, $label);
+    }
+
+    /**
+     * @param array<int, string> $output
+     */
+    private function writeHtaccessFile(string $path, ?string $template, array &$output, string $label): void
+    {
+        if ($template === null || trim($template) === '') {
+            throw new \RuntimeException('No template available to create '.$label.'.');
+        }
+
+        $directory = dirname($path);
+        $this->permissionService->ensureWritableDirectory($directory, $output, $label.' directory');
+        if (! is_dir($directory) || ! is_writable($directory)) {
+            throw new \RuntimeException($label.' directory is not writable: '.$directory);
+        }
+
+        if (@file_put_contents($path, $template) === false) {
+            throw new \RuntimeException('Unable to write '.$label.' at '.$path);
+        }
+
+        @chmod($path, 0664);
+        $output[] = 'Created '.$label.'.';
+    }
+
+    private function rootHtaccessTemplate(string $laravelRoot): ?string
+    {
+        $candidate = $laravelRoot.DIRECTORY_SEPARATOR.'sample.htaccess';
+        $template = $this->readHtaccessTemplate($candidate);
+        if ($template !== null) {
+            return $template;
+        }
+
+        $template = $this->readHtaccessTemplate(base_path('sample.htaccess'));
+        if ($template !== null) {
+            return $template;
+        }
+
+        return $this->defaultRootHtaccessTemplate();
+    }
+
+    private function publicHtaccessTemplate(): ?string
+    {
+        $template = $this->readHtaccessTemplate(base_path('public'.DIRECTORY_SEPARATOR.'.htaccess'));
+        if ($template !== null) {
+            return $template;
+        }
+
+        return $this->defaultPublicHtaccessTemplate();
+    }
+
+    private function readHtaccessTemplate(string $path): ?string
+    {
+        if (! is_file($path)) {
+            return null;
+        }
+
+        $contents = @file_get_contents($path);
+        if ($contents === false || trim($contents) === '') {
+            return null;
+        }
+
+        return rtrim($contents)."\n";
+    }
+
+    private function defaultRootHtaccessTemplate(): string
+    {
+        return "<IfModule mod_rewrite.c>\n"
+            ."    Options +SymLinksIfOwnerMatch\n"
+            ."    RewriteEngine On\n"
+            ."\n"
+            ."    RewriteCond %{REQUEST_URI} !^/public/\n"
+            ."\n"
+            ."    RewriteCond %{REQUEST_FILENAME} !-d\n"
+            ."    RewriteCond %{REQUEST_FILENAME} !-f\n"
+            ."\n"
+            ."    RewriteRule ^(.*)$ /public/$1\n"
+            ."    #RewriteRule ^ index.php [L]\n"
+            ."    RewriteRule ^(/)?$ public/index.php [L]\n"
+            ."</IfModule>\n";
+    }
+
+    private function defaultPublicHtaccessTemplate(): string
+    {
+        return "<IfModule mod_rewrite.c>\n"
+            ."    <IfModule mod_negotiation.c>\n"
+            ."        Options -MultiViews -Indexes\n"
+            ."    </IfModule>\n"
+            ."\n"
+            ."    RewriteEngine On\n"
+            ."\n"
+            ."    # Handle Authorization Header\n"
+            ."    RewriteCond %{HTTP:Authorization} .\n"
+            ."    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]\n"
+            ."\n"
+            ."    # Handle X-XSRF-Token Header\n"
+            ."    RewriteCond %{HTTP:x-xsrf-token} .\n"
+            ."    RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]\n"
+            ."\n"
+            ."    # Redirect Trailing Slashes If Not A Folder...\n"
+            ."    RewriteCond %{REQUEST_FILENAME} !-d\n"
+            ."    RewriteCond %{REQUEST_URI} (.+)/$\n"
+            ."    RewriteRule ^ %1 [L,R=301]\n"
+            ."\n"
+            ."    # Send Requests To Front Controller...\n"
+            ."    RewriteCond %{REQUEST_FILENAME} !-d\n"
+            ."    RewriteCond %{REQUEST_FILENAME} !-f\n"
+            ."    RewriteRule ^ index.php [L]\n"
+            ."</IfModule>\n";
     }
 
     /**
