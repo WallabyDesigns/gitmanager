@@ -724,9 +724,15 @@ trait ManagesDependencies
 
     private function artisanCommandExists(string $path, string $command, array &$output): bool
     {
-        $process = $this->runProjectProcess(['php', 'artisan', 'list', '--format=json'], $output, $path, false);
+        $probeOutput = [];
+        $process = $this->runProjectProcess(['php', 'artisan', 'list', '--format=json'], $probeOutput, $path, false);
 
         if (! $process->isSuccessful()) {
+            $error = trim($process->getErrorOutput());
+            if ($error !== '') {
+                $output[] = 'Unable to query artisan commands: '.$error;
+            }
+
             return false;
         }
 
