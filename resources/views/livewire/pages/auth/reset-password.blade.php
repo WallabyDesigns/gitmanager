@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Auth\Events\PasswordReset;
+use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Session;
@@ -23,6 +24,10 @@ new #[Layout('layouts.guest')] class extends Component
      */
     public function mount(string $token): void
     {
+        if (! User::query()->exists()) {
+            $this->redirectRoute('register', navigate: true);
+        }
+
         $this->token = $token;
 
         $this->email = request()->string('email');

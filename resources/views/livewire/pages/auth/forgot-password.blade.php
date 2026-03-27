@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Support\Facades\Password;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -7,6 +8,13 @@ use Livewire\Volt\Component;
 new #[Layout('layouts.guest')] class extends Component
 {
     public string $email = '';
+
+    public function mount(): void
+    {
+        if (! User::query()->exists()) {
+            $this->redirectRoute('register', navigate: true);
+        }
+    }
 
     /**
      * Send a password reset link to the provided email address.
