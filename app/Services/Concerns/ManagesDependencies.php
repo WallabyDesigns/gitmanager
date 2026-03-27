@@ -765,9 +765,8 @@ trait ManagesDependencies
         if (strtolower($connection) === 'sqlite') {
             $database = $this->getLaravelEnvValue($laravelRoot, 'DB_DATABASE');
             if ($database === null || trim($database) === '') {
-                $output[] = 'Skipping '.$label.': sqlite database path not set.';
-
-                return false;
+                $database = 'database'.DIRECTORY_SEPARATOR.'database.sqlite';
+                $output[] = 'DB_DATABASE not set; defaulting sqlite path to '.$database.'.';
             }
 
             $database = trim($database);
@@ -777,6 +776,13 @@ trait ManagesDependencies
                     : $laravelRoot.DIRECTORY_SEPARATOR.$database;
 
                 if (! file_exists($resolved)) {
+                    $directory = dirname($resolved);
+                    $this->permissionService->ensureWritableDirectory($directory, $output, 'SQLite database directory');
+                    if (is_dir($directory) && is_writable($directory) && @touch($resolved)) {
+                        $output[] = 'Created sqlite database file at '.$resolved.'.';
+                        return true;
+                    }
+
                     $output[] = 'Skipping '.$label.': sqlite database file not found at '.$resolved;
 
                     return false;
