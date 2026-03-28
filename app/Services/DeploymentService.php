@@ -168,6 +168,7 @@ class DeploymentService
                 if ($fromHash && $fromHash === $remoteHash) {
                     if ($this->shouldRunInitialDeployTasks($project)) {
                         $output[] = 'No updates detected. Running initial setup tasks.';
+                        $this->resetToRemote($project, $repoPath, $project->default_branch, $output, $allowDirty);
                         $this->laravelDeploymentCheckService->run($project, $executionPath, $output);
 
                         $ftpPlan = $this->planFtpOnlyDependencySync($project, $executionPath, $output);

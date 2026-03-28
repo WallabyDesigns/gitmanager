@@ -186,6 +186,7 @@ class Create extends Component
             if ($this->queueEnabled()) {
                 app(\App\Services\DeploymentQueueService::class)->enqueue($project, 'deploy', ['reason' => 'project_created'], Auth::user());
                 $message .= ' Initial deployment queued.';
+                app(\App\Services\DeploymentQueueService::class)->processNext(1);
             } else {
                 $deployment = app(\App\Services\DeploymentService::class)->deploy($project, Auth::user());
                 $message .= $deployment->status === 'success'

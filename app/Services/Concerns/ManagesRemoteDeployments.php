@@ -42,6 +42,11 @@ trait ManagesRemoteDeployments
                 if ($this->shouldRunInitialDeployTasks($project)) {
                     $output[] = 'No updates detected. Running initial setup tasks over SSH.';
                     $this->maybeStreamOutput($output, true);
+                    $this->runSshCommand(
+                        $connection,
+                        'git reset --hard '.escapeshellarg($remoteRef),
+                        $output
+                    );
 
                     $this->runWithSingleRetry(function () use ($project, $connection, &$output): void {
                         if ($project->run_composer_install) {
