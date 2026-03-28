@@ -158,8 +158,9 @@
     </div>
 
     <div class="flex flex-wrap items-center gap-3">
-        <x-primary-button>
+        <x-primary-button wire:loading.attr="disabled" wire:target="{{ $submitAction }}">
             {{ $submitLabel }}
+            <x-loading-spinner target="{{ $submitAction }}" class="ml-2" />
         </x-primary-button>
         @if (! empty($cancelUrl))
             <a href="{{ $cancelUrl }}" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">

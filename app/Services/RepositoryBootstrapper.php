@@ -36,11 +36,11 @@ class RepositoryBootstrapper
         $this->runProcess(['git', 'fetch', '--all', '--prune'], $output, $path);
         $this->runProcess(['git', 'checkout', '-B', $branch], $output, $path);
 
-        if ($this->isDirectoryEmpty($path, ['.git'])) {
-            $this->runProcess(['git', 'reset', '--hard', 'origin/'.$branch], $output, $path);
-        } else {
-            $this->runProcess(['git', 'reset', '--mixed', 'origin/'.$branch], $output, $path);
+        if (! $this->isDirectoryEmpty($path, ['.git'])) {
+            $output[] = 'Existing files detected. Checking out repository files.';
         }
+
+        $this->runProcess(['git', 'reset', '--hard', 'origin/'.$branch], $output, $path);
 
         $status = trim($this->runProcess(['git', 'status', '--porcelain'], $output, $path, false)->getOutput());
 

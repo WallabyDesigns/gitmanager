@@ -234,8 +234,9 @@
 
                     <div class="flex flex-wrap items-center gap-3">
                         @if ($step === 1)
-                            <x-primary-button>
+                            <x-primary-button wire:loading.attr="disabled" wire:target="nextStep">
                                 Next
+                                <x-loading-spinner target="nextStep" class="ml-2" />
                             </x-primary-button>
                             <a href="{{ route('projects.index') }}" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
                                 Cancel
@@ -244,8 +245,9 @@
                             <button type="button" wire:click="previousStep" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
                                 Back
                             </button>
-                            <x-primary-button>
+                            <x-primary-button wire:loading.attr="disabled" wire:target="save">
                                 Save Project
+                                <x-loading-spinner target="save" class="ml-2" />
                             </x-primary-button>
                             <a href="{{ route('projects.index') }}" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
                                 Cancel
