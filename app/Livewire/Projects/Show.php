@@ -74,7 +74,10 @@ class Show extends Component
 
     public function refreshHealthStatus(DeploymentService $service): void
     {
-        if (! $this->project->health_checked_at || $this->project->health_checked_at->lt(now()->subMinute())) {
+        if (
+            $this->shouldAutoCheckHealth($this->project)
+            && (! $this->project->health_checked_at || $this->project->health_checked_at->lt(now()->subMinute()))
+        ) {
             $service->checkHealth($this->project);
             $this->project->refresh();
         }
@@ -174,6 +177,11 @@ class Show extends Component
     private function queueEnabled(): bool
     {
         return (bool) config('gitmanager.deploy_queue.enabled', true);
+    }
+
+    private function shouldAutoCheckHealth(Project $project): bool
+    {
+        return (bool) ($project->last_deployed_at || $project->last_deployed_hash);
     }
 
     private function deploymentInProgress(): bool

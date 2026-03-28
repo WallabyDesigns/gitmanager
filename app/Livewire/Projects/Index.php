@@ -28,7 +28,10 @@ class Index extends Component
             ->get();
 
         foreach ($projects as $project) {
-            if (! $project->health_checked_at || $project->health_checked_at->lt(now()->subMinute())) {
+            if (
+                $this->shouldAutoCheckHealth($project)
+                && (! $project->health_checked_at || $project->health_checked_at->lt(now()->subMinute()))
+            ) {
                 $service->checkHealth($project);
             }
 
@@ -138,6 +141,11 @@ class Index extends Component
     private function queueEnabled(): bool
     {
         return (bool) config('gitmanager.deploy_queue.enabled', true);
+    }
+
+    private function shouldAutoCheckHealth(\App\Models\Project $project): bool
+    {
+        return (bool) ($project->last_deployed_at || $project->last_deployed_hash);
     }
 
 }
