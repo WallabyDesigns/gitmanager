@@ -39,6 +39,66 @@ trait ManagesRemoteDeployments
             $remoteHash = $this->sshRevParse($connection, $remoteRef, $output);
 
             if ($fromHash && $remoteHash && $fromHash === $remoteHash) {
+                if ($this->shouldRunInitialDeployTasks($project)) {
+                    $output[] = 'No updates detected. Running initial setup tasks over SSH.';
+                    $this->maybeStreamOutput($output, true);
+
+                    $this->runWithSingleRetry(function () use ($project, $connection, &$output): void {
+                        if ($project->run_composer_install) {
+                            $this->runSshCommand(
+                                $connection,
+                                'composer install --no-dev --optimize-autoloader',
+                                $output
+                            );
+                        }
+
+                        if ($project->run_npm_install) {
+                            $this->runSshCommand(
+                                $connection,
+                                $this->remoteNpmInstallCommand(),
+                                $output
+                            );
+                        }
+
+                        if ($project->run_build_command && $project->build_command) {
+                            $this->runSshBuildCommandWithNpmRecovery($project, $connection, $output);
+                        }
+
+                        if ($project->run_test_command && $project->test_command) {
+                            $this->runSshCommand($connection, $project->test_command, $output);
+                        }
+
+                        $this->maybeRunLaravelMigrationsOverSsh($project, $connection, $output);
+                        $this->maybeRunLaravelClearCacheOverSsh($project, $connection, $output);
+                    }, $output, 'SSH initial deploy tasks');
+
+                    if ($project->ftp_enabled) {
+                        $output[] = 'FTPS sync skipped: SSH deployment is enabled for this project.';
+                    }
+
+                    $this->maybeRunSshCommands($project, $output);
+
+                    $deployment->status = 'success';
+                    $deployment->from_hash = $fromHash;
+                    $deployment->to_hash = $fromHash;
+                    $this->appendWorkflowOutput($deployment, $project, $output);
+                    $deployment->output_log = implode("\n", $output);
+                    $deployment->finished_at = now();
+                    $deployment->save();
+
+                    $project->last_deployed_at = now();
+                    $project->last_deployed_hash = $fromHash;
+                    $project->last_error_message = null;
+                    $project->updates_available = false;
+                    $project->updates_checked_at = now();
+                    $project->last_checked_at = now();
+                    $project->save();
+
+                    $this->endDeploymentStream();
+
+                    return $deployment;
+                }
+
                 $deployment->status = 'success';
                 $deployment->from_hash = $fromHash;
                 $deployment->to_hash = $fromHash;

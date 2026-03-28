@@ -166,6 +166,92 @@ class DeploymentService
                 ], $output)->getOutput());
 
                 if ($fromHash && $fromHash === $remoteHash) {
+                    if ($this->shouldRunInitialDeployTasks($project)) {
+                        $output[] = 'No updates detected. Running initial setup tasks.';
+                        $this->laravelDeploymentCheckService->run($project, $executionPath, $output);
+
+                        $ftpPlan = $this->planFtpOnlyDependencySync($project, $executionPath, $output);
+
+                        if (! $permissionsStep && ! $forceStaged && $this->permissionService->needsPermissionFix($project, $executionPath)) {
+                            $output[] = 'Permission issues detected. Running Fix Permissions.';
+                            $this->permissionService->attemptFixPermissions($project, $executionPath, $output, false);
+                            $permissionsStep = true;
+                            $forceStaged = true;
+                            $output[] = 'Continuing with staged installs after permissions step.';
+                        }
+
+                        $this->runWithSingleRetry(function () use ($project, $executionPath, &$output, &$forceStaged, $ftpPlan): void {
+                            if ($project->run_composer_install) {
+                                if ($ftpPlan['skipComposerInstall'] ?? false) {
+                                    $output[] = 'FTP-only pipeline: skipping composer install (manifests unchanged).';
+                                } else {
+                                    $this->runComposerCommandWithFallback(
+                                        $executionPath,
+                                        $output,
+                                        'Composer install',
+                                        ['composer', 'install', '--no-dev', '--optimize-autoloader'],
+                                        $forceStaged
+                                    );
+                                }
+                            }
+
+                            if ($project->run_npm_install) {
+                                if ($ftpPlan['skipNpmInstall'] ?? false) {
+                                    $output[] = 'FTP-only pipeline: skipping npm install (manifests unchanged).';
+                                } else {
+                                    $this->runNpmInstallWithFallback(
+                                        $executionPath,
+                                        $output,
+                                        'Npm install',
+                                        $this->npmInstallCommand($executionPath),
+                                        $forceStaged
+                                    );
+                                }
+                            }
+
+                            if ($project->run_build_command && $project->build_command) {
+                                $this->runBuildCommandWithNpmRecovery($project, $executionPath, $output);
+                            }
+
+                            if ($project->run_test_command && $project->test_command) {
+                                $this->logStep($output, 'Test command', $executionPath, $project->test_command);
+                                $this->runTestCommand($project, $project->test_command, $executionPath, $output);
+                            }
+
+                            $this->maybeRunLaravelMigrations($project, $executionPath, $output);
+                            $this->maybeRunLaravelClearCache($project, $output);
+                        }, $output, 'Initial deploy tasks', function (\Throwable $exception) use (&$output): bool {
+                            return ! $this->permissionService->isPermissionError($exception, $output);
+                        });
+
+                        $this->maybeSyncFtp($project, $executionPath, $output, $ftpPlan['excludePaths'] ?? []);
+                        $this->maybeRunSshCommands($project, $output);
+
+                        if ($stashed) {
+                            $this->restoreStashOrReset($repoPath, $output, $fromHash ?? 'HEAD');
+                        }
+
+                        $deployment->status = 'success';
+                        $deployment->from_hash = $fromHash;
+                        $deployment->to_hash = $fromHash;
+                        $this->appendWorkflowOutput($deployment, $project, $output);
+                        $deployment->output_log = implode("\n", $output);
+                        $deployment->finished_at = now();
+                        $deployment->save();
+
+                        $project->last_deployed_at = now();
+                        $project->last_deployed_hash = $fromHash;
+                        $project->last_error_message = null;
+                        $project->updates_available = false;
+                        $project->updates_checked_at = now();
+                        $project->last_checked_at = now();
+                        $project->save();
+
+                        $this->endDeploymentStream();
+
+                        return $deployment;
+                    }
+
                     $deployment->status = 'success';
                     $deployment->from_hash = $fromHash;
                     $deployment->to_hash = $fromHash;
@@ -722,6 +808,21 @@ class DeploymentService
     private function stagingEnabled(): bool
     {
         return (bool) config('gitmanager.deploy_staging.enabled', true);
+    }
+
+    private function shouldRunInitialDeployTasks(Project $project): bool
+    {
+        if ($project->last_deployed_at || $project->last_deployed_hash) {
+            return false;
+        }
+
+        return (bool) (
+            $project->run_composer_install
+            || $project->run_npm_install
+            || $project->run_build_command
+            || $project->run_test_command
+            || ($project->project_type ?? '') === 'laravel'
+        );
     }
 
     // ──────────────────────────────────────────────────────────────────
