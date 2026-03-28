@@ -73,6 +73,13 @@
                     toast.classList.add('hidden');
                 }, 4000);
             });
+
+            window.addEventListener('reload-page', (event) => {
+                const delay = Number(event.detail?.delay ?? 500);
+                window.setTimeout(() => {
+                    window.location.reload();
+                }, Number.isNaN(delay) ? 500 : delay);
+            });
         </script>
     </body>
 </html>

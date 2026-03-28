@@ -159,6 +159,7 @@ class Create extends Component
         $validated = $this->validate($this->rules());
         $project = Auth::user()->projects()->create($validated['form']);
         $message = 'Project created.';
+        $bootstrapOk = true;
 
         if (! empty($project->repo_url)) {
             try {
@@ -170,11 +171,27 @@ class Create extends Component
                 }
             } catch (\Throwable $exception) {
                 $message = 'Project created, but repository setup failed: '.$exception->getMessage();
+                $bootstrapOk = false;
             }
         }
 
-        if ($warning = $this->envSetupWarning($project)) {
-            $message .= ' '.$warning;
+        $envWarning = $this->envSetupWarning($project);
+        if ($envWarning) {
+            $message .= ' '.$envWarning;
+        }
+
+        $repoReady = $bootstrapOk && $this->projectRepoReady($project);
+        $envReady = $envWarning === null;
+        if ($project->auto_deploy && $repoReady && $envReady) {
+            if ($this->queueEnabled()) {
+                app(\App\Services\DeploymentQueueService::class)->enqueue($project, 'deploy', ['reason' => 'project_created'], Auth::user());
+                $message .= ' Initial deployment queued.';
+            } else {
+                $deployment = app(\App\Services\DeploymentService::class)->deploy($project, Auth::user());
+                $message .= $deployment->status === 'success'
+                    ? ' Initial deployment completed.'
+                    : ' Initial deployment failed. Check logs for details.';
+            }
         }
 
         $this->dispatch('notify', message: $message);
@@ -371,6 +388,21 @@ class Create extends Component
         }
 
         return 'Missing .env file. Open the Environment tab to create it before deploying.';
+    }
+
+    private function projectRepoReady(\App\Models\Project $project): bool
+    {
+        $path = trim((string) ($project->local_path ?? ''));
+        if ($path !== '' && is_dir($path.DIRECTORY_SEPARATOR.'.git')) {
+            return true;
+        }
+
+        return ! empty($project->repo_url);
+    }
+
+    private function queueEnabled(): bool
+    {
+        return (bool) config('gitmanager.deploy_queue.enabled', true);
     }
 
     private function findLaravelRoot(string $path): ?string

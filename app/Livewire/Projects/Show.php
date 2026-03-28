@@ -112,6 +112,7 @@ class Show extends Component
         $this->dispatch('notify', message: $deployment->status === 'success'
             ? 'Deployment completed.'
             : 'Deployment failed. Check logs below.');
+        $this->dispatch('reload-page', delay: 800);
     }
 
     public function forceDeploy(DeploymentService $service): void
@@ -131,6 +132,7 @@ class Show extends Component
         $this->dispatch('notify', message: $deployment->status === 'success'
             ? 'Force deployment completed.'
             : 'Force deployment failed. Check logs below.');
+        $this->dispatch('reload-page', delay: 800);
     }
 
     public function deployAnyway(DeploymentService $service): void
@@ -146,6 +148,7 @@ class Show extends Component
         $this->dispatch('notify', message: $deployment->status === 'success'
             ? 'Deployment completed (staged install).' 
             : 'Deployment failed. Check logs below.');
+        $this->dispatch('reload-page', delay: 800);
     }
 
     public function rollback(DeploymentService $service): void
@@ -165,6 +168,7 @@ class Show extends Component
         $this->dispatch('notify', message: $deployment->status === 'success'
             ? 'Rollback completed.'
             : 'Rollback failed. Check logs below.');
+        $this->dispatch('reload-page', delay: 800);
     }
 
     private function queueEnabled(): bool
