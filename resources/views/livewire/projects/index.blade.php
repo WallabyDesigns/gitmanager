@@ -24,8 +24,9 @@
 
         <div class="mt-6 space-y-4">
             @forelse ($projects as $project)
-                <a href="{{ route('projects.show', $project) }}" class="block rounded-lg border border-slate-200/70 bg-white dark:bg-slate-900 dark:border-slate-800 p-4 transition hover:border-indigo-300 hover:shadow-sm dark:hover:border-indigo-500/60">
-                    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="group relative rounded-lg border border-slate-200/70 bg-white dark:bg-slate-900 dark:border-slate-800 p-4 transition hover:border-indigo-300 hover:shadow-sm dark:hover:border-indigo-500/60">
+                    <a href="{{ route('projects.show', $project) }}" class="absolute inset-0 z-10 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60" aria-label="View {{ $project->name }} project"></a>
+                    <div class="relative z-0 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <div class="flex items-center gap-2">
                                 <h4 class="text-base font-semibold text-slate-900 dark:text-slate-100">{{ $project->name }}</h4>
@@ -103,7 +104,7 @@
                             @endif
                             </div>
                             @if ($project->site_url)
-                                <a href="{{ $project->site_url }}" target="_blank" rel="noopener noreferrer" class="text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-300 dark:hover:text-indigo-200 break-all">
+                                <a href="{{ $project->site_url }}" target="_blank" rel="noopener noreferrer" class="relative z-20 text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-300 dark:hover:text-indigo-200 break-all">
                                     {{ $project->site_url }}
                                 </a>
                             @else
@@ -118,7 +119,7 @@
                             <svg width="32px" height="32px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M6 12H18M18 12L13 7M18 12L13 17" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--darkreader-inline-stroke: var(--darkreader-text-ffffff, #e8e6e3);" data-darkreader-inline-stroke=""></path> </g></svg>
                         </div>
                     </div>
-                </a>
+                </div>
             @empty
                 <div class="rounded-lg border border-dashed border-slate-300/70 dark:border-slate-700 p-6 text-sm text-slate-500 dark:text-slate-400">
                     No projects yet. Add one above to get started.
