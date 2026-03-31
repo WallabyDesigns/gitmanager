@@ -2,7 +2,15 @@
 
 FROM composer:2 AS vendor
 WORKDIR /app
+USER root
+ENV COMPOSER_ALLOW_SUPERUSER=1
 COPY . .
+RUN mkdir -p bootstrap/cache \
+    storage/framework/cache \
+    storage/framework/sessions \
+    storage/framework/views \
+    storage/logs \
+    && chmod -R 775 bootstrap/cache storage
 RUN composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader
 
 FROM node:20-alpine AS assets
@@ -52,6 +60,7 @@ COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh \
     && mkdir -p storage bootstrap/cache database \
     && chown -R www-data:www-data storage bootstrap/cache database \
+    && chmod -R 775 storage bootstrap/cache \
     && (ln -s /var/www/html/storage/app/public /var/www/html/public/storage 2>/dev/null || true)
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

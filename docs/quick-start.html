@@ -52,6 +52,14 @@ npm run build</code></pre>
       </section>
 
       <section class="card">
+        <h2>Docker Quick Start (Optional)</h2>
+        <p>If you prefer containers, keep the same <code>.env</code> file and start Docker with:</p>
+        <pre><code>docker compose --env-file .env.docker up -d --build</code></pre>
+        <p class="muted"><code>.env.docker</code> is only for Docker Compose interpolation. The app still reads settings from <code>.env</code>.</p>
+        <p class="muted">If any value in <code>.env</code> contains a <code>$</code>, wrap it in single quotes to avoid Compose interpolation warnings.</p>
+      </section>
+
+      <section class="card">
         <h2>3. Run Migrations</h2>
         <pre><code>php artisan migrate</code></pre>
         <p class="muted">Git Web Manager runs on Laravel, so database migrations use <code>artisan</code>. If you use a custom PHP path, prefix the command.</p>
@@ -76,6 +84,4 @@ npm run build</code></pre>
   <div data-include="partials/footer.html"></div>
 </body>
 </html>
-
-
 

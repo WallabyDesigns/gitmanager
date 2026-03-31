@@ -7,10 +7,27 @@ if [ ! -f .env ]; then
   cp .env.example .env
 fi
 
+get_env_from_file() {
+  key="$1"
+  if [ -f .env ]; then
+    value=$(grep -m 1 "^${key}=" .env | cut -d= -f2-)
+    value="${value#\"}"
+    value="${value%\"}"
+    echo "$value"
+  fi
+}
+
 # Ensure required directories exist
 mkdir -p storage/app storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
 
 # Ensure sqlite database exists when using sqlite
+if [ -z "${DB_CONNECTION}" ]; then
+  DB_CONNECTION=$(get_env_from_file "DB_CONNECTION")
+fi
+if [ -z "${DB_DATABASE}" ]; then
+  DB_DATABASE=$(get_env_from_file "DB_DATABASE")
+fi
+
 if [ "${DB_CONNECTION}" = "sqlite" ] || [ -z "${DB_CONNECTION}" ]; then
   if [ -z "${DB_DATABASE}" ]; then
     DB_PATH="/var/www/html/database/database.sqlite"
