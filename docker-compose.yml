@@ -1,0 +1,70 @@
+x-app-env: &app-env
+  APP_ENV: production
+  APP_DEBUG: "false"
+  APP_URL: ${APP_URL:-http://localhost:${APP_PORT:-8080}}
+  DB_CONNECTION: sqlite
+  DB_DATABASE: /var/www/html/database/database.sqlite
+
+x-app-volumes: &app-volumes
+  - storage:/var/www/html/storage
+  - database:/var/www/html/database
+
+services:
+  app:
+    build:
+      context: .
+      target: app
+    env_file:
+      - .env
+    environment:
+      <<: *app-env
+      CONTAINER_ROLE: app
+      RUN_MIGRATIONS: "true"
+    volumes: *app-volumes
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      target: nginx
+    ports:
+      - "${APP_PORT:-8080}:80"
+    volumes:
+      - storage:/var/www/html/storage:ro
+    depends_on:
+      - app
+    restart: unless-stopped
+
+  queue:
+    build:
+      context: .
+      target: app
+    command: ["php", "artisan", "queue:work", "--sleep=1", "--tries=1", "--timeout=0"]
+    env_file:
+      - .env
+    environment:
+      <<: *app-env
+      CONTAINER_ROLE: queue
+    volumes: *app-volumes
+    depends_on:
+      - app
+    restart: unless-stopped
+
+  scheduler:
+    build:
+      context: .
+      target: app
+    command: ["php", "artisan", "schedule:work"]
+    env_file:
+      - .env
+    environment:
+      <<: *app-env
+      CONTAINER_ROLE: scheduler
+    volumes: *app-volumes
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  storage:
+  database:

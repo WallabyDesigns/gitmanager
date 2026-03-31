@@ -52,6 +52,22 @@ npm install
 npm run build
 ```
 
+## Docker Quick Start
+1. Copy `.env.example` to `.env` and configure required values.
+2. Ensure Docker Desktop is running.
+3. Build and start containers:
+
+```bash
+docker compose --env-file .env.docker up -d --build
+```
+
+4. Open `http://localhost:8080`
+
+Notes:
+- `.env.docker` is for Docker Compose interpolation only. Your app settings still come from `.env`.
+- Change the exposed port by editing `APP_PORT` in `.env.docker`.
+- Stop containers with `docker compose down`.
+
 ## Requirements
 - PHP 8.2+ with required extensions (mbstring, curl, etc).
 - Composer 2.
