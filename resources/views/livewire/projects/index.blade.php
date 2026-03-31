@@ -26,7 +26,7 @@
             @forelse ($projects as $project)
                 <div class="group relative rounded-lg border border-slate-200/70 bg-white dark:bg-slate-900 dark:border-slate-800 p-4 transition hover:border-indigo-300 hover:shadow-sm dark:hover:border-indigo-500/60">
                     <a href="{{ route('projects.show', $project) }}" class="absolute inset-0 z-10 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60" aria-label="View {{ $project->name }} project"></a>
-                    <div class="relative z-0 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <div class="flex items-center gap-2">
                                 <h4 class="text-base font-semibold text-slate-900 dark:text-slate-100">{{ $project->name }}</h4>
