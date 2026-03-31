@@ -51,6 +51,17 @@
       </section>
 
       <section class="card">
+        <h2>Self Update Fallback URLs</h2>
+        <p>If the UI is unavailable after a Self Update, you can trigger updates manually using authenticated fallback URLs:</p>
+        <ul>
+          <li><code>/update</code> runs a standard self-update.</li>
+          <li><code>/rollback</code> reverts to the previous update’s <code>from_hash</code>.</li>
+          <li><code>/rollback?hash=&lt;commit&gt;</code> reverts to a specific commit.</li>
+        </ul>
+        <p>These endpoints require authentication. If no rollback target exists, use <code>/update</code> instead.</p>
+      </section>
+
+      <section class="card">
         <h2>Deploy Stuck</h2>
         <p>Ensure the queue worker is running and check job logs in the Debug tab.</p>
       </section>
