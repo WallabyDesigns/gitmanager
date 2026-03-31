@@ -26,7 +26,7 @@
         </div>
 
         @php
-            $permissionsEnforced = $project->permissionsEnforced();
+            $permissionsEnforced = ! $project->ftp_enabled && ! $project->ssh_enabled;
             $permissionsLocked = $permissionsEnforced && (bool) $project->permissions_locked;
             $actionDisabledClass = $permissionsLocked ? 'opacity-60 cursor-not-allowed' : '';
         @endphp

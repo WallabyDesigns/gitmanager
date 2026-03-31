@@ -106,7 +106,8 @@
                             </span>
                             @php
                                 $permissionsIssue = $item->project
-                                    && $item->project->permissionsEnforced()
+                                    && ! $item->project->ftp_enabled
+                                    && ! $item->project->ssh_enabled
                                     && $item->project->permissions_locked;
                             @endphp
                             @if ($permissionsIssue)

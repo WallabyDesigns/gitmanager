@@ -57,6 +57,17 @@
       </section>
 
       <section class="card">
+        <h2>Fallback URLs</h2>
+        <p>If the UI is unavailable, you can trigger updates manually using authenticated fallback URLs:</p>
+        <ul>
+          <li><code>/update</code> runs a standard self-update.</li>
+          <li><code>/rollback</code> reverts to the previous update’s <code>from_hash</code>.</li>
+          <li><code>/rollback?hash=&lt;commit&gt;</code> reverts to a specific commit.</li>
+        </ul>
+        <p>These endpoints require authentication. If no rollback target exists, use <code>/update</code> instead.</p>
+      </section>
+
+      <section class="card">
         <h2>Build Steps</h2>
         <p>Composer and NPM steps run only when lock/package files change. Builds retry automatically if file permissions need to be repaired.</p>
         <p>If the app exposes the custom <code>app:clear-cache</code> command, it runs after updates to flush cached data.</p>

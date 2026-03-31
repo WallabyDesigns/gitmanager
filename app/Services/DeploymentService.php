@@ -100,7 +100,7 @@ class DeploymentService
 
     public function deploy(Project $project, ?User $user = null, bool $allowDirty = false, bool $ignorePermissionsLock = false): Deployment
     {
-        if ($project->permissions_locked && $project->permissionsEnforced() && ! $ignorePermissionsLock) {
+        if ($project->permissions_locked && ! $project->ftp_enabled && ! $project->ssh_enabled && ! $ignorePermissionsLock) {
             $message = 'Permissions need fixing before deployments can run.';
             if ($project->permissions_issue_message) {
                 $message .= ' '.$project->permissions_issue_message;
@@ -422,7 +422,7 @@ class DeploymentService
 
     public function rollback(Project $project, ?User $user = null, ?string $targetHash = null): Deployment
     {
-        if ($project->permissions_locked && $project->permissionsEnforced()) {
+        if ($project->permissions_locked && ! $project->ftp_enabled && ! $project->ssh_enabled) {
             $message = 'Permissions need fixing before rollbacks can run.';
             if ($project->permissions_issue_message) {
                 $message .= ' '.$project->permissions_issue_message;

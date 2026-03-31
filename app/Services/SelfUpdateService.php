@@ -50,6 +50,140 @@ class SelfUpdateService
         return $this->update($user, false);
     }
 
+    public function rollback(?User $user = null, ?string $targetHash = null): AppUpdate
+    {
+        $repoPath = base_path();
+        Cache::forget(self::STATUS_CACHE_KEY);
+
+        $update = AppUpdate::create([
+            'triggered_by' => $user?->id,
+            'status' => 'running',
+            'started_at' => now(),
+        ]);
+
+        $output = [];
+        $fromHash = null;
+        $toHash = null;
+        $stashed = false;
+        $stashRestoreFailed = false;
+        $backupPath = null;
+        $htaccessSnapshots = [];
+        $protectedHtaccess = null;
+        $untrackedBackups = [];
+        $untrackedFiles = [];
+
+        try {
+            $output[] = 'Rollback path: '.$repoPath;
+            $target = $this->resolveRollbackTarget($targetHash, $output);
+            if (! $target) {
+                $update->status = 'failed';
+                $update->output_log = implode("\n", $output);
+                $update->finished_at = now();
+                $update->save();
+
+                return $update;
+            }
+
+            $protectedHtaccess = $this->prepareProtectedHtaccess($repoPath, $output);
+            $htaccessSnapshots = $this->snapshotFiles($repoPath, ['.htaccess']);
+            $this->ensureGitRepository($repoPath);
+            $this->assertGitWritable($repoPath, $output);
+
+            $fromHash = $this->tryRevParse($repoPath);
+            if (! $fromHash) {
+                throw new \RuntimeException('Repository has no commits. Rollback unavailable.');
+            }
+
+            $untrackedFiles = $this->getUntrackedFiles($repoPath, $output);
+            if ($untrackedFiles !== []) {
+                $backup = $this->backupUntrackedFiles($repoPath, $untrackedFiles, $output);
+                if ($backup) {
+                    $untrackedBackups[] = $backup;
+                }
+                $this->removeUntrackedFiles($repoPath, $untrackedFiles, $output);
+            }
+            $stashed = $this->stashIfDirty($repoPath, $output, $htaccessSnapshots);
+            if (! $fromHash) {
+                $includeDependencies = $this->shouldIncludeDependencyDirs($repoPath, $output);
+                $backupPath = $this->backupWorkingTree($repoPath, $output, $includeDependencies);
+            }
+
+            $this->protectHtaccess($repoPath, $output);
+            $output[] = 'Rolling back to '.$target.'.';
+            $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', $target], $output);
+            $this->runGitClean($repoPath, $this->forceCleanExcludePaths(), $output);
+            $toHash = $this->tryRevParse($repoPath);
+
+            $postAttempts = 0;
+            while (true) {
+                try {
+                    $this->runPostUpdateTasks($repoPath, $fromHash, $toHash, $output);
+                    break;
+                } catch (\Throwable $exception) {
+                    $postAttempts++;
+                    if ($postAttempts >= 2) {
+                        throw $exception;
+                    }
+                    $output[] = 'Post-rollback tasks failed. Retrying once.';
+                    $this->applyPostUpdatePermissions($repoPath, $output);
+                }
+            }
+
+            if ($stashed) {
+                $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
+                if (! $pop->isSuccessful()) {
+                    $stashRestoreFailed = true;
+                    $output[] = 'Warning: rollback applied, but stashed changes could not be restored. Run `git stash list` to review.';
+                }
+            }
+
+            $this->restoreUntrackedBackups($repoPath, $untrackedBackups, $output);
+            if ($backupPath) {
+                $output[] = 'Backup created at: '.$backupPath;
+            }
+
+            $this->restoreSnapshots($repoPath, $htaccessSnapshots, $output);
+            $this->restoreProtectedHtaccess($repoPath, $protectedHtaccess, $output);
+            $this->removeExcludedPaths($repoPath, $output);
+
+            $update->status = 'success';
+            $update->from_hash = $fromHash;
+            $update->to_hash = $toHash ?: $target;
+            $update->output_log = implode("\n", $output);
+            $update->finished_at = now();
+            $update->save();
+            Cache::forget(self::STATUS_CACHE_KEY);
+
+            return $update;
+        } catch (\Throwable $exception) {
+            if ($fromHash && ! $stashRestoreFailed) {
+                $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', $fromHash], $output, null, false);
+            }
+
+            if ($stashed && ! $stashRestoreFailed) {
+                $pop = $this->runProcess(['git', '-C', $repoPath, 'stash', 'pop'], $output, null, false);
+                if (! $pop->isSuccessful()) {
+                    $output[] = 'Stash restore failed after rollback failure. Run `git stash pop` manually if needed.';
+                }
+            }
+
+            $this->restoreUntrackedBackups($repoPath, $untrackedBackups, $output);
+            $this->restoreSnapshots($repoPath, $htaccessSnapshots, $output);
+            $this->restoreProtectedHtaccess($repoPath, $protectedHtaccess, $output);
+            $this->removeExcludedPaths($repoPath, $output);
+
+            $update->status = 'failed';
+            $update->from_hash = $fromHash;
+            $update->to_hash = $toHash;
+            $update->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
+            $update->finished_at = now();
+            $update->save();
+            Cache::forget(self::STATUS_CACHE_KEY);
+
+            return $update;
+        }
+    }
+
     public function forceUpdate(?User $user = null): AppUpdate
     {
         return $this->update($user, true, true);
@@ -278,6 +412,64 @@ class SelfUpdateService
                 'error' => $exception->getMessage(),
             ];
         }
+    }
+
+    private function resolveRollbackTarget(?string $targetHash, array &$output): ?string
+    {
+        $repoPath = base_path();
+        $targetHash = trim((string) $targetHash);
+
+        if ($targetHash !== '') {
+            $output[] = 'Rollback target requested: '.$targetHash;
+            if (! $this->isValidRollbackTarget($repoPath, $targetHash)) {
+                $output[] = 'Rollback target not found in repository.';
+                return null;
+            }
+
+            return $targetHash;
+        }
+
+        $latest = AppUpdate::query()
+            ->whereNotNull('from_hash')
+            ->whereNotNull('to_hash')
+            ->where('from_hash', '!=', '')
+            ->where('to_hash', '!=', '')
+            ->where('status', '!=', 'running')
+            ->orderByDesc('started_at')
+            ->first();
+
+        if (! $latest) {
+            $output[] = 'No previous update found for rollback. Use /update to apply the latest release.';
+            return null;
+        }
+
+        $target = $latest->from_hash;
+        $output[] = 'Using last update rollback target: '.$latest->from_hash.' (from '.$latest->from_hash.' → '.$latest->to_hash.').';
+
+        if (! $this->isValidRollbackTarget($repoPath, $target)) {
+            $output[] = 'Rollback target not found in repository.';
+            return null;
+        }
+
+        return $target;
+    }
+
+    private function isValidRollbackTarget(string $repoPath, string $target): bool
+    {
+        $target = trim($target);
+        if ($target === '') {
+            return false;
+        }
+
+        $localOutput = [];
+        $process = $this->runProcess(
+            ['git', '-C', $repoPath, 'rev-parse', '--verify', $target.'^{commit}'],
+            $localOutput,
+            null,
+            false
+        );
+
+        return $process->isSuccessful();
     }
 
     private function assertGitWritable(string $repoPath, array &$output, bool $logIdentity = true, bool $attemptFix = true): void

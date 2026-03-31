@@ -41,7 +41,8 @@ class DependencyActions extends Component
             'hasComposer' => $this->hasComposer,
             'hasNpm' => $this->hasNpm,
             'hasLaravel' => $this->hasLaravel,
-            'permissionsLocked' => $this->project->permissionsEnforced()
+            'permissionsLocked' => ! $this->project->ftp_enabled
+                && ! $this->project->ssh_enabled
                 && (bool) $this->project->permissions_locked,
         ]);
     }
@@ -207,7 +208,7 @@ class DependencyActions extends Component
 
     private function blockIfPermissionsLocked(string $context = 'deployments'): bool
     {
-        if (! $this->project->permissions_locked || ! $this->project->permissionsEnforced()) {
+        if (! $this->project->permissions_locked || $this->project->ftp_enabled || $this->project->ssh_enabled) {
             return false;
         }
 

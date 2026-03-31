@@ -41,7 +41,8 @@
                                 $sshNeedsTest = $project->ssh_enabled
                                     && $project->ftpAccount
                                     && $project->ftpAccount->sshNeedsTest();
-                                $permissionsIssue = $project->permissionsEnforced()
+                                $permissionsIssue = ! $project->ftp_enabled
+                                    && ! $project->ssh_enabled
                                     && $project->permissions_locked;
                                 $ftpIssue = $project->ftp_enabled
                                     && $project->ftpAccount

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Webhooks\GitHubWebhookController;
+use App\Http\Controllers\SelfUpdateController;
 use App\Livewire\AppUpdates\Index as AppUpdatesIndex;
 use App\Livewire\Projects\Create as ProjectsCreate;
 use App\Livewire\Projects\Edit as ProjectsEdit;
@@ -43,6 +44,8 @@ Route::middleware(['auth', 'verified', EnsurePasswordChanged::class])->group(fun
     Route::get('/projects/{project}/edit', ProjectsEdit::class)->name('projects.edit');
     Route::get('/projects/{project}', ProjectsShow::class)->name('projects.show');
     Route::get('/users', UsersIndex::class)->middleware(EnsureAdminUser::class)->name('users.index');
+    Route::get('/update', [SelfUpdateController::class, 'update'])->name('system.update.manual');
+    Route::get('/rollback', [SelfUpdateController::class, 'rollback'])->name('system.update.rollback');
 
     Route::middleware(EnsureAdminUser::class)->group(function () {
         Route::get('/system', AppUpdatesIndex::class)->name('system.updates');
