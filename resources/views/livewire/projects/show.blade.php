@@ -142,6 +142,16 @@
                         {{ $project->last_checked_at?->format('M j, Y g:i a') ?? 'Never' }}
                     </div>
                 </div>
+                <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
+                    <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Site URL</div>
+                    @if ($project->site_url)
+                        <a href="{{ $project->site_url }}" target="_blank" rel="noopener noreferrer" class="mt-1 text-sm font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-300 dark:hover:text-indigo-200 inline-flex break-all">
+                            {{ $project->site_url }}
+                        </a>
+                    @else
+                        <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">Not set</div>
+                    @endif
+                </div>
             </div>
 
             <div>

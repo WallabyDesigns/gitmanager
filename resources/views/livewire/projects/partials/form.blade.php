@@ -21,6 +21,12 @@
             <x-input-error :messages="$errors->get('form.repo_url')" class="mt-2" />
         </div>
         <div>
+            <x-input-label for="site_url" value="Site URL" />
+            <x-text-input id="site_url" class="mt-1 block w-full" wire:model.live="form.site_url" placeholder="https://example.com" />
+            <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">Main domain for this project. Used for quick links and as the default health check when Health Check URL is blank.</p>
+            <x-input-error :messages="$errors->get('form.site_url')" class="mt-2" />
+        </div>
+        <div>
             <x-input-label for="local_path" value="Local Path" />
             <x-text-input id="local_path" class="mt-1 block w-full" wire:model.live="form.local_path" placeholder="/home/user/testwebsite" />
             <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">Local build workspace on this server. FTP-only deployments will use a storage workspace if this path isn't writable.</p>
@@ -35,9 +41,9 @@
             <x-input-label for="health_url" value="Health Check URL" />
             <x-text-input id="health_url" class="mt-1 block w-full" wire:model.live="form.health_url" />
             @if (($form['project_type'] ?? 'custom') === 'laravel')
-                <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">Laravel apps often expose `/up`. Use a full URL or just `/up` to read `APP_URL` from the project.</p>
+                <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">Laravel apps often expose `/up`. Use a full URL or just `/up` to read `APP_URL` from the project, or leave blank to use the Site URL.</p>
             @else
-                <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">Used for health checks. Provide a full URL or a path relative to the project base.</p>
+                <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">Used for health checks. Provide a full URL or a path relative to the project base, or leave blank to use the Site URL.</p>
             @endif
             <x-input-error :messages="$errors->get('form.health_url')" class="mt-2" />
         </div>

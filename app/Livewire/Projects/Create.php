@@ -52,6 +52,7 @@ class Create extends Component
             'name' => '',
             'project_type' => 'laravel',
             'repo_url' => '',
+            'site_url' => '',
             'local_path' => '',
             'default_branch' => 'main',
             'auto_deploy' => true,
@@ -240,6 +241,7 @@ class Create extends Component
             'form.name' => ['required', 'string', 'max:255'],
             'form.project_type' => ['required', 'string', Rule::in(['laravel', 'node', 'static', 'custom'])],
             'form.repo_url' => ['nullable', 'string', 'max:255'],
+            'form.site_url' => ['nullable', 'url', 'max:255'],
             'form.local_path' => [
                 'required',
                 'string',
@@ -288,6 +290,7 @@ class Create extends Component
                 'form.name' => ['required', 'string', 'max:255'],
                 'form.project_type' => ['required', 'string', Rule::in(['laravel', 'node', 'static', 'custom'])],
                 'form.repo_url' => ['nullable', 'string', 'max:255'],
+                'form.site_url' => ['nullable', 'url', 'max:255'],
                 'form.local_path' => [
                     'required',
                     'string',

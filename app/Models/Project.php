@@ -14,6 +14,7 @@ class Project extends Model
         'name',
         'project_type',
         'repo_url',
+        'site_url',
         'local_path',
         'default_branch',
         'auto_deploy',

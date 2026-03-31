@@ -183,10 +183,9 @@ class HealthCheckService
 
         if ($healthUrl !== '') {
             if (str_starts_with($healthUrl, '/')) {
-                $laravelRoot = $this->findLaravelRoot($project->local_path);
-                $appUrl = $laravelRoot ? $this->getLaravelAppUrl($laravelRoot) : null;
-                if ($appUrl) {
-                    return rtrim($appUrl, '/').$healthUrl;
+                $baseUrl = $this->resolveProjectBaseUrl($project);
+                if ($baseUrl) {
+                    return rtrim($baseUrl, '/').$healthUrl;
                 }
 
                 return null;
@@ -195,12 +194,32 @@ class HealthCheckService
             return $healthUrl;
         }
 
+        $siteUrl = trim((string) $project->site_url);
+        if ($siteUrl !== '') {
+            return $siteUrl;
+        }
+
         $laravelRoot = $this->findLaravelRoot($project->local_path);
         if ($laravelRoot) {
             $appUrl = $this->getLaravelAppUrl($laravelRoot);
             if ($appUrl) {
                 return rtrim($appUrl, '/').'/up';
             }
+        }
+
+        return null;
+    }
+
+    private function resolveProjectBaseUrl(Project $project): ?string
+    {
+        $siteUrl = trim((string) $project->site_url);
+        if ($siteUrl !== '') {
+            return $siteUrl;
+        }
+
+        $laravelRoot = $this->findLaravelRoot($project->local_path);
+        if ($laravelRoot) {
+            return $this->getLaravelAppUrl($laravelRoot);
         }
 
         return null;

@@ -27,6 +27,7 @@ class Edit extends Component
             'name' => $project->name,
             'project_type' => $project->project_type ?? 'custom',
             'repo_url' => $project->repo_url,
+            'site_url' => $project->site_url,
             'local_path' => $project->local_path,
             'default_branch' => $project->default_branch,
             'auto_deploy' => $project->auto_deploy,
@@ -132,6 +133,7 @@ class Edit extends Component
             'form.name' => ['required', 'string', 'max:255'],
             'form.project_type' => ['required', 'string', Rule::in(['laravel', 'node', 'static', 'custom'])],
             'form.repo_url' => ['nullable', 'string', 'max:255'],
+            'form.site_url' => ['nullable', 'url', 'max:255'],
             'form.local_path' => [
                 'required',
                 'string',
