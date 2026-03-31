@@ -98,7 +98,7 @@
                                 <x-input-label for="health_url" value="Health Check URL" />
                                 <x-text-input id="health_url" class="mt-1 block w-full" wire:model.live="form.health_url" />
                                 @if (($form['project_type'] ?? 'custom') === 'laravel')
-                                    <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">Laravel apps often expose `/up`. Use a full URL or just `/up` to read `APP_URL` from the project, or leave blank to use the Site URL.</p>
+                                    <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">Laravel apps often expose `/up`. Use a full URL or just `/up` to read `APP_URL` from the project, or leave blank to use the Site URL (defaults to `/up`).</p>
                                 @else
                                     <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">Used for health checks. Provide a full URL or a path relative to the project base, or leave blank to use the Site URL.</p>
                                 @endif

@@ -195,11 +195,15 @@ class HealthCheckService
         }
 
         $siteUrl = trim((string) $project->site_url);
+        $laravelRoot = $this->findLaravelRoot($project->local_path);
         if ($siteUrl !== '') {
+            if (($project->project_type ?? '') === 'laravel' || $laravelRoot) {
+                return rtrim($siteUrl, '/').'/up';
+            }
+
             return $siteUrl;
         }
 
-        $laravelRoot = $this->findLaravelRoot($project->local_path);
         if ($laravelRoot) {
             $appUrl = $this->getLaravelAppUrl($laravelRoot);
             if ($appUrl) {
