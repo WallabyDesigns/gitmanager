@@ -102,7 +102,13 @@
                                 </span>
                             @endif
                             </div>
-                            <p class="text-sm text-slate-500 dark:text-slate-400">{{ $project->local_path }}</p>
+                            @if ($project->site_url)
+                                <a href="{{ $project->site_url }}" target="_blank" rel="noopener noreferrer" class="text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-300 dark:hover:text-indigo-200 break-all">
+                                    {{ $project->site_url }}
+                                </a>
+                            @else
+                                <p class="text-sm text-slate-500 dark:text-slate-400">{{ $project->local_path }}</p>
+                            @endif
                             <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
                                 @php($lastDeploy = $project->last_deployed_at ?? ($project->last_successful_deploy_at ?? null))
                                 Last deployed: {{ $lastDeploy?->format('M j, Y g:i a') ?? 'Never' }}
