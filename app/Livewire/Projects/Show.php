@@ -236,7 +236,7 @@ class Show extends Component
 
     private function blockIfPermissionsLocked(string $context = 'deployments'): bool
     {
-        if (! $this->project->permissions_locked) {
+        if (! $this->project->permissions_locked || ! $this->project->permissionsEnforced()) {
             return false;
         }
 

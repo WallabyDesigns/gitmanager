@@ -87,4 +87,9 @@ class Project extends Model
     {
         return $this->hasMany(SecurityAlert::class);
     }
+
+    public function permissionsEnforced(): bool
+    {
+        return ! $this->ftp_enabled && ! $this->ssh_enabled;
+    }
 }

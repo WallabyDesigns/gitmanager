@@ -41,6 +41,8 @@
                                 $sshNeedsTest = $project->ssh_enabled
                                     && $project->ftpAccount
                                     && $project->ftpAccount->sshNeedsTest();
+                                $permissionsIssue = $project->permissionsEnforced()
+                                    && $project->permissions_locked;
                                 $ftpIssue = $project->ftp_enabled
                                     && $project->ftpAccount
                                     && in_array($project->ftpAccount->ftp_test_status, ['error', 'warning'], true)
@@ -53,7 +55,7 @@
                             <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $healthClass }}">
                                 {{ $healthLabel }}
                             </span>
-                            @if ($project->permissions_locked)
+                            @if ($permissionsIssue)
                                 <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
                                     Permissions
                                 </span>

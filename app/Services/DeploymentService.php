@@ -100,7 +100,7 @@ class DeploymentService
 
     public function deploy(Project $project, ?User $user = null, bool $allowDirty = false, bool $ignorePermissionsLock = false): Deployment
     {
-        if ($project->permissions_locked && ! $ignorePermissionsLock && ! $project->ssh_enabled) {
+        if ($project->permissions_locked && $project->permissionsEnforced() && ! $ignorePermissionsLock) {
             $message = 'Permissions need fixing before deployments can run.';
             if ($project->permissions_issue_message) {
                 $message .= ' '.$project->permissions_issue_message;
@@ -422,7 +422,7 @@ class DeploymentService
 
     public function rollback(Project $project, ?User $user = null, ?string $targetHash = null): Deployment
     {
-        if ($project->permissions_locked && ! $project->ssh_enabled) {
+        if ($project->permissions_locked && $project->permissionsEnforced()) {
             $message = 'Permissions need fixing before rollbacks can run.';
             if ($project->permissions_issue_message) {
                 $message .= ' '.$project->permissions_issue_message;
@@ -929,10 +929,23 @@ class DeploymentService
 
     private function resolveExecutionPath(Project $project, string $repoPath): string
     {
-        $laravelRoot = $this->findLaravelRoot($repoPath)
-            ?? $this->findLaravelRoot($project->local_path);
+        $laravelRoot = $this->findLaravelRoot($repoPath);
+        if ($laravelRoot) {
+            return $laravelRoot;
+        }
 
-        return $laravelRoot ?: $repoPath;
+        $ftpWorkspacePath = $this->ftpWorkspacePath($project);
+        $usingFtpWorkspace = $this->shouldUseFtpWorkspace($project)
+            && rtrim($repoPath, DIRECTORY_SEPARATOR) === rtrim($ftpWorkspacePath, DIRECTORY_SEPARATOR);
+
+        if (! $usingFtpWorkspace) {
+            $laravelRoot = $this->findLaravelRoot($project->local_path);
+            if ($laravelRoot) {
+                return $laravelRoot;
+            }
+        }
+
+        return $repoPath;
     }
 
     private function getRepoPathIfExists(Project $project): ?string

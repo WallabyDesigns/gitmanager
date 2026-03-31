@@ -85,7 +85,9 @@ class Index extends Component
                     ->orWhere('health_status', '!=', 'ok');
             });
         } elseif ($this->filter === 'permissions') {
-            $baseQuery->where('permissions_locked', true);
+            $baseQuery->where('permissions_locked', true)
+                ->where('ftp_enabled', false)
+                ->where('ssh_enabled', false);
         }
 
         $projects = (clone $baseQuery)
@@ -131,7 +133,12 @@ class Index extends Component
                             ->orWhere('health_status', '!=', 'ok');
                     })
                     ->count(),
-                'permissions' => Auth::user()->projects()->where('permissions_locked', true)->count(),
+                'permissions' => Auth::user()
+                    ->projects()
+                    ->where('permissions_locked', true)
+                    ->where('ftp_enabled', false)
+                    ->where('ssh_enabled', false)
+                    ->count(),
             ],
         ])->layout('layouts.app', [
             'header' => view('livewire.projects.partials.index-header'),

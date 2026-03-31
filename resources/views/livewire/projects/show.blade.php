@@ -26,7 +26,8 @@
         </div>
 
         @php
-            $permissionsLocked = (bool) $project->permissions_locked;
+            $permissionsEnforced = $project->permissionsEnforced();
+            $permissionsLocked = $permissionsEnforced && (bool) $project->permissions_locked;
             $actionDisabledClass = $permissionsLocked ? 'opacity-60 cursor-not-allowed' : '';
         @endphp
         @if ($permissionsLocked)
@@ -41,10 +42,12 @@
                         <div class="text-xs text-amber-300 mt-1">Last checked: {{ $project->permissions_checked_at->format('M j, Y g:i a') }}</div>
                     @endif
                 </div>
-                <button type="button" wire:click="fixPermissions" class="inline-flex items-center justify-center rounded-md border border-amber-300/60 px-3 py-1.5 text-xs font-semibold text-amber-100 hover:border-white hover:text-white">
-                    <x-loading-spinner target="fixPermissions" />
-                    Run Fix Permissions
-                </button>
+                @if ($permissionsEnforced)
+                    <button type="button" wire:click="fixPermissions" class="inline-flex items-center justify-center rounded-md border border-amber-300/60 px-3 py-1.5 text-xs font-semibold text-amber-100 hover:border-white hover:text-white">
+                        <x-loading-spinner target="fixPermissions" />
+                        Run Fix Permissions
+                    </button>
+                @endif
             </div>
         @endif
 
@@ -93,10 +96,12 @@
                         <x-loading-spinner target="checkHealth" />
                         Health Check
                     </button>
-                    <button type="button" wire:click="fixPermissions" class="px-3 py-2 text-sm rounded-md border border-amber-300 text-amber-700 hover:text-amber-800 dark:border-amber-500/60 dark:text-amber-300 inline-flex items-center">
-                        <x-loading-spinner target="fixPermissions" />
-                        Fix Permissions
-                    </button>
+                    @if ($permissionsEnforced)
+                        <button type="button" wire:click="fixPermissions" class="px-3 py-2 text-sm rounded-md border border-amber-300 text-amber-700 hover:text-amber-800 dark:border-amber-500/60 dark:text-amber-300 inline-flex items-center">
+                            <x-loading-spinner target="fixPermissions" />
+                            Fix Permissions
+                        </button>
+                    @endif
                     <a href="{{ route('projects.edit', $project) }}" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
                         Edit
                     </a>

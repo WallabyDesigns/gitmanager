@@ -163,7 +163,7 @@ class EnvEditor extends Component
             return;
         }
 
-        if ($this->project->permissions_locked && ! $this->project->ssh_enabled) {
+        if ($this->project->permissions_locked && $this->project->permissionsEnforced()) {
             $this->dispatch('notify', message: '.env saved, but permissions are locked. Fix permissions before deploying.');
             return;
         }
