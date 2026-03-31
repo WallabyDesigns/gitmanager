@@ -24,13 +24,17 @@ class HealthCheckService
 
         if ($laravelIssue !== null) {
             $healthLog[] = 'Laravel checks failed: '.$laravelIssue;
-            $status = 'na';
-            $issueMessage = $laravelIssue;
-            $logText = $this->formatHealthLog($healthLog);
-            $this->saveHealthStatus($project, $status, $issueMessage, $logText);
-            $this->maybeLogHealthCheck($project, $status, $issueMessage, $logText, $log, $previousStatus, $previousIssue);
 
-            return $status;
+            $enforceLaravelChecks = ! $project->ftp_enabled && ! $project->ssh_enabled;
+            if ($enforceLaravelChecks || ! $healthUrl) {
+                $status = 'na';
+                $issueMessage = $laravelIssue;
+                $logText = $this->formatHealthLog($healthLog);
+                $this->saveHealthStatus($project, $status, $issueMessage, $logText);
+                $this->maybeLogHealthCheck($project, $status, $issueMessage, $logText, $log, $previousStatus, $previousIssue);
+
+                return $status;
+            }
         }
 
         if (! $healthUrl) {
