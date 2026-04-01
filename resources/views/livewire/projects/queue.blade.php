@@ -52,7 +52,7 @@
             <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 flex-1">
                 <label class="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-400">
                     Search
-                    <input type="text" wire:model.debounce.400ms="search" placeholder="Project name or action" class="w-full rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none">
+                    <input type="text" wire:model.live.debounce.400ms="search" placeholder="Project name or action" class="w-full rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none">
                 </label>
                 <label class="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-400">
                     Status
@@ -138,7 +138,7 @@
                             @endphp
                             Action: {{ $item->action }} • Position: {{ $item->position }}
                             @if ($timestampValue)
-                                • {{ $timestampLabel }}: {{ $timestampValue->format('M j, Y g:i a') }}
+                                • {{ $timestampLabel }}: {{ \App\Support\DateFormatter::forUser($timestampValue, 'M j, Y g:i a') }}
                             @endif
                         </div>
                     </div>
@@ -190,7 +190,7 @@
                                 'log' => $log,
                                 'maxHeight' => 'max-h-[calc(100vh-18rem)]',
                                 'autoScroll' => true,
-                                'reverse' => true,
+                                'reverse' => false,
                                 'placeholder' => 'No output yet. Refreshing...',
                             ])
                         </details>

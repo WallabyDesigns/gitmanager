@@ -14,7 +14,7 @@
                     <div>
                         Last heartbeat:
                         <span class="text-slate-900 dark:text-slate-100">
-                            {{ $lastHeartbeat ? $lastHeartbeat->toDayDateTimeString() : 'Never' }}
+                            {{ \App\Support\DateFormatter::forUser($lastHeartbeat, 'M j, Y g:i a', 'Never') }}
                         </span>
                     </div>
                     <div>
@@ -26,7 +26,7 @@
                     <div>
                         Last manual run:
                         <span class="text-slate-900 dark:text-slate-100">
-                            {{ $lastManualRun ? $lastManualRun->toDayDateTimeString() : 'Never' }}
+                            {{ \App\Support\DateFormatter::forUser($lastManualRun, 'M j, Y g:i a', 'Never') }}
                         </span>
                     </div>
                 </div>
@@ -110,7 +110,18 @@
                                 First seen: {{ $entry['first_seen'] ?? 'Unknown' }} · Last seen: {{ $entry['last_seen'] ?? 'Unknown' }}
                             </div>
                             @if (! empty($entry['output']))
-                                <pre class="mt-3 max-h-48 overflow-auto rounded-md border border-slate-200/70 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900/60 p-3 text-xs text-slate-700 dark:text-slate-200 whitespace-pre-wrap">{{ $entry['output'] }}</pre>
+                                <pre
+                                    class="mt-3 max-h-48 overflow-auto rounded-md border border-slate-200/70 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900/60 p-3 text-xs text-slate-700 dark:text-slate-200 whitespace-pre-wrap"
+                                    x-data
+                                    x-init="
+                                        const el = $el;
+                                        const scrollToBottom = () => { el.scrollTop = el.scrollHeight; };
+                                        $nextTick(scrollToBottom);
+                                        const observer = new MutationObserver(scrollToBottom);
+                                        observer.observe(el, { childList: true, characterData: true, subtree: true });
+                                        $cleanup(() => observer.disconnect());
+                                    "
+                                >{{ $entry['output'] }}</pre>
                             @endif
                         </div>
                     @endforeach

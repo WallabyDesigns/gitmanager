@@ -22,7 +22,7 @@
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h3 class="text-lg font-semibold">Git Web Manager update failed</h3>
-                        <p class="text-sm text-rose-100/80">Last attempt: {{ $latestUpdate->finished_at?->format('M j, Y g:i A') ?? 'Unknown time' }}</p>
+                        <p class="text-sm text-rose-100/80">Last attempt: {{ \App\Support\DateFormatter::forUser($latestUpdate->finished_at, 'M j, Y g:i A', 'Unknown time') }}</p>
                     </div>
                     <a href="{{ route('system.updates') }}" class="px-4 py-2 rounded-md bg-rose-500/20 text-rose-100 text-sm hover:bg-rose-500/30">
                         View update logs
@@ -63,10 +63,10 @@
                                 <span>Fixed in: {{ $alert->fixed_in }}</span>
                             @endif
                             @if ($alert->alert_created_at)
-                                <span>Created: {{ $alert->alert_created_at->format('M j, Y') }}</span>
+                                <span>Created: {{ \App\Support\DateFormatter::forUser($alert->alert_created_at, 'M j, Y') }}</span>
                             @endif
                             @if ($alert->fixed_at)
-                                <span>Fixed: {{ $alert->fixed_at->format('M j, Y') }}</span>
+                                <span>Fixed: {{ \App\Support\DateFormatter::forUser($alert->fixed_at, 'M j, Y') }}</span>
                             @endif
                         </div>
                         <div class="mt-3 flex flex-wrap gap-3 text-sm">
@@ -85,4 +85,3 @@
         </div>
     </div>
 </div>
-

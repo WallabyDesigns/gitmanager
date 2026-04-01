@@ -94,11 +94,19 @@
         </div>
         @php
             $latestDependencyOutput = $latestDependencyLog?->output_log;
-            $latestDependencyOutput = $latestDependencyOutput
-                ? implode("\n", array_reverse(preg_split('/\r\n|\r|\n/', $latestDependencyOutput)))
-                : null;
         @endphp
-        <pre class="mt-2 max-h-64 overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800">{{ $latestDependencyOutput ?? 'No output yet.' }}</pre>
+        <pre
+            class="mt-2 max-h-64 overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800"
+            x-data
+            x-init="
+                const el = $el;
+                const scrollToBottom = () => { el.scrollTop = el.scrollHeight; };
+                $nextTick(scrollToBottom);
+                const observer = new MutationObserver(scrollToBottom);
+                observer.observe(el, { childList: true, characterData: true, subtree: true });
+                $cleanup(() => observer.disconnect());
+            "
+        >{{ $latestDependencyOutput ?? 'No output yet.' }}</pre>
     </div>
 
     <div>
@@ -116,7 +124,7 @@
                         </span>
                     </div>
                     <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
-                        {{ $deployment->started_at?->format('M j, Y g:i a') ?? 'Queued' }}
+                        {{ \App\Support\DateFormatter::forUser($deployment->started_at, 'M j, Y g:i a', 'Queued') }}
                     </div>
                     @if ($deployment->output_log)
                         <details
@@ -137,8 +145,8 @@
                             @include('livewire.projects.partials.grouped-log', [
                                 'log' => $deployment->output_log,
                                 'maxHeight' => 'max-h-80',
-                                'autoScroll' => false,
-                                'reverse' => true,
+                                'autoScroll' => true,
+                                'reverse' => false,
                                 'placeholder' => 'No output yet.',
                             ])
                         </details>

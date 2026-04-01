@@ -6,7 +6,7 @@
             <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 flex-1">
                 <label class="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-400">
                     Search
-                    <input type="text" wire:model.debounce.300ms="search" placeholder="Project name or path" class="w-full rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none">
+                    <input type="text" wire:model.live.debounce.300ms="search" placeholder="Project name or path" class="w-full rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none">
                 </label>
             </div>
             <div class="flex flex-wrap gap-2">
@@ -112,7 +112,7 @@
                             @endif
                             <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
                                 @php($lastDeploy = $project->last_deployed_at ?? ($project->last_successful_deploy_at ?? null))
-                                Last deployed: {{ $lastDeploy?->format('M j, Y g:i a') ?? 'Never' }}
+                                Last deployed: {{ \App\Support\DateFormatter::forUser($lastDeploy, 'M j, Y g:i a', 'Never') }}
                             </div>
                         </div>
                         <div class="text-xs text-slate-400 dark:text-slate-500">

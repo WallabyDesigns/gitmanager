@@ -2,7 +2,7 @@
     $logText = $log ?? '';
     $maxHeight = $maxHeight ?? 'max-h-80';
     $placeholder = $placeholder ?? 'No output yet.';
-    $autoScroll = $autoScroll ?? false;
+    $autoScroll = $autoScroll ?? true;
     $reverse = $reverse ?? false;
 @endphp
 

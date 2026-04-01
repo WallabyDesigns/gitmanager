@@ -59,7 +59,7 @@
                                     @if ($user->must_change_password)
                                         <span class="px-2 py-1 rounded-full bg-amber-500/20 text-amber-200">Password change required</span>
                                     @endif
-                                    <span class="px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">Joined {{ $user->created_at?->format('M j, Y') }}</span>
+                                    <span class="px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">Joined {{ \App\Support\DateFormatter::forUser($user->created_at, 'M j, Y') }}</span>
                                 </div>
                             </div>
                             <div class="mt-3 flex flex-wrap gap-3 text-sm">

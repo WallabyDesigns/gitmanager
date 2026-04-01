@@ -34,7 +34,7 @@
             <div class="text-sm text-amber-100">
                 Queued deployments will not run until the scheduler is running.
                 @if ($lastHeartbeat)
-                    Last heartbeat: {{ $lastHeartbeat->toDayDateTimeString() }}.
+                    Last heartbeat: {{ \App\Support\DateFormatter::forUser($lastHeartbeat, 'M j, Y g:i a') }}.
                 @else
                     No heartbeat recorded yet.
                 @endif

@@ -75,7 +75,8 @@ class Index extends Component
                 $like = '%'.$search.'%';
                 $query->where('name', 'like', $like)
                     ->orWhere('local_path', 'like', $like)
-                    ->orWhere('repo_url', 'like', $like);
+                    ->orWhere('repo_url', 'like', $like)
+                    ->orWhere('site_url', 'like', $like);
             });
         }
 

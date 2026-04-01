@@ -39,7 +39,7 @@
                         <div class="text-xs text-amber-200 mt-1">{{ $project->permissions_issue_message }}</div>
                     @endif
                     @if ($project->permissions_checked_at)
-                        <div class="text-xs text-amber-300 mt-1">Last checked: {{ $project->permissions_checked_at->format('M j, Y g:i a') }}</div>
+                        <div class="text-xs text-amber-300 mt-1">Last checked: {{ \App\Support\DateFormatter::forUser($project->permissions_checked_at, 'M j, Y g:i a') }}</div>
                     @endif
                 </div>
                 @if ($permissionsEnforced)
@@ -64,7 +64,7 @@
                     <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $healthClass }}">
                         {{ $healthLabel }}
                     </span>
-                    <span class="text-xs text-slate-500 dark:text-slate-400">Last checked: {{ $project->health_checked_at?->format('M j, Y g:i a') ?? 'Never' }}</span>
+                    <span class="text-xs text-slate-500 dark:text-slate-400">Last checked: {{ \App\Support\DateFormatter::forUser($project->health_checked_at, 'M j, Y g:i a', 'Never') }}</span>
                     @if ($project->health_issue_message)
                         <span class="text-xs text-amber-700 dark:text-amber-300">
                             Laravel check: {{ $project->health_issue_message }}
@@ -122,7 +122,7 @@
                         @php
                             $lastDeploy = $project->last_deployed_at ?? ($lastSuccessfulDeploy?->started_at ?? null);
                         @endphp
-                        {{ $lastDeploy?->format('M j, Y g:i a') ?? 'Never' }}
+                        {{ \App\Support\DateFormatter::forUser($lastDeploy, 'M j, Y g:i a', 'Never') }}
                     </div>
                     <div class="text-xs text-slate-400 dark:text-slate-500">
                         {{ $project->last_deployed_hash ?? ($lastSuccessfulDeploy?->to_hash ?? 'No hash yet') }}
@@ -144,7 +144,7 @@
                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
                     <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Last Checked</div>
                     <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                        {{ $project->last_checked_at?->format('M j, Y g:i a') ?? 'Never' }}
+                        {{ \App\Support\DateFormatter::forUser($project->last_checked_at, 'M j, Y g:i a', 'Never') }}
                     </div>
                 </div>
                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
@@ -176,7 +176,7 @@
                                 </span>
                             </div>
                             <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
-                                {{ $deployment->started_at?->format('M j, Y g:i a') ?? 'Queued' }}
+                                {{ \App\Support\DateFormatter::forUser($deployment->started_at, 'M j, Y g:i a', 'Queued') }}
                             </div>
                             @if ($deployment->output_log)
                                 <details
@@ -197,8 +197,8 @@
                                     @include('livewire.projects.partials.grouped-log', [
                                         'log' => $deployment->output_log,
                                         'maxHeight' => 'max-h-80',
-                                        'autoScroll' => false,
-                                        'reverse' => true,
+                                        'autoScroll' => true,
+                                        'reverse' => false,
                                         'placeholder' => 'No output yet.',
                                     ])
                                 </details>
@@ -299,7 +299,7 @@
                             </span>
                         </div>
                         <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
-                            {{ $deployment->started_at?->format('M j, Y g:i a') ?? 'Queued' }}
+                            {{ \App\Support\DateFormatter::forUser($deployment->started_at, 'M j, Y g:i a', 'Queued') }}
                         </div>
                         @if ($deployment->from_hash || $deployment->to_hash)
                             <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">
@@ -325,8 +325,8 @@
                             @include('livewire.projects.partials.grouped-log', [
                                 'log' => $deployment->output_log,
                                 'maxHeight' => 'max-h-80',
-                                'autoScroll' => false,
-                                'reverse' => true,
+                                'autoScroll' => true,
+                                'reverse' => false,
                                 'placeholder' => 'No output yet.',
                             ])
                         </details>

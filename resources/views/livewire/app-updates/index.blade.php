@@ -3,11 +3,7 @@
         if ($text === null || $text === '') {
             return null;
         }
-        $lines = preg_split('/\r\n|\r|\n/', $text);
-        if ($lines === false) {
-            return $text;
-        }
-        return implode("\n", array_reverse($lines));
+        return $text;
     };
 @endphp
 
@@ -51,7 +47,7 @@
                 </div>
                 <div>
                     <div class="text-xs uppercase text-slate-400 dark:text-slate-500">Checked</div>
-                    <div class="text-slate-700 dark:text-slate-200">{{ $updateStatus['checked_at'] ?? '—' }}</div>
+                    <div class="text-slate-700 dark:text-slate-200">{{ \App\Support\DateFormatter::forUser($updateStatus['checked_at'] ?? null, 'M j, Y g:i a', '—') }}</div>
                 </div>
             </div>
             @if (! empty($updateStatus['error']))
@@ -128,11 +124,11 @@
                     <div class="grid gap-4 sm:grid-cols-2 text-sm">
                         <div>
                             <div class="text-xs uppercase text-slate-400 dark:text-slate-500">Started</div>
-                            <div class="text-slate-700 dark:text-slate-200">{{ $latest->started_at?->format('M j, Y g:i A') ?? '—' }}</div>
+                            <div class="text-slate-700 dark:text-slate-200">{{ \App\Support\DateFormatter::forUser($latest->started_at, 'M j, Y g:i A', '—') }}</div>
                         </div>
                         <div>
                             <div class="text-xs uppercase text-slate-400 dark:text-slate-500">Finished</div>
-                            <div class="text-slate-700 dark:text-slate-200">{{ $latest->finished_at?->format('M j, Y g:i A') ?? '—' }}</div>
+                            <div class="text-slate-700 dark:text-slate-200">{{ \App\Support\DateFormatter::forUser($latest->finished_at, 'M j, Y g:i A', '—') }}</div>
                         </div>
                         <div>
                             <div class="text-xs uppercase text-slate-400 dark:text-slate-500">From</div>
@@ -146,7 +142,18 @@
 
                     <div>
                         <div class="text-xs uppercase text-slate-400 dark:text-slate-500">Output</div>
-                        <pre class="mt-2 max-h-80 overflow-auto rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-950/70 p-4 text-xs text-slate-200 whitespace-pre-wrap break-words">{{ $reverseLog($latest->output_log) ?? 'No output captured.' }}</pre>
+                        <pre
+                            class="mt-2 max-h-80 overflow-auto rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-950/70 p-4 text-xs text-slate-200 whitespace-pre-wrap break-words"
+                            x-data
+                            x-init="
+                                const el = $el;
+                                const scrollToBottom = () => { el.scrollTop = el.scrollHeight; };
+                                $nextTick(scrollToBottom);
+                                const observer = new MutationObserver(scrollToBottom);
+                                observer.observe(el, { childList: true, characterData: true, subtree: true });
+                                $cleanup(() => observer.disconnect());
+                            "
+                        >{{ $reverseLog($latest->output_log) ?? 'No output captured.' }}</pre>
                     </div>
                 @endif
             </div>
@@ -166,7 +173,7 @@
                         @php($updateWarning = $update->status === 'warning' || ($update->status === 'failed' && str_contains($update->output_log ?? '', 'stashed changes could not be restored')))
                         <div class="flex flex-wrap items-center justify-between gap-2">
                             <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                {{ $update->started_at?->format('M j, Y g:i a') ?? 'Queued' }}
+                                {{ \App\Support\DateFormatter::forUser($update->started_at, 'M j, Y g:i a', 'Queued') }}
                             </div>
                             <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $updateWarning ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' : ($update->status === 'success' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : ($update->status === 'failed' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300')) }}">
                                 {{ $updateWarning ? 'warning' : $update->status }}
@@ -178,7 +185,18 @@
                         @if ($update->output_log)
                             <details class="mt-3">
                                 <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">View log</summary>
-                                <pre class="mt-2 max-h-80 overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap break-words bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800">{{ $reverseLog($update->output_log) }}</pre>
+                                <pre
+                                    class="mt-2 max-h-80 overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap break-words bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800"
+                                    x-data
+                                    x-init="
+                                        const el = $el;
+                                        const scrollToBottom = () => { el.scrollTop = el.scrollHeight; };
+                                        $nextTick(scrollToBottom);
+                                        const observer = new MutationObserver(scrollToBottom);
+                                        observer.observe(el, { childList: true, characterData: true, subtree: true });
+                                        $cleanup(() => observer.disconnect());
+                                    "
+                                >{{ $reverseLog($update->output_log) }}</pre>
                             </details>
                         @endif
                     </div>

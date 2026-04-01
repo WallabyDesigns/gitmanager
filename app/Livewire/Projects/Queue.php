@@ -129,7 +129,11 @@ class Queue extends Component
                 $term = '%'.trim($this->search).'%';
                 $query->where(function ($inner) use ($term) {
                     $inner->where('action', 'like', $term)
-                        ->orWhereHas('project', fn ($project) => $project->where('name', 'like', $term));
+                        ->orWhereHas('project', function ($project) use ($term) {
+                            $project->where('name', 'like', $term)
+                                ->orWhere('site_url', 'like', $term)
+                                ->orWhere('repo_url', 'like', $term);
+                        });
                 });
             })
             ->orderByDesc(DB::raw('COALESCE(finished_at, started_at, created_at)'))
