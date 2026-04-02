@@ -35,6 +35,7 @@ class Index extends Component
         return view('livewire.ftp-accounts.index', [
             'accounts' => FtpAccount::query()->orderBy('name')->get(),
         ])->layout('layouts.app', [
+            'title' => 'FTP/SSH Accounts',
             'header' => view('livewire.ftp-accounts.partials.header'),
         ]);
     }

@@ -143,6 +143,7 @@ class Index extends Component
             ],
         ])->layout('layouts.app', [
             'header' => view('livewire.projects.partials.index-header'),
+            'title' => 'Projects',
         ]);
     }
 

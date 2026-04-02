@@ -56,6 +56,7 @@ class Edit extends Component
             'ftpAccounts' => \App\Models\FtpAccount::query()->orderBy('name')->get(),
         ])
             ->layout('layouts.app', [
+                'title' => 'Edit ' . $this->project->name,
                 'header' => view('livewire.projects.partials.edit-header', [
                     'project' => $this->project,
                 ]),

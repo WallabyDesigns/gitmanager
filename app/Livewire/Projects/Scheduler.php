@@ -69,6 +69,7 @@ class Scheduler extends Component
             'queueCount' => $queueCount,
             'cronCommand' => $scheduler->cronCommand(),
         ])->layout('layouts.app', [
+            'title' => 'Project Scheduler',
             'header' => view('livewire.projects.partials.scheduler-header'),
         ]);
     }

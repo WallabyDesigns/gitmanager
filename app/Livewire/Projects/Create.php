@@ -83,6 +83,7 @@ class Create extends Component
             'ftpAccounts' => \App\Models\FtpAccount::query()->orderBy('name')->get(),
         ])
             ->layout('layouts.app', [
+                'title' => 'Create Project',
                 'header' => view('livewire.projects.partials.create-header'),
             ]);
     }

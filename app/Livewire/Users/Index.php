@@ -31,6 +31,7 @@ class Index extends Component
             'mailConfigured' => $settings->isMailConfigured(),
             'showMailSettingsLink' => auth()->user()?->isAdmin() ?? false,
         ])->layout('layouts.app', [
+            'title' => 'Users',
             'header' => view('livewire.users.partials.header'),
         ]);
     }

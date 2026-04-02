@@ -63,6 +63,7 @@ class Index extends Component
             'showMailSettingsLink' => auth()->user()?->isAdmin() ?? false,
         ])
             ->layout('layouts.app', [
+                'title' => 'Workflows',
                 'header' => view('livewire.workflows.partials.header'),
             ]);
     }

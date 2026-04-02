@@ -33,6 +33,7 @@ class EmailSettings extends Component
     {
         return view('livewire.system.email-settings')
             ->layout('layouts.app', [
+                'title' => 'Email Settings',
                 'header' => view('livewire.system.partials.header', [
                     'title' => 'System',
                     'subtitle' => 'Manage app updates, security checks, and email settings.',

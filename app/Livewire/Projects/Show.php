@@ -69,6 +69,7 @@ class Show extends Component
             'header' => view('livewire.projects.partials.show-header', [
                 'project' => $this->project,
             ]),
+            'title' => $this->project->name,
         ]);
     }
 

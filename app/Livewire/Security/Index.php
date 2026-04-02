@@ -41,6 +41,7 @@ class Index extends Component
             'appUpdateFailed' => $latestUpdate && $latestUpdate->status === 'failed',
             'latestUpdate' => $latestUpdate,
         ])->layout('layouts.app', [
+            'title' => 'Security',
             'header' => view('livewire.security.partials.header'),
         ]);
     }

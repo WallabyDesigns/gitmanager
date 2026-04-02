@@ -25,6 +25,7 @@ class Index extends Component
             'recent' => (clone $updates)->take(10)->get(),
             'selfUpdateEnabled' => (bool) config('gitmanager.self_update.enabled', true),
         ])->layout('layouts.app', [
+            'title' => 'System Updates',
             'header' => view('livewire.app-updates.partials.header'),
         ]);
     }
