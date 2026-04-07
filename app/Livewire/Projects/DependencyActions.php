@@ -18,6 +18,7 @@ class DependencyActions extends Component
     public array $pushFiles = [];
     public string $pushCommitMessage = '';
     public string $pushContext = '';
+    public string $pushAuditSummary = '';
 
     protected $listeners = [
         'env-updated' => '$refresh',
@@ -184,7 +185,7 @@ class DependencyActions extends Component
             ? 'Npm audit fix completed.'
             : 'Npm audit fix failed. Check logs below.');
 
-        $this->maybePromptPush($service, $deployment->status === 'success', 'Npm audit fix');
+        $this->maybePromptPush($service, $deployment->status === 'success', 'Npm audit fix', $deployment->output_log);
     }
 
     public function npmAuditFixForce(DeploymentService $service): void
@@ -199,7 +200,7 @@ class DependencyActions extends Component
             ? 'Npm audit fix (force) completed.'
             : 'Npm audit fix (force) failed. Check logs below.');
 
-        $this->maybePromptPush($service, $deployment->status === 'success', 'Npm audit fix (force)');
+        $this->maybePromptPush($service, $deployment->status === 'success', 'Npm audit fix (force)', $deployment->output_log);
     }
 
     public function commitAuditFix(DeploymentService $service): void
@@ -234,6 +235,7 @@ class DependencyActions extends Component
         $this->showPushModal = false;
         $this->pushFiles = [];
         $this->pushContext = '';
+        $this->pushAuditSummary = '';
         $this->pushCommitMessage = $this->defaultCommitMessage();
     }
 
@@ -242,6 +244,7 @@ class DependencyActions extends Component
         if (! $value) {
             $this->pushFiles = [];
             $this->pushContext = '';
+            $this->pushAuditSummary = '';
             $this->pushCommitMessage = $this->defaultCommitMessage();
         }
     }
@@ -286,7 +289,7 @@ class DependencyActions extends Component
         ];
     }
 
-    private function maybePromptPush(DeploymentService $service, bool $shouldCheck, string $context): void
+    private function maybePromptPush(DeploymentService $service, bool $shouldCheck, string $context, ?string $outputLog = null): void
     {
         if (! $shouldCheck) {
             return;
@@ -299,12 +302,83 @@ class DependencyActions extends Component
 
         $this->pushFiles = $changes['files'] ?? [];
         $this->pushContext = $context;
+        $this->pushAuditSummary = $this->summarizeNpmAudit($outputLog);
+        $this->pushCommitMessage = $this->buildAuditCommitMessage();
         $this->showPushModal = true;
     }
 
     private function defaultCommitMessage(): string
     {
         return 'chore: apply npm audit fix';
+    }
+
+    private function buildAuditCommitMessage(): string
+    {
+        $base = $this->defaultCommitMessage();
+        $summary = trim($this->pushAuditSummary);
+        if ($summary === '') {
+            return $base;
+        }
+
+        $short = preg_replace('/\s+/', ' ', $summary) ?? $summary;
+        if (strlen($short) > 80) {
+            $short = substr($short, 0, 77).'...';
+        }
+
+        return $base.' ('.$short.')';
+    }
+
+    private function summarizeNpmAudit(?string $outputLog): string
+    {
+        $text = trim((string) $outputLog);
+        if ($text === '') {
+            return '';
+        }
+
+        $lines = array_reverse(preg_split('/\r?\n/', $text) ?: []);
+        $found = null;
+        $severitySummary = null;
+        $fixed = null;
+        $total = null;
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+
+            if ($found === null && preg_match('/found\s+(\d+)\s+vulnerabilities(?:\s+\(([^)]+)\))?/i', $line, $matches)) {
+                $found = (int) $matches[1];
+                $severitySummary = isset($matches[2]) ? trim($matches[2]) : null;
+            }
+
+            if ($fixed === null && preg_match('/fixed\s+(\d+)\s+of\s+(\d+)\s+vulnerabilities/i', $line, $matches)) {
+                $fixed = (int) $matches[1];
+                $total = (int) $matches[2];
+            }
+
+            if ($found !== null && $fixed !== null) {
+                break;
+            }
+        }
+
+        $parts = [];
+        if ($fixed !== null && $total !== null) {
+            $parts[] = "fixed {$fixed}/{$total}";
+        }
+        if ($found !== null) {
+            $parts[] = $found === 0 ? 'no remaining vulnerabilities' : "{$found} remaining";
+        }
+        if ($severitySummary) {
+            $parts[] = $severitySummary;
+        }
+
+        $summary = $parts ? implode(', ', $parts) : '';
+        if ($summary === '') {
+            return '';
+        }
+
+        return "npm audit {$summary}";
     }
 
     /**

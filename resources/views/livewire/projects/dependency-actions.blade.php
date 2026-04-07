@@ -173,12 +173,15 @@
                 <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">
                     {{ $pushContext ?: 'Audit fix' }} updated dependency files. Commit and push these changes back to the repository.
                 </p>
+                @if ($pushAuditSummary)
+                    <p class="mt-2 text-xs text-emerald-400">Audit summary: {{ $pushAuditSummary }}</p>
+                @endif
 
                 @if (! empty($pushFiles))
-                    <div class="mt-4 rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-3 text-xs text-slate-600 dark:text-slate-300">
+                    <div class="mt-4 rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-3 text-xs text-slate-600 dark:text-slate-300 overflow-x-auto">
                         @foreach ($pushFiles as $index => $file)
                             @if ($index < 12)
-                                <div class="font-mono">{{ $file }}</div>
+                                <div class="font-mono pl-1 whitespace-nowrap">{{ $file }}</div>
                             @endif
                         @endforeach
                         @if (count($pushFiles ?? []) > 12)
