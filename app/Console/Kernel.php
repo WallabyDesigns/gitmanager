@@ -4,6 +4,7 @@ namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use App\Services\SettingsService;
 
 class Kernel extends ConsoleKernel
 {
@@ -21,7 +22,14 @@ class Kernel extends ConsoleKernel
         $schedule->command('scheduler:heartbeat')->everyMinute()->withoutOverlapping();
         $schedule->command('security:sync')->hourly()->withoutOverlapping();
         $schedule->command('dependabot:auto-merge')->hourly()->withoutOverlapping();
-        if (config('gitmanager.self_update.enabled')) {
+        $autoUpdates = (bool) config('gitmanager.self_update.enabled');
+        try {
+            $autoUpdates = $autoUpdates
+                && (bool) app(SettingsService::class)->get('system.auto_update', $autoUpdates);
+        } catch (\Throwable $exception) {
+            // Ignore settings lookup failures (e.g., during early installs).
+        }
+        if ($autoUpdates) {
             $schedule->command('gitmanager:self-update')->dailyAt('02:30')->withoutOverlapping();
         }
         // $schedule->command('site:publish')->hourly();

@@ -157,4 +157,50 @@
             @endforelse
         </div>
     </div>
+
+    <div x-data="{ open: @entangle('showPushModal').live }">
+        <div
+            x-show="open"
+            x-cloak
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4"
+            role="dialog"
+            aria-modal="true"
+            @keydown.escape.window="open = false"
+            @click.self="open = false"
+        >
+            <div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800">
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Push audit fix changes?</h3>
+                <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                    {{ $pushContext ?: 'Audit fix' }} updated dependency files. Commit and push these changes back to the repository.
+                </p>
+
+                @if (! empty($pushFiles))
+                    <div class="mt-4 rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-3 text-xs text-slate-600 dark:text-slate-300">
+                        @foreach ($pushFiles as $index => $file)
+                            @if ($index < 12)
+                                <div class="font-mono">{{ $file }}</div>
+                            @endif
+                        @endforeach
+                        @if (count($pushFiles ?? []) > 12)
+                            <div class="mt-2 text-slate-400 dark:text-slate-500">+ {{ count($pushFiles ?? []) - 12 }} more file(s)</div>
+                        @endif
+                    </div>
+                @endif
+
+                <div class="mt-4">
+                    <label class="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">Commit Message</label>
+                    <input type="text" wire:model.live="pushCommitMessage" class="mt-2 w-full rounded-md border border-slate-200/70 bg-white/70 p-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+                </div>
+
+                <div class="mt-6 flex flex-wrap justify-end gap-2">
+                    <button type="button" wire:click="closePushModal" @click="open = false" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
+                        Not Now
+                    </button>
+                    <button type="button" wire:click="commitAuditFix" class="px-3 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-500">
+                        Commit & Push
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

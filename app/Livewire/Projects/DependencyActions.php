@@ -14,6 +14,10 @@ class DependencyActions extends Component
     public bool $hasComposer = false;
     public bool $hasNpm = false;
     public bool $hasLaravel = false;
+    public bool $showPushModal = false;
+    public array $pushFiles = [];
+    public string $pushCommitMessage = '';
+    public string $pushContext = '';
 
     protected $listeners = [
         'env-updated' => '$refresh',
@@ -22,6 +26,7 @@ class DependencyActions extends Component
     public function mount(Project $project): void
     {
         $this->project = $project;
+        $this->pushCommitMessage = $this->defaultCommitMessage();
     }
 
     public function render()
@@ -178,6 +183,8 @@ class DependencyActions extends Component
         $this->dispatch('notify', message: $deployment->status === 'success'
             ? 'Npm audit fix completed.'
             : 'Npm audit fix failed. Check logs below.');
+
+        $this->maybePromptPush($service, $deployment->status === 'success', 'Npm audit fix');
     }
 
     public function npmAuditFixForce(DeploymentService $service): void
@@ -191,6 +198,52 @@ class DependencyActions extends Component
         $this->dispatch('notify', message: $deployment->status === 'success'
             ? 'Npm audit fix (force) completed.'
             : 'Npm audit fix (force) failed. Check logs below.');
+
+        $this->maybePromptPush($service, $deployment->status === 'success', 'Npm audit fix (force)');
+    }
+
+    public function commitAuditFix(DeploymentService $service): void
+    {
+        if ($this->blockIfPermissionsLocked('git pushes')) {
+            return;
+        }
+
+        $message = trim($this->pushCommitMessage) !== '' ? trim($this->pushCommitMessage) : $this->defaultCommitMessage();
+
+        try {
+            $result = $service->commitAndPush($this->project, $message);
+            $status = $result['status'] ?? 'unknown';
+
+            if ($status === 'clean') {
+                $this->dispatch('notify', message: 'No changes detected to commit.');
+            } elseif ($status === 'no-commit') {
+                $this->dispatch('notify', message: 'Changes were staged, but nothing new to commit.');
+            } else {
+                $branch = $result['branch'] ?? 'current branch';
+                $this->dispatch('notify', message: "Changes committed and pushed to {$branch}.");
+            }
+        } catch (\Throwable $exception) {
+            $this->dispatch('notify', message: 'Push failed: '.$exception->getMessage());
+        }
+
+        $this->closePushModal();
+    }
+
+    public function closePushModal(): void
+    {
+        $this->showPushModal = false;
+        $this->pushFiles = [];
+        $this->pushContext = '';
+        $this->pushCommitMessage = $this->defaultCommitMessage();
+    }
+
+    public function updatedShowPushModal(bool $value): void
+    {
+        if (! $value) {
+            $this->pushFiles = [];
+            $this->pushContext = '';
+            $this->pushCommitMessage = $this->defaultCommitMessage();
+        }
     }
 
     public function runCustomCommand(DeploymentService $service): void
@@ -231,6 +284,27 @@ class DependencyActions extends Component
             'npm_audit_fix_force',
             'custom_command',
         ];
+    }
+
+    private function maybePromptPush(DeploymentService $service, bool $shouldCheck, string $context): void
+    {
+        if (! $shouldCheck) {
+            return;
+        }
+
+        $changes = $service->getWorkingTreeChanges($this->project);
+        if (! ($changes['dirty'] ?? false)) {
+            return;
+        }
+
+        $this->pushFiles = $changes['files'] ?? [];
+        $this->pushContext = $context;
+        $this->showPushModal = true;
+    }
+
+    private function defaultCommitMessage(): string
+    {
+        return 'chore: apply npm audit fix';
     }
 
     /**

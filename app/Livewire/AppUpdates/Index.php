@@ -4,16 +4,27 @@ namespace App\Livewire\AppUpdates;
 
 use App\Models\AppUpdate;
 use App\Services\SelfUpdateService;
+use App\Services\SettingsService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
 class Index extends Component
 {
     public array $updateStatus = [];
+    public bool $checkUpdatesEnabled = true;
+    public bool $autoUpdateEnabled = true;
 
-    public function mount(SelfUpdateService $service): void
+    public function mount(SelfUpdateService $service, SettingsService $settings): void
     {
-        $this->updateStatus = $service->getUpdateStatus();
+        $this->checkUpdatesEnabled = (bool) $settings->get('system.check_updates', true);
+        $this->autoUpdateEnabled = (bool) $settings->get(
+            'system.auto_update',
+            (bool) config('gitmanager.self_update.enabled', true)
+        );
+
+        $this->updateStatus = $this->checkUpdatesEnabled
+            ? $service->getUpdateStatus()
+            : ['status' => 'disabled'];
     }
 
     public function render()
@@ -23,7 +34,8 @@ class Index extends Component
         return view('livewire.app-updates.index', [
             'latest' => $updates->first(),
             'recent' => (clone $updates)->take(10)->get(),
-            'selfUpdateEnabled' => (bool) config('gitmanager.self_update.enabled', true),
+            'checkUpdatesEnabled' => $this->checkUpdatesEnabled,
+            'autoUpdateEnabled' => $this->autoUpdateEnabled,
         ])->layout('layouts.app', [
             'title' => 'System Updates',
             'header' => view('livewire.app-updates.partials.header'),
@@ -64,6 +76,11 @@ class Index extends Component
 
     public function refreshUpdateStatus(SelfUpdateService $service): void
     {
+        if (! $this->checkUpdatesEnabled) {
+            $this->dispatch('notify', message: 'Update checks are disabled in System Settings.');
+            return;
+        }
+
         $this->updateStatus = $service->getUpdateStatus(true);
 
         $message = match ($this->updateStatus['status'] ?? 'unknown') {

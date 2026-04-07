@@ -11,10 +11,16 @@
                         Resolved Issues ({{ $resolvedCount }})
                     </a>
                 </div>
-                <button type="button" wire:click="sync" class="px-3 py-2 text-sm rounded-md border border-indigo-300 text-indigo-600 hover:text-indigo-800 dark:border-indigo-500/50 dark:text-indigo-300">
+                <button type="button" wire:click="sync" wire:loading.attr="disabled" class="px-3 py-2 text-sm rounded-md border border-indigo-300 text-indigo-600 hover:text-indigo-800 dark:border-indigo-500/50 dark:text-indigo-300 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
+                    <x-loading-spinner target="sync" />
                     Sync Alerts
                 </button>
             </div>
+            @if (! $sslVerifyEnabled)
+                <div class="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">
+                    GitHub SSL verification is disabled. Sync runs without certificate validation.
+                </div>
+            @endif
         </div>
 
         @if ($appUpdateFailed && $latestUpdate)

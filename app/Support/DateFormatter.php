@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\User;
+use App\Services\SettingsService;
 use Carbon\Carbon;
 use DateTimeInterface;
 use Illuminate\Support\Facades\Auth;
@@ -33,7 +34,17 @@ class DateFormatter
 
     private static function resolveTimezone(): ?string
     {
-        $timezone = Auth::user()?->timezone;
+        $timezone = null;
+
+        try {
+            $timezone = app(SettingsService::class)->get('system.timezone');
+        } catch (\Throwable $exception) {
+            $timezone = null;
+        }
+
+        if (! $timezone) {
+            $timezone = Auth::user()?->timezone;
+        }
         if (! $timezone) {
             $timezone = self::resolveAdminTimezone();
         }

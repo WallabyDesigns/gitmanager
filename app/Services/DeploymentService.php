@@ -639,6 +639,100 @@ class DeploymentService
         return $this->tryRevParse($repoPath);
     }
 
+    /**
+     * @return array{dirty: bool, files: array<int, string>}
+     */
+    public function getWorkingTreeChanges(Project $project): array
+    {
+        $repoPath = $this->resolveRepoPath($project);
+        $output = [];
+        $status = $this->getWorkingTreeStatus($repoPath, $output);
+
+        return [
+            'dirty' => $status !== '',
+            'files' => $this->parseGitStatusFiles($status),
+        ];
+    }
+
+    /**
+     * @return array{status: string, branch?: string|null, output?: array<int, string>}
+     */
+    public function commitAndPush(Project $project, string $message): array
+    {
+        $repoPath = $this->resolveRepoPath($project);
+        $output = [];
+
+        $status = $this->getWorkingTreeStatus($repoPath, $output);
+        if ($status === '') {
+            return ['status' => 'clean'];
+        }
+
+        $branch = trim($this->runProcess([
+            'git',
+            '-C',
+            $repoPath,
+            'rev-parse',
+            '--abbrev-ref',
+            'HEAD',
+        ], $output)->getOutput());
+
+        if ($branch === '' || $branch === 'HEAD') {
+            throw new \RuntimeException('Unable to determine the current branch for this project.');
+        }
+
+        $this->runProcess(['git', '-C', $repoPath, 'add', '-A'], $output);
+
+        $commit = $this->runProcess([
+            'git',
+            '-C',
+            $repoPath,
+            'commit',
+            '-m',
+            $message,
+        ], $output, null, false);
+
+        if (! $commit->isSuccessful()) {
+            return ['status' => 'no-commit', 'branch' => $branch, 'output' => $output];
+        }
+
+        $this->runProcess(['git', '-C', $repoPath, 'push', 'origin', $branch], $output);
+
+        return ['status' => 'pushed', 'branch' => $branch, 'output' => $output];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function parseGitStatusFiles(string $status): array
+    {
+        if ($status === '') {
+            return [];
+        }
+
+        $files = [];
+        foreach (preg_split('/\r?\n/', $status) ?: [] as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+
+            $path = trim(substr($line, 3));
+            if ($path === '') {
+                continue;
+            }
+
+            if (str_contains($path, ' -> ')) {
+                $parts = explode(' -> ', $path);
+                $path = trim(end($parts));
+            }
+
+            $path = str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path);
+            $files[] = $path;
+        }
+
+        return array_values(array_unique($files));
+    }
+
     // ──────────────────────────────────────────────────────────────────
     //  Streaming
     // ──────────────────────────────────────────────────────────────────

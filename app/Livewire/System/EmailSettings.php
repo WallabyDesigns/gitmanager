@@ -36,7 +36,7 @@ class EmailSettings extends Component
                 'title' => 'Email Settings',
                 'header' => view('livewire.system.partials.header', [
                     'title' => 'System',
-                    'subtitle' => 'Manage app updates, security checks, and email settings.',
+                    'subtitle' => 'Manage app updates, security checks, settings, and email.',
                 ]),
             ]);
     }

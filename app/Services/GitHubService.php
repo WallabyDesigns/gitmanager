@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Project;
+use App\Services\SettingsService;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 
@@ -126,8 +127,20 @@ class GitHubService
     {
         $token = config('services.github.token');
         $apiUrl = rtrim(config('services.github.api_url'), '/');
+        $verify = (bool) config('services.github.verify_ssl', true);
+        try {
+            $setting = app(SettingsService::class)->get('system.github_ssl_verify');
+            if ($setting !== null) {
+                $verify = (bool) $setting;
+            }
+        } catch (\Throwable $exception) {
+            // Ignore settings lookup failures.
+        }
 
         return Http::baseUrl($apiUrl)
+            ->withOptions([
+                'verify' => $verify,
+            ])
             ->withHeaders([
                 'Accept' => 'application/vnd.github+json',
             ])

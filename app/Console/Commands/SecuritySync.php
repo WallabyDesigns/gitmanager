@@ -7,6 +7,7 @@ use App\Models\SecurityAlert;
 use App\Services\GitHubService;
 use Illuminate\Support\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Http\Client\ConnectionException;
 
 class SecuritySync extends Command
 {
@@ -39,7 +40,15 @@ class SecuritySync extends Command
             ->get();
 
         foreach ($projects as $project) {
-            $alerts = $github->getDependabotAlerts($project);
+            try {
+                $alerts = $github->getDependabotAlerts($project);
+            } catch (ConnectionException $exception) {
+                $this->warn('Dependabot sync failed for '.$project->name.': '.$exception->getMessage());
+                continue;
+            } catch (\Throwable $exception) {
+                $this->warn('Dependabot sync failed for '.$project->name.': '.$exception->getMessage());
+                continue;
+            }
             $now = now();
 
             foreach ($alerts as $alert) {

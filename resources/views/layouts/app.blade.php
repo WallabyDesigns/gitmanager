@@ -3,9 +3,14 @@
     <head>
         <meta charset="utf-8">
 
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-        <link rel="icon" href="/favicon.ico" type="image/x-icon">
-        <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+        <link rel="icon" type="image/x-icon" href="/favicons/favicon.ico" >
+        <link rel="icon" type="image/png" href="/favicons/favicon-96x96.png" sizes="96x96" />
+        <link rel="icon" type="image/svg+xml" href="/favicons/favicon.svg" />
+        <link rel="shortcut icon" href="/favicons/favicon.ico" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-touch-icon.png" />
+        <meta name="apple-mobile-web-app-title" content="GWM" />
+        <link rel="manifest" href="/favicons/site.webmanifest" />
+        
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
@@ -31,8 +36,12 @@
                 .gwm-fallback-alert strong { color: #f8fafc; }
             </style>
         @endif
+        <style>
+            body { transition: opacity 0.12s ease; }
+            body.gwm-preload { opacity: 0; }
+        </style>
     </head>
-    <body class="font-sans antialiased h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <body class="font-sans antialiased h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 gwm-preload">
         <div class="min-h-screen">
             @if (! $viteReady)
                 <div class="gwm-fallback-alert">
@@ -82,6 +91,10 @@
                     window.location.reload();
                 }, Number.isNaN(delay) ? 500 : delay);
             });
+
+            const reveal = () => document.body.classList.remove('gwm-preload');
+            window.addEventListener('load', reveal);
+            setTimeout(reveal, 2000);
         </script>
     </body>
 </html>

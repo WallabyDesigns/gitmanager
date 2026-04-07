@@ -39,6 +39,7 @@ return [
         'token' => env('GITHUB_TOKEN'),
         'api_url' => env('GITHUB_API_URL', 'https://api.github.com'),
         'webhook_secret' => env('GITHUB_WEBHOOK_SECRET'),
+        'verify_ssl' => env('GITHUB_SSL_VERIFY', true),
     ],
 
 ];

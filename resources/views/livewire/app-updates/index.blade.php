@@ -18,13 +18,14 @@
                 </div>
                 <div class="flex flex-wrap gap-2 items-center">
                     @php($status = $updateStatus['status'] ?? 'unknown')
-                    <span class="px-3 py-1 rounded-full text-xs font-semibold {{ $status === 'up-to-date' ? 'bg-emerald-500/20 text-emerald-200' : ($status === 'update-available' ? 'bg-amber-500/20 text-amber-200' : 'bg-slate-500/20 text-slate-200') }}">
-                        {{ $status === 'up-to-date' ? 'UP TO DATE' : ($status === 'update-available' ? 'UPDATE AVAILABLE' : 'UNKNOWN') }}
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold {{ $status === 'up-to-date' ? 'bg-emerald-500/20 text-emerald-200' : ($status === 'update-available' ? 'bg-amber-500/20 text-amber-200' : ($status === 'disabled' ? 'bg-slate-500/20 text-slate-200' : 'bg-slate-500/20 text-slate-200')) }}">
+                        {{ $status === 'up-to-date' ? 'UP TO DATE' : ($status === 'update-available' ? 'UPDATE AVAILABLE' : ($status === 'disabled' ? 'CHECKS DISABLED' : 'UNKNOWN')) }}
                     </span>
                     <button
                         type="button"
                         wire:click="refreshUpdateStatus"
                         wire:loading.attr="disabled"
+                        @if (! $checkUpdatesEnabled) disabled @endif
                         class="px-3 py-1.5 rounded-md border border-slate-300 text-slate-600 text-sm hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center"
                     >
                         <x-loading-spinner target="refreshUpdateStatus" />
@@ -55,6 +56,11 @@
                     {{ $updateStatus['error'] }}
                 </div>
             @endif
+            @if (! $checkUpdatesEnabled)
+                <div class="mt-3 text-xs text-slate-400 dark:text-slate-500">
+                    Update checks are disabled in System Settings.
+                </div>
+            @endif
         </div>
 
         <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
@@ -62,16 +68,15 @@
                 <div>
                     <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Run Update</h3>
                     <p class="text-sm text-slate-500 dark:text-slate-400">This will pull from the `wallabydesigns/gitmanager` repo and apply updates locally.</p>
-                    @if (! $selfUpdateEnabled)
-                        <p class="mt-2 text-sm text-rose-500">Self-update is currently disabled in configuration.</p>
-                    @endif
+                    <p class="mt-2 text-xs text-slate-400 dark:text-slate-500">
+                        Auto-updates are {{ $autoUpdateEnabled ? 'enabled' : 'disabled' }} in System Settings.
+                    </p>
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <button
                         type="button"
                         wire:click="runUpdate"
                         wire:loading.attr="disabled"
-                        @if (! $selfUpdateEnabled) disabled @endif
                         class="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center"
                     >
                         <x-loading-spinner target="runUpdate" />
@@ -79,13 +84,12 @@
                     </button>
                     @if ($latest && $latest->status === 'failed')
                         <button
-                            type="button"
-                            wire:click="runForceUpdate"
-                            wire:loading.attr="disabled"
-                            @if (! $selfUpdateEnabled) disabled @endif
-                            onclick="return confirm('Force update will discard local code changes and re-sync with the remote repo (protected files like .env are preserved). Continue?')"
-                            class="px-4 py-2 rounded-md border border-rose-500/70 text-rose-200 text-sm hover:text-white hover:bg-rose-500/10 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center"
-                        >
+                        type="button"
+                        wire:click="runForceUpdate"
+                        wire:loading.attr="disabled"
+                        onclick="return confirm('Force update will discard local code changes and re-sync with the remote repo (protected files like .env are preserved). Continue?')"
+                        class="px-4 py-2 rounded-md border border-rose-500/70 text-rose-200 text-sm hover:text-white hover:bg-rose-500/10 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center"
+                    >
                             <x-loading-spinner target="runForceUpdate" />
                             Force Update
                         </button>

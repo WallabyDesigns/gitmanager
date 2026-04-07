@@ -10,8 +10,6 @@ new class extends Component
 {
     public string $name = '';
     public string $email = '';
-    public string $timezone = '';
-    public array $timezones = [];
 
     /**
      * Mount the component.
@@ -20,11 +18,6 @@ new class extends Component
     {
         $this->name = Auth::user()->name;
         $this->email = Auth::user()->email;
-        $this->timezones = \DateTimeZone::listIdentifiers();
-        $adminTimezone = User::query()->where('id', 1)->value('timezone');
-        $this->timezone = Auth::user()->timezone
-            ?? $adminTimezone
-            ?? config('app.timezone');
     }
 
     /**
@@ -37,7 +30,6 @@ new class extends Component
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($user->id)],
-            'timezone' => ['required', Rule::in($this->timezones)],
         ]);
 
         $user->fill($validated);
@@ -110,21 +102,6 @@ new class extends Component
                     @endif
                 </div>
             @endif
-        </div>
-
-        <div>
-            <x-input-label for="timezone" :value="__('Timezone')" />
-            <select
-                id="timezone"
-                wire:model="timezone"
-                class="mt-1 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                required
-            >
-                @foreach ($timezones as $tz)
-                    <option value="{{ $tz }}">{{ $tz }}</option>
-                @endforeach
-            </select>
-            <x-input-error class="mt-2" :messages="$errors->get('timezone')" />
         </div>
 
         <div class="flex items-center gap-4">

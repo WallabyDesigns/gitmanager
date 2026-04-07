@@ -40,7 +40,9 @@
           <li><code>APP_URL</code>, <code>APP_KEY</code>, and database credentials.</li>
           <li><code>GITHUB_TOKEN</code> for private repos and Dependabot.</li>
           <li><code>GITHUB_WEBHOOK_SECRET</code> for GitHub webhook verification.</li>
+          <li><code>GITHUB_SSL_VERIFY</code> to disable SSL verification for GitHub API calls (not recommended).</li>
         </ul>
+        <p class="muted">You can also toggle GitHub SSL verification in System &rarr; Settings.</p>
       </section>
 
       <section class="card">
@@ -66,10 +68,11 @@
       <section class="card">
         <h2>Self Update</h2>
         <ul>
-          <li><code>GWM_SELF_UPDATE_ENABLED</code> to toggle nightly updates.</li>
+          <li><code>GWM_SELF_UPDATE_ENABLED</code> to control whether self-updates are available at all.</li>
           <li><code>GWM_SELF_UPDATE_EXCLUDE_PATHS</code> to skip paths during app updates.</li>
           <li><code>GWM_ASKPASS_DIR</code> for Git credential helper location.</li>
         </ul>
+        <p class="muted">Nightly auto-updates are enabled in System &rarr; Settings (Perform auto-updates).</p>
       </section>
 
       <section class="card">

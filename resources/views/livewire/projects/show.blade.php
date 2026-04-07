@@ -11,6 +11,14 @@
             <button type="button" @click="tab = 'dependencies'" :class="tab === 'dependencies' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300'" class="px-3 py-2 text-sm rounded-md">
                 Dependency Actions
             </button>
+            <button type="button" @click="tab = 'security'" :class="tab === 'security' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300'" class="px-3 py-2 text-sm rounded-md">
+                <span class="flex items-center gap-2">
+                    Security
+                    @if (($securityOpenCount ?? 0) > 0)
+                        <span class="inline-flex items-center justify-center rounded-full bg-rose-500/20 px-2 py-0.5 text-xs text-rose-200">{{ $securityOpenCount }}</span>
+                    @endif
+                </span>
+            </button>
             @if ($envTabEnabled)
                 <button type="button" @click="tab = 'env'" :class="tab === 'env' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300'" class="px-3 py-2 text-sm rounded-md">
                     Environment
@@ -275,6 +283,10 @@
 
         <div x-show="tab === 'dependencies'" x-cloak class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
             @livewire('projects.dependency-actions', ['project' => $project], key('dep-actions-'.$project->id))
+        </div>
+
+        <div x-show="tab === 'security'" x-cloak class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
+            @livewire('projects.security-alerts', ['project' => $project], key('security-alerts-'.$project->id))
         </div>
 
         @if ($envTabEnabled)

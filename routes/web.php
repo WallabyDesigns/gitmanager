@@ -12,6 +12,7 @@ use App\Livewire\Projects\Show as ProjectsShow;
 use App\Livewire\FtpAccounts\Index as FtpAccountsIndex;
 use App\Livewire\Security\Index as SecurityIndex;
 use App\Livewire\System\EmailSettings as SystemEmailSettings;
+use App\Livewire\System\Settings as SystemSettings;
 use App\Livewire\Users\Index as UsersIndex;
 use App\Livewire\Workflows\Index as WorkflowsIndex;
 use App\Http\Middleware\EnsureAdminUser;
@@ -50,6 +51,7 @@ Route::middleware(['auth', 'verified', EnsurePasswordChanged::class])->group(fun
     Route::middleware(EnsureAdminUser::class)->group(function () {
         Route::get('/system', AppUpdatesIndex::class)->name('system.updates');
         Route::get('/system/security', SecurityIndex::class)->name('system.security');
+        Route::get('/system/settings', SystemSettings::class)->name('system.settings');
         Route::get('/system/email', SystemEmailSettings::class)->name('system.email');
         Route::get('/workflows', WorkflowsIndex::class)->name('workflows.index');
         Route::get('/ftp-accounts', FtpAccountsIndex::class)->name('ftp-accounts.index');

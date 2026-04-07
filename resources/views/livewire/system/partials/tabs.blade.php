@@ -2,6 +2,7 @@
     use App\Models\AppUpdate;
     use App\Models\SecurityAlert;
     use App\Services\SelfUpdateService;
+    use App\Services\SettingsService;
 
     $userId = auth()->id();
     $securityCount = $userId
@@ -15,8 +16,9 @@
     $updateIssueCount = $latestUpdate && $latestUpdate->status === 'failed' ? 1 : 0;
     $openAlerts = $securityCount + $updateIssueCount;
 
-    $status = app(SelfUpdateService::class)->getUpdateStatus();
-    $updateAvailable = ($status['status'] ?? '') === 'update-available';
+    $checkUpdatesEnabled = (bool) app(SettingsService::class)->get('system.check_updates', true);
+    $status = $checkUpdatesEnabled ? app(SelfUpdateService::class)->getUpdateStatus() : ['status' => 'disabled'];
+    $updateAvailable = $checkUpdatesEnabled && ($status['status'] ?? '') === 'update-available';
 @endphp
 
 <div class="flex flex-wrap gap-2 border-b border-slate-200/70 dark:border-slate-800">
@@ -37,6 +39,10 @@
                 <span class="inline-flex items-center justify-center rounded-full bg-rose-500/20 px-2 py-0.5 text-xs text-rose-200">{{ $openAlerts }}</span>
             @endif
         </span>
+    </a>
+    <a href="{{ route('system.settings') }}"
+       class="px-3 py-2 text-sm border-b-2 {{ request()->routeIs('system.settings') ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
+        Settings
     </a>
     <a href="{{ route('system.email') }}"
        class="px-3 py-2 text-sm border-b-2 {{ request()->routeIs('system.email') ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">

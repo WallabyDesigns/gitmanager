@@ -1,23 +1,22 @@
 <?php
 
-namespace App\Livewire\Security;
+namespace App\Livewire\Projects;
 
-use App\Models\AppUpdate;
+use App\Models\Project;
 use App\Models\SecurityAlert;
 use App\Services\SettingsService;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Auth;
-use Livewire\Attributes\Url;
 use Livewire\Component;
 
-class Index extends Component
+class SecurityAlerts extends Component
 {
-    #[Url]
+    public Project $project;
     public string $tab = 'current';
     public bool $sslVerifyEnabled = true;
 
-    public function mount(SettingsService $settings): void
+    public function mount(Project $project, SettingsService $settings): void
     {
+        $this->project = $project;
         $this->sslVerifyEnabled = (bool) ($settings->get(
             'system.github_ssl_verify',
             (bool) config('services.github.verify_ssl', true)
@@ -29,38 +28,34 @@ class Index extends Component
         $tab = in_array($this->tab, ['current', 'resolved'], true) ? $this->tab : 'current';
 
         $query = SecurityAlert::query()
-            ->whereHas('project', fn ($query) => $query->where('user_id', Auth::id()))
-            ->with('project');
+            ->where('project_id', $this->project->id);
 
         $alerts = $tab === 'resolved'
             ? $query->where('state', '!=', 'open')
             : $query->where('state', 'open');
 
-        $latestUpdate = AppUpdate::query()->orderByDesc('started_at')->first();
-
-        return view('livewire.security.index', [
+        return view('livewire.projects.security-alerts', [
             'alerts' => $alerts->orderByDesc('alert_created_at')->get(),
             'openCount' => SecurityAlert::query()
+                ->where('project_id', $this->project->id)
                 ->where('state', 'open')
-                ->whereHas('project', fn ($query) => $query->where('user_id', Auth::id()))
                 ->count(),
             'resolvedCount' => SecurityAlert::query()
+                ->where('project_id', $this->project->id)
                 ->where('state', '!=', 'open')
-                ->whereHas('project', fn ($query) => $query->where('user_id', Auth::id()))
                 ->count(),
             'tab' => $tab,
-            'appUpdateFailed' => $latestUpdate && $latestUpdate->status === 'failed',
-            'latestUpdate' => $latestUpdate,
             'sslVerifyEnabled' => $this->sslVerifyEnabled,
-        ])->layout('layouts.app', [
-            'title' => 'Security',
-            'header' => view('livewire.security.partials.header'),
         ]);
     }
 
     public function sync(): void
     {
-        Artisan::call('security:sync');
-        $this->dispatch('notify', message: 'Security alerts synced.');
+        try {
+            Artisan::call('security:sync');
+            $this->dispatch('notify', message: 'Security alerts synced.');
+        } catch (\Throwable $exception) {
+            $this->dispatch('notify', message: 'Security sync failed: '.$exception->getMessage());
+        }
     }
 }

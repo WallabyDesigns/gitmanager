@@ -4,6 +4,7 @@ use App\Livewire\Actions\Logout;
 use App\Models\AppUpdate;
 use App\Models\SecurityAlert;
 use App\Services\SelfUpdateService;
+use App\Services\SettingsService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Volt\Component;
 
@@ -11,8 +12,9 @@ new class extends Component
 {
     public int $openAlerts = 0;
     public bool $updateAvailable = false;
+    public bool $checkUpdatesEnabled = true;
 
-    public function mount(SelfUpdateService $selfUpdate): void
+    public function mount(SelfUpdateService $selfUpdate, SettingsService $settings): void
     {
         $userId = Auth::id();
         $securityCount = $userId
@@ -27,8 +29,11 @@ new class extends Component
 
         $this->openAlerts = $securityCount + $updateIssueCount;
 
-        $status = $selfUpdate->getUpdateStatus();
-        $this->updateAvailable = ($status['status'] ?? '') === 'update-available';
+        $this->checkUpdatesEnabled = (bool) $settings->get('system.check_updates', true);
+        if ($this->checkUpdatesEnabled) {
+            $status = $selfUpdate->getUpdateStatus();
+            $this->updateAvailable = ($status['status'] ?? '') === 'update-available';
+        }
     }
     /**
      * Log the current user out of the application.

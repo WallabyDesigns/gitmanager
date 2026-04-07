@@ -5,6 +5,7 @@ namespace App\Livewire\Projects;
 use App\Models\Project;
 use App\Models\Deployment;
 use App\Models\DeploymentQueueItem;
+use App\Models\SecurityAlert;
 use App\Services\DeploymentService;
 use App\Services\DeploymentQueueService;
 use Illuminate\Support\Facades\Auth;
@@ -56,6 +57,10 @@ class Show extends Component
                 ->where('to_hash', '!=', $activeCommit)
                 ->exists()
             : false;
+        $securityOpenCount = SecurityAlert::query()
+            ->where('project_id', $this->project->id)
+            ->where('state', 'open')
+            ->count();
 
         return view('livewire.projects.show', [
             'deployments' => (clone $deployments)->paginate(20),
@@ -65,6 +70,7 @@ class Show extends Component
             'lastSuccessfulDeploy' => $lastSuccessfulDeploy,
             'rollbackAvailable' => $rollbackAvailable,
             'envTabEnabled' => $this->envTabEnabled(),
+            'securityOpenCount' => $securityOpenCount,
         ])->layout('layouts.app', [
             'header' => view('livewire.projects.partials.show-header', [
                 'project' => $this->project,
