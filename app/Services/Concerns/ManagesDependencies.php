@@ -156,9 +156,65 @@ trait ManagesDependencies
 
     public function composerAudit(Project $project, ?User $user = null): Deployment
     {
-        return $this->runMaintenanceAction($project, $user, 'composer_audit', function (string $path, array &$output): void {
-            $this->runProjectProcess(['composer', 'audit'], $output, $path);
-        }, true);
+        $repoPath = $this->resolveRepoPath($project);
+        $executionPath = $this->resolveExecutionPath($project, $repoPath);
+
+        $deployment = Deployment::create([
+            'project_id' => $project->id,
+            'triggered_by' => $user?->id,
+            'action' => 'composer_audit',
+            'status' => 'running',
+            'started_at' => now(),
+        ]);
+        $this->beginDeploymentStream($deployment);
+
+        $output = [];
+
+        try {
+            $process = $this->runProjectProcess(['composer', 'audit'], $output, $executionPath, false);
+            $exitCode = $process->getExitCode() ?? 1;
+            $analysis = $this->analyzeComposerAuditOutput($output);
+
+            if ($exitCode === 0) {
+                $status = 'success';
+            } elseif ($analysis['advisory_count'] !== null) {
+                $status = 'warning';
+                $count = $analysis['advisory_count'];
+                $output[] = $count === 1
+                    ? 'Composer audit found 1 security advisory.'
+                    : "Composer audit found {$count} security advisories.";
+            } elseif ($analysis['no_advisories']) {
+                $status = 'success';
+                $output[] = 'Composer audit exited with a warning code, but no advisories were reported.';
+            } else {
+                throw new ProcessFailedException($process);
+            }
+
+            $this->maybeRunLaravelClearCache($project, $output);
+
+            $deployment->status = $status;
+            $deployment->output_log = implode("\n", $output);
+            $deployment->finished_at = now();
+            $deployment->save();
+
+            if ($status !== 'failed') {
+                $project->last_error_message = null;
+                $project->save();
+            }
+
+            $this->endDeploymentStream();
+        } catch (\Throwable $exception) {
+            $deployment->status = 'failed';
+            $deployment->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
+            $deployment->finished_at = now();
+            $deployment->save();
+
+            $project->last_error_message = $exception->getMessage();
+            $project->save();
+            $this->endDeploymentStream();
+        }
+
+        return $deployment;
     }
 
     public function appClearCache(Project $project, ?User $user = null): Deployment
@@ -870,5 +926,25 @@ trait ManagesDependencies
         }
 
         $output[] = 'Warning: unable to remove config cache file: '.$configCache;
+    }
+
+    /**
+     * @param array<int, string> $output
+     * @return array{no_advisories: bool, advisory_count: int|null}
+     */
+    private function analyzeComposerAuditOutput(array $output): array
+    {
+        $text = implode("\n", $output);
+        $noAdvisories = (bool) preg_match('/no security vulnerability advisories found/i', $text);
+        $count = null;
+
+        if (preg_match('/found\\s+(\\d+)\\s+security vulnerability advisories?/i', $text, $matches)) {
+            $count = (int) $matches[1];
+        }
+
+        return [
+            'no_advisories' => $noAdvisories,
+            'advisory_count' => $count,
+        ];
     }
 }

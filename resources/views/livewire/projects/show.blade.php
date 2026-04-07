@@ -177,7 +177,8 @@
                                     {{ ucfirst(str_replace('_', ' ', $deployment->action)) }}
                                 </div>
                                 @php
-                                    $warn = $deployment->status === 'failed' && str_contains($deployment->output_log ?? '', 'stashed changes could not be restored');
+                                    $warn = $deployment->status === 'warning'
+                                        || ($deployment->status === 'failed' && str_contains($deployment->output_log ?? '', 'stashed changes could not be restored'));
                                 @endphp
                                 <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $warn ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' : ($deployment->status === 'success' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : ($deployment->status === 'failed' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300')) }}">
                                     {{ $warn ? 'warning' : $deployment->status }}
@@ -186,6 +187,12 @@
                             <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
                                 {{ \App\Support\DateFormatter::forUser($deployment->started_at, 'M j, Y g:i a', 'Queued') }}
                             </div>
+                            @php($hasEnvWarnings = $deployment->action === 'composer_audit' && $deployment->output_log && (str_contains($deployment->output_log, 'PHP Warning:') || str_contains($deployment->output_log, 'SourceGuardian requires')))
+                            @if ($hasEnvWarnings)
+                                <div class="mt-2 text-xs text-amber-500">
+                                    Environment warnings detected (PHP extensions). Audit results are still valid.
+                                </div>
+                            @endif
                             @if ($deployment->output_log)
                                 <details
                                     class="mt-3"
@@ -305,14 +312,20 @@
                             <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
                                 {{ ucfirst(str_replace('_', ' ', $deployment->action)) }}
                             </div>
-                            @php($warn = $deployment->status === 'failed' && str_contains($deployment->output_log ?? '', 'stashed changes could not be restored'))
+                            @php($warn = $deployment->status === 'warning' || ($deployment->status === 'failed' && str_contains($deployment->output_log ?? '', 'stashed changes could not be restored')))
                             <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $warn ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' : ($deployment->status === 'success' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : ($deployment->status === 'failed' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300')) }}">
                                 {{ $warn ? 'warning' : $deployment->status }}
                             </span>
                         </div>
-                        <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
-                            {{ \App\Support\DateFormatter::forUser($deployment->started_at, 'M j, Y g:i a', 'Queued') }}
-                        </div>
+                            <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
+                                {{ \App\Support\DateFormatter::forUser($deployment->started_at, 'M j, Y g:i a', 'Queued') }}
+                            </div>
+                            @php($hasEnvWarnings = $deployment->action === 'composer_audit' && $deployment->output_log && (str_contains($deployment->output_log, 'PHP Warning:') || str_contains($deployment->output_log, 'SourceGuardian requires')))
+                            @if ($hasEnvWarnings)
+                                <div class="mt-2 text-xs text-amber-500">
+                                    Environment warnings detected (PHP extensions). Audit results are still valid.
+                                </div>
+                            @endif
                         @if ($deployment->from_hash || $deployment->to_hash)
                             <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">
                                 {{ $deployment->from_hash ?? 'n/a' }} → {{ $deployment->to_hash ?? 'n/a' }}

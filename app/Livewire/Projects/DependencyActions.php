@@ -29,7 +29,7 @@ class DependencyActions extends Component
     public function mount(Project $project): void
     {
         $this->project = $project;
-        $this->pushCommitMessage = $this->defaultCommitMessage();
+        $this->pushCommitMessage = $this->commitMessageForContext('audit');
     }
 
     public function render()
@@ -108,6 +108,8 @@ class DependencyActions extends Component
         $this->dispatch('notify', message: $deployment->status === 'success'
             ? 'Composer update completed.'
             : 'Composer update failed. Check logs below.');
+
+        $this->maybePromptPush($service, $deployment->status === 'success', 'Composer update', $deployment->output_log);
     }
 
     public function composerAudit(DeploymentService $service): void
@@ -173,6 +175,8 @@ class DependencyActions extends Component
         $this->dispatch('notify', message: $deployment->status === 'success'
             ? 'Npm update completed.'
             : 'Npm update failed. Check logs below.');
+
+        $this->maybePromptPush($service, $deployment->status === 'success', 'Npm update', $deployment->output_log);
     }
 
     public function npmAuditFix(DeploymentService $service): void
@@ -211,7 +215,8 @@ class DependencyActions extends Component
             return;
         }
 
-        $message = trim($this->pushCommitMessage) !== '' ? trim($this->pushCommitMessage) : $this->defaultCommitMessage();
+        $fallback = $this->commitMessageForContext($this->pushContext ?: 'audit');
+        $message = trim($this->pushCommitMessage) !== '' ? trim($this->pushCommitMessage) : $fallback;
 
         try {
             $paths = $this->pushCommitPaths ?: null;
@@ -241,7 +246,7 @@ class DependencyActions extends Component
         $this->pushContext = '';
         $this->pushAuditSummary = '';
         $this->pushHasOtherChanges = false;
-        $this->pushCommitMessage = $this->defaultCommitMessage();
+        $this->pushCommitMessage = $this->commitMessageForContext('audit');
     }
 
     public function updatedShowPushModal(bool $value): void
@@ -252,7 +257,7 @@ class DependencyActions extends Component
             $this->pushContext = '';
             $this->pushAuditSummary = '';
             $this->pushHasOtherChanges = false;
-            $this->pushCommitMessage = $this->defaultCommitMessage();
+            $this->pushCommitMessage = $this->commitMessageForContext('audit');
         }
     }
 
@@ -323,21 +328,35 @@ class DependencyActions extends Component
         $this->pushCommitPaths = $dependencyFiles;
         $this->pushContext = $context;
         $this->pushAuditSummary = $this->summarizeNpmAudit($outputLog);
-        $this->pushCommitMessage = $this->buildAuditCommitMessage();
+        $this->pushCommitMessage = $this->buildCommitMessageForContext($context, $this->pushAuditSummary);
         $this->pushHasOtherChanges = count($files) > count($dependencyFiles);
         $this->showPushModal = true;
     }
 
-    private function defaultCommitMessage(): string
+    private function commitMessageForContext(string $context): string
     {
-        return 'chore: apply npm audit fix';
+        $context = strtolower($context);
+
+        if (str_contains($context, 'composer') && str_contains($context, 'update')) {
+            return 'chore: update composer dependencies';
+        }
+
+        if (str_contains($context, 'npm') && str_contains($context, 'update')) {
+            return 'chore: update npm dependencies';
+        }
+
+        if (str_contains($context, 'audit')) {
+            return 'chore: apply npm audit fix';
+        }
+
+        return 'chore: update dependencies';
     }
 
-    private function buildAuditCommitMessage(): string
+    private function buildCommitMessageForContext(string $context, string $summary): string
     {
-        $base = $this->defaultCommitMessage();
-        $summary = trim($this->pushAuditSummary);
-        if ($summary === '') {
+        $base = $this->commitMessageForContext($context);
+        $summary = trim($summary);
+        if ($summary === '' || ! str_contains(strtolower($context), 'audit')) {
             return $base;
         }
 
