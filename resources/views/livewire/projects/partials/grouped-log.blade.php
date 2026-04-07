@@ -109,7 +109,9 @@
             scrollToEdge();
             const observer = new MutationObserver(scrollToEdge);
             observer.observe(el, { childList: true, characterData: true, subtree: true });
-            $cleanup(() => observer.disconnect());
+            if (typeof $cleanup === 'function') {
+                $cleanup(() => observer.disconnect());
+            }
         }
     "
 >

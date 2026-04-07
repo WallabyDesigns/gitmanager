@@ -104,7 +104,9 @@
                 $nextTick(scrollToBottom);
                 const observer = new MutationObserver(scrollToBottom);
                 observer.observe(el, { childList: true, characterData: true, subtree: true });
-                $cleanup(() => observer.disconnect());
+                if (typeof $cleanup === 'function') {
+                    $cleanup(() => observer.disconnect());
+                }
             "
         >{{ $latestDependencyOutput ?? 'No output yet.' }}</pre>
     </div>
@@ -158,7 +160,7 @@
         </div>
     </div>
 
-    <div x-data="{ open: @entangle('showPushModal').live }">
+    <div x-data="{ open: @entangle('showPushModal') }">
         <div
             x-show="open"
             x-cloak
@@ -168,7 +170,7 @@
             @keydown.escape.window="open = false"
             @click.self="open = false"
         >
-            <div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800">
+            <div class="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800">
                 <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Push audit fix changes?</h3>
                 <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">
                     {{ $pushContext ?: 'Audit fix' }} updated dependency files. Commit and push these changes back to the repository.
@@ -176,12 +178,15 @@
                 @if ($pushAuditSummary)
                     <p class="mt-2 text-xs text-emerald-400">Audit summary: {{ $pushAuditSummary }}</p>
                 @endif
+                @if ($pushHasOtherChanges)
+                    <p class="mt-2 text-xs text-amber-400">Only dependency files will be committed. Other changes remain uncommitted.</p>
+                @endif
 
                 @if (! empty($pushFiles))
-                    <div class="mt-4 rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-3 text-xs text-slate-600 dark:text-slate-300 overflow-x-auto">
+                    <div class="mt-4 rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 px-4 py-3 text-xs text-slate-600 dark:text-slate-300 overflow-x-auto">
                         @foreach ($pushFiles as $index => $file)
                             @if ($index < 12)
-                                <div class="font-mono pl-1 whitespace-nowrap">{{ $file }}</div>
+                                <div class="font-mono whitespace-nowrap px-1">{{ $file }}</div>
                             @endif
                         @endforeach
                         @if (count($pushFiles ?? []) > 12)

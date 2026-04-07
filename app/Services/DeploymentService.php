@@ -655,9 +655,10 @@ class DeploymentService
     }
 
     /**
+     * @param array<int, string>|null $paths
      * @return array{status: string, branch?: string|null, output?: array<int, string>}
      */
-    public function commitAndPush(Project $project, string $message): array
+    public function commitAndPush(Project $project, string $message, ?array $paths = null): array
     {
         $repoPath = $this->resolveRepoPath($project);
         $output = [];
@@ -680,7 +681,12 @@ class DeploymentService
             throw new \RuntimeException('Unable to determine the current branch for this project.');
         }
 
-        $this->runProcess(['git', '-C', $repoPath, 'add', '-A'], $output);
+        $paths = $paths ? array_values(array_filter(array_map('trim', $paths), fn ($path) => $path !== '')) : [];
+        if ($paths) {
+            $this->runProcess(array_merge(['git', '-C', $repoPath, 'add', '--'], $paths), $output);
+        } else {
+            $this->runProcess(['git', '-C', $repoPath, 'add', '-A'], $output);
+        }
 
         $commit = $this->runProcess([
             'git',

@@ -155,7 +155,9 @@
                                 $nextTick(scrollToBottom);
                                 const observer = new MutationObserver(scrollToBottom);
                                 observer.observe(el, { childList: true, characterData: true, subtree: true });
-                                $cleanup(() => observer.disconnect());
+                                if (typeof $cleanup === 'function') {
+                                    $cleanup(() => observer.disconnect());
+                                }
                             "
                         >{{ $reverseLog($latest->output_log) ?? 'No output captured.' }}</pre>
                     </div>
@@ -198,7 +200,9 @@
                                         $nextTick(scrollToBottom);
                                         const observer = new MutationObserver(scrollToBottom);
                                         observer.observe(el, { childList: true, characterData: true, subtree: true });
-                                        $cleanup(() => observer.disconnect());
+                                        if (typeof $cleanup === 'function') {
+                                            $cleanup(() => observer.disconnect());
+                                        }
                                     "
                                 >{{ $reverseLog($update->output_log) }}</pre>
                             </details>

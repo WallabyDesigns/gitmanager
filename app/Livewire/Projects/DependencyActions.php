@@ -16,9 +16,11 @@ class DependencyActions extends Component
     public bool $hasLaravel = false;
     public bool $showPushModal = false;
     public array $pushFiles = [];
+    public array $pushCommitPaths = [];
     public string $pushCommitMessage = '';
     public string $pushContext = '';
     public string $pushAuditSummary = '';
+    public bool $pushHasOtherChanges = false;
 
     protected $listeners = [
         'env-updated' => '$refresh',
@@ -212,7 +214,8 @@ class DependencyActions extends Component
         $message = trim($this->pushCommitMessage) !== '' ? trim($this->pushCommitMessage) : $this->defaultCommitMessage();
 
         try {
-            $result = $service->commitAndPush($this->project, $message);
+            $paths = $this->pushCommitPaths ?: null;
+            $result = $service->commitAndPush($this->project, $message, $paths);
             $status = $result['status'] ?? 'unknown';
 
             if ($status === 'clean') {
@@ -234,8 +237,10 @@ class DependencyActions extends Component
     {
         $this->showPushModal = false;
         $this->pushFiles = [];
+        $this->pushCommitPaths = [];
         $this->pushContext = '';
         $this->pushAuditSummary = '';
+        $this->pushHasOtherChanges = false;
         $this->pushCommitMessage = $this->defaultCommitMessage();
     }
 
@@ -243,8 +248,10 @@ class DependencyActions extends Component
     {
         if (! $value) {
             $this->pushFiles = [];
+            $this->pushCommitPaths = [];
             $this->pushContext = '';
             $this->pushAuditSummary = '';
+            $this->pushHasOtherChanges = false;
             $this->pushCommitMessage = $this->defaultCommitMessage();
         }
     }
@@ -300,10 +307,24 @@ class DependencyActions extends Component
             return;
         }
 
-        $this->pushFiles = $changes['files'] ?? [];
+        $files = $changes['files'] ?? [];
+        $dependencyFiles = $this->filterDependencyFiles($files, $context);
+        if ($dependencyFiles === []) {
+            $summary = $this->summarizeNpmAudit($outputLog);
+            $label = trim($context) !== '' ? $context : 'Audit fix';
+            $message = $summary !== ''
+                ? "{$label}: {$summary}. No dependency changes to push."
+                : "{$label} completed with no dependency file changes.";
+            $this->dispatch('notify', message: $message);
+            return;
+        }
+
+        $this->pushFiles = $dependencyFiles;
+        $this->pushCommitPaths = $dependencyFiles;
         $this->pushContext = $context;
         $this->pushAuditSummary = $this->summarizeNpmAudit($outputLog);
         $this->pushCommitMessage = $this->buildAuditCommitMessage();
+        $this->pushHasOtherChanges = count($files) > count($dependencyFiles);
         $this->showPushModal = true;
     }
 
@@ -379,6 +400,34 @@ class DependencyActions extends Component
         }
 
         return "npm audit {$summary}";
+    }
+
+    /**
+     * @param array<int, string> $files
+     * @return array<int, string>
+     */
+    private function filterDependencyFiles(array $files, string $context): array
+    {
+        $context = strtolower($context);
+        $isComposer = str_contains($context, 'composer');
+        $targets = $isComposer
+            ? ['composer.json', 'composer.lock']
+            : ['package.json', 'package-lock.json', 'npm-shrinkwrap.json', 'pnpm-lock.yaml', 'yarn.lock'];
+
+        $matched = [];
+        foreach ($files as $file) {
+            $file = trim((string) $file);
+            if ($file === '') {
+                continue;
+            }
+            $normalized = str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $file);
+            $base = strtolower(basename($normalized));
+            if (in_array($base, $targets, true)) {
+                $matched[] = $normalized;
+            }
+        }
+
+        return array_values(array_unique($matched));
     }
 
     /**
