@@ -63,6 +63,8 @@ class RecoveryController extends Controller
         }
 
         $installCommand = [ $npm, is_file($root.DIRECTORY_SEPARATOR.'package-lock.json') ? 'ci' : 'install' ];
+        $env = $this->buildProcessEnv($npm);
+
         $commands = [
             $installCommand,
             [$npm, 'run', 'build'],
@@ -71,7 +73,7 @@ class RecoveryController extends Controller
         try {
             foreach ($commands as $command) {
                 $this->appendLog($logPath, '$ '.implode(' ', $command));
-                $process = new Process($command, $root);
+                $process = new Process($command, $root, $env);
                 $process->setTimeout(1200);
                 $process->run(function ($type, $buffer) use (&$output, $logPath) {
                     $line = rtrim($buffer);
@@ -102,6 +104,39 @@ class RecoveryController extends Controller
     private function logPath(): string
     {
         return storage_path('logs/gwm-rebuild.log');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function buildProcessEnv(string $npmBinary): array
+    {
+        $env = getenv();
+        $env = is_array($env) ? $env : [];
+
+        $pathKey = array_key_exists('PATH', $env) ? 'PATH' : (array_key_exists('Path', $env) ? 'Path' : 'PATH');
+        $currentPath = $env[$pathKey] ?? '';
+
+        $prepend = [];
+        $extraPath = trim((string) config('gitmanager.process_path', ''));
+        $extraPath = trim($extraPath, "\"' ");
+        if ($extraPath !== '') {
+            $prepend[] = $extraPath;
+        }
+
+        $npmBinary = trim($npmBinary);
+        if ($npmBinary !== '' && str_contains($npmBinary, DIRECTORY_SEPARATOR)) {
+            $npmDir = dirname($npmBinary);
+            if ($npmDir !== '' && $npmDir !== '.' && ! str_contains($currentPath, $npmDir)) {
+                $prepend[] = $npmDir;
+            }
+        }
+
+        if ($prepend) {
+            $env[$pathKey] = implode(PATH_SEPARATOR, $prepend).PATH_SEPARATOR.$currentPath;
+        }
+
+        return $env;
     }
 
     private function appendLog(string $path, string $line): void
