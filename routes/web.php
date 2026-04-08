@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Webhooks\GitHubWebhookController;
 use App\Http\Controllers\SelfUpdateController;
+use App\Http\Controllers\RecoveryController;
 use App\Livewire\AppUpdates\Index as AppUpdatesIndex;
 use App\Livewire\Projects\Create as ProjectsCreate;
 use App\Livewire\Projects\Edit as ProjectsEdit;
@@ -47,6 +48,8 @@ Route::middleware(['auth', 'verified', EnsurePasswordChanged::class])->group(fun
     Route::get('/users', UsersIndex::class)->middleware(EnsureAdminUser::class)->name('users.index');
     Route::get('/update', [SelfUpdateController::class, 'update'])->name('system.update.manual');
     Route::get('/rollback', [SelfUpdateController::class, 'rollback'])->name('system.update.rollback');
+    Route::get('/recovery', [RecoveryController::class, 'index'])->name('recovery.index');
+    Route::post('/rebuild', [RecoveryController::class, 'rebuild'])->name('recovery.rebuild');
 
     Route::middleware(EnsureAdminUser::class)->group(function () {
         Route::get('/system', AppUpdatesIndex::class)->name('system.updates');

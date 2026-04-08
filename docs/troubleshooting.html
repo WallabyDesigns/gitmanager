@@ -40,6 +40,16 @@
       </section>
 
       <section class="card">
+        <h2>Recovery Mode (Assets Missing)</h2>
+        <p>If the UI looks unstyled, open <code>/recovery</code> while authenticated. The Recovery panel includes buttons to rebuild front-end assets.</p>
+        <ul>
+          <li><strong>/recovery</strong> shows the recovery panel even when the UI is healthy.</li>
+          <li><strong>/rebuild</strong> clears <code>node_modules</code> and <code>public/build</code>, then runs <code>npm ci</code> (or <code>npm install</code>) followed by <code>npm run build</code>.</li>
+          <li>The recovery overlay is hidden when Tailwind loads; it only appears when assets are missing.</li>
+        </ul>
+      </section>
+
+      <section class="card">
         <h2>Git Authentication Failed</h2>
         <p>Confirm <code>GITHUB_TOKEN</code> is set and the Git binary is reachable. For custom binaries, set <code>GWM_GIT_BINARY</code>.</p>
       </section>
@@ -80,4 +90,3 @@
   <div data-include="partials/footer.html"></div>
 </body>
 </html>
-
