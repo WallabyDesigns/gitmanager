@@ -116,7 +116,9 @@
                             @endif
                             <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
                                 @php($lastDeploy = $project->last_deployed_at ?? ($project->last_successful_deploy_at ?? null))
-                                Last deployed: {{ \App\Support\DateFormatter::forUser($lastDeploy, 'M j, Y g:i a', 'Never') }}
+                                @php($lastChecked = $project->updates_checked_at)
+                                Last deployed: {{ \App\Support\DateFormatter::forUser($lastDeploy, 'M j, Y g:i a', 'Never') }}.
+                                Last checked: {{ \App\Support\DateFormatter::forUser($lastChecked, 'M j, Y g:i a', 'Never') }}
                             </div>
                             <div class="mt-1 text-xs text-slate-400 dark:text-slate-500">
                                 Last health check: {{ \App\Support\DateFormatter::forUser($project->health_checked_at, 'M j, Y g:i a', 'Never') }}
