@@ -76,6 +76,8 @@
           <li>The project list now shows <strong>Last health check</strong> timestamps next to deployments.</li>
           <li>Health checks run on a 60-second cadence for projects with a site or health URL, so FTP and non-FTP projects refresh together.</li>
           <li>If email is configured, an alert is sent only when an automatic update check detects a health drop (OK → not OK). Manual checks do not trigger emails.</li>
+          <li>Email alerts are batched together when multiple projects go offline at once and include a cooldown to reduce noisy flapping notifications.</li>
+          <li>You can turn health alert emails on or off in System Settings (a warning appears if email is not configured).</li>
         </ul>
       </section>
 

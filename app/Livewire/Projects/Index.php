@@ -210,6 +210,8 @@ class Index extends Component
                 }
             }
         }
+
+        $service->flushHealthNotifications();
     }
 
     private function markUpdateCheckAttempt(\App\Models\Project $project): void

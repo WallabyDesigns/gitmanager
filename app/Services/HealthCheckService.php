@@ -4,11 +4,19 @@ namespace App\Services;
 
 use App\Models\Project;
 use App\Models\Deployment;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 
 class HealthCheckService
 {
+    private const EMAIL_COOLDOWN_MINUTES = 10;
+
+    /**
+     * @var array<int, array{project: Project, previous: string, current: string, issue: string|null, url: string|null, checked_at: string}>
+     */
+    private array $pendingAlerts = [];
+
     public function __construct(
         private readonly LaravelDeploymentCheckService $laravelDeploymentCheckService,
         private readonly PermissionService $permissionService,
@@ -213,29 +221,87 @@ class HealthCheckService
             return;
         }
 
-        $recipients = $this->resolveRecipients($project);
-        if ($recipients === []) {
+        if (! $this->settings->get('system.health_email_enabled', true)) {
+            return;
+        }
+
+        $this->queueHealthAlert($project, $previousStatus, $currentStatus, $issueMessage);
+    }
+
+    public function flushHealthNotifications(): void
+    {
+        if ($this->pendingAlerts === []) {
+            return;
+        }
+
+        if (! $this->settings->isMailConfigured()) {
+            $this->pendingAlerts = [];
+            return;
+        }
+
+        if (! $this->settings->get('workflows.email.enabled', true)) {
+            $this->pendingAlerts = [];
+            return;
+        }
+
+        $grouped = [];
+
+        foreach ($this->pendingAlerts as $alert) {
+            $recipients = $this->resolveRecipients($alert['project']);
+            if ($recipients === []) {
+                continue;
+            }
+
+            sort($recipients);
+            $key = implode('|', $recipients);
+            if (! isset($grouped[$key])) {
+                $grouped[$key] = [
+                    'recipients' => $recipients,
+                    'alerts' => [],
+                ];
+            }
+
+            $grouped[$key]['alerts'][] = $alert;
+        }
+
+        if ($grouped === []) {
+            $this->pendingAlerts = [];
             return;
         }
 
         try {
             $this->settings->applyMailConfig();
-
-            $subject = sprintf(
-                'Health check changed: %s (%s → %s)',
-                $project->name,
-                strtoupper($previousStatus),
-                strtoupper($currentStatus)
-            );
-
-            $body = $this->buildHealthEmailBody($project, $previousStatus, $currentStatus, $issueMessage);
-
-            Mail::raw($body, function ($message) use ($recipients, $subject) {
-                $message->to($recipients)->subject($subject);
-            });
         } catch (\Throwable $exception) {
-            // Swallow mail errors to avoid breaking health checks.
+            $this->pendingAlerts = [];
+            return;
         }
+
+        foreach ($grouped as $group) {
+            $alerts = $group['alerts'];
+            if ($alerts === []) {
+                continue;
+            }
+
+            $subject = count($alerts) === 1
+                ? sprintf('Health check failed: %s', $alerts[0]['project']->name)
+                : sprintf('Health checks failed for %d projects', count($alerts));
+
+            $body = $this->buildBatchHealthEmailBody($alerts);
+
+            try {
+                Mail::raw($body, function ($message) use ($group, $subject) {
+                    $message->to($group['recipients'])->subject($subject);
+                });
+
+                foreach ($alerts as $alert) {
+                    $this->markEmailCooldown($alert['project']);
+                }
+            } catch (\Throwable $exception) {
+                // Swallow mail errors to avoid breaking health checks.
+            }
+        }
+
+        $this->pendingAlerts = [];
     }
 
     /**
@@ -275,6 +341,74 @@ class HealthCheckService
             'Checked: '.now()->toDateTimeString(),
             $issueMessage ? 'Issue: '.$issueMessage : null,
         ]));
+    }
+
+    /**
+     * @param array<int, array{project: Project, previous: string, current: string, issue: string|null, url: string|null, checked_at: string}> $alerts
+     */
+    private function buildBatchHealthEmailBody(array $alerts): string
+    {
+        $lines = [
+            'Health check failures detected',
+            'Checked: '.now()->toDateTimeString(),
+            '',
+        ];
+
+        foreach ($alerts as $index => $alert) {
+            $project = $alert['project'];
+            $lines[] = sprintf('%d. %s', $index + 1, $project->name);
+            $lines[] = '   Previous: '.strtoupper($alert['previous']);
+            $lines[] = '   Current: '.strtoupper($alert['current']);
+            if ($alert['url']) {
+                $lines[] = '   Health URL: '.$alert['url'];
+            }
+            if ($alert['issue']) {
+                $lines[] = '   Issue: '.$alert['issue'];
+            }
+            $lines[] = '   Checked: '.$alert['checked_at'];
+            $lines[] = '';
+        }
+
+        return trim(implode("\n", $lines));
+    }
+
+    private function queueHealthAlert(
+        Project $project,
+        string $previousStatus,
+        string $currentStatus,
+        ?string $issueMessage
+    ): void {
+        if ($this->isEmailCooldownActive($project)) {
+            return;
+        }
+
+        if (isset($this->pendingAlerts[$project->id])) {
+            return;
+        }
+
+        $this->pendingAlerts[$project->id] = [
+            'project' => $project,
+            'previous' => $previousStatus,
+            'current' => $currentStatus,
+            'issue' => $issueMessage,
+            'url' => $this->resolveHealthUrl($project),
+            'checked_at' => now()->toDateTimeString(),
+        ];
+    }
+
+    private function isEmailCooldownActive(Project $project): bool
+    {
+        return Cache::has($this->emailCooldownKey($project));
+    }
+
+    private function markEmailCooldown(Project $project): void
+    {
+        Cache::put($this->emailCooldownKey($project), true, now()->addMinutes(self::EMAIL_COOLDOWN_MINUTES));
+    }
+
+    private function emailCooldownKey(Project $project): string
+    {
+        return 'gwm_health_alert_cooldown_'.$project->id;
     }
 
     private function resolveHealthUrl(Project $project): ?string

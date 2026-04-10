@@ -35,6 +35,11 @@ class DeploymentService
         return $this->healthCheckService->checkHealth($project, $log, $notifyOnFailure);
     }
 
+    public function flushHealthNotifications(): void
+    {
+        $this->healthCheckService->flushHealthNotifications();
+    }
+
     /**
      * @return array{status: string, message: string, parent?: string}
      */

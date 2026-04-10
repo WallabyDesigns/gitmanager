@@ -48,6 +48,26 @@
 
         <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
             <div>
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Health Alerts</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Email notifications when projects go offline during automatic checks.</p>
+            </div>
+            <label class="flex items-start gap-3">
+                <input type="checkbox" wire:model="healthEmailEnabled" class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
+                <span class="text-sm text-slate-600 dark:text-slate-300">
+                    Send email alerts when health checks fail
+                    <span class="block text-xs text-slate-400 dark:text-slate-500">Only automatic checks trigger emails. Manual checks never send alerts.</span>
+                </span>
+            </label>
+            @if (! $mailConfigured)
+                <div class="text-xs text-rose-400">Email is not configured. Set SMTP details in System → Email Settings to enable health alerts.</div>
+            @endif
+            @if (! $healthEmailEnabled)
+                <div class="text-xs text-slate-400 dark:text-slate-500">Health alert emails are disabled.</div>
+            @endif
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
+            <div>
                 <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Timezone</h3>
                 <p class="text-sm text-slate-500 dark:text-slate-400">Sets the default timezone used throughout the app.</p>
             </div>

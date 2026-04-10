@@ -5,12 +5,15 @@ namespace App\Livewire\System;
 use App\Models\User;
 use App\Services\SettingsService;
 use Livewire\Component;
+use Illuminate\Support\Facades\Schema;
 
 class Settings extends Component
 {
     public bool $checkUpdates = true;
     public bool $autoUpdate = true;
     public bool $githubSslVerify = true;
+    public bool $healthEmailEnabled = true;
+    public bool $mailConfigured = false;
     public string $timezone = '';
     public array $timezones = [];
 
@@ -22,6 +25,8 @@ class Settings extends Component
             'system.github_ssl_verify',
             (bool) config('services.github.verify_ssl', true)
         ));
+        $this->healthEmailEnabled = (bool) ($settings->get('system.health_email_enabled', true));
+        $this->mailConfigured = $settings->isMailConfigured();
 
         $this->timezones = \DateTimeZone::listIdentifiers();
         $stored = (string) ($settings->get('system.timezone') ?? '');
@@ -55,6 +60,7 @@ class Settings extends Component
         $settings->set('system.check_updates', $this->checkUpdates);
         $settings->set('system.auto_update', $this->autoUpdate);
         $settings->set('system.github_ssl_verify', $this->githubSslVerify);
+        $settings->set('system.health_email_enabled', $this->healthEmailEnabled);
         $settings->set('system.timezone', $this->timezone);
 
         if (User::query()->where('id', 1)->exists()) {

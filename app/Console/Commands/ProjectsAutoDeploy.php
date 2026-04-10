@@ -51,6 +51,8 @@ class ProjectsAutoDeploy extends Command
             }
         }
 
+        $service->flushHealthNotifications();
+
         return self::SUCCESS;
     }
 }
