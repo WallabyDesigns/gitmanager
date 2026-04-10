@@ -156,7 +156,12 @@ class Index extends Component
 
     private function shouldAutoCheckHealth(\App\Models\Project $project): bool
     {
-        return (bool) ($project->last_deployed_at || $project->last_deployed_hash);
+        return (bool) (
+            $project->health_url
+            || $project->site_url
+            || $project->last_deployed_at
+            || $project->last_deployed_hash
+        );
     }
 
     /**

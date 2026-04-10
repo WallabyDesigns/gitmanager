@@ -193,7 +193,12 @@ class Show extends Component
 
     private function shouldAutoCheckHealth(Project $project): bool
     {
-        return (bool) ($project->last_deployed_at || $project->last_deployed_hash);
+        return (bool) (
+            $project->health_url
+            || $project->site_url
+            || $project->last_deployed_at
+            || $project->last_deployed_hash
+        );
     }
 
     private function deploymentInProgress(): bool
