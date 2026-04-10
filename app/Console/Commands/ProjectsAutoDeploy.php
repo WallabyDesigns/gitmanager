@@ -34,6 +34,7 @@ class ProjectsAutoDeploy extends Command
 
         foreach ($projects as $project) {
             try {
+                $service->checkHealth($project, false, true);
                 if ($service->checkForUpdates($project)) {
                     if (config('gitmanager.deploy_queue.enabled', true)) {
                         $queue->enqueue($project, 'deploy');
