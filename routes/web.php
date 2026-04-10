@@ -50,6 +50,12 @@ Route::middleware(['auth', 'verified', EnsurePasswordChanged::class])->group(fun
     Route::get('/rollback', [SelfUpdateController::class, 'rollback'])->name('system.update.rollback');
     Route::get('/recovery', [RecoveryController::class, 'index'])->name('recovery.index');
     Route::post('/rebuild', [RecoveryController::class, 'rebuild'])->name('recovery.rebuild');
+    Route::get('/preview/500', function () {
+        $exception = new RuntimeException('Preview error: this is a sample message for the 500 page.');
+
+        return response()
+            ->view('errors.500', ['exception' => $exception], 500);
+    })->name('errors.preview.500');
 
     Route::middleware(EnsureAdminUser::class)->group(function () {
         Route::get('/system', AppUpdatesIndex::class)->name('system.updates');

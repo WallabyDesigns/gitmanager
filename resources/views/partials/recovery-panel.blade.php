@@ -36,12 +36,22 @@
                 @csrf
                 <button type="submit" style="{{ $primaryStyle }}">Rebuild Front-End Assets</button>
             </form>
+            <a
+                href="{{ route('system.update.rollback') }}"
+                onclick="return confirm('Roll back to the previous update? This keeps storage and configuration intact.');"
+                style="{{ $buttonStyle }}"
+            >
+                Roll Back Update
+            </a>
             @if (!request()->routeIs('recovery.index'))
                 <a href="{{ route('recovery.index') }}" style="{{ $buttonStyle }}">Open Recovery Page</a>
             @endif
             @if (auth()->user()?->isAdmin())
                 <a href="{{ route('system.updates') }}" style="{{ $buttonStyle }}">System Updates</a>
             @endif
+        </div>
+        <div style="font-size: 0.8rem; color: #94a3b8; margin-top: -0.5rem;">
+            Rolling back returns to the last successful update and keeps your data, configuration, and logs intact.
         </div>
 
         @if ($output)
