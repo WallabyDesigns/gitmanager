@@ -45,6 +45,15 @@ class DeploymentService
 
     public function checkForUpdates(Project $project): bool
     {
+        if (! $project->repo_url) {
+            $project->last_checked_at = now();
+            $project->updates_checked_at = now();
+            $project->updates_available = false;
+            $project->save();
+
+            return false;
+        }
+
         $repoPath = $this->resolveRepoPath($project);
 
         $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune']);

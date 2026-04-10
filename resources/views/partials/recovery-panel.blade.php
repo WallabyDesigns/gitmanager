@@ -36,7 +36,9 @@
                 @csrf
                 <button type="submit" style="{{ $primaryStyle }}">Rebuild Front-End Assets</button>
             </form>
-            <a href="{{ route('recovery.index') }}" style="{{ $buttonStyle }}">Open Recovery Page</a>
+            @if (!request()->routeIs('recovery.index'))
+                <a href="{{ route('recovery.index') }}" style="{{ $buttonStyle }}">Open Recovery Page</a>
+            @endif
             @if (auth()->user()?->isAdmin())
                 <a href="{{ route('system.updates') }}" style="{{ $buttonStyle }}">System Updates</a>
             @endif

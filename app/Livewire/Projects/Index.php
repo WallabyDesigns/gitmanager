@@ -193,13 +193,25 @@ class Index extends Component
             if (! $updatesCheckedAt || $updatesCheckedAt->lt(now()->subMinutes(5))) {
                 $service->checkHealth($project, false, $autoNotify);
                 $wasAvailable = (bool) $project->updates_available;
-                $hasUpdates = $service->checkForUpdates($project);
+                try {
+                    $hasUpdates = $service->checkForUpdates($project);
+                } catch (\Throwable $exception) {
+                    $this->markUpdateCheckAttempt($project);
+                    continue;
+                }
 
                 if (! $wasAvailable && $hasUpdates && $project->auto_deploy && $this->queueEnabled()) {
                     app(DeploymentQueueService::class)->enqueue($project, 'deploy', ['reason' => 'auto_update'], Auth::user());
                 }
             }
         }
+    }
+
+    private function markUpdateCheckAttempt(\App\Models\Project $project): void
+    {
+        $project->last_checked_at = now();
+        $project->updates_checked_at = now();
+        $project->save();
     }
 
 }

@@ -135,6 +135,9 @@
                     <div class="text-xs text-slate-400 dark:text-slate-500">
                         {{ $project->last_deployed_hash ?? ($lastSuccessfulDeploy?->to_hash ?? 'No hash yet') }}
                     </div>
+                    <div class="text-xs text-slate-400 dark:text-slate-500">
+                        Last checked: {{ \App\Support\DateFormatter::forUser($project->updates_checked_at, 'M j, Y g:i a', 'Never') }}
+                    </div>
                 </div>
                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
                     <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Auto Deploy</div>

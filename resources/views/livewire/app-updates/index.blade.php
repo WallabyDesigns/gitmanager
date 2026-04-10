@@ -96,6 +96,36 @@
                     @endif
                 </div>
             </div>
+            @php($changeLogOpen = ($updateStatus['status'] ?? '') === 'update-available')
+            <details class="mt-4 rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 p-4" @if ($changeLogOpen) open @endif>
+                <summary class="cursor-pointer text-sm font-semibold text-slate-700 dark:text-slate-200">
+                    What's changed since your last update
+                    @if (! empty($pendingChanges))
+                        <span class="text-xs font-normal text-slate-500 dark:text-slate-400">({{ count($pendingChanges) }} commits)</span>
+                    @endif
+                </summary>
+                <div class="mt-3 text-sm text-slate-600 dark:text-slate-300">
+                    @if (! empty($pendingChanges))
+                        <ul class="mt-2 space-y-2 text-xs text-slate-600 dark:text-slate-300">
+                            @foreach ($pendingChanges as $change)
+                                <li class="flex gap-2">
+                                    <span class="font-mono text-slate-500 dark:text-slate-400">{{ $change['hash'] }}</span>
+                                    <span class="text-slate-700 dark:text-slate-200 break-words">{{ $change['subject'] }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @elseif (($updateStatus['status'] ?? '') === 'update-available')
+                        Unable to load commit changes for this update.
+                    @else
+                        No new commits since the last update.
+                    @endif
+                </div>
+            </details>
+            @if (! $checkUpdatesEnabled)
+                <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
+                    Manual updates are always available, even when update checks are off.
+                </div>
+            @endif
             <div class="mt-3 text-xs text-slate-400 dark:text-slate-500" wire:loading>
                 Update running... this can take a few minutes.
             </div>

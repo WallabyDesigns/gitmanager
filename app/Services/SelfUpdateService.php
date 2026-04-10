@@ -32,6 +32,104 @@ class SelfUpdateService
         return $status;
     }
 
+    /**
+     * @return array<int, array{hash: string, subject: string}>
+     */
+    public function getPendingChanges(?string $fromHash, ?string $toHash, int $limit = 50): array
+    {
+        $from = trim((string) $fromHash);
+        $to = trim((string) $toHash);
+
+        if ($from === '' || $to === '' || $from === $to) {
+            return [];
+        }
+
+        $repoPath = base_path();
+        $output = [];
+
+        try {
+            $this->ensureGitRepository($repoPath);
+
+            $process = $this->runProcess(
+                ['git', '-C', $repoPath, 'log', '--no-decorate', '--pretty=format:%h:::%s', '--max-count='.$limit, $from.'..'.$to],
+                $output,
+                null,
+                false
+            );
+
+            if (! $process->isSuccessful()) {
+                return [];
+            }
+
+            $raw = trim($process->getOutput());
+            if ($raw === '') {
+                return [];
+            }
+
+            $lines = array_values(array_filter(explode("\n", $raw)));
+            $changes = [];
+
+            foreach ($lines as $line) {
+                [$hash, $subject] = array_pad(explode(':::', $line, 2), 2, '');
+                $hash = trim($hash);
+                $subject = trim($subject);
+
+                if ($hash === '' && $subject === '') {
+                    continue;
+                }
+
+                $changes[] = [
+                    'hash' => $hash,
+                    'subject' => $subject,
+                ];
+            }
+
+            return $changes;
+        } catch (\Throwable $exception) {
+            return [];
+        }
+    }
+
+    /**
+     * @return array<int, array{hash: string, subject: string}>
+     */
+    public function getPendingChangesPreview(int $limit = 50): array
+    {
+        $repoPath = base_path();
+        $output = [];
+
+        try {
+            $this->ensureGitRepository($repoPath);
+            $this->assertGitWritable($repoPath, $output, false, false);
+            $this->ensureOriginRemote($repoPath, $output);
+
+            $branch = $this->resolveBranch($repoPath, $output);
+            $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune'], $output, null, false);
+
+            $current = $this->tryRevParse($repoPath);
+            $latest = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'origin/'.$branch], $output, null, false)->getOutput());
+
+            return $this->getPendingChanges($current, $latest, $limit);
+        } catch (\Throwable $exception) {
+            return [];
+        }
+    }
+
+    public function getCurrentVersionHash(): ?string
+    {
+        $repoPath = base_path();
+        $output = [];
+
+        try {
+            $this->ensureGitRepository($repoPath);
+            $this->assertGitWritable($repoPath, $output, false, false);
+
+            return $this->tryRevParse($repoPath);
+        } catch (\Throwable $exception) {
+            return null;
+        }
+    }
+
     public function updateSmart(?User $user = null): AppUpdate
     {
         try {

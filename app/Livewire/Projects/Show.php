@@ -96,7 +96,12 @@ class Show extends Component
 
         if (! $updatesCheckedAt || $updatesCheckedAt->lt(now()->subMinutes(5))) {
             $wasAvailable = (bool) $this->project->updates_available;
-            $hasUpdates = $service->checkForUpdates($this->project);
+            try {
+                $hasUpdates = $service->checkForUpdates($this->project);
+            } catch (\Throwable $exception) {
+                $this->markUpdateCheckAttempt();
+                return;
+            }
             $this->project->refresh();
 
             if (! $wasAvailable && $hasUpdates && $this->project->auto_deploy && $this->queueEnabled()) {
@@ -289,9 +294,23 @@ class Show extends Component
         return null;
     }
 
+    private function markUpdateCheckAttempt(): void
+    {
+        $this->project->last_checked_at = now();
+        $this->project->updates_checked_at = now();
+        $this->project->save();
+        $this->project->refresh();
+    }
+
     public function checkUpdates(DeploymentService $service): void
     {
-        $hasUpdates = $service->checkForUpdates($this->project);
+        try {
+            $hasUpdates = $service->checkForUpdates($this->project);
+        } catch (\Throwable $exception) {
+            $this->markUpdateCheckAttempt();
+            $this->dispatch('notify', message: 'Update check failed: '.$exception->getMessage());
+            return;
+        }
         $this->project->refresh();
         if ($hasUpdates && $this->queueEnabled()) {
             app(DeploymentQueueService::class)->enqueue($this->project, 'deploy', ['reason' => 'manual_update_check'], Auth::user());

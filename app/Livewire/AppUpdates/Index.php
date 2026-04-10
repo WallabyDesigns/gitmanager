@@ -13,6 +13,7 @@ class Index extends Component
     public array $updateStatus = [];
     public bool $checkUpdatesEnabled = true;
     public bool $autoUpdateEnabled = true;
+    public array $pendingChanges = [];
 
     public function mount(SelfUpdateService $service, SettingsService $settings): void
     {
@@ -24,7 +25,11 @@ class Index extends Component
 
         $this->updateStatus = $this->checkUpdatesEnabled
             ? $service->getUpdateStatus()
-            : ['status' => 'disabled'];
+            : [
+                'status' => 'disabled',
+                'current' => $service->getCurrentVersionHash(),
+            ];
+        $this->loadPendingChanges($service);
     }
 
     public function render()
@@ -36,6 +41,7 @@ class Index extends Component
             'recent' => (clone $updates)->take(10)->get(),
             'checkUpdatesEnabled' => $this->checkUpdatesEnabled,
             'autoUpdateEnabled' => $this->autoUpdateEnabled,
+            'pendingChanges' => $this->pendingChanges,
         ])->layout('layouts.app', [
             'title' => 'System Updates',
             'header' => view('livewire.app-updates.partials.header'),
@@ -54,6 +60,7 @@ class Index extends Component
         };
 
         $this->updateStatus = $service->getUpdateStatus(true);
+        $this->loadPendingChanges($service);
         $this->dispatch('notify', message: $message);
         $this->redirectRoute('system.updates', navigate: false);
     }
@@ -70,6 +77,7 @@ class Index extends Component
         };
 
         $this->updateStatus = $service->getUpdateStatus(true);
+        $this->loadPendingChanges($service);
         $this->dispatch('notify', message: $message);
         $this->redirectRoute('system.updates', navigate: false);
     }
@@ -82,6 +90,7 @@ class Index extends Component
         }
 
         $this->updateStatus = $service->getUpdateStatus(true);
+        $this->loadPendingChanges($service);
 
         $message = match ($this->updateStatus['status'] ?? 'unknown') {
             'up-to-date' => 'Git Web Manager is up to date.',
@@ -90,5 +99,12 @@ class Index extends Component
         };
 
         $this->dispatch('notify', message: $message);
+    }
+
+    private function loadPendingChanges(SelfUpdateService $service): void
+    {
+        $this->pendingChanges = $this->checkUpdatesEnabled
+            ? $service->getPendingChanges($this->updateStatus['current'] ?? null, $this->updateStatus['latest'] ?? null)
+            : $service->getPendingChangesPreview();
     }
 }
