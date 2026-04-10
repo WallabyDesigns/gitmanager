@@ -1,4 +1,5 @@
 @php
+    $showBulkActions = $showBulkActions ?? false;
     $tab = $projectsTab ?? (request()->routeIs('projects.queue')
         ? 'queue'
         : (request()->routeIs('projects.scheduler') ? 'scheduler' : (request()->routeIs('projects.create') ? 'create' : 'list')));
@@ -8,23 +9,37 @@
     $lastHeartbeat = $scheduler->lastHeartbeat();
 @endphp
 
-<div class="flex flex-wrap gap-2 border-b border-slate-200/70 dark:border-slate-800">
-    <a href="{{ route('projects.index') }}"
-       class="px-3 py-2 text-sm border-b-2 {{ $tab === 'list' ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
-        Projects
-    </a>
-    <a href="{{ route('projects.create') }}"
-       class="px-3 py-2 text-sm border-b-2 {{ $tab === 'create' ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
-        Create Project
-    </a>
-    <a href="{{ route('projects.queue') }}"
-       class="px-3 py-2 text-sm border-b-2 {{ $tab === 'queue' ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
-        Deploy Queue
-    </a>
-    <a href="{{ route('projects.scheduler') }}"
-       class="px-3 py-2 text-sm border-b-2 {{ $tab === 'scheduler' ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
-        Scheduler Settings
-    </a>
+<div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/70 dark:border-slate-800">
+    <div class="flex flex-wrap gap-2">
+        <a href="{{ route('projects.index') }}"
+           class="px-3 py-2 text-sm border-b-2 {{ $tab === 'list' ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
+            Projects
+        </a>
+        <a href="{{ route('projects.create') }}"
+           class="px-3 py-2 text-sm border-b-2 {{ $tab === 'create' ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
+            Create Project
+        </a>
+        <a href="{{ route('projects.queue') }}"
+           class="px-3 py-2 text-sm border-b-2 {{ $tab === 'queue' ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
+            Deploy Queue
+        </a>
+        <a href="{{ route('projects.scheduler') }}"
+           class="px-3 py-2 text-sm border-b-2 {{ $tab === 'scheduler' ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
+            Scheduler Settings
+        </a>
+    </div>
+    @if ($showBulkActions && $tab === 'list')
+        <div class="flex flex-wrap gap-2 pb-2 sm:pb-0">
+            <button type="button" wire:click="checkAllHealth" wire:loading.attr="disabled" class="px-3 py-1.5 text-xs rounded-md border border-emerald-300 text-emerald-200 hover:text-white hover:border-emerald-200 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
+                <x-loading-spinner target="checkAllHealth" size="w-3 h-3" class="mr-1" />
+                Check Health
+            </button>
+            <button type="button" wire:click="checkAllUpdates" wire:loading.attr="disabled" class="px-3 py-1.5 text-xs rounded-md border border-indigo-300 text-indigo-200 hover:text-white hover:border-indigo-200 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
+                <x-loading-spinner target="checkAllUpdates" size="w-3 h-3" class="mr-1" />
+                Check Updates
+            </button>
+        </div>
+    @endif
 </div>
 
 @if ($queueEnabled && ! $schedulerHealthy)

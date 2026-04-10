@@ -1,6 +1,6 @@
 <div class="py-10" wire:init="refreshHealth" wire:poll.60s="refreshHealth">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-        @include('livewire.projects.partials.tabs')
+        @include('livewire.projects.partials.tabs', ['showBulkActions' => true])
 
         <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-200 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 flex-1">
@@ -30,6 +30,8 @@
                         <div>
                             <div class="flex items-center gap-2">
                                 <h4 class="text-base font-semibold text-slate-900 dark:text-slate-100">{{ $project->name }}</h4>
+                                <x-loading-spinner target="checkAllHealth" size="w-3 h-3" />
+                                <x-loading-spinner target="checkAllUpdates" size="w-3 h-3" />
                             @php
                                 $healthStatus = $project->health_status ?? 'na';
                                 $healthLabel = $healthStatus === 'ok' ? 'Health: OK' : 'Health: N/A';
@@ -113,6 +115,9 @@
                             <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
                                 @php($lastDeploy = $project->last_deployed_at ?? ($project->last_successful_deploy_at ?? null))
                                 Last deployed: {{ \App\Support\DateFormatter::forUser($lastDeploy, 'M j, Y g:i a', 'Never') }}
+                            </div>
+                            <div class="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                                Last health check: {{ \App\Support\DateFormatter::forUser($project->health_checked_at, 'M j, Y g:i a', 'Never') }}
                             </div>
                         </div>
                         <div class="text-xs text-slate-400 dark:text-slate-500">

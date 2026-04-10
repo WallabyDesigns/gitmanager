@@ -21,34 +21,36 @@ class Index extends Component
         'filter' => ['except' => 'all'],
     ];
 
+    public function checkAllHealth(DeploymentService $service): void
+    {
+        $projects = Auth::user()
+            ->projects()
+            ->get();
+
+        $this->runHealthChecks($service, $projects);
+
+        $this->dispatch('notify', message: 'Health checks complete.');
+    }
+
+    public function checkAllUpdates(DeploymentService $service): void
+    {
+        $projects = Auth::user()
+            ->projects()
+            ->get();
+
+        $this->runUpdateChecks($service, $projects);
+
+        $this->dispatch('notify', message: 'Update checks complete.');
+    }
+
     public function refreshHealth(DeploymentService $service): void
     {
         $projects = Auth::user()
             ->projects()
             ->get();
 
-        foreach ($projects as $project) {
-            if (
-                $this->shouldAutoCheckHealth($project)
-                && (! $project->health_checked_at || $project->health_checked_at->lt(now()->subMinute()))
-            ) {
-                $service->checkHealth($project);
-            }
-
-            $updatesCheckedAt = $project->updates_checked_at;
-            if (is_string($updatesCheckedAt)) {
-                $updatesCheckedAt = Carbon::parse($updatesCheckedAt);
-            }
-
-            if (! $updatesCheckedAt || $updatesCheckedAt->lt(now()->subMinutes(5))) {
-                $wasAvailable = (bool) $project->updates_available;
-                $hasUpdates = $service->checkForUpdates($project);
-
-                if (! $wasAvailable && $hasUpdates && $project->auto_deploy && $this->queueEnabled()) {
-                    app(DeploymentQueueService::class)->enqueue($project, 'deploy', ['reason' => 'auto_update'], Auth::user());
-                }
-            }
-        }
+        $this->runHealthChecks($service, $projects);
+        $this->runUpdateChecks($service, $projects);
     }
 
     public function render()
@@ -155,6 +157,43 @@ class Index extends Component
     private function shouldAutoCheckHealth(\App\Models\Project $project): bool
     {
         return (bool) ($project->last_deployed_at || $project->last_deployed_hash);
+    }
+
+    /**
+     * @param \Illuminate\Support\Collection<int, \App\Models\Project> $projects
+     */
+    private function runHealthChecks(DeploymentService $service, $projects): void
+    {
+        foreach ($projects as $project) {
+            if (
+                $this->shouldAutoCheckHealth($project)
+                && (! $project->health_checked_at || $project->health_checked_at->lt(now()->subMinute()))
+            ) {
+                $service->checkHealth($project);
+            }
+        }
+    }
+
+    /**
+     * @param \Illuminate\Support\Collection<int, \App\Models\Project> $projects
+     */
+    private function runUpdateChecks(DeploymentService $service, $projects): void
+    {
+        foreach ($projects as $project) {
+            $updatesCheckedAt = $project->updates_checked_at;
+            if (is_string($updatesCheckedAt)) {
+                $updatesCheckedAt = Carbon::parse($updatesCheckedAt);
+            }
+
+            if (! $updatesCheckedAt || $updatesCheckedAt->lt(now()->subMinutes(5))) {
+                $wasAvailable = (bool) $project->updates_available;
+                $hasUpdates = $service->checkForUpdates($project);
+
+                if (! $wasAvailable && $hasUpdates && $project->auto_deploy && $this->queueEnabled()) {
+                    app(DeploymentQueueService::class)->enqueue($project, 'deploy', ['reason' => 'auto_update'], Auth::user());
+                }
+            }
+        }
     }
 
 }
