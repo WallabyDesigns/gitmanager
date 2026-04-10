@@ -1,5 +1,5 @@
 <div class="py-10" wire:init="refreshHealth" wire:poll.60s="refreshHealth">
-    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         @include('livewire.projects.partials.tabs', ['showBulkActions' => true])
 
         <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-200 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -32,6 +32,7 @@
                                 <h4 class="text-base font-semibold text-slate-900 dark:text-slate-100">{{ $project->name }}</h4>
                                 <x-loading-spinner target="checkAllHealth" size="w-3 h-3" />
                                 <x-loading-spinner target="checkAllUpdates" size="w-3 h-3" />
+                            </div>
                             @php
                                 $healthStatus = $project->health_status ?? 'na';
                                 $healthLabel = $healthStatus === 'ok' ? 'Health: OK' : 'Health: N/A';
@@ -56,54 +57,55 @@
                                     && in_array($project->ftpAccount->ssh_test_status, ['error', 'warning'], true)
                                     && ! $sshNeedsTest;
                             @endphp
-                            <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $healthClass }}">
-                                {{ $healthLabel }}
-                            </span>
-                            @if ($permissionsIssue)
-                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-                                    Permissions
+                            <div class="mt-2 flex flex-wrap items-center gap-2">
+                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $healthClass }}">
+                                    {{ $healthLabel }}
                                 </span>
-                            @endif
-                            @if ($project->updates_available)
-                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
-                                    Updates Available
-                                </span>
-                            @endif
-                            @if ($project->ftp_enabled)
-                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
-                                    FTPS
-                                </span>
-                            @endif
-                            @if ($ftpNeedsTest)
-                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                    FTP Needs Test
-                                </span>
-                            @endif
-                            @if ($sshNeedsTest)
-                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                    SSH Needs Test
-                                </span>
-                            @endif
-                            @if ($ftpIssue)
-                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
-                                    FTP Issue
-                                </span>
-                            @endif
-                            @if ($sshIssue)
-                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
-                                    SSH Issue
-                                </span>
-                            @endif
-                            @if (in_array($project->id, $queueProjects ?? [], true))
-                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                                    In Queue
-                                </span>
-                            @endif
-                            @if (in_array($project->id, $buildInProcess ?? [], true))
-                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
-                                    Build in process
-                                </span>
-                            @endif
+                                @if ($permissionsIssue)
+                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                                        Permissions
+                                    </span>
+                                @endif
+                                @if ($project->updates_available)
+                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
+                                        Updates Available
+                                    </span>
+                                @endif
+                                @if ($project->ftp_enabled)
+                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
+                                        FTPS
+                                    </span>
+                                @endif
+                                @if ($ftpNeedsTest)
+                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                        FTP Needs Test
+                                    </span>
+                                @endif
+                                @if ($sshNeedsTest)
+                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                        SSH Needs Test
+                                    </span>
+                                @endif
+                                @if ($ftpIssue)
+                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+                                        FTP Issue
+                                    </span>
+                                @endif
+                                @if ($sshIssue)
+                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+                                        SSH Issue
+                                    </span>
+                                @endif
+                                @if (in_array($project->id, $queueProjects ?? [], true))
+                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                                        In Queue
+                                    </span>
+                                @endif
+                                @if (in_array($project->id, $buildInProcess ?? [], true))
+                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
+                                        Build in process
+                                    </span>
+                                @endif
                             </div>
                             @if ($project->site_url)
                                 <a href="{{ $project->site_url }}" target="_blank" rel="noopener noreferrer" class="relative z-20 text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-300 dark:hover:text-indigo-200 break-all">
@@ -120,9 +122,9 @@
                                 Last health check: {{ \App\Support\DateFormatter::forUser($project->health_checked_at, 'M j, Y g:i a', 'Never') }}
                             </div>
                         </div>
-                        <div class="text-xs text-slate-400 dark:text-slate-500">
-                            <svg width="32px" height="32px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M6 12H18M18 12L13 7M18 12L13 17" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--darkreader-inline-stroke: var(--darkreader-text-ffffff, #e8e6e3);" data-darkreader-inline-stroke=""></path> </g></svg>
-                        </div>
+                            <div class="text-xs text-slate-400 dark:text-slate-500 hidden sm:block">
+                                <svg width="32px" height="32px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M6 12H18M18 12L13 7M18 12L13 17" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--darkreader-inline-stroke: var(--darkreader-text-ffffff, #e8e6e3);" data-darkreader-inline-stroke=""></path> </g></svg>
+                            </div>
                     </div>
                 </div>
             @empty

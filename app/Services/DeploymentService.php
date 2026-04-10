@@ -30,9 +30,9 @@ class DeploymentService
         private readonly LaravelDeploymentCheckService $laravelDeploymentCheckService,
     ) {}
 
-    public function checkHealth(Project $project, bool $log = false): string
+    public function checkHealth(Project $project, bool $log = false, bool $notifyOnFailure = false): string
     {
-        return $this->healthCheckService->checkHealth($project, $log);
+        return $this->healthCheckService->checkHealth($project, $log, $notifyOnFailure);
     }
 
     /**

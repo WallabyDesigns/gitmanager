@@ -5,15 +5,17 @@ namespace App\Services;
 use App\Models\Project;
 use App\Models\Deployment;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 
 class HealthCheckService
 {
     public function __construct(
         private readonly LaravelDeploymentCheckService $laravelDeploymentCheckService,
         private readonly PermissionService $permissionService,
+        private readonly SettingsService $settings,
     ) {}
 
-    public function checkHealth(Project $project, bool $log = false): string
+    public function checkHealth(Project $project, bool $log = false, bool $notifyOnFailure = false): string
     {
         $previousStatus = $project->health_status;
         $previousIssue = $project->health_issue_message;
@@ -31,6 +33,7 @@ class HealthCheckService
                 $issueMessage = $laravelIssue;
                 $logText = $this->formatHealthLog($healthLog);
                 $this->saveHealthStatus($project, $status, $issueMessage, $logText);
+                $this->maybeNotifyHealthChange($project, $previousStatus, $status, $issueMessage, $notifyOnFailure);
                 $this->maybeLogHealthCheck($project, $status, $issueMessage, $logText, $log, $previousStatus, $previousIssue);
 
                 return $status;
@@ -43,6 +46,7 @@ class HealthCheckService
             $issueMessage = null;
             $logText = $this->formatHealthLog($healthLog);
             $this->saveHealthStatus($project, $status, $issueMessage, $logText);
+            $this->maybeNotifyHealthChange($project, $previousStatus, $status, $issueMessage, $notifyOnFailure);
             $this->maybeLogHealthCheck($project, $status, $issueMessage, $logText, $log, $previousStatus, $previousIssue);
 
             return $status;
@@ -65,6 +69,7 @@ class HealthCheckService
         $issueMessage = null;
         $logText = $this->formatHealthLog($healthLog);
         $this->saveHealthStatus($project, $status, $issueMessage, $logText);
+        $this->maybeNotifyHealthChange($project, $previousStatus, $status, $issueMessage, $notifyOnFailure);
         $this->maybeLogHealthCheck($project, $status, $issueMessage, $logText, $log, $previousStatus, $previousIssue);
 
         return $status;
@@ -179,6 +184,97 @@ class HealthCheckService
         }
 
         return ($previousIssue ?? '') !== ($issueMessage ?? '');
+    }
+
+    private function maybeNotifyHealthChange(
+        Project $project,
+        ?string $previousStatus,
+        string $currentStatus,
+        ?string $issueMessage,
+        bool $notifyOnFailure
+    ): void {
+        if (! $previousStatus || $previousStatus === $currentStatus) {
+            return;
+        }
+
+        if ($previousStatus !== 'ok' || $currentStatus === 'ok') {
+            return;
+        }
+
+        if (! $notifyOnFailure) {
+            return;
+        }
+
+        if (! $this->settings->isMailConfigured()) {
+            return;
+        }
+
+        if (! $this->settings->get('workflows.email.enabled', true)) {
+            return;
+        }
+
+        $recipients = $this->resolveRecipients($project);
+        if ($recipients === []) {
+            return;
+        }
+
+        try {
+            $this->settings->applyMailConfig();
+
+            $subject = sprintf(
+                'Health check changed: %s (%s → %s)',
+                $project->name,
+                strtoupper($previousStatus),
+                strtoupper($currentStatus)
+            );
+
+            $body = $this->buildHealthEmailBody($project, $previousStatus, $currentStatus, $issueMessage);
+
+            Mail::raw($body, function ($message) use ($recipients, $subject) {
+                $message->to($recipients)->subject($subject);
+            });
+        } catch (\Throwable $exception) {
+            // Swallow mail errors to avoid breaking health checks.
+        }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function resolveRecipients(Project $project): array
+    {
+        $recipients = [];
+
+        if ($this->settings->get('workflows.email.include_project_owner', true) && $project->user?->email) {
+            $recipients[] = $project->user->email;
+        }
+
+        $extra = (string) $this->settings->get('workflows.email.recipients', '');
+        if ($extra !== '') {
+            $list = array_filter(array_map('trim', explode(',', $extra)));
+            $recipients = array_merge($recipients, $list);
+        }
+
+        return array_values(array_unique(array_filter($recipients)));
+    }
+
+    private function buildHealthEmailBody(
+        Project $project,
+        string $previousStatus,
+        string $currentStatus,
+        ?string $issueMessage
+    ): string {
+        $healthUrl = $this->resolveHealthUrl($project);
+
+        return implode("\n", array_filter([
+            'Health check changed',
+            'Project: '.$project->name,
+            'Previous: '.strtoupper($previousStatus),
+            'Current: '.strtoupper($currentStatus),
+            $healthUrl ? 'Health URL: '.$healthUrl : null,
+            'Checked: '.now()->toDateTimeString(),
+            $issueMessage ? 'Issue: '.$issueMessage : null,
+        ]));
     }
 
     private function resolveHealthUrl(Project $project): ?string

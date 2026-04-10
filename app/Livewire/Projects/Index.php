@@ -27,7 +27,7 @@ class Index extends Component
             ->projects()
             ->get();
 
-        $this->runHealthChecks($service, $projects);
+        $this->runHealthChecks($service, $projects, true);
 
         $this->dispatch('notify', message: 'Health checks complete.');
     }
@@ -38,7 +38,7 @@ class Index extends Component
             ->projects()
             ->get();
 
-        $this->runUpdateChecks($service, $projects);
+        $this->runUpdateChecks($service, $projects, false);
 
         $this->dispatch('notify', message: 'Update checks complete.');
     }
@@ -50,7 +50,7 @@ class Index extends Component
             ->get();
 
         $this->runHealthChecks($service, $projects);
-        $this->runUpdateChecks($service, $projects);
+        $this->runUpdateChecks($service, $projects, true);
     }
 
     public function render()
@@ -162,9 +162,14 @@ class Index extends Component
     /**
      * @param \Illuminate\Support\Collection<int, \App\Models\Project> $projects
      */
-    private function runHealthChecks(DeploymentService $service, $projects): void
+    private function runHealthChecks(DeploymentService $service, $projects, bool $force = false): void
     {
         foreach ($projects as $project) {
+            if ($force) {
+                $service->checkHealth($project);
+                continue;
+            }
+
             if (
                 $this->shouldAutoCheckHealth($project)
                 && (! $project->health_checked_at || $project->health_checked_at->lt(now()->subMinute()))
@@ -177,7 +182,7 @@ class Index extends Component
     /**
      * @param \Illuminate\Support\Collection<int, \App\Models\Project> $projects
      */
-    private function runUpdateChecks(DeploymentService $service, $projects): void
+    private function runUpdateChecks(DeploymentService $service, $projects, bool $autoNotify): void
     {
         foreach ($projects as $project) {
             $updatesCheckedAt = $project->updates_checked_at;
@@ -186,6 +191,7 @@ class Index extends Component
             }
 
             if (! $updatesCheckedAt || $updatesCheckedAt->lt(now()->subMinutes(5))) {
+                $service->checkHealth($project, false, $autoNotify);
                 $wasAvailable = (bool) $project->updates_available;
                 $hasUpdates = $service->checkForUpdates($project);
 
