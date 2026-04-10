@@ -96,16 +96,14 @@
                     @endif
                 </div>
             </div>
-            @php($changeLogOpen = ($updateStatus['status'] ?? '') === 'update-available')
-            <details class="mt-4 rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 p-4" @if ($changeLogOpen) open @endif>
-                <summary class="cursor-pointer text-sm font-semibold text-slate-700 dark:text-slate-200">
-                    What's changed since your last update
-                    @if (! empty($pendingChanges))
+            @if (! empty($pendingChanges))
+                @php($changeLogOpen = ($updateStatus['status'] ?? '') === 'update-available')
+                <details class="mt-4 rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 p-4" @if ($changeLogOpen) open @endif>
+                    <summary class="cursor-pointer text-sm font-semibold text-slate-700 dark:text-slate-200">
+                        What's changed since your last update
                         <span class="text-xs font-normal text-slate-500 dark:text-slate-400">({{ count($pendingChanges) }} commits)</span>
-                    @endif
-                </summary>
-                <div class="mt-3 text-sm text-slate-600 dark:text-slate-300">
-                    @if (! empty($pendingChanges))
+                    </summary>
+                    <div class="mt-3 text-sm text-slate-600 dark:text-slate-300">
                         <ul class="mt-2 space-y-2 text-xs text-slate-600 dark:text-slate-300">
                             @foreach ($pendingChanges as $change)
                                 <li class="flex gap-2">
@@ -114,13 +112,9 @@
                                 </li>
                             @endforeach
                         </ul>
-                    @elseif (($updateStatus['status'] ?? '') === 'update-available')
-                        Unable to load commit changes for this update.
-                    @else
-                        No new commits since the last update.
-                    @endif
-                </div>
-            </details>
+                    </div>
+                </details>
+            @endif
             @if (! $checkUpdatesEnabled)
                 <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
                     Manual updates are always available, even when update checks are off.

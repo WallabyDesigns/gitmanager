@@ -27,7 +27,7 @@ class Index extends Component
             ? $service->getUpdateStatus()
             : [
                 'status' => 'disabled',
-                'current' => $service->getCurrentVersionHash(),
+                'current' => method_exists($service, 'getCurrentVersionHash') ? $service->getCurrentVersionHash() : null,
             ];
         $this->loadPendingChanges($service);
     }
@@ -103,8 +103,15 @@ class Index extends Component
 
     private function loadPendingChanges(SelfUpdateService $service): void
     {
-        $this->pendingChanges = $this->checkUpdatesEnabled
-            ? $service->getPendingChanges($this->updateStatus['current'] ?? null, $this->updateStatus['latest'] ?? null)
-            : $service->getPendingChangesPreview();
+        if ($this->checkUpdatesEnabled) {
+            $this->pendingChanges = method_exists($service, 'getPendingChanges')
+                ? $service->getPendingChanges($this->updateStatus['current'] ?? null, $this->updateStatus['latest'] ?? null)
+                : [];
+            return;
+        }
+
+        $this->pendingChanges = method_exists($service, 'getPendingChangesPreview')
+            ? $service->getPendingChangesPreview()
+            : [];
     }
 }
