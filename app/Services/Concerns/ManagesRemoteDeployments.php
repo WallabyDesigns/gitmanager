@@ -746,7 +746,13 @@ trait ManagesRemoteDeployments
         }
 
         $exclude = $this->ftpExcludePaths($project, $extraExcludePaths);
-        app(\App\Services\FtpService::class)->sync($project, $executionPath, $exclude, $output);
+        $ftpService = app(\App\Services\FtpService::class);
+        $ftpService->sync($project, $executionPath, $exclude, $output);
+
+        $projectType = trim((string) ($project->project_type ?? ''));
+        if ($projectType === '' || $projectType === 'laravel') {
+            $ftpService->ensureRemoteLaravelDirectories($project, $output);
+        }
     }
 
     /**

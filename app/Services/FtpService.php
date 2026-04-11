@@ -74,6 +74,87 @@ class FtpService
     }
 
     /**
+     * Create the required Laravel directory structure on the remote server via FTP.
+     * Called after sync for Laravel projects, since storage/ and bootstrap/cache are
+     * excluded from the sync and symlinks (public/storage) are skipped entirely.
+     *
+     * @param array<int, string> $output
+     */
+    public function ensureRemoteLaravelDirectories(Project $project, array &$output): void
+    {
+        $project->refresh();
+        $project->loadMissing('ftpAccount');
+        $account = $project->ftpAccount;
+        if (! $account) {
+            return;
+        }
+
+        $rootPath = $this->resolveRootPath($project);
+        if ($rootPath === '') {
+            return;
+        }
+
+        if (! $this->ftpAvailable((bool) $account->ssl)) {
+            return;
+        }
+
+        $connection = $this->connect(
+            $account->host,
+            (int) ($account->port ?? 21),
+            (bool) $account->ssl,
+            (int) ($account->timeout ?? 30)
+        );
+
+        if (! $connection) {
+            $output[] = 'Warning: unable to connect to FTP to create Laravel directory structure.';
+            return;
+        }
+
+        try {
+            if (! @ftp_login($connection, $account->username, $account->getDecryptedPassword())) {
+                $output[] = 'Warning: FTP login failed while creating Laravel directory structure.';
+                return;
+            }
+
+            @ftp_pasv($connection, (bool) $account->passive);
+
+            $normalizedRoot = $this->normalizeRemotePath($rootPath);
+            if ($normalizedRoot !== '' && $normalizedRoot !== '.') {
+                if (! @ftp_chdir($connection, $normalizedRoot)) {
+                    $output[] = 'Warning: unable to access FTP root path for Laravel directory setup: '.$normalizedRoot;
+                    return;
+                }
+            }
+
+            $directories = [
+                'storage',
+                'storage/app',
+                'storage/app/public',
+                'storage/framework',
+                'storage/framework/cache',
+                'storage/framework/cache/data',
+                'storage/framework/sessions',
+                'storage/framework/views',
+                'storage/logs',
+                'bootstrap/cache',
+                'public/storage',
+            ];
+
+            $output[] = 'Ensuring remote Laravel directory structure.';
+            foreach ($directories as $dir) {
+                try {
+                    $this->ensureRemoteDirectory($connection, $dir);
+                } catch (\RuntimeException $exception) {
+                    $output[] = 'Warning: could not create remote directory '.$dir.': '.$exception->getMessage();
+                }
+            }
+            $output[] = 'Remote Laravel directory structure verified.';
+        } finally {
+            $this->safeClose($connection);
+        }
+    }
+
+    /**
      * @param array<int, string> $excludePaths
      */
     public function sync(Project $project, string $localPath, array $excludePaths, array &$output): void

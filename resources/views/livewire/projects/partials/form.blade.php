@@ -120,6 +120,13 @@
                         <span class="text-xs text-slate-500 dark:text-slate-400">{{ $ftpTestMessage }}</span>
                     @endif
                 </div>
+                @if (($form['ftp_enabled'] ?? false) && ! ($form['ssh_enabled'] ?? false) && in_array($form['project_type'] ?? 'laravel', ['laravel', '']))
+                    <div class="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+                        <span class="font-semibold">Storage link limitation:</span>
+                        FTP does not support symlinks, so <code>public/storage</code> will be created as a plain directory on the remote rather than a symlink to <code>storage/app/public</code>.
+                        Files uploaded via <code>Storage::disk('public')</code> will not be publicly accessible unless you create the symlink manually (e.g. via cPanel or SSH).
+                    </div>
+                @endif
                 <div class="border-t border-slate-200/70 dark:border-slate-800 pt-3 space-y-3">
                     <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">Remote Deployment (SSH)</div>
                     <p class="text-xs text-slate-500 dark:text-slate-400">Use the selected FTP/SSH access credentials to run git + build steps on the remote host. When enabled, deployments run over SSH and local builds are skipped.</p>
