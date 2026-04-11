@@ -123,7 +123,7 @@ class FtpService
 
         $output[] = 'Starting FTPS sync to '.$account->host.($rootPath && $rootPath !== '.' ? ' ('.$rootPath.')' : '').'.';
 
-        $this->syncDirectory($connection, $localPath, $rootPath, $excludePaths, $stats);
+        $this->syncDirectory($connection, $localPath, $rootPath, $excludePaths, $stats, $output);
 
         $this->safeClose($connection);
 
@@ -255,7 +255,7 @@ class FtpService
      * @param array<int, string> $excludePaths
      * @param array{files: int, uploaded: int, skipped: int, directories: int} $stats
      */
-    private function syncDirectory($connection, string $localPath, string $remoteRoot, array $excludePaths, array &$stats): void
+    private function syncDirectory($connection, string $localPath, string $remoteRoot, array $excludePaths, array &$stats, array &$output): void
     {
         $localPath = rtrim($localPath, DIRECTORY_SEPARATOR);
 
@@ -293,11 +293,32 @@ class FtpService
             $this->ensureRemoteDirectory($connection, dirname($remotePath));
 
             if (! @ftp_put($connection, $remotePath, $item->getPathname(), FTP_BINARY)) {
-                throw new \RuntimeException('Failed to upload '.$relative.' to '.$remotePath);
+                if (! $this->retryUpload($connection, $remotePath, $item->getPathname(), $relative, $output)) {
+                    throw new \RuntimeException('Failed to upload '.$relative.' to '.$remotePath.'. Check FTP write permissions or exclude this path.');
+                }
             }
 
             $stats['uploaded']++;
         }
+    }
+
+    /**
+     * @param resource|\FTP\Connection $connection
+     * @param array<int, string> $output
+     */
+    private function retryUpload($connection, string $remotePath, string $localPath, string $relative, array &$output): bool
+    {
+        $output[] = 'FTPS upload failed for '.$relative.'. Retrying with permission fix.';
+
+        $this->ensureRemoteDirectory($connection, dirname($remotePath));
+
+        if (function_exists('ftp_chmod')) {
+            @ftp_chmod($connection, 0644, $remotePath);
+        }
+
+        @ftp_delete($connection, $remotePath);
+
+        return @ftp_put($connection, $remotePath, $localPath, FTP_BINARY);
     }
 
     /**
