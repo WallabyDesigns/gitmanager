@@ -561,7 +561,7 @@ trait ManagesRemoteDeployments
     private function remoteGitCleanCommand(Project $project, bool $dryRun): string
     {
         $command = 'git clean '.($dryRun ? '-fdn' : '-fd');
-        $excludePaths = array_merge(['storage', '.htaccess', 'public/.htaccess'], $this->parseExcludePaths($project));
+        $excludePaths = array_merge(['storage', '.env', '.htaccess', 'public/.htaccess'], $this->parseExcludePaths($project));
 
         foreach (array_unique($excludePaths) as $path) {
             $path = trim($path);

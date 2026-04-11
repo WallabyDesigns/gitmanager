@@ -196,7 +196,6 @@ class Index extends Component
             }
 
             if (! $updatesCheckedAt || $updatesCheckedAt->lt(now()->subMinutes(5))) {
-                $service->checkHealth($project, false, $autoNotify);
                 $wasAvailable = (bool) $project->updates_available;
                 try {
                     $hasUpdates = $service->checkForUpdates($project);
@@ -205,8 +204,14 @@ class Index extends Component
                     continue;
                 }
 
+                $queued = false;
                 if (! $wasAvailable && $hasUpdates && $project->auto_deploy && $this->queueEnabled()) {
                     app(DeploymentQueueService::class)->enqueue($project, 'deploy', ['reason' => 'auto_update'], Auth::user());
+                    $queued = true;
+                }
+
+                if (! $queued) {
+                    $service->checkHealth($project, false, $autoNotify);
                 }
             }
         }

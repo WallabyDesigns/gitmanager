@@ -535,7 +535,10 @@ class Create extends Component
 
         $path = trim((string) $project->local_path);
         if ($path === '' || ! is_dir($path)) {
-            return ['.env content was provided but the project path is not available yet.'];
+            $seeded = app(\App\Services\ProjectSeedService::class)->store($project, '.env', rtrim($content)."\n");
+            return [$seeded
+                ? '.env saved for the next deployment (project path not ready yet).'
+                : '.env content was provided but the project path is not available yet.'];
         }
 
         $root = $this->findLaravelRoot($path) ?? $path;
@@ -550,7 +553,10 @@ class Create extends Component
         }
 
         if (! is_writable($root)) {
-            return ['.env content provided, but the project root is not writable.'];
+            $seeded = app(\App\Services\ProjectSeedService::class)->store($project, '.env', rtrim($content)."\n");
+            return [$seeded
+                ? '.env saved for the next deployment (project root not writable).'
+                : '.env content provided, but the project root is not writable.'];
         }
 
         $payload = rtrim($content)."\n";
@@ -575,7 +581,10 @@ class Create extends Component
 
         $path = trim((string) $project->local_path);
         if ($path === '' || ! is_dir($path)) {
-            return ['.htaccess content was provided but the project path is not available yet.'];
+            $seeded = app(\App\Services\ProjectSeedService::class)->store($project, '.htaccess', rtrim($content)."\n");
+            return [$seeded
+                ? '.htaccess saved for the next deployment (project path not ready yet).'
+                : '.htaccess content was provided but the project path is not available yet.'];
         }
 
         $targetRoot = $this->findLaravelRoot($path) ?? $path;
@@ -590,7 +599,10 @@ class Create extends Component
         }
 
         if (! is_writable($targetRoot)) {
-            return ['.htaccess content provided, but the project root is not writable.'];
+            $seeded = app(\App\Services\ProjectSeedService::class)->store($project, '.htaccess', rtrim($content)."\n");
+            return [$seeded
+                ? '.htaccess saved for the next deployment (project root not writable).'
+                : '.htaccess content provided, but the project root is not writable.'];
         }
 
         $payload = rtrim($content)."\n";

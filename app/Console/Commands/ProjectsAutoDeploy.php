@@ -34,7 +34,6 @@ class ProjectsAutoDeploy extends Command
 
         foreach ($projects as $project) {
             try {
-                $service->checkHealth($project, false, true);
                 if ($service->checkForUpdates($project)) {
                     if (config('gitmanager.deploy_queue.enabled', true)) {
                         $queue->enqueue($project, 'deploy');
@@ -42,8 +41,10 @@ class ProjectsAutoDeploy extends Command
                     } else {
                         $service->deploy($project);
                         $this->info("Deployed {$project->name}.");
+                        $service->checkHealth($project, false, true);
                     }
                 } else {
+                    $service->checkHealth($project, false, true);
                     $this->line("No updates for {$project->name}.");
                 }
             } catch (\Throwable $exception) {

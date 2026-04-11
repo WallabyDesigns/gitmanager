@@ -209,6 +209,7 @@ class DeploymentService
                     if ($this->shouldRunInitialDeployTasks($project)) {
                         $output[] = 'No updates detected. Running initial setup tasks.';
                         $this->resetToRemote($project, $repoPath, $project->default_branch, $output, $allowDirty);
+                        $this->applyProjectSeeds($project, $executionPath, $output);
                         $this->laravelDeploymentCheckService->run($project, $executionPath, $output);
                         $this->ensureProjectHtaccess($project, $executionPath, $output);
 
@@ -316,6 +317,7 @@ class DeploymentService
 
                 $toHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
 
+                $this->applyProjectSeeds($project, $executionPath, $output);
                 $this->laravelDeploymentCheckService->run($project, $executionPath, $output);
                 $this->ensureProjectHtaccess($project, $executionPath, $output);
 
@@ -1286,6 +1288,21 @@ class DeploymentService
             mkdir($targetDir, 0775, true);
         }
         copy($source, $destination);
+    }
+
+    /**
+     * @param array<int, string> $output
+     */
+    private function applyProjectSeeds(Project $project, string $executionPath, array &$output): void
+    {
+        $root = $this->findLaravelRoot($executionPath) ?? $executionPath;
+        if (! is_dir($root)) {
+            return;
+        }
+
+        $seedService = app(\App\Services\ProjectSeedService::class);
+        $seedService->applyIfMissing($project, '.env', $root, $output);
+        $seedService->applyIfMissing($project, '.htaccess', $root, $output);
     }
 
     // ──────────────────────────────────────────────────────────────────

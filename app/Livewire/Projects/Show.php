@@ -62,6 +62,9 @@ class Show extends Component
             ->where('state', 'open')
             ->count();
         $deploymentRunning = $this->deploymentInProgress();
+        $seedService = app(\App\Services\ProjectSeedService::class);
+        $envSeedPending = $seedService->hasSeed($this->project, '.env');
+        $htaccessSeedPending = $seedService->hasSeed($this->project, '.htaccess');
 
         return view('livewire.projects.show', [
             'deployments' => (clone $deployments)->paginate(20),
@@ -73,9 +76,13 @@ class Show extends Component
             'envTabEnabled' => $this->envTabEnabled(),
             'securityOpenCount' => $securityOpenCount,
             'deploymentRunning' => $deploymentRunning,
+            'envSeedPending' => $envSeedPending,
+            'htaccessSeedPending' => $htaccessSeedPending,
         ])->layout('layouts.app', [
             'header' => view('livewire.projects.partials.show-header', [
                 'project' => $this->project,
+                'envSeedPending' => $envSeedPending,
+                'htaccessSeedPending' => $htaccessSeedPending,
             ]),
             'title' => $this->project->name,
         ]);
@@ -406,7 +413,7 @@ class Show extends Component
         $project->delete();
 
         $this->dispatch('notify', message: 'Project deleted.');
-        $this->redirectRoute('projects.index', navigate: true);
+        $this->redirectRoute('projects.index', navigate: false);
     }
 
     public function deleteProjectFiles(): void
@@ -420,7 +427,7 @@ class Show extends Component
         if (! $path) {
             $project->delete();
             $this->dispatch('notify', message: 'Project deleted.');
-            $this->redirectRoute('projects.index', navigate: true);
+            $this->redirectRoute('projects.index', navigate: false);
             return;
         }
 
@@ -438,7 +445,7 @@ class Show extends Component
 
         $project->delete();
         $this->dispatch('notify', message: 'Project and files deleted.');
-        $this->redirectRoute('projects.index', navigate: true);
+        $this->redirectRoute('projects.index', navigate: false);
     }
 
 }

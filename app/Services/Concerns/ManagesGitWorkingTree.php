@@ -42,6 +42,7 @@ trait ManagesGitWorkingTree
             'gwm-deploy',
             '--',
             '.',
+            ':(exclude).env',
             ':(exclude).htaccess',
             ':(exclude)public/.htaccess',
         ], $output, null, false);
@@ -150,7 +151,7 @@ trait ManagesGitWorkingTree
     {
         $command = ['git', '-C', $repoPath, 'clean', $dryRun ? '-fdn' : '-fd'];
 
-        $excludePaths = array_merge(['storage', '.htaccess', 'public/.htaccess'], $this->parseExcludePaths($project));
+        $excludePaths = array_merge(['storage', '.env', '.htaccess', 'public/.htaccess'], $this->parseExcludePaths($project));
         foreach (array_unique($excludePaths) as $path) {
             $path = trim($path);
             if ($path === '' || $path === '.' || $path === '..') {
@@ -454,7 +455,7 @@ trait ManagesGitWorkingTree
      */
     private function getPreservePaths(Project $project): array
     {
-        $paths = ['.htaccess', 'public/.htaccess'];
+        $paths = ['.env', '.htaccess', 'public/.htaccess'];
 
         foreach ($this->parseExcludePaths($project) as $path) {
             $paths[] = $path;
