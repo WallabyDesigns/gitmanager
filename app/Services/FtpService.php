@@ -478,12 +478,39 @@ class FtpService
             if (@ftp_chdir($connection, $cursor)) {
                 continue;
             }
-            @ftp_mkdir($connection, $cursor);
-            @ftp_chdir($connection, $cursor);
+
+            if (! @ftp_mkdir($connection, $cursor)) {
+                if ($original) {
+                    @ftp_chdir($connection, $original);
+                }
+                throw new \RuntimeException('Unable to create remote directory: '.$cursor);
+            }
+
+            $this->attemptRemoteDirectoryPermissions($connection, $cursor);
+
+            if (! @ftp_chdir($connection, $cursor)) {
+                $this->attemptRemoteDirectoryPermissions($connection, $cursor);
+                if (! @ftp_chdir($connection, $cursor)) {
+                    if ($original) {
+                        @ftp_chdir($connection, $original);
+                    }
+                    throw new \RuntimeException('Unable to access remote directory: '.$cursor);
+                }
+            }
         }
 
         if ($original) {
             @ftp_chdir($connection, $original);
+        }
+    }
+
+    /**
+     * @param resource|\FTP\Connection $connection
+     */
+    private function attemptRemoteDirectoryPermissions($connection, string $remoteDir): void
+    {
+        if (function_exists('ftp_chmod')) {
+            @ftp_chmod($connection, 0775, $remoteDir);
         }
     }
 
