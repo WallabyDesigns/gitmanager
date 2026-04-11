@@ -731,7 +731,7 @@ trait ManagesRemoteDeployments
         }
 
         $exclude = $this->ftpExcludePaths($project, $extraExcludePaths);
-        app(FtpService::class)->sync($project, $executionPath, $exclude, $output);
+        app(\App\Services\FtpService::class)->sync($project, $executionPath, $exclude, $output);
     }
 
     /**
@@ -806,7 +806,7 @@ trait ManagesRemoteDeployments
                 $output[] = 'Npm: no lockfile found; using package.json.';
             }
         }
-        $remoteFiles = app(FtpService::class)->fetchRemoteFiles($project, array_merge($composerFiles, $npmFiles), $output);
+        $remoteFiles = app(\App\Services\FtpService::class)->fetchRemoteFiles($project, array_merge($composerFiles, $npmFiles), $output);
 
         $composerChanged = $this->manifestSetChanged('Composer', $composerFiles, $remoteFiles, $executionPath, $output);
         $npmChanged = $this->manifestSetChanged('Npm', $npmFiles, $remoteFiles, $executionPath, $output);
