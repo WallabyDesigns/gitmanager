@@ -85,6 +85,7 @@ class Create extends Component
             'ssh_port' => 22,
             'ssh_root_path' => '',
             'ssh_commands' => '',
+            'ignore_migration_table_exists' => false,
         ];
 
         $this->applyProjectTypeDefaults('laravel');
@@ -367,6 +368,7 @@ class Create extends Component
                 Rule::requiredIf(fn () => (bool) ($this->form['run_test_command'] ?? false)),
             ],
             'form.allow_dependency_updates' => ['boolean'],
+            'form.ignore_migration_table_exists' => ['boolean'],
             'form.exclude_paths' => ['nullable', 'string'],
             'form.env_content' => ['nullable', 'string'],
             'form.env_use_example' => ['boolean'],
@@ -382,6 +384,7 @@ class Create extends Component
             'form.ssh_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'form.ssh_root_path' => ['nullable', 'string', 'max:255'],
             'form.ssh_commands' => ['nullable', 'string'],
+            'form.ignore_migration_table_exists' => ['boolean'],
         ];
     }
 

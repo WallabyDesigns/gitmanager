@@ -647,12 +647,27 @@ trait ManagesRemoteDeployments
 
         $output[] = 'Running Laravel migrations over SSH.';
         $this->maybeStreamOutput($output, true);
+        try {
+            $this->runSshCommand(
+                $connection,
+                'if [ -f artisan ]; then if [ -f .env ]; then php artisan migrate --force; else echo ".env missing; skipping migrations."; fi; fi',
+                $output
+            );
+        } catch (\Throwable $exception) {
+            $message = strtolower($exception->getMessage());
+            $isTableExists = str_contains($message, 'sqlstate[42s01]')
+                || str_contains($message, 'base table or view already exists')
+                || str_contains($message, 'errno: 1050')
+                || (str_contains($message, 'table') && str_contains($message, 'already exists'));
 
-        $this->runSshCommand(
-            $connection,
-            'if [ -f artisan ]; then if [ -f .env ]; then php artisan migrate --force; else echo ".env missing; skipping migrations."; fi; fi',
-            $output
-        );
+            if ($project->ignore_migration_table_exists && $isTableExists) {
+                $output[] = 'Warning: migration failed because tables already exist. Skipping migrations.';
+                $this->maybeStreamOutput($output, true);
+                return;
+            }
+
+            throw $exception;
+        }
     }
 
     private function maybeRunSshCommands(Project $project, array &$output): void

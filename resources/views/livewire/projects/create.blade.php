@@ -231,6 +231,17 @@
                             </label>
                         </div>
 
+                        <div class="rounded-lg border border-rose-200/80 dark:border-rose-500/40 bg-rose-50/70 dark:bg-rose-500/10 p-4">
+                            <div class="text-sm font-semibold text-rose-900 dark:text-rose-200">Migration Safety Override</div>
+                            <p class="mt-1 text-xs text-rose-700 dark:text-rose-300">
+                                If your database already has tables, running migrations may fail with “table already exists.” Enable this to log a warning and continue deployments instead of failing the build.
+                            </p>
+                            <label class="mt-3 flex items-center gap-2 text-sm text-rose-800 dark:text-rose-200">
+                                <input type="checkbox" class="rounded border-rose-300 text-rose-600 shadow-sm focus:ring-rose-500" wire:model.live="form.ignore_migration_table_exists" />
+                                Ignore migration “table already exists” errors
+                            </label>
+                        </div>
+
                         <div class="grid gap-4 sm:grid-cols-2">
                             @if ($showComposer)
                                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">

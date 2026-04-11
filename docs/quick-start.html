@@ -76,6 +76,7 @@ npm run build</code></pre>
           <li>Go to <strong>Projects → New Project</strong>.</li>
           <li>Provide repo URL, local path, and branch.</li>
           <li>Use the <strong>Configuration</strong> step to paste your <code>.env</code> and optional <code>.htaccess</code> before deploying (prefill from <code>.env.example</code> or <code>.env.sample</code> when available).</li>
+          <li>If your database already contains Laravel tables, enable the migration safety override on the Build &amp; Deploy step to skip “table already exists” errors.</li>
           <li>Press <strong>Deploy</strong>.</li>
         </ul>
       </section>

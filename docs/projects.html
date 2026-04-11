@@ -55,6 +55,7 @@
           <li>The create wizard can prefill the Environment step with <code>.env.example</code> or <code>.env.sample</code> content when it exists.</li>
           <li>Node projects can also use the Environment step; the prefill toggle is enabled when an example file is detected.</li>
           <li>If an existing <code>.env</code> is detected, it is used immediately with no additional setup.</li>
+          <li>When editing a project, you can paste <code>.env</code> content to seed it before the first deploy if the file is missing.</li>
           <li>When a deployment or health check failed due to a missing <code>.env</code>, saving the file triggers an automatic deploy retry.</li>
           <li>Laravel deploy checks require a valid <code>.env</code> before running artisan tasks such as migrations.</li>
         </ul>
@@ -68,6 +69,16 @@
           <li>Paste a custom <code>.htaccess</code> file; defaults are provided based on the project type.</li>
           <li>Use the <code>.env.example</code> prefill toggle to seed environment variables faster.</li>
           <li>Both files are created only when missing, so existing server configs are preserved.</li>
+          <li>Editing a project also lets you seed <code>.env</code> and <code>.htaccess</code> before deployment if they are missing.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Migration Safety Override</h2>
+        <p>Some legacy databases already contain tables, which can cause migrations to fail with “table already exists.”</p>
+        <ul>
+          <li>Enable <strong>Ignore migration “table already exists” errors</strong> to log a warning and continue deployments.</li>
+          <li>This option is highlighted on the final step of project creation and is also available in Edit Project.</li>
         </ul>
       </section>
 

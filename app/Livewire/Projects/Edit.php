@@ -40,6 +40,8 @@ class Edit extends Component
             'test_command' => $project->test_command,
             'allow_dependency_updates' => $project->allow_dependency_updates,
             'exclude_paths' => $project->exclude_paths,
+            'env_content' => $this->seedContent($project, '.env'),
+            'htaccess_content' => $this->seedContent($project, '.htaccess'),
             'ftp_enabled' => $project->ftp_enabled,
             'ftp_account_id' => $project->ftp_account_id,
             'ftp_root_path' => $project->ftp_root_path,
@@ -47,6 +49,7 @@ class Edit extends Component
             'ssh_port' => $project->ssh_port ?? 22,
             'ssh_root_path' => $project->ssh_root_path,
             'ssh_commands' => $project->ssh_commands,
+            'ignore_migration_table_exists' => $project->ignore_migration_table_exists ?? false,
         ];
     }
 
@@ -104,7 +107,16 @@ class Edit extends Component
         $payload['ssh_root_path'] = $this->normalizeOptionalPath($payload['ssh_root_path'] ?? null);
         $this->project->update($payload);
 
-        $this->dispatch('notify', message: 'Project updated.');
+        $envNotes = $this->applyEnvContent($this->project, (string) ($validated['form']['env_content'] ?? ''));
+        $htaccessNotes = $this->applyHtaccessContent($this->project, (string) ($validated['form']['htaccess_content'] ?? ''));
+
+        $notes = array_values(array_filter(array_merge($envNotes, $htaccessNotes)));
+        $message = 'Project updated.';
+        if (! empty($notes)) {
+            $message .= ' '.implode(' ', $notes);
+        }
+
+        $this->dispatch('notify', message: $message);
         $this->redirectRoute('projects.index', navigate: false);
     }
 
@@ -170,6 +182,8 @@ class Edit extends Component
             ],
             'form.allow_dependency_updates' => ['boolean'],
             'form.exclude_paths' => ['nullable', 'string'],
+            'form.env_content' => ['nullable', 'string'],
+            'form.htaccess_content' => ['nullable', 'string'],
             'form.ftp_enabled' => ['boolean'],
             'form.ftp_account_id' => [
                 'nullable',
@@ -181,6 +195,7 @@ class Edit extends Component
             'form.ssh_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'form.ssh_root_path' => ['nullable', 'string', 'max:255'],
             'form.ssh_commands' => ['nullable', 'string'],
+            'form.ignore_migration_table_exists' => ['boolean'],
         ];
     }
 
@@ -189,5 +204,130 @@ class Edit extends Component
         $value = trim((string) ($value ?? ''));
 
         return $value !== '' ? $value : null;
+    }
+
+    private function seedContent(Project $project, string $filename): string
+    {
+        $path = app(\App\Services\ProjectSeedService::class)->seedPath($project, $filename);
+        if (! is_file($path)) {
+            return '';
+        }
+
+        $contents = @file_get_contents($path);
+        return $contents === false ? '' : $contents;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function applyEnvContent(Project $project, string $content): array
+    {
+        $content = trim($content);
+        if ($content === '') {
+            return [];
+        }
+
+        $seeded = app(\App\Services\ProjectSeedService::class)->store($project, '.env', rtrim($content)."\n");
+
+        $path = trim((string) $project->local_path);
+        if ($path === '' || ! is_dir($path)) {
+            return [$seeded
+                ? '.env saved for the next deployment (project path not ready yet).'
+                : '.env content was provided but the project path is not available yet.'];
+        }
+
+        $root = $this->findLaravelRoot($path) ?? $path;
+        $envPath = $root.DIRECTORY_SEPARATOR.'.env';
+
+        if (is_file($envPath)) {
+            return ['.env already exists, so pasted content was not applied.'];
+        }
+
+        if (! is_writable($root)) {
+            @chmod($root, 0775);
+        }
+
+        if (! is_writable($root)) {
+            $seeded = app(\App\Services\ProjectSeedService::class)->store($project, '.env', rtrim($content)."\n");
+            return [$seeded
+                ? '.env saved for the next deployment (project root not writable).'
+                : '.env content provided, but the project root is not writable.'];
+        }
+
+        $payload = rtrim($content)."\n";
+        if (@file_put_contents($envPath, $payload) === false) {
+            return ['Failed to write .env from the pasted content.'];
+        }
+
+        @chmod($envPath, 0664);
+
+        return ['.env created from pasted content.'];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function applyHtaccessContent(Project $project, string $content): array
+    {
+        $content = trim($content);
+        if ($content === '') {
+            return [];
+        }
+
+        $seeded = app(\App\Services\ProjectSeedService::class)->store($project, '.htaccess', rtrim($content)."\n");
+
+        $path = trim((string) $project->local_path);
+        if ($path === '' || ! is_dir($path)) {
+            return [$seeded
+                ? '.htaccess saved for the next deployment (project path not ready yet).'
+                : '.htaccess content was provided but the project path is not available yet.'];
+        }
+
+        $targetRoot = $this->findLaravelRoot($path) ?? $path;
+        $targetPath = $targetRoot.DIRECTORY_SEPARATOR.'.htaccess';
+
+        if (is_file($targetPath)) {
+            return ['.htaccess already exists, so pasted content was not applied.'];
+        }
+
+        if (! is_writable($targetRoot)) {
+            @chmod($targetRoot, 0775);
+        }
+
+        if (! is_writable($targetRoot)) {
+            $seeded = app(\App\Services\ProjectSeedService::class)->store($project, '.htaccess', rtrim($content)."\n");
+            return [$seeded
+                ? '.htaccess saved for the next deployment (project root not writable).'
+                : '.htaccess content provided, but the project root is not writable.'];
+        }
+
+        $payload = rtrim($content)."\n";
+        if (@file_put_contents($targetPath, $payload) === false) {
+            return ['Failed to write .htaccess from the pasted content.'];
+        }
+
+        @chmod($targetPath, 0664);
+
+        return ['.htaccess created from pasted content.'];
+    }
+
+    private function findLaravelRoot(string $path): ?string
+    {
+        $cursor = $path;
+
+        while (true) {
+            if (is_file($cursor.DIRECTORY_SEPARATOR.'artisan')) {
+                return $cursor;
+            }
+
+            $parent = dirname($cursor);
+            if (! $parent || $parent === $cursor) {
+                break;
+            }
+
+            $cursor = $parent;
+        }
+
+        return null;
     }
 }

@@ -799,7 +799,40 @@ trait ManagesDependencies
         }
 
         $this->logStep($output, 'Laravel migrate', $laravelRoot, 'php artisan migrate --force');
-        $this->runProjectProcess(['php', 'artisan', 'migrate', '--force'], $output, $laravelRoot);
+        try {
+            $this->runProjectProcess(['php', 'artisan', 'migrate', '--force'], $output, $laravelRoot);
+        } catch (ProcessFailedException $exception) {
+            if ($project->ignore_migration_table_exists && $this->isMigrationAlreadyAppliedError($exception)) {
+                $output[] = 'Warning: migration failed because tables already exist. Skipping migrations.';
+                return;
+            }
+
+            throw $exception;
+        }
+    }
+
+    private function isMigrationAlreadyAppliedError(\Throwable $exception): bool
+    {
+        $text = strtolower($exception->getMessage());
+
+        if ($exception instanceof ProcessFailedException) {
+            $process = $exception->getProcess();
+            $text = strtolower($process->getOutput()."\n".$process->getErrorOutput()."\n".$exception->getMessage());
+        }
+
+        if (str_contains($text, 'sqlstate[42s01]')) {
+            return true;
+        }
+
+        if (str_contains($text, 'base table or view already exists')) {
+            return true;
+        }
+
+        if (str_contains($text, 'errno: 1050')) {
+            return true;
+        }
+
+        return str_contains($text, 'table') && str_contains($text, 'already exists');
     }
 
     private function laravelDatabaseIsAvailable(string $laravelRoot, array &$output, string $label): bool

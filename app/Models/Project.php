@@ -47,6 +47,7 @@ class Project extends Model
         'ssh_port',
         'ssh_root_path',
         'ssh_commands',
+        'ignore_migration_table_exists',
     ];
 
     protected $casts = [
@@ -66,6 +67,7 @@ class Project extends Model
         'permissions_checked_at' => 'datetime',
         'ftp_enabled' => 'boolean',
         'ssh_enabled' => 'boolean',
+        'ignore_migration_table_exists' => 'boolean',
     ];
 
     public function user(): BelongsTo

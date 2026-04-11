@@ -63,6 +63,20 @@
             <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">One entry per line (or comma-separated). These paths are preserved during force deploy cleanup. The `storage` folder is always excluded.</p>
             <x-input-error :messages="$errors->get('form.exclude_paths')" class="mt-2" />
         </div>
+        <div class="sm:col-span-2 grid gap-4">
+            <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
+                <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">Environment (.env)</div>
+                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Paste an optional <code>.env</code> file to seed on the next deployment. The file is only created when missing, so existing configs are preserved.</p>
+                <textarea rows="8" class="mt-3 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" wire:model.defer="form.env_content" placeholder="APP_ENV=production&#10;APP_KEY=&#10;APP_DEBUG=false"></textarea>
+                <x-input-error :messages="$errors->get('form.env_content')" class="mt-2" />
+            </div>
+            <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
+                <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">.htaccess</div>
+                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Paste optional Apache rules to seed on the next deployment. Defaults only apply when the file is missing.</p>
+                <textarea rows="8" class="mt-3 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 font-mono text-xs" wire:model.defer="form.htaccess_content"></textarea>
+                <x-input-error :messages="$errors->get('form.htaccess_content')" class="mt-2" />
+            </div>
+        </div>
         <div class="sm:col-span-2">
             <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4 space-y-3">
                 <div>
@@ -160,6 +174,17 @@
         <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
             <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.allow_dependency_updates" />
             Allow dependency updates
+        </label>
+    </div>
+
+    <div class="rounded-lg border border-rose-200/80 dark:border-rose-500/40 bg-rose-50/70 dark:bg-rose-500/10 p-4">
+        <div class="text-sm font-semibold text-rose-900 dark:text-rose-200">Migration Safety Override</div>
+        <p class="mt-1 text-xs text-rose-700 dark:text-rose-300">
+            If your database already has tables, running migrations may fail with “table already exists.” Enable this to log a warning and continue deployments instead of failing the build.
+        </p>
+        <label class="mt-3 flex items-center gap-2 text-sm text-rose-800 dark:text-rose-200">
+            <input type="checkbox" class="rounded border-rose-300 text-rose-600 shadow-sm focus:ring-rose-500" wire:model.live="form.ignore_migration_table_exists" />
+            Ignore migration “table already exists” errors
         </label>
     </div>
 
