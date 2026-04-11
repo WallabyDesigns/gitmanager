@@ -476,6 +476,10 @@ class FtpService
         foreach ($segments as $segment) {
             $cursor = $cursor === '' ? $segment : $cursor.'/'.$segment;
             if (@ftp_chdir($connection, $cursor)) {
+                // Restore CWD so the next iteration's $cursor is still relative to $original
+                if ($original) {
+                    @ftp_chdir($connection, $original);
+                }
                 continue;
             }
 
@@ -496,6 +500,11 @@ class FtpService
                     }
                     throw new \RuntimeException('Unable to access remote directory: '.$cursor);
                 }
+            }
+
+            // Restore CWD so the next iteration's $cursor is still relative to $original
+            if ($original) {
+                @ftp_chdir($connection, $original);
             }
         }
 
