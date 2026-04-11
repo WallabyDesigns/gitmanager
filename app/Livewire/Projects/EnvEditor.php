@@ -19,6 +19,7 @@ class EnvEditor extends Component
     public string $envContent = '';
     public bool $envExists = false;
     public bool $envExampleExists = false;
+    public ?string $envExampleLabel = null;
     public ?string $envPath = null;
     public ?string $envStatus = null;
 
@@ -49,10 +50,10 @@ class EnvEditor extends Component
             return;
         }
 
-        $example = $root.DIRECTORY_SEPARATOR.'.env.example';
+        $example = $this->resolveEnvExamplePath($root);
         $envPath = $root.DIRECTORY_SEPARATOR.'.env';
-        if (! is_file($example)) {
-            $this->dispatch('notify', message: '.env.example not found.');
+        if (! $example || ! is_file($example)) {
+            $this->dispatch('notify', message: 'No .env.example or .env.sample found.');
             return;
         }
 
@@ -65,6 +66,11 @@ class EnvEditor extends Component
         if (! @copy($example, $envPath)) {
             $this->dispatch('notify', message: 'Unable to create .env from .env.example.');
             return;
+        }
+
+        $contents = @file_get_contents($envPath);
+        if ($contents !== false) {
+            app(\App\Services\ProjectSeedService::class)->store($this->project, '.env', rtrim($contents)."\n");
         }
 
         $this->loadEnv();
@@ -98,6 +104,8 @@ class EnvEditor extends Component
             return;
         }
 
+        app(\App\Services\ProjectSeedService::class)->store($this->project, '.env', rtrim($this->envContent)."\n");
+
         $this->loadEnv();
         $this->dispatch('notify', message: '.env saved.');
         $this->dispatch('env-updated');
@@ -112,14 +120,16 @@ class EnvEditor extends Component
             $this->envContent = '';
             $this->envExists = false;
             $this->envExampleExists = false;
+            $this->envExampleLabel = null;
             $this->envPath = null;
             return;
         }
 
         $this->envPath = $root.DIRECTORY_SEPARATOR.'.env';
-        $examplePath = $root.DIRECTORY_SEPARATOR.'.env.example';
+        $examplePath = $this->resolveEnvExamplePath($root);
         $this->envExists = is_file($this->envPath);
-        $this->envExampleExists = is_file($examplePath);
+        $this->envExampleExists = $examplePath !== null && is_file($examplePath);
+        $this->envExampleLabel = $this->envExampleExists ? basename($examplePath) : null;
 
         if ($this->envExists) {
             $contents = @file_get_contents($this->envPath);
@@ -131,6 +141,21 @@ class EnvEditor extends Component
 
         $this->envStatus = 'No .env file found yet.';
         $this->envContent = '';
+    }
+
+    private function resolveEnvExamplePath(string $root): ?string
+    {
+        $candidate = $root.DIRECTORY_SEPARATOR.'.env.example';
+        if (is_file($candidate)) {
+            return $candidate;
+        }
+
+        $candidate = $root.DIRECTORY_SEPARATOR.'.env.sample';
+        if (is_file($candidate)) {
+            return $candidate;
+        }
+
+        return null;
     }
 
     /**

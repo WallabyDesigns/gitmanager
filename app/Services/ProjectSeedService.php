@@ -69,6 +69,7 @@ class ProjectSeedService
         }
 
         @chmod($targetPath, 0664);
+        @unlink($seedPath);
         $output[] = 'Applied '.$filename.' seed from setup configuration.';
 
         return true;

@@ -209,6 +209,7 @@ class DeploymentService
                     if ($this->shouldRunInitialDeployTasks($project)) {
                         $output[] = 'No updates detected. Running initial setup tasks.';
                         $this->resetToRemote($project, $repoPath, $project->default_branch, $output, $allowDirty);
+                        $this->warnIfEnvTracked($repoPath, $output);
                         $this->applyProjectSeeds($project, $executionPath, $output);
                         $this->laravelDeploymentCheckService->run($project, $executionPath, $output);
                         $this->ensureProjectHtaccess($project, $executionPath, $output);
@@ -317,6 +318,7 @@ class DeploymentService
 
                 $toHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
 
+                $this->warnIfEnvTracked($repoPath, $output);
                 $this->applyProjectSeeds($project, $executionPath, $output);
                 $this->laravelDeploymentCheckService->run($project, $executionPath, $output);
                 $this->ensureProjectHtaccess($project, $executionPath, $output);
@@ -1303,6 +1305,29 @@ class DeploymentService
         $seedService = app(\App\Services\ProjectSeedService::class);
         $seedService->applyIfMissing($project, '.env', $root, $output);
         $seedService->applyIfMissing($project, '.htaccess', $root, $output);
+    }
+
+    /**
+     * @param array<int, string> $output
+     */
+    private function warnIfEnvTracked(string $repoPath, array &$output): void
+    {
+        try {
+            $process = $this->runProcess([
+                'git',
+                '-C',
+                $repoPath,
+                'ls-files',
+                '--error-unmatch',
+                '.env',
+            ], $output, null, false);
+
+            if ($process->isSuccessful()) {
+                $output[] = 'Warning: .env is tracked in git. This can overwrite environment configuration. Consider removing it and adding to .gitignore.';
+            }
+        } catch (\Throwable $exception) {
+            // Swallow git errors.
+        }
     }
 
     // ──────────────────────────────────────────────────────────────────

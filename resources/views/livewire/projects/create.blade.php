@@ -195,13 +195,16 @@
                             @if ($showEnvConfig)
                                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
                                     <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">Environment (.env)</div>
-                                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Paste an optional <code>.env</code> file to create during setup. If <code>.env.example</code> exists, you can prefill from it.</p>
+                                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Paste an optional <code>.env</code> file to create during setup. If <code>.env.example</code> or <code>.env.sample</code> exists, you can prefill from it.</p>
                                     <label class="mt-3 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
                                         <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.env_use_example" {{ ($envExampleAvailable ?? false) ? '' : 'disabled' }} />
-                                        Prefill from .env.example
+                                        Prefill from {{ $envExampleFilename ?? '.env.example' }}
                                     </label>
                                     @if (! ($envExampleAvailable ?? false))
-                                        <p class="mt-1 text-xs text-amber-600 dark:text-amber-300">No <code>.env.example</code> detected yet. Paste values manually.</p>
+                                        <p class="mt-1 text-xs text-amber-600 dark:text-amber-300">No <code>.env.example</code> or <code>.env.sample</code> detected yet. Paste values manually.</p>
+                                    @endif
+                                    @if (! empty($envExampleMessage ?? null))
+                                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ $envExampleMessage }}</p>
                                     @endif
                                     <textarea rows="8" class="mt-3 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" wire:model.defer="form.env_content" placeholder="APP_ENV=production&#10;APP_KEY=&#10;APP_DEBUG=false"></textarea>
                                     <x-input-error :messages="$errors->get('form.env_content')" class="mt-2" />

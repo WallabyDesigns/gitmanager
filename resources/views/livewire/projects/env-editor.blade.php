@@ -20,7 +20,7 @@
             @if (! $envExists && $envExampleExists)
                 <button type="button" wire:click="createFromExample" class="px-3 py-1.5 text-xs rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-900 dark:border-emerald-500/40 dark:text-emerald-300 inline-flex items-center">
                     <x-loading-spinner target="createFromExample" />
-                    Create From .env.example
+                    Create From {{ $envExampleLabel ?? '.env.example' }}
                 </button>
             @endif
         </div>

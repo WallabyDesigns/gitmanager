@@ -23,6 +23,11 @@ class Create extends Component
     public bool $htaccessTouched = false;
     public bool $envUseExampleTouched = false;
     public bool $envExampleAvailable = false;
+    public bool $envExampleFetchFailed = false;
+    public ?string $envExampleFetchKey = null;
+    public ?string $envExampleSource = null;
+    public ?string $envExampleMessage = null;
+    public ?string $envExampleFilename = null;
     private bool $settingDefaults = false;
 
     /**
@@ -122,6 +127,22 @@ class Create extends Component
 
         $this->checkPathPermissions();
         $this->prefillConfigurationDefaults();
+    }
+
+    public function updatedFormRepoUrl(): void
+    {
+        $this->resetEnvExampleCache();
+        if ($this->step >= 2) {
+            $this->prefillConfigurationDefaults();
+        }
+    }
+
+    public function updatedFormDefaultBranch(): void
+    {
+        $this->resetEnvExampleCache();
+        if ($this->step >= 2) {
+            $this->prefillConfigurationDefaults();
+        }
     }
 
     public function updatedFormEnvContent(): void
@@ -458,6 +479,17 @@ class Create extends Component
         $this->permissionParent = null;
     }
 
+    private function resetEnvExampleCache(): void
+    {
+        $this->envExampleFetchKey = null;
+        $this->envExampleFetchFailed = false;
+        $this->envExampleSource = null;
+        $this->envExampleMessage = null;
+        $this->envExampleFilename = null;
+        $this->envExampleAvailable = false;
+        $this->envUseExampleTouched = false;
+    }
+
     private function envSetupWarning(\App\Models\Project $project): ?string
     {
         if (($project->project_type ?? '') !== 'laravel') {
@@ -507,20 +539,86 @@ class Create extends Component
 
     private function envExampleContent(): ?string
     {
+        $this->envExampleSource = null;
+        $this->envExampleMessage = null;
+        $this->envExampleFilename = null;
+
         $path = trim((string) ($this->form['local_path'] ?? ''));
         if ($path === '' || ! is_dir($path)) {
-            return null;
+            return $this->envExampleContentFromRepo();
         }
 
         $root = $this->findLaravelRoot($path) ?? $path;
-        $examplePath = $root.DIRECTORY_SEPARATOR.'.env.example';
-        if (! is_file($examplePath)) {
-            return null;
+        $examplePath = $this->findEnvExamplePath($root);
+        if (! $examplePath) {
+            return $this->envExampleContentFromRepo();
         }
 
         $contents = @file_get_contents($examplePath);
+        if ($contents === false || trim($contents) === '') {
+            return null;
+        }
 
-        return $contents === false ? null : $contents;
+        $this->envExampleSource = 'local';
+        $this->envExampleMessage = 'Loaded from local '.basename($examplePath).'.';
+        $this->envExampleFilename = basename($examplePath);
+        $this->envExampleFetchFailed = false;
+
+        return $contents;
+    }
+
+    private function envExampleContentFromRepo(): ?string
+    {
+        $repoUrl = trim((string) ($this->form['repo_url'] ?? ''));
+        if ($repoUrl === '') {
+            return null;
+        }
+
+        $branch = trim((string) ($this->form['default_branch'] ?? 'main'));
+        $fetchKey = sha1($repoUrl.'|'.$branch);
+        if ($this->envExampleFetchKey === $fetchKey && $this->envExampleFetchFailed) {
+            $this->envExampleMessage = 'Unable to fetch environment example from the repository yet.';
+            return null;
+        }
+
+        $this->envExampleFetchKey = $fetchKey;
+        $service = app(\App\Services\RepositoryFileService::class);
+        $candidates = ['.env.example', '.env.sample'];
+
+        foreach ($candidates as $candidate) {
+            $contents = $service->readFile($repoUrl, $branch, $candidate);
+            if ($contents !== null && trim($contents) !== '') {
+                $this->envExampleSource = 'repo';
+                $this->envExampleMessage = 'Loaded from repo '.$candidate.'.';
+                $this->envExampleFilename = $candidate;
+                $this->envExampleFetchFailed = false;
+
+                return $contents;
+            }
+        }
+
+        $this->envExampleFetchFailed = true;
+        $this->envExampleMessage = 'Unable to fetch .env.example or .env.sample from the repository.';
+        $this->envExampleSource = null;
+        $this->envExampleFilename = null;
+
+        return null;
+    }
+
+    private function findEnvExamplePath(string $root): ?string
+    {
+        $candidates = [
+            $root.DIRECTORY_SEPARATOR.'.env.example',
+            $root.DIRECTORY_SEPARATOR.'.env.sample',
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_file($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -533,9 +631,10 @@ class Create extends Component
             return [];
         }
 
+        $seeded = app(\App\Services\ProjectSeedService::class)->store($project, '.env', rtrim($content)."\n");
+
         $path = trim((string) $project->local_path);
         if ($path === '' || ! is_dir($path)) {
-            $seeded = app(\App\Services\ProjectSeedService::class)->store($project, '.env', rtrim($content)."\n");
             return [$seeded
                 ? '.env saved for the next deployment (project path not ready yet).'
                 : '.env content was provided but the project path is not available yet.'];
@@ -579,9 +678,10 @@ class Create extends Component
             return [];
         }
 
+        $seeded = app(\App\Services\ProjectSeedService::class)->store($project, '.htaccess', rtrim($content)."\n");
+
         $path = trim((string) $project->local_path);
         if ($path === '' || ! is_dir($path)) {
-            $seeded = app(\App\Services\ProjectSeedService::class)->store($project, '.htaccess', rtrim($content)."\n");
             return [$seeded
                 ? '.htaccess saved for the next deployment (project path not ready yet).'
                 : '.htaccess content was provided but the project path is not available yet.'];
