@@ -156,12 +156,7 @@ class Index extends Component
 
     private function shouldAutoCheckHealth(\App\Models\Project $project): bool
     {
-        return (bool) (
-            $project->health_url
-            || $project->site_url
-            || $project->last_deployed_at
-            || $project->last_deployed_hash
-        );
+        return $project->hasSuccessfulDeployment();
     }
 
     /**
@@ -211,7 +206,9 @@ class Index extends Component
                 }
 
                 if (! $queued) {
-                    $service->checkHealth($project, false, $autoNotify);
+                    if ($project->hasSuccessfulDeployment()) {
+                        $service->checkHealth($project, false, $autoNotify);
+                    }
                 }
             }
         }

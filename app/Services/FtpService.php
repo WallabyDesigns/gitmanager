@@ -78,12 +78,17 @@ class FtpService
      */
     public function sync(Project $project, string $localPath, array $excludePaths, array &$output): void
     {
+        $project->refresh();
+        $project->loadMissing('ftpAccount');
         $account = $project->ftpAccount;
         if (! $account) {
             throw new \RuntimeException('FTP/SSH access record not configured for this project.');
         }
 
-        $rootPath = $project->ftp_root_path ?: $account->root_path ?: '/';
+        $rootPath = $this->resolveRootPath($project);
+        if ($rootPath === '') {
+            throw new \RuntimeException('Project Local Path is required for FTP sync. Set it in Project Settings to avoid syncing to the server root.');
+        }
 
         if (! $this->ftpAvailable((bool) $account->ssl)) {
             throw new \RuntimeException('FTP extension not available for this PHP installation.');
@@ -140,6 +145,7 @@ class FtpService
      */
     public function fetchRemoteFiles(Project $project, array $paths, array &$output): array
     {
+        $project->refresh();
         $project->loadMissing('ftpAccount');
         $account = $project->ftpAccount;
         if (! $account) {
@@ -177,7 +183,11 @@ class FtpService
 
             @ftp_pasv($connection, (bool) $account->passive);
 
-            $rootPath = $project->ftp_root_path ?: $account->root_path ?: '/';
+            $rootPath = $this->resolveRootPath($project);
+            if ($rootPath === '') {
+                $output[] = 'FTP-only pipeline skipped: Project Local Path is not configured.';
+                return [];
+            }
             $rootPath = $this->normalizeRemotePath($rootPath);
             if ($rootPath !== '' && $rootPath !== '.') {
                 if (! @ftp_chdir($connection, $rootPath)) {
@@ -316,6 +326,11 @@ class FtpService
         }
 
         return rtrim($path, '/');
+    }
+
+    private function resolveRootPath(Project $project): string
+    {
+        return trim((string) $project->local_path);
     }
 
     /**

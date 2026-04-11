@@ -92,4 +92,9 @@ class Project extends Model
     {
         return ! $this->ftp_enabled && ! $this->ssh_enabled;
     }
+
+    public function hasSuccessfulDeployment(): bool
+    {
+        return (bool) ($this->last_deployed_at || $this->last_deployed_hash);
+    }
 }

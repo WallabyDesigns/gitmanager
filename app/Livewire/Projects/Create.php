@@ -239,6 +239,8 @@ class Create extends Component
     {
         $validated = $this->validate($this->rules());
         $payload = $validated['form'];
+        $payload['ftp_root_path'] = $this->normalizeOptionalPath($payload['ftp_root_path'] ?? null);
+        $payload['ssh_root_path'] = $this->normalizeOptionalPath($payload['ssh_root_path'] ?? null);
         unset($payload['env_use_example']);
         $project = Auth::user()->projects()->create($payload);
         $message = 'Project created.';
@@ -320,7 +322,12 @@ class Create extends Component
             return;
         }
 
-        $rootPath = trim((string) ($this->form['ftp_root_path'] ?? ''));
+        $rootPath = trim((string) ($this->form['local_path'] ?? ''));
+        if ($rootPath === '') {
+            $this->ftpTestStatus = 'error';
+            $this->ftpTestMessage = 'Project Local Path is required for FTP sync.';
+            return;
+        }
         $result = app(\App\Services\FtpService::class)->testAccount($account, $rootPath !== '' ? $rootPath : null);
 
         $this->ftpTestStatus = $result['status'] ?? 'error';
@@ -748,5 +755,12 @@ class Create extends Component
         }
 
         return null;
+    }
+
+    private function normalizeOptionalPath($value): ?string
+    {
+        $value = trim((string) ($value ?? ''));
+
+        return $value !== '' ? $value : null;
     }
 }

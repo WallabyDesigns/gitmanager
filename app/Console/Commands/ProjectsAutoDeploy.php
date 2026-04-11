@@ -41,10 +41,14 @@ class ProjectsAutoDeploy extends Command
                     } else {
                         $service->deploy($project);
                         $this->info("Deployed {$project->name}.");
-                        $service->checkHealth($project, false, true);
+                        if ($project->hasSuccessfulDeployment()) {
+                            $service->checkHealth($project, false, true);
+                        }
                     }
                 } else {
-                    $service->checkHealth($project, false, true);
+                    if ($project->hasSuccessfulDeployment()) {
+                        $service->checkHealth($project, false, true);
+                    }
                     $this->line("No updates for {$project->name}.");
                 }
             } catch (\Throwable $exception) {

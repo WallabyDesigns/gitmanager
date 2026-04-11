@@ -99,7 +99,10 @@ class Edit extends Component
     public function save(): void
     {
         $validated = $this->validate($this->rules());
-        $this->project->update($validated['form']);
+        $payload = $validated['form'];
+        $payload['ftp_root_path'] = $this->normalizeOptionalPath($payload['ftp_root_path'] ?? null);
+        $payload['ssh_root_path'] = $this->normalizeOptionalPath($payload['ssh_root_path'] ?? null);
+        $this->project->update($payload);
 
         $this->dispatch('notify', message: 'Project updated.');
         $this->redirectRoute('projects.index', navigate: false);
@@ -121,7 +124,12 @@ class Edit extends Component
             return;
         }
 
-        $rootPath = trim((string) ($this->form['ftp_root_path'] ?? ''));
+        $rootPath = trim((string) ($this->form['local_path'] ?? ''));
+        if ($rootPath === '') {
+            $this->ftpTestStatus = 'error';
+            $this->ftpTestMessage = 'Project Local Path is required for FTP sync.';
+            return;
+        }
         $result = app(\App\Services\FtpService::class)->testAccount($account, $rootPath !== '' ? $rootPath : null);
 
         $this->ftpTestStatus = $result['status'] ?? 'error';
@@ -174,5 +182,12 @@ class Edit extends Component
             'form.ssh_root_path' => ['nullable', 'string', 'max:255'],
             'form.ssh_commands' => ['nullable', 'string'],
         ];
+    }
+
+    private function normalizeOptionalPath($value): ?string
+    {
+        $value = trim((string) ($value ?? ''));
+
+        return $value !== '' ? $value : null;
     }
 }
