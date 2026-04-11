@@ -102,7 +102,7 @@ class Edit extends Component
         $this->project->update($validated['form']);
 
         $this->dispatch('notify', message: 'Project updated.');
-        $this->redirectRoute('projects.index', navigate: true);
+        $this->redirectRoute('projects.index', navigate: false);
     }
 
     public function testFtpConnection(): void

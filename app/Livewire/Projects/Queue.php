@@ -110,7 +110,9 @@ class Queue extends Component
     public function render()
     {
         $userId = Auth::id();
-        app(DeploymentQueueService::class)->releaseStaleRunning();
+        $queueService = app(DeploymentQueueService::class);
+        $queueService->releaseStaleRunning();
+        $queueService->normalizeQueuedPositions();
         $logLimit = $this->logPreviewLimit();
         $logPreview = DB::raw($this->logPreviewSql('output_log', $logLimit).' as output_log');
         $deploymentColumns = $this->deploymentColumns();

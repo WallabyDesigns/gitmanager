@@ -19,6 +19,11 @@ class Create extends Component
     public ?string $permissionParent = null;
     public ?string $ftpTestStatus = null;
     public ?string $ftpTestMessage = null;
+    public bool $envTouched = false;
+    public bool $htaccessTouched = false;
+    public bool $envUseExampleTouched = false;
+    public bool $envExampleAvailable = false;
+    private bool $settingDefaults = false;
 
     /**
      * @var array<int, array{value: string, label: string, description: string}>
@@ -65,6 +70,9 @@ class Create extends Component
             'test_command' => 'php artisan test',
             'allow_dependency_updates' => true,
             'exclude_paths' => '',
+            'env_content' => '',
+            'env_use_example' => false,
+            'htaccess_content' => '',
             'ftp_enabled' => false,
             'ftp_account_id' => null,
             'ftp_root_path' => '',
@@ -75,6 +83,7 @@ class Create extends Component
         ];
 
         $this->applyProjectTypeDefaults('laravel');
+        $this->prefillConfigurationDefaults(true);
     }
 
     public function render()
@@ -91,6 +100,7 @@ class Create extends Component
     public function updatedFormProjectType(string $value): void
     {
         $this->applyProjectTypeDefaults($value);
+        $this->prefillConfigurationDefaults();
     }
 
     public function updatedCheckPermissions(bool $value): void
@@ -106,10 +116,55 @@ class Create extends Component
     public function updatedFormLocalPath(string $value): void
     {
         if (! $this->checkPermissions) {
+            $this->prefillConfigurationDefaults();
             return;
         }
 
         $this->checkPathPermissions();
+        $this->prefillConfigurationDefaults();
+    }
+
+    public function updatedFormEnvContent(): void
+    {
+        if (! $this->settingDefaults) {
+            $this->envTouched = true;
+        }
+    }
+
+    public function updatedFormEnvUseExample($value): void
+    {
+        if (! $this->settingDefaults) {
+            $this->envUseExampleTouched = true;
+        }
+
+        if (! $value) {
+            $example = $this->envExampleContent();
+            if ($example !== null && trim((string) ($this->form['env_content'] ?? '')) === trim($example)) {
+                $this->settingDefaults = true;
+                $this->form['env_content'] = '';
+                $this->settingDefaults = false;
+                $this->envTouched = false;
+            }
+            return;
+        }
+
+        if ($this->envTouched) {
+            return;
+        }
+
+        $example = $this->envExampleContent();
+        if ($example !== null && trim((string) ($this->form['env_content'] ?? '')) === '') {
+            $this->settingDefaults = true;
+            $this->form['env_content'] = $example;
+            $this->settingDefaults = false;
+        }
+    }
+
+    public function updatedFormHtaccessContent(): void
+    {
+        if (! $this->settingDefaults) {
+            $this->htaccessTouched = true;
+        }
     }
 
     public function updatedFormFtpAccountId(): void
@@ -147,21 +202,28 @@ class Create extends Component
 
     public function nextStep(): void
     {
-        $this->validate($this->stepRules(1));
-        $this->step = 2;
+        $this->validate($this->stepRules($this->step));
+        $this->step = min(3, $this->step + 1);
+        if ($this->step === 2) {
+            $this->prefillConfigurationDefaults();
+        }
     }
 
     public function previousStep(): void
     {
-        $this->step = 1;
+        $this->step = max(1, $this->step - 1);
     }
 
     public function save(): void
     {
         $validated = $this->validate($this->rules());
-        $project = Auth::user()->projects()->create($validated['form']);
+        $payload = $validated['form'];
+        unset($payload['env_use_example']);
+        $project = Auth::user()->projects()->create($payload);
         $message = 'Project created.';
         $bootstrapOk = true;
+        $envNotes = [];
+        $htaccessNotes = [];
 
         if (! empty($project->repo_url)) {
             try {
@@ -176,6 +238,9 @@ class Create extends Component
                 $bootstrapOk = false;
             }
         }
+
+        $envNotes = $this->applyEnvContent($project, (string) ($validated['form']['env_content'] ?? ''));
+        $htaccessNotes = $this->applyHtaccessContent($project, (string) ($validated['form']['htaccess_content'] ?? ''));
 
         $envWarning = $this->envSetupWarning($project);
         if ($envWarning) {
@@ -199,8 +264,13 @@ class Create extends Component
             }
         }
 
+        $notes = array_values(array_filter(array_merge($envNotes, $htaccessNotes)));
+        if (! empty($notes)) {
+            $message .= ' '.implode(' ', $notes);
+        }
+
         $this->dispatch('notify', message: $message);
-        $this->redirectRoute('projects.index', navigate: true);
+        $this->redirectRoute('projects.index', navigate: false);
     }
 
     public function checkPathPermissions(): void
@@ -270,6 +340,9 @@ class Create extends Component
             ],
             'form.allow_dependency_updates' => ['boolean'],
             'form.exclude_paths' => ['nullable', 'string'],
+            'form.env_content' => ['nullable', 'string'],
+            'form.env_use_example' => ['boolean'],
+            'form.htaccess_content' => ['nullable', 'string'],
             'form.ftp_enabled' => ['boolean'],
             'form.ftp_account_id' => [
                 'nullable',
@@ -312,6 +385,14 @@ class Create extends Component
                 'form.ssh_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
                 'form.ssh_root_path' => ['nullable', 'string', 'max:255'],
                 'form.ssh_commands' => ['nullable', 'string'],
+            ];
+        }
+
+        if ($step === 2) {
+            return [
+                'form.env_content' => ['nullable', 'string'],
+                'form.env_use_example' => ['boolean'],
+                'form.htaccess_content' => ['nullable', 'string'],
             ];
         }
 
@@ -395,6 +476,131 @@ class Create extends Component
         }
 
         return 'Missing .env file. Open the Environment tab to create it before deploying.';
+    }
+
+    private function prefillConfigurationDefaults(bool $force = false): void
+    {
+        $this->settingDefaults = true;
+
+        $example = $this->envExampleContent();
+        $this->envExampleAvailable = $example !== null;
+
+        if ($force || ! $this->envUseExampleTouched) {
+            $this->form['env_use_example'] = $this->envExampleAvailable;
+        }
+
+        $envContent = trim((string) ($this->form['env_content'] ?? ''));
+        if (($force || ! $this->envTouched) && $envContent === '' && (bool) ($this->form['env_use_example'] ?? false)) {
+            if ($example !== null) {
+                $this->form['env_content'] = $example;
+            }
+        }
+
+        $htaccessContent = trim((string) ($this->form['htaccess_content'] ?? ''));
+        if (($force || ! $this->htaccessTouched) && $htaccessContent === '') {
+            $this->form['htaccess_content'] = app(\App\Services\HtaccessTemplateService::class)
+                ->forProjectType((string) ($this->form['project_type'] ?? 'custom'));
+        }
+
+        $this->settingDefaults = false;
+    }
+
+    private function envExampleContent(): ?string
+    {
+        $path = trim((string) ($this->form['local_path'] ?? ''));
+        if ($path === '' || ! is_dir($path)) {
+            return null;
+        }
+
+        $root = $this->findLaravelRoot($path) ?? $path;
+        $examplePath = $root.DIRECTORY_SEPARATOR.'.env.example';
+        if (! is_file($examplePath)) {
+            return null;
+        }
+
+        $contents = @file_get_contents($examplePath);
+
+        return $contents === false ? null : $contents;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function applyEnvContent(\App\Models\Project $project, string $content): array
+    {
+        $content = trim($content);
+        if ($content === '') {
+            return [];
+        }
+
+        $path = trim((string) $project->local_path);
+        if ($path === '' || ! is_dir($path)) {
+            return ['.env content was provided but the project path is not available yet.'];
+        }
+
+        $root = $this->findLaravelRoot($path) ?? $path;
+        $envPath = $root.DIRECTORY_SEPARATOR.'.env';
+
+        if (is_file($envPath)) {
+            return ['.env already exists, so pasted content was not applied.'];
+        }
+
+        if (! is_writable($root)) {
+            @chmod($root, 0775);
+        }
+
+        if (! is_writable($root)) {
+            return ['.env content provided, but the project root is not writable.'];
+        }
+
+        $payload = rtrim($content)."\n";
+        if (@file_put_contents($envPath, $payload) === false) {
+            return ['Failed to write .env from the pasted content.'];
+        }
+
+        @chmod($envPath, 0664);
+
+        return ['.env created from pasted content.'];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function applyHtaccessContent(\App\Models\Project $project, string $content): array
+    {
+        $content = trim($content);
+        if ($content === '') {
+            return [];
+        }
+
+        $path = trim((string) $project->local_path);
+        if ($path === '' || ! is_dir($path)) {
+            return ['.htaccess content was provided but the project path is not available yet.'];
+        }
+
+        $targetRoot = $this->findLaravelRoot($path) ?? $path;
+        $targetPath = $targetRoot.DIRECTORY_SEPARATOR.'.htaccess';
+
+        if (is_file($targetPath)) {
+            return ['.htaccess already exists, so pasted content was not applied.'];
+        }
+
+        if (! is_writable($targetRoot)) {
+            @chmod($targetRoot, 0775);
+        }
+
+        if (! is_writable($targetRoot)) {
+            return ['.htaccess content provided, but the project root is not writable.'];
+        }
+
+        $payload = rtrim($content)."\n";
+        if (@file_put_contents($targetPath, $payload) === false) {
+            return ['Failed to write .htaccess from the pasted content.'];
+        }
+
+        @chmod($targetPath, 0664);
+
+        return ['.htaccess created from pasted content.'];
     }
 
     private function projectRepoReady(\App\Models\Project $project): bool

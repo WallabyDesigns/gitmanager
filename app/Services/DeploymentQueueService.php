@@ -25,11 +25,10 @@ class DeploymentQueueService
         }
 
         $position = (int) DeploymentQueueItem::query()
-            ->where('project_id', $project->id)
             ->where('status', 'queued')
             ->max('position');
 
-        return DeploymentQueueItem::create([
+        $item = DeploymentQueueItem::create([
             'project_id' => $project->id,
             'queued_by' => $user?->id,
             'action' => $action,
@@ -37,10 +36,15 @@ class DeploymentQueueService
             'status' => 'queued',
             'position' => $position + 1,
         ]);
+
+        $this->normalizeQueuedPositions();
+
+        return $item;
     }
 
     public function processNext(int $limit = 3): int
     {
+        $this->normalizeQueuedPositions();
         $processed = 0;
 
         while ($processed < $limit) {
@@ -54,6 +58,42 @@ class DeploymentQueueService
         }
 
         return $processed;
+    }
+
+    public function normalizeQueuedPositions(): void
+    {
+        $total = DeploymentQueueItem::query()
+            ->where('status', 'queued')
+            ->count();
+
+        if ($total < 2) {
+            return;
+        }
+
+        $distinct = DeploymentQueueItem::query()
+            ->where('status', 'queued')
+            ->distinct()
+            ->count('position');
+
+        if ($distinct === $total) {
+            return;
+        }
+
+        $items = DeploymentQueueItem::query()
+            ->where('status', 'queued')
+            ->orderBy('position')
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->get();
+
+        $position = 1;
+        foreach ($items as $item) {
+            if ($item->position !== $position) {
+                $item->position = $position;
+                $item->save();
+            }
+            $position++;
+        }
     }
 
     public function purgeDuplicatesForUser(User $user): int

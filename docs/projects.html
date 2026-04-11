@@ -42,6 +42,7 @@
           <li><strong>Local Path</strong> (existing or auto-created).</li>
           <li><strong>Branch</strong> (main, master, or any branch).</li>
           <li><strong>Health Check URL</strong> (full URL or relative path; Laravel commonly uses <code>/up</code>).</li>
+          <li>The wizard now includes a <strong>Configuration</strong> step for environment and <code>.htaccess</code> setup.</li>
         </ul>
       </section>
 
@@ -51,9 +52,22 @@
         <ul>
           <li>Edit and save <code>.env</code> values without leaving the UI.</li>
           <li>Create <code>.env</code> from <code>.env.example</code> when available.</li>
+          <li>The create wizard can prefill the Environment step with <code>.env.example</code> content when it exists.</li>
+          <li>Node projects can also use the Environment step; the prefill toggle is enabled when an example file is detected.</li>
           <li>If an existing <code>.env</code> is detected, it is used immediately with no additional setup.</li>
           <li>When a deployment or health check failed due to a missing <code>.env</code>, saving the file triggers an automatic deploy retry.</li>
           <li>Laravel deploy checks require a valid <code>.env</code> before running artisan tasks such as migrations.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Configuration Step</h2>
+        <p>Before Build &amp; Deploy, the wizard includes a Configuration step to seed key files.</p>
+        <ul>
+          <li>Paste a custom <code>.env</code> file during setup (used only if no <code>.env</code> exists yet).</li>
+          <li>Paste a custom <code>.htaccess</code> file; defaults are provided based on the project type.</li>
+          <li>Use the <code>.env.example</code> prefill toggle to seed environment variables faster.</li>
+          <li>Both files are created only when missing, so existing server configs are preserved.</li>
         </ul>
       </section>
 

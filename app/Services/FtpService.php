@@ -7,6 +7,10 @@ use App\Models\Project;
 class FtpService
 {
     /**
+     * @var array{host: string, port: int, username: string, password: string, ssl: bool, passive: bool, timeout: int, rootPath: string}|null
+     */
+    private ?array $syncContext = null;
+    /**
      * @return array{status: string, message: string}
      */
     public function testAccount(FtpAccount $account, ?string $rootPath = null): array
@@ -85,33 +89,25 @@ class FtpService
             throw new \RuntimeException('FTP extension not available for this PHP installation.');
         }
 
-        $connection = $this->connect(
-            $account->host,
-            (int) ($account->port ?? 21),
-            (bool) $account->ssl,
-            (int) ($account->timeout ?? 30)
-        );
+        $this->syncContext = [
+            'host' => $account->host,
+            'port' => (int) ($account->port ?? 21),
+            'username' => $account->username,
+            'password' => $account->getDecryptedPassword(),
+            'ssl' => (bool) $account->ssl,
+            'passive' => (bool) $account->passive,
+            'timeout' => (int) ($account->timeout ?? 30),
+            'rootPath' => $this->normalizeRemotePath($rootPath),
+        ];
 
-        if (! $connection) {
-            throw new \RuntimeException('Unable to connect to the FTP server.');
-        }
+        $connection = $this->openSyncConnection($output);
 
-        if (! @ftp_login($connection, $account->username, $account->getDecryptedPassword())) {
+        $writeTest = $this->testWrite($connection, '.');
+        if ($writeTest['status'] !== 'ok') {
+            $output[] = 'FTPS write test failed: '.$writeTest['message'];
             $this->safeClose($connection);
-            throw new \RuntimeException('FTP login failed. Check username/password.');
-        }
-
-        @ftp_pasv($connection, (bool) $account->passive);
-
-        $rootPath = $this->normalizeRemotePath($rootPath);
-        if ($rootPath !== '' && $rootPath !== '.') {
-            if (! @ftp_chdir($connection, $rootPath)) {
-                $this->ensureRemoteDirectory($connection, $rootPath);
-            }
-            if (! @ftp_chdir($connection, $rootPath)) {
-                $this->safeClose($connection);
-                throw new \RuntimeException('Unable to access the remote root path: '.$rootPath);
-            }
+            $this->syncContext = null;
+            throw new \RuntimeException($writeTest['message']);
         }
 
         $stats = [
@@ -123,9 +119,12 @@ class FtpService
 
         $output[] = 'Starting FTPS sync to '.$account->host.($rootPath && $rootPath !== '.' ? ' ('.$rootPath.')' : '').'.';
 
-        $this->syncDirectory($connection, $localPath, $rootPath, $excludePaths, $stats, $output);
-
-        $this->safeClose($connection);
+        try {
+            $this->syncDirectory($connection, $localPath, '', $excludePaths, $stats, $output);
+        } finally {
+            $this->safeClose($connection);
+            $this->syncContext = null;
+        }
 
         $output[] = sprintf(
             'FTPS sync finished. Uploaded %d of %d files (%d skipped).',
@@ -248,6 +247,67 @@ class FtpService
         return false;
     }
 
+    /**
+     * @param array<int, string> $output
+     * @return resource|\FTP\Connection
+     */
+    private function openSyncConnection(array &$output)
+    {
+        if (! $this->syncContext) {
+            throw new \RuntimeException('FTP sync context missing.');
+        }
+
+        $context = $this->syncContext;
+        $connection = $this->connect(
+            $context['host'],
+            $context['port'],
+            $context['ssl'],
+            $context['timeout']
+        );
+
+        if (! $connection) {
+            throw new \RuntimeException('Unable to connect to the FTP server.');
+        }
+
+        if (! @ftp_login($connection, $context['username'], $context['password'])) {
+            $this->safeClose($connection);
+            throw new \RuntimeException('FTP login failed. Check username/password.');
+        }
+
+        @ftp_pasv($connection, $context['passive']);
+
+        $rootPath = $context['rootPath'];
+        if ($rootPath !== '' && $rootPath !== '.') {
+            if (! @ftp_chdir($connection, $rootPath)) {
+                $this->ensureRemoteDirectory($connection, $rootPath);
+            }
+            if (! @ftp_chdir($connection, $rootPath)) {
+                $this->safeClose($connection);
+                throw new \RuntimeException('Unable to access the remote root path: '.$rootPath);
+            }
+        }
+
+        return $connection;
+    }
+
+    /**
+     * @param array<int, string> $output
+     * @param resource|\FTP\Connection|null $connection
+     * @return resource|\FTP\Connection
+     */
+    private function reconnectSyncConnection(array &$output, $connection = null)
+    {
+        $output[] = 'FTPS retry failed. Reconnecting and retrying once.';
+        $this->safeClose($connection);
+
+        try {
+            return $this->openSyncConnection($output);
+        } catch (\Throwable $exception) {
+            $output[] = 'FTPS reconnect failed: '.$exception->getMessage();
+            throw $exception;
+        }
+    }
+
     private function normalizeRemotePath(string $path): string
     {
         $path = trim(str_replace('\\', '/', $path));
@@ -263,7 +323,7 @@ class FtpService
      * @param array<int, string> $excludePaths
      * @param array{files: int, uploaded: int, skipped: int, directories: int} $stats
      */
-    private function syncDirectory($connection, string $localPath, string $remoteRoot, array $excludePaths, array &$stats, array &$output): void
+    private function syncDirectory(&$connection, string $localPath, string $remoteRoot, array $excludePaths, array &$stats, array &$output): void
     {
         $localPath = rtrim($localPath, DIRECTORY_SEPARATOR);
 
@@ -314,19 +374,74 @@ class FtpService
      * @param resource|\FTP\Connection $connection
      * @param array<int, string> $output
      */
-    private function retryUpload($connection, string $remotePath, string $localPath, string $relative, array &$output): bool
+    private function retryUpload(&$connection, string $remotePath, string $localPath, string $relative, array &$output): bool
     {
         $output[] = 'FTPS upload failed for '.$relative.'. Retrying with permission fix.';
 
         $this->ensureRemoteDirectory($connection, dirname($remotePath));
 
-        if (function_exists('ftp_chmod')) {
-            @ftp_chmod($connection, 0644, $remotePath);
+        $this->attemptRemotePermissionFix($connection, dirname($remotePath), $remotePath);
+
+        if (@ftp_put($connection, $remotePath, $localPath, FTP_BINARY)) {
+            return true;
         }
 
-        @ftp_delete($connection, $remotePath);
+        try {
+            $connection = $this->reconnectSyncConnection($output, $connection);
+        } catch (\Throwable $exception) {
+            return false;
+        }
 
-        return @ftp_put($connection, $remotePath, $localPath, FTP_BINARY);
+        $this->ensureRemoteDirectory($connection, dirname($remotePath));
+        $this->attemptRemotePermissionFix($connection, dirname($remotePath), $remotePath);
+
+        if (@ftp_put($connection, $remotePath, $localPath, FTP_BINARY)) {
+            return true;
+        }
+
+        $this->testRemoteDirectoryWritable($connection, dirname($remotePath), $output);
+
+        return false;
+    }
+
+    /**
+     * @param resource|\FTP\Connection $connection
+     */
+    private function attemptRemotePermissionFix($connection, string $remoteDir, string $remoteFile): void
+    {
+        if (function_exists('ftp_chmod')) {
+            @ftp_chmod($connection, 0755, $remoteDir);
+            @ftp_chmod($connection, 0644, $remoteFile);
+        }
+
+        @ftp_delete($connection, $remoteFile);
+    }
+
+    /**
+     * @param resource|\FTP\Connection $connection
+     * @param array<int, string> $output
+     */
+    private function testRemoteDirectoryWritable($connection, string $remoteDir, array &$output): void
+    {
+        $remoteDir = $this->normalizeRemotePath($remoteDir);
+        $filename = '.gwm-write-test-'.uniqid().'.tmp';
+        $remote = ($remoteDir === '' || $remoteDir === '.') ? $filename : $remoteDir.'/'.$filename;
+
+        $temp = tempnam(sys_get_temp_dir(), 'gwm');
+        if (! $temp) {
+            return;
+        }
+
+        @file_put_contents($temp, 'gwm');
+        $success = @ftp_put($connection, $remote, $temp, FTP_BINARY);
+        @unlink($temp);
+
+        if (! $success) {
+            $output[] = 'FTPS write test failed in '.($remoteDir === '' ? '(root)' : $remoteDir).'. Check permissions, ownership, or disk quota.';
+            return;
+        }
+
+        @ftp_delete($connection, $remote);
     }
 
     /**
@@ -339,6 +454,7 @@ class FtpService
             return;
         }
 
+        $original = @ftp_pwd($connection);
         $segments = array_values(array_filter(explode('/', $remotePath), fn ($segment) => $segment !== ''));
         $cursor = '';
 
@@ -348,6 +464,11 @@ class FtpService
                 continue;
             }
             @ftp_mkdir($connection, $cursor);
+            @ftp_chdir($connection, $cursor);
+        }
+
+        if ($original) {
+            @ftp_chdir($connection, $original);
         }
     }
 
@@ -425,7 +546,8 @@ class FtpService
     {
         $rootPath = $rootPath === '' ? '.' : $rootPath;
         $filename = 'gwm-test-'.uniqid().'.txt';
-        $remote = rtrim($rootPath, '/').'/'.$filename;
+        $remoteRoot = rtrim($rootPath, '/');
+        $remote = ($remoteRoot === '' || $remoteRoot === '.') ? $filename : $remoteRoot.'/'.$filename;
 
         $temp = tempnam(sys_get_temp_dir(), 'gwm');
         if (! $temp) {
