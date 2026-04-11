@@ -230,11 +230,19 @@ class FtpService
     private function connect(string $host, int $port, bool $ssl, int $timeout): mixed
     {
         if ($ssl && function_exists('ftp_ssl_connect')) {
-            return @ftp_ssl_connect($host, $port, $timeout);
+            $connection = @ftp_ssl_connect($host, $port, $timeout);
+            if ($connection && function_exists('ftp_set_option')) {
+                @ftp_set_option($connection, FTP_TIMEOUT_SEC, $timeout);
+            }
+            return $connection;
         }
 
         if (function_exists('ftp_connect')) {
-            return @ftp_connect($host, $port, $timeout);
+            $connection = @ftp_connect($host, $port, $timeout);
+            if ($connection && function_exists('ftp_set_option')) {
+                @ftp_set_option($connection, FTP_TIMEOUT_SEC, $timeout);
+            }
+            return $connection;
         }
 
         return false;

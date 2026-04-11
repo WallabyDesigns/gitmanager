@@ -112,6 +112,32 @@ class DeploymentService
         }
     }
 
+    public function forceStop(Project $project, ?User $user = null, string $reason = 'Deployment manually stopped.'): int
+    {
+        $running = Deployment::query()
+            ->where('project_id', $project->id)
+            ->where('status', 'running')
+            ->get();
+
+        if ($running->isEmpty()) {
+            return 0;
+        }
+
+        $now = now();
+        foreach ($running as $deployment) {
+            $deployment->status = 'failed';
+            $deployment->finished_at = $now;
+            $deployment->output_log = trim(($deployment->output_log ? $deployment->output_log."\n" : '').$reason);
+            $deployment->save();
+        }
+
+        $project->last_error_message = $reason;
+        $project->last_checked_at = $now;
+        $project->save();
+
+        return $running->count();
+    }
+
     public function deploy(Project $project, ?User $user = null, bool $allowDirty = false, bool $ignorePermissionsLock = false): Deployment
     {
         if ($project->permissions_locked && ! $project->ftp_enabled && ! $project->ssh_enabled && ! $ignorePermissionsLock) {

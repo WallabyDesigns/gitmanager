@@ -61,6 +61,7 @@ class Show extends Component
             ->where('project_id', $this->project->id)
             ->where('state', 'open')
             ->count();
+        $deploymentRunning = $this->deploymentInProgress();
 
         return view('livewire.projects.show', [
             'deployments' => (clone $deployments)->paginate(20),
@@ -71,6 +72,7 @@ class Show extends Component
             'rollbackAvailable' => $rollbackAvailable,
             'envTabEnabled' => $this->envTabEnabled(),
             'securityOpenCount' => $securityOpenCount,
+            'deploymentRunning' => $deploymentRunning,
         ])->layout('layouts.app', [
             'header' => view('livewire.projects.partials.show-header', [
                 'project' => $this->project,
@@ -183,6 +185,28 @@ class Show extends Component
         $this->dispatch('notify', message: $deployment->status === 'success'
             ? 'Rollback completed.'
             : 'Rollback failed. Check logs below.');
+        $this->dispatch('reload-page', delay: 800);
+    }
+
+    public function forceStopDeployment(DeploymentService $service, DeploymentQueueService $queueService): void
+    {
+        $count = $service->forceStop($this->project, Auth::user(), 'Deployment manually stopped.');
+
+        DeploymentQueueItem::query()
+            ->where('project_id', $this->project->id)
+            ->whereIn('status', ['queued', 'running'])
+            ->update([
+                'status' => 'cancelled',
+                'finished_at' => now(),
+            ]);
+
+        if ($count === 0) {
+            $this->dispatch('notify', message: 'No running deployments were found.');
+        } else {
+            $this->dispatch('notify', message: 'Deployment stopped and queue cleared.');
+        }
+
+        $this->project->refresh();
         $this->dispatch('reload-page', delay: 800);
     }
 
