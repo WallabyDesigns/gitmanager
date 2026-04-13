@@ -221,6 +221,104 @@ class FtpService
     }
 
     /**
+     * @param array<int, string> $files
+     * @param array<int, string> $output
+     */
+    public function syncFiles(Project $project, string $localRoot, array $files, array &$output): void
+    {
+        $project->refresh();
+        $project->loadMissing('ftpAccount');
+        $account = $project->ftpAccount;
+        if (! $account) {
+            throw new \RuntimeException('FTP/SSH access record not configured for this project.');
+        }
+
+        $rootPath = $this->resolveRootPath($project);
+        if ($rootPath === '') {
+            throw new \RuntimeException('Project Local Path is required for FTP sync. Set it in Project Settings to avoid syncing to the server root.');
+        }
+
+        if (! $this->ftpAvailable((bool) $account->ssl)) {
+            throw new \RuntimeException('FTP extension not available for this PHP installation.');
+        }
+
+        $files = array_values(array_unique(array_filter(array_map('trim', $files), fn (string $file) => $file !== '')));
+        if ($files === []) {
+            $output[] = 'FTPS file sync skipped: no files to upload.';
+            return;
+        }
+
+        $this->syncContext = [
+            'host' => $account->host,
+            'port' => (int) ($account->port ?? 21),
+            'username' => $account->username,
+            'password' => $account->getDecryptedPassword(),
+            'ssl' => (bool) $account->ssl,
+            'passive' => (bool) $account->passive,
+            'timeout' => (int) ($account->timeout ?? 30),
+            'rootPath' => $this->normalizeRemotePath($rootPath),
+        ];
+
+        $connection = $this->openSyncConnection($output);
+
+        $writeTest = $this->testWrite($connection, '.');
+        if ($writeTest['status'] !== 'ok') {
+            $output[] = 'FTPS write test failed: '.$writeTest['message'];
+            $this->safeClose($connection);
+            $this->syncContext = null;
+            throw new \RuntimeException($writeTest['message']);
+        }
+
+        $stats = [
+            'files' => 0,
+            'uploaded' => 0,
+            'skipped' => 0,
+        ];
+
+        $output[] = 'Starting FTPS file sync to '.$account->host.($rootPath && $rootPath !== '.' ? ' ('.$rootPath.')' : '').'.';
+
+        try {
+            foreach ($files as $relative) {
+                $relative = ltrim(str_replace(['\\', '/'], '/', $relative), '/');
+                if ($relative === '') {
+                    continue;
+                }
+
+                $stats['files']++;
+                $localPath = rtrim($localRoot, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $relative);
+                if (! is_file($localPath)) {
+                    $stats['skipped']++;
+                    continue;
+                }
+
+                $remotePath = $relative;
+                $remoteDir = dirname($remotePath);
+                if ($remoteDir !== '.' && $remoteDir !== '') {
+                    $this->ensureRemoteDirectory($connection, $remoteDir);
+                }
+
+                if (! @ftp_put($connection, $remotePath, $localPath, FTP_BINARY)) {
+                    if (! $this->retryUpload($connection, $remotePath, $localPath, $relative, $output)) {
+                        throw new \RuntimeException('Failed to upload '.$relative.' to '.$remotePath.'. Check FTP write permissions or exclude this path.');
+                    }
+                }
+
+                $stats['uploaded']++;
+            }
+        } finally {
+            $this->safeClose($connection);
+            $this->syncContext = null;
+        }
+
+        $output[] = sprintf(
+            'FTPS file sync finished. Uploaded %d of %d files (%d skipped).',
+            $stats['uploaded'],
+            $stats['files'],
+            $stats['skipped']
+        );
+    }
+
+    /**
      * @param array<int, string> $paths
      * @return array<string, string|null>
      */

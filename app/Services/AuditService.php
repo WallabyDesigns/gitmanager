@@ -95,7 +95,7 @@ class AuditService
         $fixSummary = $result['fix_summary'] ?? null;
         $severity = $result['severity'] ?? null;
 
-        if ($status === 'failed' && $remaining === null && $found === null) {
+        if ($status === 'failed') {
             return ['opened' => false, 'resolved' => false, 'notification' => null];
         }
 

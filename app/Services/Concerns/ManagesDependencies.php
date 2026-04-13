@@ -302,7 +302,7 @@ trait ManagesDependencies
 
     public function npmAuditFix(Project $project, ?User $user = null, bool $force = false): Deployment
     {
-        $syncFtp = $this->shouldUseFtpWorkspace($project);
+        $syncFtp = false;
 
         return $this->runMaintenanceAction($project, $user, $force ? 'npm_audit_fix_force' : 'npm_audit_fix', function (string $path, array &$output) use ($force, $project): void {
             if ($this->shouldUseFtpWorkspace($project)) {
@@ -320,6 +320,14 @@ trait ManagesDependencies
                 $command,
                 true
             );
+
+            $this->syncFtpManifestFiles($project, $path, [
+                'package.json',
+                'package-lock.json',
+                'npm-shrinkwrap.json',
+                'pnpm-lock.yaml',
+                'yarn.lock',
+            ], $output);
         }, false, $syncFtp);
     }
 
@@ -361,6 +369,20 @@ trait ManagesDependencies
         $fixApplied = false;
         $fixSummary = null;
         $status = $initial->status;
+
+        if ($status === 'failed') {
+            return [
+                'tool' => 'composer',
+                'status' => $status,
+                'found' => null,
+                'fixed' => null,
+                'remaining' => null,
+                'summary' => 'Composer audit failed.',
+                'fix_summary' => null,
+                'fix_applied' => false,
+                'deployment_ids' => $deploymentIds,
+            ];
+        }
 
         if ($status !== 'failed' && $autoFix && $found !== null && $found > 0) {
             $fixApplied = true;
@@ -411,6 +433,21 @@ trait ManagesDependencies
         $deploymentIds = [];
         $deployment = $this->npmAuditFix($project, $user, false);
         $deploymentIds[] = $deployment->id;
+
+        if ($deployment->status === 'failed') {
+            return [
+                'tool' => 'npm',
+                'status' => $deployment->status,
+                'found' => null,
+                'fixed' => null,
+                'remaining' => null,
+                'severity' => null,
+                'summary' => 'Npm audit failed.',
+                'fix_summary' => null,
+                'fix_applied' => false,
+                'deployment_ids' => $deploymentIds,
+            ];
+        }
 
         $analysis = $this->parseNpmAuditLog($deployment->output_log);
         $summary = $this->buildNpmSummary($deployment->status, $analysis);
@@ -487,6 +524,7 @@ trait ManagesDependencies
         $severitySummary = null;
         $fixed = null;
         $total = null;
+        $remaining = null;
 
         foreach ($lines as $line) {
             $line = trim($line);
@@ -509,9 +547,13 @@ trait ManagesDependencies
             }
         }
 
-        $remaining = $found;
-        if ($remaining === null && $fixed !== null && $total !== null) {
+        if ($fixed !== null && $total !== null) {
             $remaining = max($total - $fixed, 0);
+            if ($found === null) {
+                $found = $total;
+            }
+        } elseif ($found !== null) {
+            $remaining = $found;
         }
 
         return [
@@ -1264,5 +1306,31 @@ trait ManagesDependencies
             'no_advisories' => $noAdvisories,
             'advisory_count' => $count,
         ];
+    }
+
+    /**
+     * @param array<int, string> $files
+     * @param array<int, string> $output
+     */
+    private function syncFtpManifestFiles(Project $project, string $path, array $files, array &$output): void
+    {
+        if (! $this->shouldUseFtpWorkspace($project)) {
+            return;
+        }
+
+        $paths = [];
+        foreach ($files as $file) {
+            $candidate = $path.DIRECTORY_SEPARATOR.$file;
+            if (is_file($candidate)) {
+                $paths[] = $file;
+            }
+        }
+
+        if ($paths === []) {
+            return;
+        }
+
+        $output[] = 'FTP-only pipeline: syncing dependency files ('.implode(', ', $paths).').';
+        app(\App\Services\FtpService::class)->syncFiles($project, $path, $paths, $output);
     }
 }
