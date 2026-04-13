@@ -64,6 +64,8 @@ class AuditService
         }
 
         $this->maybeAutoCommitFixes($project, $results);
+        $project->last_audit_at = now();
+        $project->save();
 
         if ($sendEmail && $notifications !== []) {
             $grouped = [];
@@ -100,16 +102,22 @@ class AuditService
             ->where('tool', $tool)
             ->orderByDesc('id')
             ->first();
+        $openIssue = AuditIssue::query()
+            ->where('project_id', $project->id)
+            ->where('tool', $tool)
+            ->where('status', 'open')
+            ->orderByDesc('id')
+            ->first();
 
         if ($remaining !== null && $remaining > 0) {
-            if ($latest && $latest->status === 'open') {
-                $latest->summary = $summary;
-                $latest->severity = $severity;
-                $latest->found_count = is_int($found) ? $found : null;
-                $latest->fixed_count = is_int($fixed) ? $fixed : null;
-                $latest->remaining_count = is_int($remaining) ? $remaining : null;
-                $latest->last_seen_at = now();
-                $latest->save();
+            if ($openIssue) {
+                $openIssue->summary = $summary;
+                $openIssue->severity = $severity;
+                $openIssue->found_count = is_int($found) ? $found : null;
+                $openIssue->fixed_count = is_int($fixed) ? $fixed : null;
+                $openIssue->remaining_count = is_int($remaining) ? $remaining : null;
+                $openIssue->last_seen_at = now();
+                $openIssue->save();
 
                 return ['opened' => false, 'resolved' => false, 'notification' => null];
             }
@@ -142,15 +150,15 @@ class AuditService
             ];
         }
 
-        if ($latest && $latest->status === 'open') {
-            $latest->status = 'resolved';
-            $latest->fix_summary = $fixSummary ?: $summary;
-            $latest->found_count = is_int($found) ? $found : $latest->found_count;
-            $latest->fixed_count = is_int($fixed) ? $fixed : $latest->fixed_count;
-            $latest->remaining_count = 0;
-            $latest->resolved_at = now();
-            $latest->last_seen_at = now();
-            $latest->save();
+        if ($openIssue) {
+            $openIssue->status = 'resolved';
+            $openIssue->fix_summary = $fixSummary ?: $summary;
+            $openIssue->found_count = is_int($found) ? $found : $openIssue->found_count;
+            $openIssue->fixed_count = is_int($fixed) ? $fixed : $openIssue->fixed_count;
+            $openIssue->remaining_count = 0;
+            $openIssue->resolved_at = now();
+            $openIssue->last_seen_at = now();
+            $openIssue->save();
 
             return [
                 'opened' => false,
@@ -160,8 +168,8 @@ class AuditService
                     'project' => $project,
                     'tool' => $tool,
                     'summary' => $summary,
-                    'fix_summary' => $latest->fix_summary,
-                    'issue' => $latest,
+                    'fix_summary' => $openIssue->fix_summary,
+                    'issue' => $openIssue,
                 ],
             ];
         }

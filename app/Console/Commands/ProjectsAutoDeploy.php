@@ -8,6 +8,7 @@ use App\Services\DeploymentService;
 use App\Services\AuditService;
 use App\Services\SettingsService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 
 class ProjectsAutoDeploy extends Command
 {
@@ -60,13 +61,24 @@ class ProjectsAutoDeploy extends Command
                     $this->line("No updates for {$project->name}.");
                 }
                 if ($auditEnabled) {
-                    if ($project->permissions_locked && ! $project->ftp_enabled && ! $project->ssh_enabled) {
+                    if (! $this->shouldRunAudit($project)) {
+                        $lastRun = $project->last_audit_at
+                            ? $project->last_audit_at->format('M j, Y g:i a')
+                            : 'never';
+                        $this->line("Skipping audit for {$project->name}: last run {$lastRun}.");
+                    } elseif ($project->permissions_locked && ! $project->ftp_enabled && ! $project->ssh_enabled) {
                         $this->warn("Skipping audit for {$project->name}: permissions are locked.");
                     } elseif ($this->deploymentInProgress($project)) {
                         $this->warn("Skipping audit for {$project->name}: deployment already running.");
                     } else {
-                        $audit->auditProject($project, null, true, true);
-                        $this->info("Audit completed for {$project->name}.");
+                        try {
+                            $audit->auditProject($project, null, true, true);
+                            $this->info("Audit completed for {$project->name}.");
+                        } catch (\Throwable $exception) {
+                            $this->error("Audit failed for {$project->name}: {$exception->getMessage()}");
+                        } finally {
+                            $this->markAuditAttempt($project);
+                        }
                     }
                 }
             } catch (\Throwable $exception) {
@@ -96,5 +108,25 @@ class ProjectsAutoDeploy extends Command
             ->where('project_id', $projectId)
             ->where('status', 'running')
             ->exists();
+    }
+
+    private function shouldRunAudit(Project $project): bool
+    {
+        $lastAudit = $project->last_audit_at;
+        if ($lastAudit instanceof Carbon) {
+            return $lastAudit->lt(now()->subHour());
+        }
+
+        if (is_string($lastAudit)) {
+            return Carbon::parse($lastAudit)->lt(now()->subHour());
+        }
+
+        return true;
+    }
+
+    private function markAuditAttempt(Project $project): void
+    {
+        $project->last_audit_at = now();
+        $project->save();
     }
 }

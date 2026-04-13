@@ -50,6 +50,7 @@
         <h2>Audit Checks</h2>
         <ul>
           <li>Enable audits in System &rarr; Settings to run npm/composer checks after scheduled update scans.</li>
+          <li>Automatic audits run at most once per hour per project to reduce load.</li>
           <li>Use the <strong>Audit Projects</strong> button on a project or the project list for an on-demand audit.</li>
           <li>Audit findings and fixes are logged in System &rarr; Security and the Project Security tab.</li>
           <li>FTP-only projects download manifest/lock files before auditing to avoid installing dependencies.</li>
@@ -59,6 +60,7 @@
       <section class="card">
         <h2>Audit Email Summaries</h2>
         <p>When audit emails are enabled in System &rarr; Settings, GWM sends a consolidated report that lists both resolved and still-open issues across projects.</p>
+        <p class="muted">Known open issues are not re-emailed on every audit run, and existing audit entries are updated instead of duplicated.</p>
       </section>
 
       <section class="card">
