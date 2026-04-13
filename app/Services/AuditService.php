@@ -6,9 +6,12 @@ use App\Models\AuditIssue;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 
 class AuditService
 {
+    private ?bool $auditTimestampAvailable = null;
+
     public function __construct(
         private readonly DeploymentService $deployments,
         private readonly SettingsService $settings
@@ -64,8 +67,7 @@ class AuditService
         }
 
         $this->maybeAutoCommitFixes($project, $results);
-        $project->last_audit_at = now();
-        $project->save();
+        $this->markAuditTimestamp($project);
 
         if ($sendEmail && $notifications !== []) {
             $grouped = [];
@@ -454,5 +456,30 @@ class AuditService
         }
 
         return 'Git Web Manager Vulnerability fixes: '.$summary;
+    }
+
+    private function markAuditTimestamp(Project $project): void
+    {
+        if (! $this->hasAuditTimestampColumn()) {
+            return;
+        }
+
+        $project->last_audit_at = now();
+        $project->save();
+    }
+
+    private function hasAuditTimestampColumn(): bool
+    {
+        if ($this->auditTimestampAvailable !== null) {
+            return $this->auditTimestampAvailable;
+        }
+
+        try {
+            $this->auditTimestampAvailable = Schema::hasColumn('projects', 'last_audit_at');
+        } catch (\Throwable $exception) {
+            $this->auditTimestampAvailable = false;
+        }
+
+        return $this->auditTimestampAvailable;
     }
 }

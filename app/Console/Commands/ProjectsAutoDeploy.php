@@ -6,9 +6,11 @@ use App\Models\Project;
 use App\Services\DeploymentQueueService;
 use App\Services\DeploymentService;
 use App\Services\AuditService;
+use App\Services\SchedulerService;
 use App\Services\SettingsService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Schema;
 
 class ProjectsAutoDeploy extends Command
 {
@@ -33,9 +35,11 @@ class ProjectsAutoDeploy extends Command
         DeploymentService $service,
         DeploymentQueueService $queue,
         AuditService $audit,
+        SchedulerService $scheduler,
         SettingsService $settings
     ): int
     {
+        $scheduler->recordHeartbeat('schedule');
         $auditEnabled = (bool) $settings->get('system.audit_enabled', false);
         $projects = Project::query()
             ->where('auto_deploy', true)
@@ -126,7 +130,27 @@ class ProjectsAutoDeploy extends Command
 
     private function markAuditAttempt(Project $project): void
     {
+        if (! $this->hasAuditTimestampColumn()) {
+            return;
+        }
+
         $project->last_audit_at = now();
         $project->save();
+    }
+
+    private function hasAuditTimestampColumn(): bool
+    {
+        static $available = null;
+        if ($available !== null) {
+            return $available;
+        }
+
+        try {
+            $available = Schema::hasColumn('projects', 'last_audit_at');
+        } catch (\Throwable $exception) {
+            $available = false;
+        }
+
+        return $available;
     }
 }
