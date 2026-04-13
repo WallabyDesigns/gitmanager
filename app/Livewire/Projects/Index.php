@@ -139,6 +139,24 @@ class Index extends Component
                 ->pluck('project_id')
                 ->all();
 
+        $runningAuditDeployments = $projectIds === []
+            ? []
+            : Deployment::query()
+                ->whereIn('project_id', $projectIds)
+                ->where('status', 'running')
+                ->whereIn('action', $this->auditActions())
+                ->pluck('project_id')
+                ->all();
+
+        $runningDeploymentsNonAudit = $projectIds === []
+            ? []
+            : Deployment::query()
+                ->whereIn('project_id', $projectIds)
+                ->where('status', 'running')
+                ->whereNotIn('action', $this->auditActions())
+                ->pluck('project_id')
+                ->all();
+
         $runningQueueItems = $projectIds === []
             ? []
             : DeploymentQueueItem::query()
@@ -147,11 +165,13 @@ class Index extends Component
                 ->pluck('project_id')
                 ->all();
 
-        $buildInProcess = array_values(array_unique(array_merge($runningDeployments, $runningQueueItems)));
+        $buildInProcess = array_values(array_unique(array_merge($runningDeploymentsNonAudit, $runningQueueItems)));
+        $auditInProcess = array_values(array_unique($runningAuditDeployments));
 
         return view('livewire.projects.index', [
             'projects' => $projects,
             'buildInProcess' => $buildInProcess,
+            'auditInProcess' => $auditInProcess,
             'queueProjects' => $queueProjectIds,
             'counts' => [
                 'all' => Auth::user()->projects()->count(),
@@ -247,6 +267,18 @@ class Index extends Component
         $project->last_checked_at = now();
         $project->updates_checked_at = now();
         $project->save();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function auditActions(): array
+    {
+        return [
+            'composer_audit',
+            'npm_audit_fix',
+            'npm_audit_fix_force',
+        ];
     }
 
     /**

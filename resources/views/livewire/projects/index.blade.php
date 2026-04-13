@@ -118,6 +118,11 @@
                                         In Queue
                                     </span>
                                 @endif
+                                @if (in_array($project->id, $auditInProcess ?? [], true))
+                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                                        Audit in process
+                                    </span>
+                                @endif
                                 @if (in_array($project->id, $buildInProcess ?? [], true))
                                     <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
                                         Build in process
