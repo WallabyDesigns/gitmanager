@@ -38,6 +38,10 @@
                 <x-loading-spinner target="checkAllUpdates" size="w-3 h-3" class="mr-1" />
                 Check Updates
             </button>
+            <button type="button" wire:click="auditAllProjects" wire:loading.attr="disabled" class="px-3 py-1.5 text-xs rounded-md border border-emerald-300 text-emerald-200 hover:text-white hover:border-emerald-200 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
+                <x-loading-spinner target="auditAllProjects" size="w-3 h-3" class="mr-1" />
+                Audit Projects
+            </button>
         </div>
     @endif
 </div>

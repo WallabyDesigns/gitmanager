@@ -837,7 +837,14 @@ class DeploymentService
     //  Maintenance action lifecycle
     // ──────────────────────────────────────────────────────────────────
 
-    private function runMaintenanceAction(Project $project, ?User $user, string $action, callable $callback, bool $runClearCache = false): Deployment
+    private function runMaintenanceAction(
+        Project $project,
+        ?User $user,
+        string $action,
+        callable $callback,
+        bool $runClearCache = false,
+        bool $syncFtp = false
+    ): Deployment
     {
         $repoPath = $this->resolveRepoPath($project);
         $executionPath = $this->resolveExecutionPath($project, $repoPath);
@@ -857,6 +864,9 @@ class DeploymentService
             $callback($executionPath, $output);
             if ($runClearCache) {
                 $this->maybeRunLaravelClearCache($project, $output);
+            }
+            if ($syncFtp) {
+                $this->maybeSyncFtp($project, $executionPath, $output);
             }
 
             $deployment->status = 'success';

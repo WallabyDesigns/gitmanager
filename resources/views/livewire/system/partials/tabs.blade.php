@@ -1,5 +1,6 @@
 @php
     use App\Models\AppUpdate;
+    use App\Models\AuditIssue;
     use App\Models\SecurityAlert;
     use App\Services\SelfUpdateService;
     use App\Services\SettingsService;
@@ -11,10 +12,16 @@
             ->whereHas('project', fn ($query) => $query->where('user_id', $userId))
             ->count()
         : 0;
+    $auditCount = $userId
+        ? AuditIssue::query()
+            ->where('status', 'open')
+            ->whereHas('project', fn ($query) => $query->where('user_id', $userId))
+            ->count()
+        : 0;
 
     $latestUpdate = AppUpdate::query()->orderByDesc('started_at')->first();
     $updateIssueCount = $latestUpdate && $latestUpdate->status === 'failed' ? 1 : 0;
-    $openAlerts = $securityCount + $updateIssueCount;
+    $openAlerts = $securityCount + $auditCount + $updateIssueCount;
 
     $checkUpdatesEnabled = (bool) app(SettingsService::class)->get('system.check_updates', true);
     $status = $checkUpdatesEnabled ? app(SelfUpdateService::class)->getUpdateStatus() : ['status' => 'disabled'];

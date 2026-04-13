@@ -89,6 +89,7 @@
           <li><strong>Force Deploy</strong> – destructive update (use carefully).</li>
           <li><strong>Undo Last Deploy</strong> – one-click rollback to the previous successful release (visible only when a rollback target exists).</li>
           <li><strong>Check Updates</strong> – refresh repository status.</li>
+          <li><strong>Audit Projects</strong> – run npm/composer audits and attempt fixes immediately.</li>
         </ul>
       </section>
 
@@ -97,9 +98,11 @@
         <ul>
           <li><strong>Check Health</strong> runs health checks across all listed projects.</li>
           <li><strong>Check Updates</strong> checks repositories for new commits across all listed projects.</li>
+          <li><strong>Audit Projects</strong> runs dependency audits across all listed projects.</li>
           <li>A small loading indicator appears next to each project while bulk checks are running.</li>
           <li>The project list now shows <strong>Last health check</strong> timestamps next to deployments.</li>
           <li>Health checks run on a 60-second cadence for projects with a site or health URL, so FTP and non-FTP projects refresh together.</li>
+          <li>Projects show <strong>Composer Issue</strong> or <strong>Npm Issue</strong> badges when the most recent dependency action failed or warned.</li>
           <li>If email is configured, an alert is sent only when an automatic update check detects a health drop (OK → not OK). Manual checks do not trigger emails.</li>
           <li>Email alerts are batched together when multiple projects go offline at once and include a cooldown to reduce noisy flapping notifications.</li>
           <li>You can turn health alert emails on or off in System Settings (a warning appears if email is not configured).</li>
@@ -109,7 +112,10 @@
       <section class="card">
         <h2>Security & Dependency Actions</h2>
         <ul>
-          <li><strong>Security</strong> tab shows Dependabot alerts for the project.</li>
+          <li><strong>Security</strong> tab shows Dependabot alerts and audit issues for the project.</li>
+          <li>Use the Security tab actions to run Audit Project, Composer Update, or Npm Audit Fix without leaving the page.</li>
+          <li>After fixes, the Security tab can prompt you to commit and push dependency changes back to the repo.</li>
+          <li>Projects with audit vulnerabilities show a <strong>Vulnerabilities found</strong> badge in the project list.</li>
           <li><strong>Audit Fix</strong> actions can prompt you to commit and push dependency changes back to the repo.</li>
           <li><strong>Composer Update</strong> and <strong>Npm Update</strong> actions can also prompt you to commit and push updated manifest/lock files, so Dependabot doesn't re-open resolved advisories.</li>
         </ul>

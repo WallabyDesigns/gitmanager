@@ -39,8 +39,31 @@
         <ul>
           <li>Alerts sync hourly and show open vs resolved issues.</li>
           <li>Unresolved issues appear in the System Security tab with direct links.</li>
-          <li>Each project also includes a Security tab to review alerts for that repository.</li>
+          <li>Each project includes a Security tab to review alerts and audit issues for that repository.</li>
+          <li>The Project Security tab includes remediation actions like Audit Project, Composer Update, and Npm Audit Fix.</li>
+          <li>When fixes update dependency files, you can commit and push those changes directly from the Security tab.</li>
+          <li>The Security tab also includes the latest audit output and recent security logs.</li>
         </ul>
+      </section>
+
+      <section class="card">
+        <h2>Audit Checks</h2>
+        <ul>
+          <li>Enable audits in System &rarr; Settings to run npm/composer checks after scheduled update scans.</li>
+          <li>Use the <strong>Audit Projects</strong> button on a project or the project list for an on-demand audit.</li>
+          <li>Audit findings and fixes are logged in System &rarr; Security and the Project Security tab.</li>
+          <li>FTP-only projects download manifest/lock files before auditing to avoid installing dependencies.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Audit Email Summaries</h2>
+        <p>When audit emails are enabled in System &rarr; Settings, GWM sends a consolidated report that lists both resolved and still-open issues across projects.</p>
+      </section>
+
+      <section class="card">
+        <h2>Auto-Commit Fixes</h2>
+        <p>Enable <strong>Auto-commit resolved audit fixes</strong> to push dependency lockfile changes after audits resolve all vulnerabilities. Commit messages use the <code>Git Web Manager Vulnerability fixes:</code> prefix.</p>
       </section>
 
       <section class="card">

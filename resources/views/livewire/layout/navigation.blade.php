@@ -2,6 +2,7 @@
 
 use App\Livewire\Actions\Logout;
 use App\Models\AppUpdate;
+use App\Models\AuditIssue;
 use App\Models\SecurityAlert;
 use App\Services\SelfUpdateService;
 use App\Services\SettingsService;
@@ -27,7 +28,14 @@ new class extends Component
         $latestUpdate = AppUpdate::query()->orderByDesc('started_at')->first();
         $updateIssueCount = $latestUpdate && $latestUpdate->status === 'failed' ? 1 : 0;
 
-        $this->openAlerts = $securityCount + $updateIssueCount;
+        $auditCount = $userId
+            ? AuditIssue::query()
+                ->where('status', 'open')
+                ->whereHas('project', fn ($query) => $query->where('user_id', $userId))
+                ->count()
+            : 0;
+
+        $this->openAlerts = $securityCount + $auditCount + $updateIssueCount;
 
         $this->checkUpdatesEnabled = (bool) $settings->get('system.check_updates', true);
         if ($this->checkUpdatesEnabled) {

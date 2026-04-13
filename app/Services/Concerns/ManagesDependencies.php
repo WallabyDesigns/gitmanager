@@ -130,8 +130,10 @@ trait ManagesDependencies
         return $deployment;
     }
 
-    public function composerInstall(Project $project, ?User $user = null): Deployment
+    public function composerInstall(Project $project, ?User $user = null, ?bool $syncFtp = null): Deployment
     {
+        $syncFtp = $syncFtp ?? $this->shouldUseFtpWorkspace($project);
+
         return $this->runMaintenanceAction($project, $user, 'composer_install', function (string $path, array &$output): void {
             $this->runComposerCommandWithFallback(
                 $path,
@@ -139,11 +141,13 @@ trait ManagesDependencies
                 'Composer install',
                 ['composer', 'install', '--no-dev', '--optimize-autoloader']
             );
-        }, true);
+        }, true, $syncFtp);
     }
 
-    public function composerUpdate(Project $project, ?User $user = null): Deployment
+    public function composerUpdate(Project $project, ?User $user = null, ?bool $syncFtp = null): Deployment
     {
+        $syncFtp = $syncFtp ?? $this->shouldUseFtpWorkspace($project);
+
         return $this->runMaintenanceAction($project, $user, 'composer_update', function (string $path, array &$output): void {
             $this->runComposerCommandWithFallback(
                 $path,
@@ -151,13 +155,14 @@ trait ManagesDependencies
                 'Composer update',
                 ['composer', 'update']
             );
-        }, true);
+        }, true, $syncFtp);
     }
 
     public function composerAudit(Project $project, ?User $user = null): Deployment
     {
         $repoPath = $this->resolveRepoPath($project);
         $executionPath = $this->resolveExecutionPath($project, $repoPath);
+        $useFtpManifests = $this->shouldUseFtpWorkspace($project);
 
         $deployment = Deployment::create([
             'project_id' => $project->id,
@@ -171,7 +176,16 @@ trait ManagesDependencies
         $output = [];
 
         try {
-            $process = $this->runProjectProcess(['composer', 'audit'], $output, $executionPath, false);
+            if ($useFtpManifests) {
+                $this->refreshFtpManifestFiles($project, $executionPath, ['composer.json', 'composer.lock'], $output);
+            }
+
+            $command = ['composer', 'audit'];
+            if ($useFtpManifests) {
+                $command[] = '--locked';
+            }
+
+            $process = $this->runProjectProcess($command, $output, $executionPath, false);
             $exitCode = $process->getExitCode() ?? 1;
             $analysis = $this->analyzeComposerAuditOutput($output);
 
@@ -257,8 +271,10 @@ trait ManagesDependencies
         });
     }
 
-    public function npmInstall(Project $project, ?User $user = null): Deployment
+    public function npmInstall(Project $project, ?User $user = null, ?bool $syncFtp = null): Deployment
     {
+        $syncFtp = $syncFtp ?? $this->shouldUseFtpWorkspace($project);
+
         return $this->runMaintenanceAction($project, $user, 'npm_install', function (string $path, array &$output): void {
             $this->runNpmInstallWithFallback(
                 $path,
@@ -266,11 +282,13 @@ trait ManagesDependencies
                 'Npm install',
                 ['npm', 'install']
             );
-        });
+        }, false, $syncFtp);
     }
 
-    public function npmUpdate(Project $project, ?User $user = null): Deployment
+    public function npmUpdate(Project $project, ?User $user = null, ?bool $syncFtp = null): Deployment
     {
+        $syncFtp = $syncFtp ?? $this->shouldUseFtpWorkspace($project);
+
         return $this->runMaintenanceAction($project, $user, 'npm_update', function (string $path, array &$output): void {
             $this->runNpmCommandWithFallback(
                 $path,
@@ -279,12 +297,18 @@ trait ManagesDependencies
                 ['npm', 'update'],
                 true
             );
-        });
+        }, false, $syncFtp);
     }
 
     public function npmAuditFix(Project $project, ?User $user = null, bool $force = false): Deployment
     {
-        return $this->runMaintenanceAction($project, $user, $force ? 'npm_audit_fix_force' : 'npm_audit_fix', function (string $path, array &$output) use ($force): void {
+        $syncFtp = $this->shouldUseFtpWorkspace($project);
+
+        return $this->runMaintenanceAction($project, $user, $force ? 'npm_audit_fix_force' : 'npm_audit_fix', function (string $path, array &$output) use ($force, $project): void {
+            if ($this->shouldUseFtpWorkspace($project)) {
+                $this->refreshFtpManifestFiles($project, $path, ['package.json', 'package-lock.json', 'npm-shrinkwrap.json'], $output);
+            }
+
             $command = ['npm', 'audit', 'fix'];
             if ($force) {
                 $command[] = '--force';
@@ -296,7 +320,268 @@ trait ManagesDependencies
                 $command,
                 true
             );
-        });
+        }, false, $syncFtp);
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public function auditDependencies(Project $project, ?User $user = null, bool $autoFix = true): array
+    {
+        $results = [];
+
+        if ($this->hasComposer($project)) {
+            $results['composer'] = $this->runComposerAuditFlow($project, $user, $autoFix);
+        }
+
+        if ($this->hasNpm($project)) {
+            $results['npm'] = $this->runNpmAuditFlow($project, $user, $autoFix);
+        }
+
+        return $results;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function runComposerAuditFlow(Project $project, ?User $user, bool $autoFix): array
+    {
+        $deploymentIds = [];
+        $initial = $this->composerAudit($project, $user);
+        $deploymentIds[] = $initial->id;
+
+        $analysis = $this->parseComposerAuditLog($initial->output_log);
+        $found = $analysis['advisory_count'];
+        if ($analysis['no_advisories'] && $found === null) {
+            $found = 0;
+        }
+
+        $remaining = $found;
+        $fixed = null;
+        $fixApplied = false;
+        $fixSummary = null;
+        $status = $initial->status;
+
+        if ($status !== 'failed' && $autoFix && $found !== null && $found > 0) {
+            $fixApplied = true;
+            $update = $this->composerUpdate($project, $user, $this->shouldUseFtpWorkspace($project));
+            $deploymentIds[] = $update->id;
+
+            $after = $this->composerAudit($project, $user);
+            $deploymentIds[] = $after->id;
+            $afterAnalysis = $this->parseComposerAuditLog($after->output_log);
+            $status = $after->status;
+
+            $remaining = $afterAnalysis['advisory_count'];
+            if ($afterAnalysis['no_advisories'] && $remaining === null) {
+                $remaining = 0;
+            }
+
+            if ($found !== null && $remaining !== null) {
+                $fixed = max($found - $remaining, 0);
+            }
+
+            if ($remaining === 0 && $found !== null) {
+                $fixSummary = $found === 1
+                    ? 'Composer audit resolved 1 advisory.'
+                    : "Composer audit resolved {$found} advisories.";
+            }
+        }
+
+        $summary = $this->buildComposerSummary($status, $remaining);
+
+        return [
+            'tool' => 'composer',
+            'status' => $status,
+            'found' => $found,
+            'fixed' => $fixed,
+            'remaining' => $remaining,
+            'summary' => $summary,
+            'fix_summary' => $fixSummary,
+            'fix_applied' => $fixApplied,
+            'deployment_ids' => $deploymentIds,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function runNpmAuditFlow(Project $project, ?User $user, bool $autoFix): array
+    {
+        $deploymentIds = [];
+        $deployment = $this->npmAuditFix($project, $user, false);
+        $deploymentIds[] = $deployment->id;
+
+        $analysis = $this->parseNpmAuditLog($deployment->output_log);
+        $summary = $this->buildNpmSummary($deployment->status, $analysis);
+
+        $fixSummary = null;
+        if (($analysis['remaining'] ?? null) === 0 && ($analysis['fixed'] ?? 0) > 0) {
+            $fixed = (int) $analysis['fixed'];
+            $fixSummary = $fixed === 1
+                ? 'Npm audit fixed 1 vulnerability.'
+                : "Npm audit fixed {$fixed} vulnerabilities.";
+        }
+
+        return [
+            'tool' => 'npm',
+            'status' => $deployment->status,
+            'found' => $analysis['found'],
+            'fixed' => $analysis['fixed'],
+            'remaining' => $analysis['remaining'],
+            'severity' => $analysis['severity_summary'],
+            'summary' => $summary,
+            'fix_summary' => $fixSummary,
+            'fix_applied' => true,
+            'deployment_ids' => $deploymentIds,
+        ];
+    }
+
+    /**
+     * @return array{no_advisories: bool, advisory_count: int|null}
+     */
+    private function parseComposerAuditLog(?string $log): array
+    {
+        $lines = preg_split('/\r?\n/', (string) $log) ?: [];
+
+        return $this->analyzeComposerAuditOutput($lines);
+    }
+
+    private function buildComposerSummary(string $status, ?int $remaining): string
+    {
+        if ($status === 'failed') {
+            return 'Composer audit failed.';
+        }
+
+        if ($remaining === 0) {
+            return 'Composer audit found no remaining advisories.';
+        }
+
+        if ($remaining !== null) {
+            return $remaining === 1
+                ? 'Composer audit found 1 advisory.'
+                : "Composer audit found {$remaining} advisories.";
+        }
+
+        return 'Composer audit completed.';
+    }
+
+    /**
+     * @return array{found: int|null, fixed: int|null, total: int|null, remaining: int|null, severity_summary: string|null}
+     */
+    private function parseNpmAuditLog(?string $log): array
+    {
+        $text = trim((string) $log);
+        if ($text === '') {
+            return [
+                'found' => null,
+                'fixed' => null,
+                'total' => null,
+                'remaining' => null,
+                'severity_summary' => null,
+            ];
+        }
+
+        $lines = array_reverse(preg_split('/\r?\n/', $text) ?: []);
+        $found = null;
+        $severitySummary = null;
+        $fixed = null;
+        $total = null;
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+
+            if ($found === null && preg_match('/found\s+(\d+)\s+vulnerabilities(?:\s+\(([^)]+)\))?/i', $line, $matches)) {
+                $found = (int) $matches[1];
+                $severitySummary = isset($matches[2]) ? trim($matches[2]) : null;
+            }
+
+            if ($fixed === null && preg_match('/fixed\s+(\d+)\s+of\s+(\d+)\s+vulnerabilities/i', $line, $matches)) {
+                $fixed = (int) $matches[1];
+                $total = (int) $matches[2];
+            }
+
+            if ($found !== null && $fixed !== null) {
+                break;
+            }
+        }
+
+        $remaining = $found;
+        if ($remaining === null && $fixed !== null && $total !== null) {
+            $remaining = max($total - $fixed, 0);
+        }
+
+        return [
+            'found' => $found ?? $total,
+            'fixed' => $fixed,
+            'total' => $total,
+            'remaining' => $remaining,
+            'severity_summary' => $severitySummary,
+        ];
+    }
+
+    /**
+     * @param array{found: int|null, fixed: int|null, total: int|null, remaining: int|null, severity_summary: string|null} $analysis
+     */
+    private function buildNpmSummary(string $status, array $analysis): string
+    {
+        if ($status === 'failed') {
+            return 'Npm audit failed.';
+        }
+
+        if (($analysis['remaining'] ?? null) === 0) {
+            return 'Npm audit found no remaining vulnerabilities.';
+        }
+
+        if ($analysis['remaining'] !== null) {
+            $remaining = (int) $analysis['remaining'];
+
+            return $remaining === 1
+                ? 'Npm audit found 1 vulnerability.'
+                : "Npm audit found {$remaining} vulnerabilities.";
+        }
+
+        return 'Npm audit completed.';
+    }
+
+    /**
+     * @param array<int, string> $files
+     */
+    private function refreshFtpManifestFiles(Project $project, string $executionPath, array $files, array &$output): void
+    {
+        if (! $this->shouldUseFtpWorkspace($project)) {
+            return;
+        }
+
+        $remoteFiles = app(\App\Services\FtpService::class)->fetchRemoteFiles($project, $files, $output);
+        if ($remoteFiles === []) {
+            return;
+        }
+
+        foreach ($files as $file) {
+            $contents = $remoteFiles[$file] ?? null;
+            if ($contents === null) {
+                continue;
+            }
+
+            $target = $executionPath.DIRECTORY_SEPARATOR.$file;
+            $current = is_file($target) ? @file_get_contents($target) : null;
+            if ($current === $contents) {
+                continue;
+            }
+
+            $dir = dirname($target);
+            if (! is_dir($dir)) {
+                mkdir($dir, 0775, true);
+            }
+
+            if (@file_put_contents($target, $contents) !== false) {
+                $output[] = 'FTP manifest sync: downloaded '.$file.'.';
+            }
+        }
     }
 
     public function fixPermissions(Project $project, ?User $user = null): Deployment

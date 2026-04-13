@@ -48,6 +48,40 @@
 
         <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
             <div>
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Audit Checks</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Run npm/composer audits after update checks and track issues in System Security.</p>
+            </div>
+            <label class="flex items-start gap-3">
+                <input type="checkbox" wire:model="auditEnabled" class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
+                <span class="text-sm text-slate-600 dark:text-slate-300">
+                    Enable audit checks
+                    <span class="block text-xs text-slate-400 dark:text-slate-500">Runs dependency audits during the scheduled update checks.</span>
+                </span>
+            </label>
+            <label class="flex items-start gap-3">
+                <input type="checkbox" wire:model="auditEmailEnabled" class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
+                <span class="text-sm text-slate-600 dark:text-slate-300">
+                    Email audit summaries
+                    <span class="block text-xs text-slate-400 dark:text-slate-500">Sends a consolidated report when issues are found or resolved.</span>
+                </span>
+            </label>
+            <label class="flex items-start gap-3">
+                <input type="checkbox" wire:model="auditAutoCommit" class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
+                <span class="text-sm text-slate-600 dark:text-slate-300">
+                    Auto-commit resolved audit fixes
+                    <span class="block text-xs text-slate-400 dark:text-slate-500">Pushes dependency lockfile changes when audits resolve all vulnerabilities.</span>
+                </span>
+            </label>
+            @if (! $mailConfigured)
+                <div class="text-xs text-rose-400">Email is not configured. Set SMTP details in System → Email Settings to enable audit emails.</div>
+            @endif
+            @if (! $auditEnabled)
+                <div class="text-xs text-slate-400 dark:text-slate-500">Scheduled audits are disabled.</div>
+            @endif
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
+            <div>
                 <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Health Alerts</h3>
                 <p class="text-sm text-slate-500 dark:text-slate-400">Email notifications when projects go offline during automatic checks.</p>
             </div>

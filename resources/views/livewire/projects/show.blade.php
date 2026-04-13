@@ -17,6 +17,9 @@
                     @if (($securityOpenCount ?? 0) > 0)
                         <span class="inline-flex items-center justify-center rounded-full bg-rose-500/20 px-2 py-0.5 text-xs text-rose-200">{{ $securityOpenCount }}</span>
                     @endif
+                    @if (($auditOpenCount ?? 0) > 0)
+                        <span class="inline-flex items-center justify-center rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-rose-200">Vulnerabilities found</span>
+                    @endif
                 </span>
             </button>
             @if ($envTabEnabled)
@@ -72,6 +75,16 @@
                     <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $healthClass }}">
                         {{ $healthLabel }}
                     </span>
+                    @if ($composerIssue ?? false)
+                        <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                            Composer Issue
+                        </span>
+                    @endif
+                    @if ($npmIssue ?? false)
+                        <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                            Npm Issue
+                        </span>
+                    @endif
                     <span class="text-xs text-slate-500 dark:text-slate-400">Last checked: {{ \App\Support\DateFormatter::forUser($project->health_checked_at, 'M j, Y g:i a', 'Never') }}</span>
                     @if ($project->health_issue_message)
                         <span class="text-xs text-amber-700 dark:text-amber-300">
@@ -109,6 +122,10 @@
                     <button type="button" wire:click="checkHealth" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 inline-flex items-center">
                         <x-loading-spinner target="checkHealth" />
                         Health Check
+                    </button>
+                    <button type="button" wire:click="auditProject" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300 inline-flex items-center">
+                        <x-loading-spinner target="auditProject" />
+                        Audit Projects
                     </button>
                     @if ($permissionsEnforced)
                         <button type="button" wire:click="fixPermissions" class="px-3 py-2 text-sm rounded-md border border-amber-300 text-amber-700 hover:text-amber-800 dark:border-amber-500/60 dark:text-amber-300 inline-flex items-center">
@@ -240,6 +257,10 @@
                 <button type="button" wire:click="checkUpdates" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 inline-flex items-center">
                     <x-loading-spinner target="checkUpdates" />
                     Check Updates
+                </button>
+                <button type="button" wire:click="auditProject" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300 inline-flex items-center">
+                    <x-loading-spinner target="auditProject" />
+                    Audit Projects
                 </button>
                 @if ($rollbackAvailable)
                     <button type="button" wire:click="rollback" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>

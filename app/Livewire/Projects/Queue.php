@@ -39,6 +39,23 @@ class Queue extends Component
         $this->dispatch('notify', message: "Processed {$processed} queued deployment(s).");
     }
 
+    public function processItem(int $id, DeploymentQueueService $queue, SchedulerService $scheduler): void
+    {
+        $item = DeploymentQueueItem::findOrFail($id);
+        $this->authorize('update', $item);
+
+        $processed = $queue->processItem($item);
+        $scheduler->recordManualRun();
+
+        if (! $processed) {
+            $this->dispatch('notify', message: 'Queue item could not be processed.');
+            return;
+        }
+
+        $this->dispatch('notify', message: 'Queue item processed.');
+        $this->resetPage();
+    }
+
     public function purgeDuplicates(DeploymentQueueService $queue): void
     {
         $user = Auth::user();

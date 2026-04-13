@@ -38,55 +38,112 @@
         @endif
 
         <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
-            <div class="space-y-4">
-                @forelse ($alerts as $alert)
-                    <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
-                        <div class="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                                <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                    {{ $alert->package_name ?? 'Unknown package' }}
+            <div class="space-y-6">
+                @if ($alerts->isNotEmpty())
+                    <div class="space-y-4">
+                        <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Dependabot Alerts</h4>
+                        @foreach ($alerts as $alert)
+                            <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                            {{ $alert->package_name ?? 'Unknown package' }}
+                                        </div>
+                                        <div class="text-xs text-slate-500 dark:text-slate-400">
+                                            {{ $alert->project->name }} · {{ $alert->ecosystem ?? 'unknown ecosystem' }}
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-wrap gap-2 text-xs">
+                                        <span class="px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                            {{ $alert->state }}
+                                        </span>
+                                        @if ($alert->severity)
+                                            <span class="px-2 py-1 rounded-full bg-rose-500/10 text-rose-300">
+                                                {{ strtoupper($alert->severity) }}
+                                            </span>
+                                        @endif
+                                    </div>
                                 </div>
-                                <div class="text-xs text-slate-500 dark:text-slate-400">
-                                    {{ $alert->project->name }} · {{ $alert->ecosystem ?? 'unknown ecosystem' }}
-                                </div>
-                            </div>
-                            <div class="flex flex-wrap gap-2 text-xs">
-                                <span class="px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                    {{ $alert->state }}
-                                </span>
-                                @if ($alert->severity)
-                                    <span class="px-2 py-1 rounded-full bg-rose-500/10 text-rose-300">
-                                        {{ strtoupper($alert->severity) }}
-                                    </span>
+                                @if ($alert->advisory_summary)
+                                    <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">{{ $alert->advisory_summary }}</p>
                                 @endif
+                                <div class="mt-3 flex flex-wrap gap-3 text-xs text-slate-400 dark:text-slate-500">
+                                    @if ($alert->fixed_in)
+                                        <span>Fixed in: {{ $alert->fixed_in }}</span>
+                                    @endif
+                                    @if ($alert->alert_created_at)
+                                        <span>Created: {{ \App\Support\DateFormatter::forUser($alert->alert_created_at, 'M j, Y') }}</span>
+                                    @endif
+                                    @if ($alert->fixed_at)
+                                        <span>Fixed: {{ \App\Support\DateFormatter::forUser($alert->fixed_at, 'M j, Y') }}</span>
+                                    @endif
+                                </div>
+                                <div class="mt-3 flex flex-wrap gap-3 text-sm">
+                                    @if ($alert->advisory_url)
+                                        <a href="{{ $alert->advisory_url }}" target="_blank" class="text-indigo-600 dark:text-indigo-300">Advisory</a>
+                                    @endif
+                                    @if ($alert->html_url)
+                                        <a href="{{ $alert->html_url }}" target="_blank" class="text-indigo-600 dark:text-indigo-300">Dependabot Report</a>
+                                    @endif
+                                </div>
                             </div>
-                        </div>
-                        @if ($alert->advisory_summary)
-                            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">{{ $alert->advisory_summary }}</p>
-                        @endif
-                        <div class="mt-3 flex flex-wrap gap-3 text-xs text-slate-400 dark:text-slate-500">
-                            @if ($alert->fixed_in)
-                                <span>Fixed in: {{ $alert->fixed_in }}</span>
-                            @endif
-                            @if ($alert->alert_created_at)
-                                <span>Created: {{ \App\Support\DateFormatter::forUser($alert->alert_created_at, 'M j, Y') }}</span>
-                            @endif
-                            @if ($alert->fixed_at)
-                                <span>Fixed: {{ \App\Support\DateFormatter::forUser($alert->fixed_at, 'M j, Y') }}</span>
-                            @endif
-                        </div>
-                        <div class="mt-3 flex flex-wrap gap-3 text-sm">
-                            @if ($alert->advisory_url)
-                                <a href="{{ $alert->advisory_url }}" target="_blank" class="text-indigo-600 dark:text-indigo-300">Advisory</a>
-                            @endif
-                            @if ($alert->html_url)
-                                <a href="{{ $alert->html_url }}" target="_blank" class="text-indigo-600 dark:text-indigo-300">Dependabot Report</a>
-                            @endif
-                        </div>
+                        @endforeach
                     </div>
-                @empty
+                @endif
+
+                @if ($auditIssues->isNotEmpty())
+                    <div class="space-y-4">
+                        <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Audit Issues</h4>
+                        @foreach ($auditIssues as $issue)
+                            <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                            {{ ucfirst($issue->tool) }} audit
+                                        </div>
+                                        <div class="text-xs text-slate-500 dark:text-slate-400">
+                                            {{ $issue->project?->name ?? 'Unknown project' }}
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-wrap gap-2 text-xs">
+                                        <span class="px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                            {{ $issue->status }}
+                                        </span>
+                                        @if ($issue->severity)
+                                            <span class="px-2 py-1 rounded-full bg-rose-500/10 text-rose-300">
+                                                {{ strtoupper($issue->severity) }}
+                                            </span>
+                                        @endif
+                                    </div>
+                                </div>
+                                @if ($issue->summary)
+                                    <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">{{ $issue->summary }}</p>
+                                @endif
+                                @if ($issue->fix_summary && $issue->status === 'resolved')
+                                    <p class="mt-2 text-sm text-emerald-600 dark:text-emerald-300">{{ $issue->fix_summary }}</p>
+                                @endif
+                                <div class="mt-3 flex flex-wrap gap-3 text-xs text-slate-400 dark:text-slate-500">
+                                    @if ($issue->remaining_count !== null)
+                                        <span>Remaining: {{ $issue->remaining_count }}</span>
+                                    @endif
+                                    @if ($issue->fixed_count !== null)
+                                        <span>Fixed: {{ $issue->fixed_count }}</span>
+                                    @endif
+                                    @if ($issue->detected_at)
+                                        <span>Detected: {{ \App\Support\DateFormatter::forUser($issue->detected_at, 'M j, Y') }}</span>
+                                    @endif
+                                    @if ($issue->resolved_at)
+                                        <span>Resolved: {{ \App\Support\DateFormatter::forUser($issue->resolved_at, 'M j, Y') }}</span>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+
+                @if ($alerts->isEmpty() && $auditIssues->isEmpty())
                     <p class="text-sm text-slate-500 dark:text-slate-400">No issues found for this tab.</p>
-                @endforelse
+                @endif
             </div>
         </div>
     </div>

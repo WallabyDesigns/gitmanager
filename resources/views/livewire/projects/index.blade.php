@@ -56,6 +56,8 @@
                                     && $project->ftpAccount
                                     && in_array($project->ftpAccount->ssh_test_status, ['error', 'warning'], true)
                                     && ! $sshNeedsTest;
+                                $composerIssue = in_array($project->last_composer_status ?? null, ['failed', 'warning'], true);
+                                $npmIssue = in_array($project->last_npm_status ?? null, ['failed', 'warning'], true);
                             @endphp
                             <div class="mt-2 flex flex-wrap items-center gap-2">
                                 <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $healthClass }}">
@@ -69,6 +71,21 @@
                                 @if ($project->updates_available)
                                     <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
                                         Updates Available
+                                    </span>
+                                @endif
+                                @if (($project->audit_open_count ?? 0) > 0)
+                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+                                        Vulnerabilities found
+                                    </span>
+                                @endif
+                                @if ($composerIssue)
+                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                                        Composer Issue
+                                    </span>
+                                @endif
+                                @if ($npmIssue)
+                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                                        Npm Issue
                                     </span>
                                 @endif
                                 @if ($project->ftp_enabled)

@@ -6,6 +6,7 @@ return [
     'npm_binary' => env('GWM_NPM_BINARY', env('GPM_NPM_BINARY', 'npm')),
     'php_binary' => env('GWM_PHP_BINARY', env('GWM_PHP_PATH', env('GPM_PHP_BINARY', env('GPM_PHP_PATH', 'php')))),
     'process_path' => env('GWM_PROCESS_PATH', env('GPM_PROCESS_PATH', '')),
+    'process_timeout' => env('GWM_PROCESS_TIMEOUT', 900),
     'askpass_dir' => env('GWM_ASKPASS_DIR', env('GPM_ASKPASS_DIR', '')),
 
     'self_update' => [

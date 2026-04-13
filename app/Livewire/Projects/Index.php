@@ -6,6 +6,7 @@ use App\Models\Deployment;
 use App\Models\DeploymentQueueItem;
 use App\Services\DeploymentService;
 use App\Services\DeploymentQueueService;
+use App\Services\AuditService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
 use Livewire\Component;
@@ -43,6 +44,16 @@ class Index extends Component
         $this->dispatch('notify', message: 'Update checks complete.');
     }
 
+    public function auditAllProjects(AuditService $audit): void
+    {
+        $projects = Auth::user()
+            ->projects()
+            ->get();
+
+        $results = $audit->auditProjects($projects, Auth::user(), true, true);
+        $this->dispatchAuditToast($results);
+    }
+
     public function refreshHealth(DeploymentService $service): void
     {
         $projects = Auth::user()
@@ -61,12 +72,27 @@ class Index extends Component
         $baseQuery = Auth::user()
             ->projects()
             ->with('ftpAccount')
+            ->withCount([
+                'auditIssues as audit_open_count' => fn ($query) => $query->where('status', 'open'),
+            ])
             ->addSelect([
                 'last_successful_deploy_at' => Deployment::query()
                     ->select('started_at')
                     ->whereColumn('project_id', 'projects.id')
                     ->where('action', 'deploy')
                     ->where('status', 'success')
+                    ->latest('started_at')
+                    ->limit(1),
+                'last_composer_status' => Deployment::query()
+                    ->select('status')
+                    ->whereColumn('project_id', 'projects.id')
+                    ->whereIn('action', ['composer_install', 'composer_update', 'composer_audit'])
+                    ->latest('started_at')
+                    ->limit(1),
+                'last_npm_status' => Deployment::query()
+                    ->select('status')
+                    ->whereColumn('project_id', 'projects.id')
+                    ->whereIn('action', ['npm_install', 'npm_update', 'npm_audit_fix', 'npm_audit_fix_force'])
                     ->latest('started_at')
                     ->limit(1),
             ]);
@@ -221,6 +247,74 @@ class Index extends Component
         $project->last_checked_at = now();
         $project->updates_checked_at = now();
         $project->save();
+    }
+
+    /**
+     * @param array<int, array<string, array<string, mixed>>> $results
+     */
+    private function dispatchAuditToast(array $results): void
+    {
+        $summary = $this->summarizeProjectAuditResults($results);
+
+        if ($summary['remaining'] > 0) {
+            $label = $summary['remaining'] === 1 ? '1 vulnerability' : "{$summary['remaining']} vulnerabilities";
+            $projects = $summary['projects_with_issues'] === 1
+                ? '1 project'
+                : "{$summary['projects_with_issues']} projects";
+            $this->dispatch('notify', message: "Vulnerabilities found in {$projects} ({$label} total). Open the Security tab to resolve them.", type: 'error');
+            return;
+        }
+
+        if ($summary['failed'] > 0) {
+            $this->dispatch('notify', message: 'Audit checks completed with errors. Check the logs for details.', type: 'warning');
+            return;
+        }
+
+        $this->dispatch('notify', message: 'Audit checks complete. No vulnerabilities found.', type: 'success');
+    }
+
+    /**
+     * @param array<int, array<string, array<string, mixed>>> $results
+     * @return array{remaining: int, failed: int, projects_with_issues: int}
+     */
+    private function summarizeProjectAuditResults(array $results): array
+    {
+        $remaining = 0;
+        $failed = 0;
+        $projectsWithIssues = 0;
+
+        foreach ($results as $projectResults) {
+            if (! is_array($projectResults)) {
+                continue;
+            }
+
+            $projectRemaining = 0;
+            foreach ($projectResults as $result) {
+                if (! is_array($result)) {
+                    continue;
+                }
+
+                if (($result['status'] ?? '') === 'failed') {
+                    $failed++;
+                }
+
+                $count = $result['remaining'] ?? null;
+                if (is_numeric($count)) {
+                    $projectRemaining += (int) $count;
+                }
+            }
+
+            if ($projectRemaining > 0) {
+                $projectsWithIssues++;
+                $remaining += $projectRemaining;
+            }
+        }
+
+        return [
+            'remaining' => $remaining,
+            'failed' => $failed,
+            'projects_with_issues' => $projectsWithIssues,
+        ];
     }
 
 }

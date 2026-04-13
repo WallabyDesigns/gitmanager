@@ -12,7 +12,7 @@ trait RunsProcesses
         $command = $this->normalizeCommand($command);
         $processId = $this->logProcessStart($command, $workingDir, $output);
         $process = new Process($command, $workingDir, array_merge($this->baseEnv(), $this->gitEnv()));
-        $process->setTimeout(600);
+        $this->applyProcessTimeout($process);
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
             $this->maybeStreamOutput($output);
@@ -31,7 +31,7 @@ trait RunsProcesses
         $command = $this->normalizeCommand($command);
         $processId = $this->logProcessStart($command, $workingDir, $output);
         $process = new Process($command, $workingDir, $this->projectEnvForPath($workingDir));
-        $process->setTimeout(600);
+        $this->applyProcessTimeout($process);
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
             $this->maybeStreamOutput($output);
@@ -51,7 +51,7 @@ trait RunsProcesses
         $env = array_merge($this->projectEnvForPath($workingDir), $extraEnv);
         $processId = $this->logProcessStart($command, $workingDir, $output);
         $process = new Process($command, $workingDir, $env);
-        $process->setTimeout(600);
+        $this->applyProcessTimeout($process);
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
             $this->maybeStreamOutput($output);
@@ -74,7 +74,7 @@ trait RunsProcesses
 
         $processId = $this->logProcessStartShell($command, $workingDir, $output);
         $process = Process::fromShellCommandline($command, $workingDir, $this->projectEnvForPath($workingDir));
-        $process->setTimeout(600);
+        $this->applyProcessTimeout($process);
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
             $this->maybeStreamOutput($output);
@@ -97,7 +97,7 @@ trait RunsProcesses
 
         $processId = $this->logProcessStartShell($command, $workingDir, $output);
         $process = Process::fromShellCommandline($command, $workingDir, array_merge($this->baseEnv(), $this->gitEnv()));
-        $process->setTimeout(600);
+        $this->applyProcessTimeout($process);
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
             $this->maybeStreamOutput($output);
@@ -135,6 +135,20 @@ trait RunsProcesses
         };
 
         return $command;
+    }
+
+    private function applyProcessTimeout(Process $process): void
+    {
+        $timeout = (int) config('gitmanager.process_timeout', 600);
+        if ($timeout <= 0) {
+            return;
+        }
+
+        $process->setTimeout($timeout);
+
+        if (function_exists('set_time_limit')) {
+            @set_time_limit($timeout + 30);
+        }
     }
 
     private function runWithSingleRetry(callable $callback, array &$output, string $label, ?callable $shouldRetry = null): void

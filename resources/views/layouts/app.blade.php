@@ -78,13 +78,24 @@
             </footer>
         </div>
 
-        <div id="gwm-toast" class="fixed bottom-6 right-6 hidden max-w-sm rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-lg dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"></div>
+        <div id="gwm-toast" class="gwm-toast fixed bottom-6 right-6 hidden max-w-sm rounded-lg border px-4 py-3 text-sm shadow-lg"></div>
         <script>
             window.addEventListener('notify', (event) => {
                 const toast = document.getElementById('gwm-toast');
                 if (!toast) {
                     return;
                 }
+                const variants = {
+                    success: ['border-emerald-300/70', 'bg-emerald-50', 'text-emerald-800', 'dark:border-emerald-500/40', 'dark:bg-emerald-500/10', 'dark:text-emerald-200'],
+                    error: ['border-rose-300/70', 'bg-rose-50', 'text-rose-800', 'dark:border-rose-500/40', 'dark:bg-rose-500/10', 'dark:text-rose-200'],
+                    warning: ['border-amber-300/70', 'bg-amber-50', 'text-amber-800', 'dark:border-amber-500/40', 'dark:bg-amber-500/10', 'dark:text-amber-200'],
+                    info: ['border-slate-200', 'bg-white', 'text-slate-700', 'dark:border-slate-800', 'dark:bg-slate-900', 'dark:text-slate-200'],
+                };
+                const variantClasses = Object.values(variants).flat();
+                const type = event.detail?.type || 'info';
+                const active = variants[type] || variants.info;
+                toast.classList.remove(...variantClasses);
+                toast.classList.add(...active);
                 toast.textContent = event.detail.message || 'Done.';
                 toast.classList.remove('hidden');
                 clearTimeout(window.GWMToastTimer);

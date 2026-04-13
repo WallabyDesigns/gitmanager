@@ -6,6 +6,8 @@ use App\Models\Project;
 use App\Models\Deployment;
 use App\Models\DeploymentQueueItem;
 use App\Models\SecurityAlert;
+use App\Models\AuditIssue;
+use App\Services\AuditService;
 use App\Services\DeploymentService;
 use App\Services\DeploymentQueueService;
 use Illuminate\Support\Facades\Auth;
@@ -57,10 +59,25 @@ class Show extends Component
                 ->where('to_hash', '!=', $activeCommit)
                 ->exists()
             : false;
+        $auditOpenCount = AuditIssue::query()
+            ->where('project_id', $this->project->id)
+            ->where('status', 'open')
+            ->count();
+        $composerStatus = $this->project->deployments()
+            ->whereIn('action', $this->composerActions())
+            ->orderByDesc('started_at')
+            ->value('status');
+        $npmStatus = $this->project->deployments()
+            ->whereIn('action', $this->npmActions())
+            ->orderByDesc('started_at')
+            ->value('status');
+        $composerIssue = in_array($composerStatus, ['failed', 'warning'], true);
+        $npmIssue = in_array($npmStatus, ['failed', 'warning'], true);
         $securityOpenCount = SecurityAlert::query()
             ->where('project_id', $this->project->id)
             ->where('state', 'open')
             ->count();
+        $securityOpenCount += $auditOpenCount;
         $deploymentRunning = $this->deploymentInProgress();
         $seedService = app(\App\Services\ProjectSeedService::class);
         $envSeedPending = $seedService->hasSeed($this->project, '.env');
@@ -75,6 +92,9 @@ class Show extends Component
             'rollbackAvailable' => $rollbackAvailable,
             'envTabEnabled' => $this->envTabEnabled(),
             'securityOpenCount' => $securityOpenCount,
+            'auditOpenCount' => $auditOpenCount,
+            'composerIssue' => $composerIssue,
+            'npmIssue' => $npmIssue,
             'deploymentRunning' => $deploymentRunning,
             'envSeedPending' => $envSeedPending,
             'htaccessSeedPending' => $htaccessSeedPending,
@@ -338,6 +358,83 @@ class Show extends Component
         $this->project->refresh();
     }
 
+    /**
+     * @param array<string, array<string, mixed>> $results
+     */
+    private function dispatchAuditToast(array $results): void
+    {
+        $summary = $this->summarizeAuditResults($results);
+        $remaining = $summary['remaining'];
+
+        if ($remaining > 0) {
+            $label = $remaining === 1 ? '1 vulnerability' : "{$remaining} vulnerabilities";
+            $this->dispatch('notify', message: "Vulnerabilities found ({$label} remaining). Open the Security tab to resolve them.", type: 'error');
+            return;
+        }
+
+        if ($summary['failed'] > 0) {
+            $this->dispatch('notify', message: 'Audit completed with errors. Check the logs for details.', type: 'warning');
+            return;
+        }
+
+        $this->dispatch('notify', message: 'Audit complete. No vulnerabilities found.', type: 'success');
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $results
+     * @return array{remaining: int, failed: int}
+     */
+    private function summarizeAuditResults(array $results): array
+    {
+        $remaining = 0;
+        $failed = 0;
+
+        foreach ($results as $result) {
+            if (! is_array($result)) {
+                continue;
+            }
+
+            if (($result['status'] ?? '') === 'failed') {
+                $failed++;
+            }
+
+            $count = $result['remaining'] ?? null;
+            if (is_numeric($count)) {
+                $remaining += (int) $count;
+            }
+        }
+
+        return [
+            'remaining' => $remaining,
+            'failed' => $failed,
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function composerActions(): array
+    {
+        return [
+            'composer_install',
+            'composer_update',
+            'composer_audit',
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function npmActions(): array
+    {
+        return [
+            'npm_install',
+            'npm_update',
+            'npm_audit_fix',
+            'npm_audit_fix_force',
+        ];
+    }
+
     public function checkUpdates(DeploymentService $service): void
     {
         try {
@@ -357,6 +454,17 @@ class Show extends Component
         $this->dispatch('notify', message: $hasUpdates
             ? 'Updates available for this project.'
             : 'No updates detected.');
+    }
+
+    public function auditProject(AuditService $audit): void
+    {
+        if ($this->blockIfPermissionsLocked('audit checks')) {
+            return;
+        }
+
+        $payload = $audit->auditProject($this->project, Auth::user(), true, true);
+        $this->project->refresh();
+        $this->dispatchAuditToast($payload['results'] ?? []);
     }
 
     public function checkHealth(DeploymentService $service): void

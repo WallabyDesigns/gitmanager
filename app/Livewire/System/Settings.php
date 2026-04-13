@@ -13,6 +13,9 @@ class Settings extends Component
     public bool $autoUpdate = true;
     public bool $githubSslVerify = true;
     public bool $healthEmailEnabled = true;
+    public bool $auditEnabled = false;
+    public bool $auditEmailEnabled = false;
+    public bool $auditAutoCommit = false;
     public bool $mailConfigured = false;
     public string $timezone = '';
     public array $timezones = [];
@@ -26,6 +29,9 @@ class Settings extends Component
             (bool) config('services.github.verify_ssl', true)
         ));
         $this->healthEmailEnabled = (bool) ($settings->get('system.health_email_enabled', true));
+        $this->auditEnabled = (bool) ($settings->get('system.audit_enabled', false));
+        $this->auditEmailEnabled = (bool) ($settings->get('system.audit_email_enabled', false));
+        $this->auditAutoCommit = (bool) ($settings->get('system.audit_auto_commit', false));
         $this->mailConfigured = $settings->isMailConfigured();
 
         $this->timezones = \DateTimeZone::listIdentifiers();
@@ -61,6 +67,9 @@ class Settings extends Component
         $settings->set('system.auto_update', $this->autoUpdate);
         $settings->set('system.github_ssl_verify', $this->githubSslVerify);
         $settings->set('system.health_email_enabled', $this->healthEmailEnabled);
+        $settings->set('system.audit_enabled', $this->auditEnabled);
+        $settings->set('system.audit_email_enabled', $this->auditEmailEnabled);
+        $settings->set('system.audit_auto_commit', $this->auditAutoCommit);
         $settings->set('system.timezone', $this->timezone);
 
         if (User::query()->where('id', 1)->exists()) {

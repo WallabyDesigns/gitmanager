@@ -60,6 +60,47 @@ class DeploymentQueueService
         return $processed;
     }
 
+    public function processItem(DeploymentQueueItem $item): bool
+    {
+        $this->normalizeQueuedPositions();
+
+        $reserved = DB::transaction(function () use ($item) {
+            $fresh = DeploymentQueueItem::query()
+                ->lockForUpdate()
+                ->find($item->id);
+
+            if (! $fresh || $fresh->status !== 'queued') {
+                return null;
+            }
+
+            $runningProjects = DeploymentQueueItem::query()
+                ->where('status', 'running')
+                ->pluck('project_id')
+                ->all();
+
+            if (in_array($fresh->project_id, $runningProjects, true)) {
+                return null;
+            }
+
+            $fresh->status = 'running';
+            $fresh->started_at = now();
+            $fresh->save();
+
+            $this->cancelDuplicateQueuedItems($fresh);
+
+            return $fresh;
+        });
+
+        if (! $reserved) {
+            return false;
+        }
+
+        $this->runItem($reserved);
+        $this->normalizeQueuedPositions();
+
+        return true;
+    }
+
     public function normalizeQueuedPositions(): void
     {
         $total = DeploymentQueueItem::query()
