@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use App\Models\Project;
 use App\Services\DeploymentQueueService;
 use App\Services\DeploymentService;
-use App\Services\AuditService;
 use App\Services\SchedulerService;
 use App\Services\SettingsService;
 use Illuminate\Console\Command;
@@ -34,7 +33,6 @@ class ProjectsAutoDeploy extends Command
     public function handle(
         DeploymentService $service,
         DeploymentQueueService $queue,
-        AuditService $audit,
         SchedulerService $scheduler,
         SettingsService $settings
     ): int
@@ -76,10 +74,19 @@ class ProjectsAutoDeploy extends Command
                         $this->warn("Skipping audit for {$project->name}: deployment already running.");
                     } else {
                         try {
-                            $audit->auditProject($project, null, true, true);
-                            $this->info("Audit completed for {$project->name}.");
+                            $item = $queue->enqueue($project, 'audit_project', [
+                                'auto_fix' => true,
+                                'send_email' => true,
+                                'source' => 'scheduled_hourly_audit',
+                            ]);
+
+                            if ($item->wasRecentlyCreated) {
+                                $this->info("Queued audit for {$project->name}.");
+                            } else {
+                                $this->line("Audit already queued or running for {$project->name}.");
+                            }
                         } catch (\Throwable $exception) {
-                            $this->error("Audit failed for {$project->name}: {$exception->getMessage()}");
+                            $this->error("Audit queueing failed for {$project->name}: {$exception->getMessage()}");
                         } finally {
                             $this->markAuditAttempt($project);
                         }

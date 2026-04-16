@@ -2,10 +2,12 @@
 
 namespace App\Livewire\System;
 
+use App\Models\DeploymentQueueItem;
 use App\Models\User;
+use App\Services\DeploymentQueueService;
+use App\Services\SchedulerService;
 use App\Services\SettingsService;
 use Livewire\Component;
-use Illuminate\Support\Facades\Schema;
 
 class Settings extends Component
 {
@@ -47,7 +49,20 @@ class Settings extends Component
 
     public function render()
     {
-        return view('livewire.system.settings')
+        $scheduler = app(SchedulerService::class);
+
+        return view('livewire.system.settings', [
+            'schedulerHealthy' => $scheduler->isHealthy(),
+            'lastHeartbeat' => $scheduler->lastHeartbeat(),
+            'lastManualRun' => $scheduler->lastManualRun(),
+            'lastSource' => $scheduler->lastSource(),
+            'schedulerLog' => $scheduler->schedulerLogEntries(),
+            'queueEnabled' => config('gitmanager.deploy_queue.enabled', true),
+            'queueCount' => DeploymentQueueItem::query()
+                ->where('status', 'queued')
+                ->count(),
+            'cronCommand' => $scheduler->cronCommand(),
+        ])
             ->layout('layouts.app', [
                 'title' => 'System Settings',
                 'header' => view('livewire.system.partials.header', [
@@ -55,6 +70,43 @@ class Settings extends Component
                     'subtitle' => 'Manage app updates, security checks, settings, and email.',
                 ]),
             ]);
+    }
+
+    public function refreshSchedulerStatus(): void
+    {
+        $this->dispatch('$refresh');
+    }
+
+    public function runScheduler(SchedulerService $scheduler): void
+    {
+        $result = $scheduler->runScheduleNow();
+        $scheduler->recordManualRun();
+        $this->dispatch('notify', message: $result['message']);
+        $this->dispatch('$refresh');
+    }
+
+    public function processQueue(DeploymentQueueService $queue, SchedulerService $scheduler): void
+    {
+        $processed = $queue->processNext(3);
+        $scheduler->recordManualRun();
+        $scheduler->recordHeartbeat('manual');
+
+        if ($processed === 0) {
+            $this->dispatch('notify', message: 'No queued items to process.');
+            $this->dispatch('$refresh');
+            return;
+        }
+
+        $this->dispatch('notify', message: "Processed {$processed} queued item(s).");
+        $this->dispatch('$refresh');
+    }
+
+    public function installCron(SchedulerService $scheduler): void
+    {
+        $result = $scheduler->installCron();
+        $message = $result['message'] ?? 'Cron action completed.';
+        $this->dispatch('notify', message: $message);
+        $this->dispatch('$refresh');
     }
 
     public function save(SettingsService $settings): void

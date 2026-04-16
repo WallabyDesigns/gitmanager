@@ -9,7 +9,7 @@ class ProcessDeploymentQueue extends Command
 {
     protected $signature = 'deployments:process-queue {--limit=3}';
 
-    protected $description = 'Process queued deployment requests.';
+    protected $description = 'Process queued task requests.';
 
     public function handle(DeploymentQueueService $queue): int
     {
@@ -20,7 +20,7 @@ class ProcessDeploymentQueue extends Command
 
         $limit = (int) $this->option('limit') ?: 3;
         $processed = $queue->processNext($limit);
-        $this->info("Processed {$processed} queued deployments.");
+        $this->info("Processed {$processed} queued item(s).");
 
         return self::SUCCESS;
     }

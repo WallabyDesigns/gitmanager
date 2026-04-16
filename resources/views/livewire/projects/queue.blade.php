@@ -6,7 +6,7 @@
             <div>
                 <div class="font-semibold text-slate-900 dark:text-slate-100">Queue Runner</div>
                 <div>
-                    Queued deployments are processed by the scheduler (<code>php artisan schedule:work</code>) or a cron task.
+                    Queued tasks are processed by the scheduler (<code>php artisan schedule:work</code>) or a cron task.
                     If the scheduler isn’t running, use “Process Queue” to advance items.
                 </div>
             </div>
@@ -80,6 +80,7 @@
                         <option value="npm_update">Npm Update</option>
                         <option value="npm_audit_fix">Npm Audit Fix</option>
                         <option value="npm_audit_fix_force">Npm Audit Fix (Force)</option>
+                        <option value="audit_project">Project Audit</option>
                         <option value="app_clear_cache">App Clear Cache</option>
                         <option value="laravel_migrate">Laravel Migrate</option>
                         <option value="preview_build">Preview Build</option>
@@ -201,7 +202,7 @@
                 </div>
             @empty
                 <div class="rounded-lg border border-dashed border-slate-300/70 dark:border-slate-700 p-6 text-sm text-slate-500 dark:text-slate-400">
-                    No queued deployments yet.
+                    No queued tasks yet.
                 </div>
             @endforelse
         </div>

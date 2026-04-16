@@ -4,7 +4,6 @@ namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
-use App\Services\SettingsService;
 
 class Kernel extends ConsoleKernel
 {
@@ -13,26 +12,8 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
-        $schedule->command('sitemap:generate')->daily();
-        $schedule->command('projects:auto-deploy')->everyFiveMinutes()->withoutOverlapping();
-        if (config('gitmanager.deploy_queue.enabled', true)) {
-            $schedule->command('deployments:process-queue')->everyMinute()->withoutOverlapping();
-        }
-        $schedule->command('scheduler:heartbeat')->everyMinute()->withoutOverlapping();
-        $schedule->command('security:sync')->hourly()->withoutOverlapping();
-        $schedule->command('dependabot:auto-merge')->hourly()->withoutOverlapping();
-        $autoUpdates = (bool) config('gitmanager.self_update.enabled');
-        try {
-            $autoUpdates = $autoUpdates
-                && (bool) app(SettingsService::class)->get('system.auto_update', $autoUpdates);
-        } catch (\Throwable $exception) {
-            // Ignore settings lookup failures (e.g., during early installs).
-        }
-        if ($autoUpdates) {
-            $schedule->command('gitmanager:self-update')->dailyAt('02:30')->withoutOverlapping();
-        }
-        // $schedule->command('site:publish')->hourly();
+        // This project registers scheduled tasks in routes/console.php (Laravel 11 style).
+        // Keep this method empty to avoid accidental duplicate registrations.
     }
 
     /**

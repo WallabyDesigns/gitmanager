@@ -372,6 +372,7 @@ class DeploymentQueueService
         $project = $item->project;
         $user = $item->queuedBy;
         $deployment = null;
+        $markFailed = false;
 
         try {
             if (! $project) {
@@ -379,20 +380,85 @@ class DeploymentQueueService
             }
 
             $payload = is_array($item->payload) ? $item->payload : [];
-            $deployment = match ($item->action) {
-                'force_deploy' => $service->deploy($project, $user, true),
-                'rollback' => $service->rollback($project, $user, $payload['target'] ?? null),
-                default => $service->deploy($project, $user, false),
-            };
+            switch ($item->action) {
+                case 'force_deploy':
+                    $deployment = $service->deploy($project, $user, true);
+                    $markFailed = $deployment->status !== 'success';
+                    break;
+                case 'rollback':
+                    $deployment = $service->rollback($project, $user, $payload['target'] ?? null);
+                    $markFailed = $deployment->status !== 'success';
+                    break;
+                case 'audit_project':
+                    $audit = $this->runAuditItem($project, $user, $payload);
+                    $deployment = $audit['deployment'];
+                    $markFailed = $audit['failed'];
+                    break;
+                case 'deploy':
+                default:
+                    $deployment = $service->deploy($project, $user, false);
+                    $markFailed = $deployment->status !== 'success';
+                    break;
+            }
 
-            $item->deployment_id = $deployment->id;
-            $item->status = $deployment->status === 'success' ? 'completed' : 'failed';
+            if ($deployment) {
+                $item->deployment_id = $deployment->id;
+            }
+
+            $item->status = $markFailed ? 'failed' : 'completed';
         } catch (\Throwable $exception) {
             $item->status = 'failed';
         }
 
         $item->finished_at = now();
         $item->save();
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     * @return array{deployment: ?Deployment, failed: bool}
+     */
+    private function runAuditItem(Project $project, ?User $user, array $payload): array
+    {
+        $autoFix = (bool) ($payload['auto_fix'] ?? true);
+        $sendEmail = (bool) ($payload['send_email'] ?? true);
+        $auditPayload = app(AuditService::class)->auditProject($project, $user, $autoFix, $sendEmail);
+        $results = $auditPayload['results'] ?? [];
+
+        $failed = false;
+        $deploymentIds = [];
+
+        foreach ($results as $result) {
+            if (! is_array($result)) {
+                continue;
+            }
+
+            if (($result['status'] ?? '') === 'failed') {
+                $failed = true;
+            }
+
+            $ids = $result['deployment_ids'] ?? null;
+            if (is_array($ids)) {
+                foreach ($ids as $id) {
+                    if (is_numeric($id)) {
+                        $deploymentIds[] = (int) $id;
+                    }
+                }
+            }
+        }
+
+        $deployment = null;
+        if ($deploymentIds !== []) {
+            $deployment = Deployment::query()
+                ->whereIn('id', array_values(array_unique($deploymentIds)))
+                ->orderByDesc('id')
+                ->first();
+        }
+
+        return [
+            'deployment' => $deployment,
+            'failed' => $failed,
+        ];
     }
 
     /**

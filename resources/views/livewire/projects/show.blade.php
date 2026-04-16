@@ -114,9 +114,9 @@
                         </button>
                     @endif
                     @if (($deploymentRunning ?? false))
-                        <button type="button" wire:click="forceStopDeployment" onclick="return confirm('Stop the running deployment and clear its queue item?') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-rose-400 text-rose-700 hover:text-rose-800 dark:border-rose-500/70 dark:text-rose-200 inline-flex items-center">
+                        <button type="button" wire:click="forceStopDeployment" onclick="return confirm('Stop the running {{ $runningTaskLabel ?? 'task' }} and clear queued items for this project?') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-rose-400 text-rose-700 hover:text-rose-800 dark:border-rose-500/70 dark:text-rose-200 inline-flex items-center">
                             <x-loading-spinner target="forceStopDeployment" />
-                            Stop Deployment
+                            Stop {{ $runningTaskLabel ?? 'Task' }}
                         </button>
                     @endif
                     <button type="button" wire:click="checkHealth" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 inline-flex items-center">

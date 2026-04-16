@@ -2,11 +2,12 @@
     $showBulkActions = $showBulkActions ?? false;
     $tab = $projectsTab ?? (request()->routeIs('projects.queue')
         ? 'queue'
-        : (request()->routeIs('projects.scheduler') ? 'scheduler' : (request()->routeIs('projects.create') ? 'create' : 'list')));
+        : (request()->routeIs('projects.create') ? 'create' : 'list'));
     $queueEnabled = config('gitmanager.deploy_queue.enabled', true);
     $scheduler = app(\App\Services\SchedulerService::class);
     $schedulerHealthy = $scheduler->isHealthy();
     $lastHeartbeat = $scheduler->lastHeartbeat();
+    $isAdmin = auth()->user()?->isAdmin() ?? false;
 @endphp
 
 <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/70 dark:border-slate-800">
@@ -22,10 +23,6 @@
         <a href="{{ route('projects.queue') }}"
            class="px-3 py-2 text-sm border-b-2 {{ $tab === 'queue' ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
             Deploy Queue
-        </a>
-        <a href="{{ route('projects.scheduler') }}"
-           class="px-3 py-2 text-sm border-b-2 {{ $tab === 'scheduler' ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
-            Scheduler Settings
         </a>
     </div>
     @if ($showBulkActions && $tab === 'list')
@@ -59,8 +56,14 @@
                 @endif
             </div>
         </div>
-        <a href="{{ route('projects.scheduler') }}" class="inline-flex items-center justify-center rounded-md border border-amber-300/60 px-3 py-1.5 text-xs font-semibold text-amber-100 hover:border-white hover:text-white">
-            Open Scheduler Settings
-        </a>
+        @if ($isAdmin)
+            <a href="{{ route('system.settings') }}#scheduler-settings" class="inline-flex items-center justify-center rounded-md border border-amber-300/60 px-3 py-1.5 text-xs font-semibold text-amber-100 hover:border-white hover:text-white">
+                Open Scheduler Settings
+            </a>
+        @else
+            <div class="text-xs text-amber-200">
+                Ask an administrator to configure scheduler settings.
+            </div>
+        @endif
     </div>
 @endif

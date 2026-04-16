@@ -30,7 +30,11 @@ class SchedulerService
     {
         $value = Cache::get(self::HEARTBEAT_KEY);
         if ($value) {
-            return Carbon::parse($value);
+            try {
+                return Carbon::parse($value);
+            } catch (\Throwable $exception) {
+                // Fall back to heartbeat file when cache contains invalid data.
+            }
         }
 
         $file = $this->readHeartbeatFile();
@@ -105,9 +109,11 @@ class SchedulerService
                 continue;
             }
 
-            if (Str::contains($line, $artisanPath) && Str::contains($line, 'schedule:run')) {
-                $normalizedLines[] = $command;
-                $updated = true;
+            if ($this->isManagedSchedulerCronLine($line, $artisanPath)) {
+                if (! $updated) {
+                    $normalizedLines[] = $command;
+                    $updated = true;
+                }
                 continue;
             }
 
@@ -206,8 +212,14 @@ class SchedulerService
             $timestamp = $data['timestamp'] ?? null;
             $source = is_string($data['source'] ?? null) ? $data['source'] : null;
 
+            try {
+                $parsed = $timestamp ? Carbon::parse($timestamp) : null;
+            } catch (\Throwable $exception) {
+                $parsed = null;
+            }
+
             return [
-                'timestamp' => $timestamp ? Carbon::parse($timestamp) : null,
+                'timestamp' => $parsed,
                 'source' => $source,
             ];
         }
@@ -267,8 +279,23 @@ class SchedulerService
      */
     public function runSchedulerOnce(string $source = 'manual'): array
     {
-        $exitCode = Artisan::call('schedule:run');
-        $output = trim(Artisan::output());
+        // Record early so long-running scheduled commands don't make health checks look stale.
+        $this->recordHeartbeat($source);
+
+        try {
+            $exitCode = Artisan::call('schedule:run');
+            $output = trim(Artisan::output());
+        } catch (\Throwable $exception) {
+            $output = trim($exception->getMessage());
+            $this->logSchedulerIssue($output !== '' ? $output : 'Scheduler threw an exception.');
+            $this->recordHeartbeat($source);
+
+            return [
+                'success' => false,
+                'message' => 'Scheduler ran with issues.',
+                'output' => $output,
+            ];
+        }
 
         $hadIssue = $exitCode !== 0 || $this->outputHasFailure($output);
         $this->recordHeartbeat($source);
@@ -394,5 +421,11 @@ class SchedulerService
     private function schedulerLogPath(): string
     {
         return storage_path('app/scheduler-errors.json');
+    }
+
+    private function isManagedSchedulerCronLine(string $line, string $artisanPath): bool
+    {
+        return Str::contains($line, $artisanPath)
+            && (Str::contains($line, 'schedule:run') || Str::contains($line, 'scheduler:run'));
     }
 }

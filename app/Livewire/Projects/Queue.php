@@ -32,11 +32,11 @@ class Queue extends Component
         $scheduler->recordManualRun();
 
         if ($processed === 0) {
-            $this->dispatch('notify', message: 'No queued deployments to process.');
+            $this->dispatch('notify', message: 'No queued items to process.');
             return;
         }
 
-        $this->dispatch('notify', message: "Processed {$processed} queued deployment(s).");
+        $this->dispatch('notify', message: "Processed {$processed} queued item(s).");
     }
 
     public function processItem(int $id, DeploymentQueueService $queue, SchedulerService $scheduler): void
@@ -65,11 +65,11 @@ class Queue extends Component
 
         $cancelled = $queue->purgeDuplicatesForUser($user);
         if ($cancelled === 0) {
-            $this->dispatch('notify', message: 'No duplicate queued deployments found.');
+            $this->dispatch('notify', message: 'No duplicate queued items found.');
             return;
         }
 
-        $this->dispatch('notify', message: "Cancelled {$cancelled} duplicate queued deployment(s).");
+        $this->dispatch('notify', message: "Cancelled {$cancelled} duplicate queued item(s).");
     }
 
     public function clearQueue(DeploymentQueueService $queue): void
@@ -87,7 +87,7 @@ class Queue extends Component
             return;
         }
 
-        $this->dispatch('notify', message: "Cleared {$cancelled} queued deployment(s) and removed {$deleted} cancelled item(s).");
+        $this->dispatch('notify', message: "Cleared {$cancelled} queued item(s) and removed {$deleted} cancelled item(s).");
         $this->resetPage();
     }
 
@@ -192,7 +192,7 @@ class Queue extends Component
         $item = DeploymentQueueItem::findOrFail($id);
         $this->authorize('update', $item);
         $queue->cancel($item);
-        $this->dispatch('notify', message: 'Queued deployment cancelled.');
+        $this->dispatch('notify', message: 'Queued item cancelled.');
         $this->resetPage();
     }
 

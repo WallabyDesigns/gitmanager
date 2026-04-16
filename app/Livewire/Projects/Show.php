@@ -78,7 +78,8 @@ class Show extends Component
             ->where('state', 'open')
             ->count();
         $securityOpenCount += $auditOpenCount;
-        $deploymentRunning = $this->deploymentInProgress();
+        $runningTask = $this->currentRunningTask();
+        $deploymentRunning = $runningTask !== null;
         $seedService = app(\App\Services\ProjectSeedService::class);
         $envSeedPending = $seedService->hasSeed($this->project, '.env');
         $htaccessSeedPending = $seedService->hasSeed($this->project, '.htaccess');
@@ -96,6 +97,7 @@ class Show extends Component
             'composerIssue' => $composerIssue,
             'npmIssue' => $npmIssue,
             'deploymentRunning' => $deploymentRunning,
+            'runningTaskLabel' => $runningTask['label'] ?? 'Task',
             'envSeedPending' => $envSeedPending,
             'htaccessSeedPending' => $htaccessSeedPending,
         ])->layout('layouts.app', [
@@ -215,11 +217,13 @@ class Show extends Component
         $this->dispatch('reload-page', delay: 800);
     }
 
-    public function forceStopDeployment(DeploymentService $service, DeploymentQueueService $queueService): void
+    public function forceStopDeployment(DeploymentService $service): void
     {
-        $count = $service->forceStop($this->project, Auth::user(), 'Deployment manually stopped.');
+        $runningTask = $this->currentRunningTask();
+        $taskLabel = $runningTask['label'] ?? 'Task';
+        $count = $service->forceStop($this->project, Auth::user(), $taskLabel.' manually stopped.');
 
-        DeploymentQueueItem::query()
+        $cancelled = DeploymentQueueItem::query()
             ->where('project_id', $this->project->id)
             ->whereIn('status', ['queued', 'running'])
             ->update([
@@ -227,10 +231,10 @@ class Show extends Component
                 'finished_at' => now(),
             ]);
 
-        if ($count === 0) {
-            $this->dispatch('notify', message: 'No running deployments were found.');
+        if ($count === 0 && $cancelled === 0) {
+            $this->dispatch('notify', message: 'No running tasks were found.');
         } else {
-            $this->dispatch('notify', message: 'Deployment stopped and queue cleared.');
+            $this->dispatch('notify', message: "{$taskLabel} stopped and queue cleared.");
         }
 
         $this->project->refresh();
@@ -272,6 +276,69 @@ class Show extends Component
             ->where('project_id', $projectId)
             ->where('status', 'running')
             ->exists();
+    }
+
+    /**
+     * @return array{action: string, label: string}|null
+     */
+    private function currentRunningTask(): ?array
+    {
+        $projectId = $this->project->id;
+
+        app(DeploymentService::class)->releaseStaleRunningDeployments();
+        app(DeploymentQueueService::class)->releaseStaleRunning();
+
+        $runningDeployment = Deployment::query()
+            ->where('project_id', $projectId)
+            ->where('status', 'running')
+            ->orderByDesc('started_at')
+            ->first(['action', 'started_at']);
+
+        $runningQueueItem = DeploymentQueueItem::query()
+            ->where('project_id', $projectId)
+            ->where('status', 'running')
+            ->orderByDesc('started_at')
+            ->orderByDesc('id')
+            ->first(['action', 'started_at']);
+
+        if (! $runningDeployment && ! $runningQueueItem) {
+            return null;
+        }
+
+        $action = $runningDeployment?->action;
+        if (! $action) {
+            $action = $runningQueueItem?->action;
+        }
+
+        if (! is_string($action) || trim($action) === '') {
+            return null;
+        }
+
+        return [
+            'action' => $action,
+            'label' => $this->taskLabelForAction($action),
+        ];
+    }
+
+    private function taskLabelForAction(string $action): string
+    {
+        return match ($action) {
+            'deploy' => 'Deployment',
+            'force_deploy' => 'Force Deployment',
+            'rollback' => 'Rollback',
+            'composer_install' => 'Composer Install',
+            'composer_update' => 'Composer Update',
+            'composer_audit' => 'Composer Audit',
+            'npm_install' => 'Npm Install',
+            'npm_update' => 'Npm Update',
+            'npm_audit_fix' => 'Npm Audit Fix',
+            'npm_audit_fix_force' => 'Npm Audit Fix (Force)',
+            'audit_project' => 'Project Audit',
+            'preview_build' => 'Preview Build',
+            'app_clear_cache' => 'App Clear Cache',
+            'laravel_migrate' => 'Laravel Migrate',
+            default => ucfirst(str_replace('_', ' ', $action)),
+        };
     }
 
     /**
