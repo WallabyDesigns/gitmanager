@@ -54,13 +54,14 @@ class Scheduler extends Component
     public function render(SchedulerService $scheduler)
     {
         $userId = Auth::id();
+        $schedulerGraceSeconds = max(600, (int) config('gitmanager.scheduler.stale_seconds', 600));
         $queueCount = DeploymentQueueItem::query()
             ->where('status', 'queued')
             ->whereHas('project', fn ($query) => $query->where('user_id', $userId))
             ->count();
 
         return view('livewire.projects.scheduler', [
-            'schedulerHealthy' => $scheduler->isHealthy(),
+            'schedulerHealthy' => $scheduler->isHealthy($schedulerGraceSeconds),
             'lastHeartbeat' => $scheduler->lastHeartbeat(),
             'lastManualRun' => $scheduler->lastManualRun(),
             'lastSource' => $scheduler->lastSource(),

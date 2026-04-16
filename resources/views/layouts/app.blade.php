@@ -36,8 +36,13 @@
                 .gwm-fallback-alert strong { color: #f8fafc; }
             </style>
         @endif
+        <style>
+            body { transition: opacity 0.12s ease; }
+            body.gwm-preload { opacity: 0; }
+        </style>
+        <noscript><style>body.gwm-preload { opacity: 1 !important; }</style></noscript>
     </head>
-    <body class="font-sans antialiased h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <body class="gwm-preload font-sans antialiased h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
         <div class="min-h-screen">
             @if (! $viteReady)
                 <div class="gwm-fallback-alert">
@@ -106,6 +111,26 @@
                     window.location.reload();
                 }, Number.isNaN(delay) ? 500 : delay);
             });
+
+            (() => {
+                const preloadClass = 'gwm-preload';
+                let revealed = false;
+                const reveal = () => {
+                    if (revealed) {
+                        return;
+                    }
+                    revealed = true;
+                    document.body?.classList.remove(preloadClass);
+                };
+
+                window.addEventListener('load', reveal, { once: true });
+                document.addEventListener('livewire:navigated', reveal);
+                window.setTimeout(reveal, 2000);
+
+                if (document.readyState === 'complete') {
+                    reveal();
+                }
+            })();
 
         </script>
     </body>

@@ -50,9 +50,10 @@ class Settings extends Component
     public function render()
     {
         $scheduler = app(SchedulerService::class);
+        $schedulerGraceSeconds = max(600, (int) config('gitmanager.scheduler.stale_seconds', 600));
 
         return view('livewire.system.settings', [
-            'schedulerHealthy' => $scheduler->isHealthy(),
+            'schedulerHealthy' => $scheduler->isHealthy($schedulerGraceSeconds),
             'lastHeartbeat' => $scheduler->lastHeartbeat(),
             'lastManualRun' => $scheduler->lastManualRun(),
             'lastSource' => $scheduler->lastSource(),

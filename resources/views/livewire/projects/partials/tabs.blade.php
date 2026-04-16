@@ -5,7 +5,8 @@
         : (request()->routeIs('projects.create') ? 'create' : 'list'));
     $queueEnabled = config('gitmanager.deploy_queue.enabled', true);
     $scheduler = app(\App\Services\SchedulerService::class);
-    $schedulerHealthy = $scheduler->isHealthy();
+    $schedulerGraceSeconds = max(600, (int) config('gitmanager.scheduler.stale_seconds', 600));
+    $schedulerHealthy = $scheduler->isHealthy($schedulerGraceSeconds);
     $lastHeartbeat = $scheduler->lastHeartbeat();
     $isAdmin = auth()->user()?->isAdmin() ?? false;
 @endphp
