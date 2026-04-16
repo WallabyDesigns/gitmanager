@@ -14,7 +14,7 @@ class ProcessDeploymentQueue extends Command
     public function handle(DeploymentQueueService $queue): int
     {
         if (! config('gitmanager.deploy_queue.enabled', true)) {
-            $this->info('Deployment queue is disabled.');
+            $this->info('Task queue is disabled.');
             return self::SUCCESS;
         }
 

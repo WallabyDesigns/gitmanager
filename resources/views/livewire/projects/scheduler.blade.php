@@ -36,7 +36,7 @@
                 <div>
                     <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Queue Health</h3>
                     <p class="text-sm text-slate-600 dark:text-slate-300">
-                        Queued deployments: <span class="text-slate-900 dark:text-slate-100">{{ $queueCount }}</span>
+                        Queued tasks: <span class="text-slate-900 dark:text-slate-100">{{ $queueCount }}</span>
                     </p>
                 </div>
                 <div class="flex flex-wrap gap-2">
@@ -55,7 +55,7 @@
                 </div>
                 @if (! $queueEnabled)
                     <div class="text-xs text-amber-700 dark:text-amber-200">
-                        Deploy queue is disabled in configuration.
+                        Task queue is disabled in configuration.
                     </div>
                 @endif
             </div>

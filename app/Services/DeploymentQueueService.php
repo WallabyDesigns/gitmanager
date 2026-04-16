@@ -103,29 +103,16 @@ class DeploymentQueueService
 
     public function normalizeQueuedPositions(): void
     {
-        $total = DeploymentQueueItem::query()
-            ->where('status', 'queued')
-            ->count();
-
-        if ($total < 2) {
-            return;
-        }
-
-        $distinct = DeploymentQueueItem::query()
-            ->where('status', 'queued')
-            ->distinct()
-            ->count('position');
-
-        if ($distinct === $total) {
-            return;
-        }
-
         $items = DeploymentQueueItem::query()
             ->where('status', 'queued')
             ->orderBy('position')
             ->orderBy('created_at')
             ->orderBy('id')
             ->get();
+
+        if ($items->count() < 2) {
+            return;
+        }
 
         $position = 1;
         foreach ($items as $item) {

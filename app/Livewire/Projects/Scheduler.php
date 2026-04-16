@@ -19,12 +19,12 @@ class Scheduler extends Component
         $scheduler->recordHeartbeat('manual');
 
         if ($processed === 0) {
-            $this->dispatch('notify', message: 'No queued deployments to process.');
+            $this->dispatch('notify', message: 'No queued tasks to process.');
             $this->dispatch('$refresh');
             return;
         }
 
-        $this->dispatch('notify', message: "Processed {$processed} queued deployment(s).");
+        $this->dispatch('notify', message: "Processed {$processed} queued task(s).");
         $this->dispatch('$refresh');
     }
 

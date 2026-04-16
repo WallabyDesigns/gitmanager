@@ -182,7 +182,7 @@ class Queue extends Component
             'runningDeployments' => $runningDeployments,
             'staleSeconds' => (int) config('gitmanager.deploy_queue.stale_seconds', 900),
         ])->layout('layouts.app', [
-            'title' => 'Deploy Queue',
+            'title' => 'Task Queue',
             'header' => view('livewire.projects.partials.queue-header'),
         ]);
     }

@@ -36,12 +36,8 @@
                 .gwm-fallback-alert strong { color: #f8fafc; }
             </style>
         @endif
-        <style>
-            body { transition: opacity 0.12s ease; }
-            body.gwm-preload { opacity: 0; }
-        </style>
     </head>
-    <body class="font-sans antialiased h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 gwm-preload">
+    <body class="font-sans antialiased h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
         <div class="min-h-screen">
             @if (! $viteReady)
                 <div class="gwm-fallback-alert">
@@ -111,9 +107,6 @@
                 }, Number.isNaN(delay) ? 500 : delay);
             });
 
-            const reveal = () => document.body.classList.remove('gwm-preload');
-            window.addEventListener('load', reveal);
-            setTimeout(reveal, 2000);
         </script>
     </body>
 </html>

@@ -19,13 +19,13 @@
             <div>
               <p class="eyebrow">Scheduler Settings</p>
               <h1>Git Web Manager</h1>
-              <p class="tagline">Keep deploy queues moving by monitoring scheduler health.</p>
+              <p class="tagline">Keep task queues moving by monitoring scheduler health.</p>
             </div>
         </div>
       </div>
       <div class="page-actions">
         <a class="btn ghost" href="users.html"><img src="assets/prev.svg" height="25" width="25" alt="" /> User Management</a>
-        <a class="btn primary" href="deploy-queue.html">Deploy Queue <img src="assets/next.svg" height="25" width="25" alt="" /></a>
+        <a class="btn primary" href="deploy-queue.html">Task Queue <img src="assets/next.svg" height="25" width="25" alt="" /></a>
       </div>
     </div>
   </header>
@@ -36,7 +36,7 @@
     <section class="content">
       <section class="card">
         <h2>Scheduler Health</h2>
-        <p>The Scheduler Settings tab shows the last heartbeat recorded by the Laravel scheduler. If the heartbeat is stale, queued deployments will not run.</p>
+        <p>Scheduler controls are available in <strong>System → Settings</strong>. This area shows the last heartbeat recorded by the Laravel scheduler. If the heartbeat is stale, queued tasks will not run.</p>
         <ul>
           <li>Healthy: scheduler heartbeat recorded within the configured window.</li>
           <li>Not detected: no recent heartbeat.</li>
@@ -50,14 +50,14 @@
 
       <section class="card">
         <h2>Process Queue Now</h2>
-        <p>The <strong>Process Queue Now</strong> button runs the deploy queue processor once. Use it when you have queued items and the scheduler is offline.</p>
+        <p>The <strong>Process Queue Now</strong> button runs the task queue processor once. Use it when you have queued items and the scheduler is offline.</p>
       </section>
 
       <section class="card">
         <h2>Cron Installation</h2>
-        <p>Add the cron line shown on the Scheduler Settings page so Laravel's scheduler runs every minute:</p>
+        <p>Add the cron line shown in System Settings so Laravel's scheduler runs every minute:</p>
         <pre><code>* * * * * cd /path/to/app &amp;&amp; /path/to/php artisan scheduler:run &gt;/dev/null 2&gt;&amp;1</code></pre>
-        <p>The <strong>Install Cron</strong> button attempts to add this entry automatically on Linux hosts. On Windows, configure Task Scheduler instead.</p>
+        <p>The <strong>Install Cron</strong> button attempts to add or update this entry automatically on Linux hosts. On Windows, configure Task Scheduler instead.</p>
         <p>If the heartbeat isn't updating, verify <code>storage/logs/scheduler-heartbeat.json</code> is being updated.</p>
       </section>
 

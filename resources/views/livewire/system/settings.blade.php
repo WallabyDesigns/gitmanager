@@ -55,7 +55,7 @@
                 </div>
                 @if (! $queueEnabled)
                     <div class="text-xs text-amber-700 dark:text-amber-200">
-                        Deploy queue is disabled in configuration.
+                        Task queue is disabled in configuration.
                     </div>
                 @endif
             </div>

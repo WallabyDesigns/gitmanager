@@ -22,19 +22,19 @@ You can read it directly here: [documentation](https://wallabydesigns.github.io/
 - Spin up preview builds for any commit.
 - Keep dependencies and security alerts visible.
 
-## Features
-- Authenticated dashboard with project list and detail pages.
-- Deploys, force deploys, and rollbacks.
-- Auto-deploy via scheduler or GitHub webhooks.
-- Health checks with live status.
-- Preview builds by commit.
-- Dependency actions (composer/npm) with logs.
-- Security tab with Dependabot alerts and auto-merge.
-- Self-update flow for the app itself.
-- Rule-based workflows for deploys, rollbacks, dependency actions (email + webhooks).
-- Deploy queue for serializing deployments.
-- User management tab for creating accounts and resetting passwords.
-- Project-type wizard (Laravel, Node, Static, Custom) with relevant defaults.
+## Feature Overview
+- **Project management:** Create and manage Git-backed projects with per-project settings, paths, branches, and deployment behavior.
+- **Deploy workflows:** Run deploy, force deploy, and rollback actions with logs and status history.
+- **Task queue:** Queue and process background work in order (including deploy-related tasks and audits), with controls to reorder, cancel, and process now.
+- **Scheduler health:** Monitor heartbeat status, run scheduler actions manually, and manage cron setup from the UI.
+- **Auto deploy + webhooks:** Trigger updates from scheduled checks or GitHub webhook events.
+- **Health monitoring:** Track project health endpoints with live state and last-checked visibility.
+- **Preview builds:** Generate preview builds for specific commits to validate changes safely.
+- **Dependency operations:** Run composer/npm actions and audits with per-run logs and issue visibility.
+- **Security insights:** Review Dependabot and audit findings in one place, including remediation workflows.
+- **Workflow automations:** Configure rule-based notifications and webhooks for success/failure events.
+- **App self-update:** Update the manager itself with safe defaults and force-update recovery options.
+- **Admin controls:** Manage users, enforce first-login password changes, and configure system/email settings.
 
 ## Quick Start
 1. Copy `.env.example` to `.env` and configure required values.
@@ -109,7 +109,7 @@ Set these in `.env` as needed:
 - `GWM_SELF_UPDATE_ENABLED` to enable self updates.
 - `GWM_SELF_UPDATE_EXCLUDE_PATHS` to skip paths (default: `docs`).
 - `GWM_PREVIEW_PATH` and `GWM_PREVIEW_BASE_URL` for preview builds.
-- `GWM_DEPLOY_QUEUE_ENABLED` to enable queued deployments.
+- `GWM_DEPLOY_QUEUE_ENABLED` to enable queued tasks.
 
 Legacy `GPM_*` keys are still supported for backward compatibility.
 

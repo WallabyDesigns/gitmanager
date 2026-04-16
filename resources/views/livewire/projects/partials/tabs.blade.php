@@ -22,7 +22,7 @@
         </a>
         <a href="{{ route('projects.queue') }}"
            class="px-3 py-2 text-sm border-b-2 {{ $tab === 'queue' ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
-            Deploy Queue
+            Task Queue
         </a>
     </div>
     @if ($showBulkActions && $tab === 'list')
@@ -48,7 +48,7 @@
         <div>
             <div class="text-xs uppercase tracking-wide text-amber-300">Scheduler not detected.</div>
             <div class="text-sm text-amber-100">
-                Queued deployments will not run until the scheduler is running.
+                Queued tasks will not run until the scheduler is running.
                 @if ($lastHeartbeat)
                     Last heartbeat: {{ \App\Support\DateFormatter::forUser($lastHeartbeat, 'M j, Y g:i a') }}.
                 @else
