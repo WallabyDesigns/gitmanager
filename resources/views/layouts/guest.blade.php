@@ -13,8 +13,20 @@
         
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        @php
+            $editionService = app(\App\Services\EditionService::class);
+            $settingsService = app(\App\Services\SettingsService::class);
+            $isEnterpriseEdition = $editionService->current() === \App\Services\EditionService::ENTERPRISE;
+            $brandName = (string) config('app.name', 'Git Web Manager');
+            if ($isEnterpriseEdition) {
+                $customBrandName = trim((string) $settingsService->get('system.white_label.name', ''));
+                if ($customBrandName !== '') {
+                    $brandName = $customBrandName;
+                }
+            }
+        @endphp
 
-        <title>{{ isset($title) ? $title . ' - ' . config('app.name', 'Git Web Manager') : config('app.name', 'Git Web Manager') }}</title>
+        <title>{{ isset($title) ? $title . ' - ' . $brandName : $brandName }}</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -25,6 +37,9 @@
             $viteManifest = public_path('build/manifest.json');
             $viteHot = public_path('hot');
             $viteReady = file_exists($viteManifest) || file_exists($viteHot);
+        @endphp
+        @php
+            $editionLabel = app(\App\Services\EditionService::class)->label();
         @endphp
         @if ($viteReady)
             @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -54,8 +69,11 @@
                     <x-application-logo class="w-20 h-20 fill-current text-gray-500" />
                     <div>
                         <h2 class="text-xl px-2 font-semibold text-slate-900 dark:text-slate-100">
-                            Git Web Manager
+                            {{ $brandName }}
                         </h2>
+                        <p class="px-2 -mt-1 text-[11px] uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                            {{ $editionLabel }}
+                        </p>
                     </div>
                 </a>
             </div>
@@ -63,7 +81,7 @@
             <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white shadow-md overflow-hidden sm:rounded-lg dark:bg-slate-900 dark:border dark:border-slate-800">
                 {{ $slot }}
             </div>
-            <p class="footer-text">Git Web Manager for Git © 2026 <a style="text-decoration: underline;" href="https://wallabydesigns.com/" title="Website built by Wallaby Designs">Wallaby Designs LLC</a> • MIT License<br/>
+            <p class="footer-text">Git Web Manager for Git © 2026 <a style="text-decoration: underline;" href="https://wallabydesigns.com/" title="Website built by Wallaby Designs">Wallaby Designs LLC</a> • zlib License<br/>
                 <span class="footer-disclaimer">Git Web Manager is not affiliated with, endorsed by, or sponsored by Git or its maintainers.</span></p>
         </div>
         <script>

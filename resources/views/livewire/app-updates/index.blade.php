@@ -8,9 +8,11 @@
 @endphp
 
 <div class="py-10">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        @include('livewire.system.partials.tabs')
-        <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid gap-6 lg:grid-cols-[260px,1fr]">
+            @include('livewire.system.partials.tabs')
+            <div class="space-y-6">
+                <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Update Status</h3>
@@ -51,6 +53,33 @@
                     <div class="text-slate-700 dark:text-slate-200">{{ \App\Support\DateFormatter::forUser($updateStatus['checked_at'] ?? null, 'M j, Y g:i a', '—') }}</div>
                 </div>
             </div>
+            @php($enterprisePackage = $updateStatus['enterprise_package'] ?? null)
+            @if (is_array($enterprisePackage))
+                @php($enterpriseStatus = $enterprisePackage['status'] ?? 'unknown')
+                <div class="mt-4 rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 p-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div class="text-sm font-semibold text-slate-800 dark:text-slate-100">Enterprise Package</div>
+                        <span class="px-2 py-1 rounded-full text-xs font-semibold {{ $enterpriseStatus === 'up-to-date' ? 'bg-emerald-500/20 text-emerald-200' : ($enterpriseStatus === 'update-available' ? 'bg-amber-500/20 text-amber-200' : ($enterpriseStatus === 'disabled' ? 'bg-slate-500/20 text-slate-200' : 'bg-slate-500/20 text-slate-200')) }}">
+                            {{ strtoupper(str_replace('-', ' ', $enterpriseStatus)) }}
+                        </span>
+                    </div>
+                    <div class="mt-2 grid gap-3 sm:grid-cols-2 text-xs text-slate-600 dark:text-slate-300">
+                        <div>
+                            <div class="uppercase tracking-wide text-slate-400 dark:text-slate-500">Current</div>
+                            <div class="font-mono text-slate-700 dark:text-slate-200">{{ $enterprisePackage['current'] ?? '—' }}</div>
+                        </div>
+                        <div>
+                            <div class="uppercase tracking-wide text-slate-400 dark:text-slate-500">Latest</div>
+                            <div class="font-mono text-slate-700 dark:text-slate-200">{{ $enterprisePackage['latest'] ?? '—' }}</div>
+                        </div>
+                    </div>
+                    @if (! empty($enterprisePackage['message']))
+                        <div class="mt-2 text-xs {{ $enterpriseStatus === 'update-available' ? 'text-amber-500 dark:text-amber-300' : 'text-slate-500 dark:text-slate-400' }}">
+                            {{ $enterprisePackage['message'] }}
+                        </div>
+                    @endif
+                </div>
+            @endif
             @if (! empty($updateStatus['error']))
                 <div class="mt-3 text-xs text-rose-400">
                     {{ $updateStatus['error'] }}
@@ -63,7 +92,7 @@
             @endif
         </div>
 
-        <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
+                <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Run Update</h3>
@@ -131,7 +160,7 @@
             </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
+                <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
             <div class="space-y-4">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -189,7 +218,7 @@
             </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
+                <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Recent Updates</h3>
@@ -235,6 +264,8 @@
                 @empty
                     <p class="text-sm text-slate-500 dark:text-slate-400">No update attempts yet.</p>
                 @endforelse
+            </div>
+                </div>
             </div>
         </div>
     </div>

@@ -8,6 +8,7 @@ use App\Models\AuditIssue;
 use App\Models\Deployment;
 use App\Services\AuditService;
 use App\Services\DeploymentService;
+use App\Services\EditionService;
 use App\Services\SettingsService;
 use Illuminate\Support\Facades\Artisan;
 use Livewire\Component;
@@ -37,7 +38,7 @@ class SecurityAlerts extends Component
         $this->pushCommitMessage = $this->commitMessageForContext('audit');
     }
 
-    public function render()
+    public function render(EditionService $edition): \Illuminate\View\View
     {
         $tab = in_array($this->tab, ['current', 'resolved'], true) ? $this->tab : 'current';
 
@@ -90,6 +91,7 @@ class SecurityAlerts extends Component
             'hasComposer' => $this->hasComposer,
             'hasNpm' => $this->hasNpm,
             'permissionsLocked' => $permissionsLocked,
+            'isEnterprise' => $edition->current() === EditionService::ENTERPRISE,
             'securityLogs' => $securityLogs,
             'latestSecurityLog' => $securityLogs->first(),
         ]);
@@ -105,15 +107,21 @@ class SecurityAlerts extends Component
         }
     }
 
-    public function auditProject(AuditService $audit): void
+    public function auditProject(AuditService $audit, DeploymentService $deployment, EditionService $edition): void
     {
+        if ($edition->current() !== EditionService::ENTERPRISE) {
+            $this->dispatch('notify', message: 'Automatic project audits are available in Enterprise Edition.', type: 'warning');
+            $this->dispatch('gwm-open-enterprise-modal', feature: 'Automatic Project & Container Audits');
+            return;
+        }
+
         if ($this->blockIfPermissionsLocked('audit checks')) {
             return;
         }
 
         $payload = $audit->auditProject($this->project, auth()->user(), true, true);
         $this->project->refresh();
-        $this->maybePromptPushFromResults($payload['results'] ?? []);
+        $this->maybePromptPushFromResults($deployment, $payload['results'] ?? []);
         $this->dispatchAuditToast($payload['results'] ?? []);
     }
 
@@ -259,9 +267,12 @@ class SecurityAlerts extends Component
     /**
      * @param array<string, array<string, mixed>> $results
      */
-    private function maybePromptPushFromResults(array $results): void
+    /**
+     * @param array<string, array<string, mixed>> $results
+     */
+    private function maybePromptPushFromResults(DeploymentService $deployment, array $results): void
     {
-        $changes = app(DeploymentService::class)->getWorkingTreeChanges($this->project);
+        $changes = $deployment->getWorkingTreeChanges($this->project);
         if (! ($changes['dirty'] ?? false)) {
             return;
         }
@@ -546,4 +557,5 @@ class SecurityAlerts extends Component
             'npm_audit_fix_force',
         ];
     }
+
 }

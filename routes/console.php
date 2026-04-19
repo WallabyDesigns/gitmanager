@@ -10,6 +10,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('scheduler:heartbeat')->everyMinute()->withoutOverlapping();
+Schedule::command('license:verify')->everyTenMinutes()->withoutOverlapping();
 Schedule::command('sitemap:generate')->daily();
 Schedule::command('projects:auto-deploy')->everyFiveMinutes()->withoutOverlapping();
 

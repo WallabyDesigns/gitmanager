@@ -4,6 +4,7 @@ namespace App\Livewire\Projects;
 
 use App\Models\Deployment;
 use App\Models\DeploymentQueueItem;
+use App\Services\EditionService;
 use App\Services\DeploymentService;
 use App\Services\DeploymentQueueService;
 use App\Services\AuditService;
@@ -46,6 +47,12 @@ class Index extends Component
 
     public function auditAllProjects(AuditService $audit): void
     {
+        if (! $this->isEnterpriseEdition()) {
+            $this->dispatch('notify', message: 'Automatic project audits are available in Enterprise Edition.', type: 'warning');
+            $this->dispatch('gwm-open-enterprise-modal', feature: 'Automatic Project & Container Audits');
+            return;
+        }
+
         $projects = Auth::user()
             ->projects()
             ->get();
@@ -198,6 +205,11 @@ class Index extends Component
     private function queueEnabled(): bool
     {
         return (bool) config('gitmanager.deploy_queue.enabled', true);
+    }
+
+    private function isEnterpriseEdition(): bool
+    {
+        return app(EditionService::class)->current() === EditionService::ENTERPRISE;
     }
 
     private function shouldAutoCheckHealth(\App\Models\Project $project): bool

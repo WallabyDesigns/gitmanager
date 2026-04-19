@@ -13,8 +13,20 @@
         
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        @php
+            $editionService = app(\App\Services\EditionService::class);
+            $settingsService = app(\App\Services\SettingsService::class);
+            $isEnterpriseEdition = $editionService->current() === \App\Services\EditionService::ENTERPRISE;
+            $brandName = (string) config('app.name', 'Git Web Manager');
+            if ($isEnterpriseEdition) {
+                $customBrandName = trim((string) $settingsService->get('system.white_label.name', ''));
+                if ($customBrandName !== '') {
+                    $brandName = $customBrandName;
+                }
+            }
+        @endphp
 
-        <title>{{ isset($title) ? $title . ' - ' . config('app.name', 'Git Web Manager') : config('app.name', 'Git Web Manager') }}</title>
+        <title>{{ isset($title) ? $title . ' - ' . $brandName : $brandName }}</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -37,6 +49,7 @@
             </style>
         @endif
         <style>
+            [x-cloak] { display: none !important; }
             body { transition: opacity 0.12s ease; }
             body.gwm-preload { opacity: 0; }
         </style>
@@ -74,12 +87,97 @@
                 {{ $slot }}
             </main>
             <footer>
-                <p class="footer-text">Git Web Manager for Git © 2026 <a style="text-decoration: underline;" href="https://wallabydesigns.com/" title="Website built by Wallaby Designs">Wallaby Designs LLC</a> • MIT License<br/>
+                <p class="footer-text">Git Web Manager for Git © 2026 <a class="underline" href="https://wallabydesigns.com/" title="Website built by Wallaby Designs">Wallaby Designs LLC</a> • zlib License<br/>
                 <span class="footer-disclaimer">Git Web Manager is not affiliated with, endorsed by, or sponsored by Git or its maintainers.</span></p>
             </footer>
         </div>
 
         <div id="gwm-toast" class="gwm-toast fixed bottom-6 right-6 hidden max-w-sm rounded-lg border px-4 py-3 text-sm shadow-lg"></div>
+        <div
+            x-data="{ open: false, feature: 'Enterprise Feature' }"
+            x-on:gwm-open-enterprise-modal.window="feature = ($event.detail && $event.detail.feature) ? $event.detail.feature : 'Enterprise Feature'; open = true"
+            x-on:keydown.escape.window="open = false"
+        >
+            <div
+                x-show="open"
+                x-cloak
+                class="fixed inset-0 z-[1300] flex items-center justify-center px-4"
+                role="dialog"
+                aria-modal="true"
+            >
+                <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" @click="open = false"></div>
+                <div class="relative w-full max-w-lg rounded-2xl border border-amber-300/40 bg-white p-6 shadow-2xl dark:border-amber-500/30 dark:bg-slate-900">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <div class="inline-flex items-center gap-2 rounded-full border border-amber-300/60 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:border-amber-500/50 dark:bg-amber-500/10 dark:text-amber-300">
+                                <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M10 1a4 4 0 00-4 4v2H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-1V5a4 4 0 00-4-4zm-2 6V5a2 2 0 114 0v2H8z" clip-rule="evenodd" />
+                                </svg>
+                                Enterprise Feature
+                            </div>
+                            <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Unlock in Enterprise Edition</h3>
+                        </div>
+                        <button type="button" @click="open = false" class="rounded-md p-2 text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-slate-100" aria-label="Close">
+                            <svg class="h-5 w-5" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <p class="mt-4 text-sm text-slate-600 dark:text-slate-300">
+                        <span class="font-semibold text-slate-900 dark:text-slate-100" x-text="feature"></span>
+                        is available in Enterprise Edition. Upgrade to unlock premium infrastructure controls and advanced platform features.
+                    </p>
+
+                    <ul class="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+                        <li>Docker and container management from the project panel.</li>
+                        <li>Kubernetes workload controls and health visibility.</li>
+                        <li>SQL database provisioning and management tools.</li>
+                        <li>White-label branding with custom logo and identity.</li>
+                    </ul>
+
+                    @php
+                        $checkoutLive = \Illuminate\Support\Facades\Route::has('checkout.enterprise')
+                            && class_exists(\GitManagerEnterprise\Http\Controllers\CheckoutController::class)
+                            && \GitManagerEnterprise\Http\Controllers\CheckoutController::isConfigured();
+                    @endphp
+                    <div class="mt-6 flex flex-wrap items-center gap-3">
+                        @if ($checkoutLive)
+                            @auth
+                                <form method="POST" action="{{ route('checkout.enterprise') }}" id="gwm-enterprise-checkout-form">
+                                    @csrf
+                                </form>
+                                <button type="button" @click="open = false; document.getElementById('gwm-enterprise-checkout-form').submit()" class="inline-flex items-center rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-400">
+                                    Buy Enterprise Edition
+                                </button>
+                            @else
+                                <a href="{{ route('login') }}" class="inline-flex items-center rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-400">
+                                    Sign In to Purchase
+                                </a>
+                            @endauth
+                        @else
+                            <a href="mailto:hello@wallabydesigns.com?subject=Enterprise%20Edition%20Enquiry" class="inline-flex items-center rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-400">
+                                Contact Us to Purchase
+                            </a>
+                        @endif
+                        <button type="button" @click="open = false" class="inline-flex items-center rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white">
+                            Maybe Later
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @if (session()->has('gwm_flash'))
+            @php $gwmFlash = session('gwm_flash'); @endphp
+            <script>
+                document.addEventListener('DOMContentLoaded', () => {
+                    window.dispatchEvent(new CustomEvent('notify', { detail: {
+                        type: {{ Js::from($gwmFlash['type'] ?? 'info') }},
+                        message: {{ Js::from($gwmFlash['message'] ?? '') }},
+                    }}));
+                });
+            </script>
+        @endif
         <script>
             window.addEventListener('notify', (event) => {
                 const toast = document.getElementById('gwm-toast');

@@ -13,6 +13,8 @@ class AuthenticationTest extends TestCase
 
     public function test_login_screen_can_be_rendered(): void
     {
+        User::factory()->create();
+
         $response = $this->get('/login');
 
         $response
@@ -32,7 +34,7 @@ class AuthenticationTest extends TestCase
 
         $component
             ->assertHasNoErrors()
-            ->assertRedirect(route('dashboard', absolute: false));
+            ->assertRedirect(route('projects.index', absolute: false));
 
         $this->assertAuthenticated();
     }
@@ -60,7 +62,7 @@ class AuthenticationTest extends TestCase
 
         $this->actingAs($user);
 
-        $response = $this->get('/dashboard');
+        $response = $this->get('/projects');
 
         $response
             ->assertOk()

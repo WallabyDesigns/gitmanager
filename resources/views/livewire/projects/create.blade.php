@@ -1,32 +1,57 @@
 <div class="py-10">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        @include('livewire.projects.partials.tabs')
-        <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800">
-            <div class="p-6">
-                <div class="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Add Project</h3>
-                        <p class="text-sm text-slate-500 dark:text-slate-400">Use the wizard to configure a new project.</p>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid gap-6 lg:grid-cols-[260px,1fr]">
+            @include('livewire.projects.partials.tabs')
+            <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800">
+                <div class="p-6">
+                    <div class="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Add Project</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Use the wizard to configure a new project.</p>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full {{ $step === 1 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-200 dark:bg-slate-800' }}">1</span>
+                            <span>Setup</span>
+                            <span class="text-slate-300 dark:text-slate-700">→</span>
+                            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full {{ $step === 2 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-200 dark:bg-slate-800' }}">2</span>
+                            <span>Configuration</span>
+                            <span class="text-slate-300 dark:text-slate-700">→</span>
+                            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full {{ $step === 3 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-200 dark:bg-slate-800' }}">3</span>
+                            <span>Build & Deploy</span>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                        <span class="inline-flex h-6 w-6 items-center justify-center rounded-full {{ $step === 1 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-200 dark:bg-slate-800' }}">1</span>
-                        <span>Setup</span>
-                        <span class="text-slate-300 dark:text-slate-700">→</span>
-                        <span class="inline-flex h-6 w-6 items-center justify-center rounded-full {{ $step === 2 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-200 dark:bg-slate-800' }}">2</span>
-                        <span>Configuration</span>
-                        <span class="text-slate-300 dark:text-slate-700">→</span>
-                        <span class="inline-flex h-6 w-6 items-center justify-center rounded-full {{ $step === 3 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-200 dark:bg-slate-800' }}">3</span>
-                        <span>Build & Deploy</span>
-                    </div>
-                </div>
 
-                <form wire:submit.prevent="{{ $step === 3 ? 'save' : 'nextStep' }}" class="mt-6 space-y-6">
-                    @php
-                        $type = $form['project_type'] ?? 'custom';
-                        $showComposer = in_array($type, ['laravel', 'custom'], true);
-                        $showNpm = in_array($type, ['laravel', 'node', 'static', 'custom'], true);
-                    @endphp
-                    @if ($step === 1)
+                    @if (! $isEnterprise)
+                        <div class="mt-4 rounded-md border {{ $projectCount >= $communityProjectLimit ? 'border-amber-300/70 bg-amber-50/70 dark:border-amber-500/40 dark:bg-amber-500/10' : 'border-slate-200/70 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-950/40' }} px-4 py-3">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <div class="text-xs">
+                                    <div class="font-semibold {{ $projectCount >= $communityProjectLimit ? 'text-amber-700 dark:text-amber-200' : 'text-slate-700 dark:text-slate-200' }}">
+                                        Community project usage: {{ $projectCount }} / {{ $communityProjectLimit }}
+                                    </div>
+                                    <div class="mt-1 {{ $projectCount >= $communityProjectLimit ? 'text-amber-700 dark:text-amber-200' : 'text-slate-500 dark:text-slate-400' }}">
+                                        {{ $projectCount >= $communityProjectLimit ? 'Project creation is locked until you upgrade to Enterprise.' : 'You can create '.($communityProjectLimit - $projectCount).' more project(s) on Community.' }}
+                                    </div>
+                                </div>
+                                @if ($projectCount >= $communityProjectLimit)
+                                    <button
+                                        type="button"
+                                        onclick="window.dispatchEvent(new CustomEvent('gwm-open-enterprise-modal', { detail: { feature: 'Unlimited Projects' } }));"
+                                        class="inline-flex items-center rounded-md border border-amber-400/70 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100"
+                                    >
+                                        Upgrade
+                                    </button>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+
+                    <form wire:submit.prevent="{{ $step === 3 ? 'save' : 'nextStep' }}" class="mt-6 space-y-6">
+                        @php
+                            $type = $form['project_type'] ?? 'custom';
+                            $showComposer = in_array($type, ['laravel', 'custom'], true);
+                            $showNpm = in_array($type, ['laravel', 'node', 'static', 'nextjs', 'react', 'custom'], true);
+                        @endphp
+                        @if ($step === 1)
                         <div class="grid gap-4 sm:grid-cols-2">
                             <div>
                                 <x-input-label for="name" value="Project Name" />
@@ -37,7 +62,9 @@
                                 <x-input-label for="project_type" value="Project Type" />
                                 <select id="project_type" class="mt-1 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" wire:model.live="form.project_type">
                                     @foreach ($projectTypes as $type)
-                                        <option value="{{ $type['value'] }}">{{ $type['label'] }}</option>
+                                        <option value="{{ $type['value'] }}">
+                                            {{ $type['label'] }}{{ ! empty($type['locked']) ? ' 🔒' : '' }}
+                                        </option>
                                     @endforeach
                                 </select>
                                 @php
@@ -46,6 +73,11 @@
                                 <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">
                                     {{ $typeMeta['description'] ?? '' }}
                                 </p>
+                                @if (! empty($typeMeta['locked']))
+                                    <p class="mt-1 text-xs text-amber-500 dark:text-amber-300">
+                                        {{ $typeMeta['locked_message'] ?? 'This project type is currently unavailable.' }}
+                                    </p>
+                                @endif
                                 <x-input-error :messages="$errors->get('form.project_type')" class="mt-2" />
                             </div>
                             <div>
@@ -114,6 +146,12 @@
                                 <x-input-error :messages="$errors->get('form.exclude_paths')" class="mt-2" />
                             </div>
                             <div class="sm:col-span-2">
+                                <x-input-label for="whitelist_paths" value="Whitelist Paths" />
+                                <textarea id="whitelist_paths" rows="4" class="mt-1 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" wire:model.live="form.whitelist_paths" placeholder="public/build&#10;public/assets&#10;index.php"></textarea>
+                                <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">One entry per line (or comma-separated). If empty, all project paths are allowed. When set, FTPS deploy sync only uploads matching files/directories.</p>
+                                <x-input-error :messages="$errors->get('form.whitelist_paths')" class="mt-2" />
+                            </div>
+                            <div class="sm:col-span-2">
                                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4 space-y-3">
                                         <div>
                                             <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">Remote Deployment (FTPS)</div>
@@ -126,7 +164,7 @@
                                     <div class="grid gap-3 sm:grid-cols-2">
                                             <div>
                                                 <x-input-label for="ftp_account_id" value="FTP/SSH Access" />
-                                                <select id="ftp_account_id" class="mt-1 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" wire:model.live="form.ftp_account_id" {{ ($form['ftp_enabled'] ?? false) ? '' : 'disabled' }}>
+                                                <select id="ftp_account_id" class="mt-1 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" wire:model.live="form.ftp_account_id" @disabled(! ($form['ftp_enabled'] ?? false))>
                                                     <option value="">Select access</option>
                                                     @foreach ($ftpAccounts as $account)
                                                         <option value="{{ $account->id }}">{{ $account->name }} ({{ $account->host }})</option>
@@ -136,12 +174,12 @@
                                         </div>
                                         <div>
                                             <x-input-label for="ftp_root_path" value="Remote Root Path (optional)" />
-                                            <x-text-input id="ftp_root_path" class="mt-1 block w-full" wire:model.live="form.ftp_root_path" placeholder="/public_html" {{ ($form['ftp_enabled'] ?? false) ? '' : 'disabled' }} />
+                                            <x-text-input id="ftp_root_path" class="mt-1 block w-full" wire:model.live="form.ftp_root_path" placeholder="/public_html" :disabled="! ($form['ftp_enabled'] ?? false)" />
                                             <x-input-error :messages="$errors->get('form.ftp_root_path')" class="mt-2" />
                                         </div>
                                     </div>
                                     <div class="flex flex-wrap items-center gap-3">
-                                        <button type="button" wire:click="testFtpConnection" class="px-3 py-2 text-xs rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100" {{ ($form['ftp_enabled'] ?? false) ? '' : 'disabled' }}>
+                                        <button type="button" wire:click="testFtpConnection" class="px-3 py-2 text-xs rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100" @disabled(! ($form['ftp_enabled'] ?? false))>
                                             Test Connection
                                         </button>
                                         @if ($ftpTestStatus)
@@ -166,18 +204,18 @@
                                         <div class="grid gap-3 sm:grid-cols-2">
                                             <div>
                                                 <x-input-label for="ssh_port" value="SSH Port" />
-                                                <x-text-input id="ssh_port" class="mt-1 block w-full" wire:model.live="form.ssh_port" placeholder="22" {{ ($form['ssh_enabled'] ?? false) ? '' : 'disabled' }} />
+                                                <x-text-input id="ssh_port" class="mt-1 block w-full" wire:model.live="form.ssh_port" placeholder="22" :disabled="! ($form['ssh_enabled'] ?? false)" />
                                                 <x-input-error :messages="$errors->get('form.ssh_port')" class="mt-2" />
                                             </div>
                                             <div>
                                                 <x-input-label for="ssh_root_path" value="SSH Root Path (optional)" />
-                                                <x-text-input id="ssh_root_path" class="mt-1 block w-full" wire:model.live="form.ssh_root_path" placeholder="/home/user/public_html" {{ ($form['ssh_enabled'] ?? false) ? '' : 'disabled' }} />
+                                                <x-text-input id="ssh_root_path" class="mt-1 block w-full" wire:model.live="form.ssh_root_path" placeholder="/home/user/public_html" :disabled="! ($form['ssh_enabled'] ?? false)" />
                                                 <x-input-error :messages="$errors->get('form.ssh_root_path')" class="mt-2" />
                                             </div>
                                         </div>
                                         <div>
                                             <x-input-label for="ssh_commands" value="SSH Commands (one per line)" />
-                                            <textarea id="ssh_commands" rows="4" class="mt-1 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" wire:model.live="form.ssh_commands" placeholder="composer install --no-dev&#10;npm install&#10;npm run build" {{ ($form['ssh_enabled'] ?? false) ? '' : 'disabled' }}></textarea>
+                                            <textarea id="ssh_commands" rows="4" class="mt-1 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" wire:model.live="form.ssh_commands" placeholder="composer install --no-dev&#10;npm install&#10;npm run build" @disabled(! ($form['ssh_enabled'] ?? false))></textarea>
                                             <x-input-error :messages="$errors->get('form.ssh_commands')" class="mt-2" />
                                         </div>
                                         <p class="text-xs text-slate-500 dark:text-slate-400">Password-based SSH uses a built-in askpass helper by default. You can optionally configure <code>sshpass</code> per FTP/SSH access record or via <code>GWM_SSH_PASS_BINARY</code>; use a per-record key path or <code>GWM_SSH_KEY_PATH</code> for key-based auth.</p>
@@ -190,14 +228,14 @@
                     @if ($step === 2)
                         <div class="grid gap-4">
                             @php
-                                $showEnvConfig = in_array(($form['project_type'] ?? 'custom'), ['laravel', 'node'], true) || ($envExampleAvailable ?? false);
+                                $showEnvConfig = in_array(($form['project_type'] ?? 'custom'), ['laravel', 'node', 'nextjs', 'react'], true) || ($envExampleAvailable ?? false);
                             @endphp
                             @if ($showEnvConfig)
                                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
                                     <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">Environment (.env)</div>
                                     <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Paste an optional <code>.env</code> file to create during setup. If <code>.env.example</code> or <code>.env.sample</code> exists, you can prefill from it.</p>
                                     <label class="mt-3 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
-                                        <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.env_use_example" {{ ($envExampleAvailable ?? false) ? '' : 'disabled' }} />
+                                        <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.env_use_example" @disabled(! ($envExampleAvailable ?? false)) />
                                         Prefill from {{ $envExampleFilename ?? '.env.example' }}
                                     </label>
                                     @if (! ($envExampleAvailable ?? false))
@@ -284,40 +322,45 @@
                         </div>
                     @endif
 
-                    <div class="flex flex-wrap items-center gap-3">
-                        @if ($step === 1)
-                            <x-primary-button wire:loading.attr="disabled" wire:target="nextStep">
-                                Next
-                                <x-loading-spinner target="nextStep" class="ml-2" />
-                            </x-primary-button>
-                            <a href="{{ route('projects.index') }}" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
-                                Cancel
-                            </a>
-                        @elseif ($step === 2)
-                            <button type="button" wire:click="previousStep" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
-                                Back
-                            </button>
-                            <x-primary-button wire:loading.attr="disabled" wire:target="nextStep">
-                                Next
-                                <x-loading-spinner target="nextStep" class="ml-2" />
-                            </x-primary-button>
-                            <a href="{{ route('projects.index') }}" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
-                                Cancel
-                            </a>
-                        @else
-                            <button type="button" wire:click="previousStep" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
-                                Back
-                            </button>
-                            <x-primary-button wire:loading.attr="disabled" wire:target="save">
-                                Save Project
-                                <x-loading-spinner target="save" class="ml-2" />
-                            </x-primary-button>
-                            <a href="{{ route('projects.index') }}" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
-                                Cancel
-                            </a>
-                        @endif
-                    </div>
-                </form>
+                        <div class="flex flex-wrap items-center gap-3">
+                            @if ($step === 1)
+                                <x-primary-button wire:loading.attr="disabled" wire:target="nextStep" :disabled="! $isEnterprise && $projectCount >= $communityProjectLimit">
+                                    Next
+                                    <x-loading-spinner target="nextStep" class="ml-2" />
+                                </x-primary-button>
+                                <a href="{{ route('projects.index') }}" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+                                    Cancel
+                                </a>
+                            @endif
+
+                            @if ($step === 2)
+                                <button type="button" wire:click="previousStep" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
+                                    Back
+                                </button>
+                                <x-primary-button wire:loading.attr="disabled" wire:target="nextStep">
+                                    Next
+                                    <x-loading-spinner target="nextStep" class="ml-2" />
+                                </x-primary-button>
+                                <a href="{{ route('projects.index') }}" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+                                    Cancel
+                                </a>
+                            @endif
+
+                            @if ($step === 3)
+                                <button type="button" wire:click="previousStep" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
+                                    Back
+                                </button>
+                                <x-primary-button wire:loading.attr="disabled" wire:target="save">
+                                    Save Project
+                                    <x-loading-spinner target="save" class="ml-2" />
+                                </x-primary-button>
+                                <a href="{{ route('projects.index') }}" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+                                    Cancel
+                                </a>
+                            @endif
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>

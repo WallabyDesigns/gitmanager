@@ -7,6 +7,7 @@ use App\Models\Deployment;
 use App\Models\DeploymentQueueItem;
 use App\Models\SecurityAlert;
 use App\Models\AuditIssue;
+use App\Services\EditionService;
 use App\Services\AuditService;
 use App\Services\DeploymentService;
 use App\Services\DeploymentQueueService;
@@ -98,6 +99,7 @@ class Show extends Component
             'npmIssue' => $npmIssue,
             'deploymentRunning' => $deploymentRunning,
             'runningTaskLabel' => $runningTask['label'] ?? 'Task',
+            'isEnterprise' => $this->isEnterpriseEdition(),
             'envSeedPending' => $envSeedPending,
             'htaccessSeedPending' => $htaccessSeedPending,
         ])->layout('layouts.app', [
@@ -525,6 +527,12 @@ class Show extends Component
 
     public function auditProject(AuditService $audit): void
     {
+        if (! $this->isEnterpriseEdition()) {
+            $this->dispatch('notify', message: 'Automatic project audits are available in Enterprise Edition.', type: 'warning');
+            $this->dispatch('gwm-open-enterprise-modal', feature: 'Automatic Project & Container Audits');
+            return;
+        }
+
         if ($this->blockIfPermissionsLocked('audit checks')) {
             return;
         }
@@ -621,6 +629,11 @@ class Show extends Component
         $project->delete();
         $this->dispatch('notify', message: 'Project and files deleted.');
         $this->redirectRoute('projects.index', navigate: false);
+    }
+
+    private function isEnterpriseEdition(): bool
+    {
+        return app(EditionService::class)->current() === EditionService::ENTERPRISE;
     }
 
 }

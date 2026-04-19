@@ -1,7 +1,9 @@
 <div class="py-10" x-data="{ tab: 'overview', deleteOpen: false }" wire:init="refreshHealthStatus" wire:poll.60s="refreshHealthStatus">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        @include('livewire.projects.partials.tabs')
-        <div class="flex flex-wrap gap-2">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid gap-6 lg:grid-cols-[260px,1fr]">
+            @include('livewire.projects.partials.tabs')
+            <div class="space-y-6">
+                <div class="flex flex-wrap gap-2">
             <button type="button" @click="tab = 'overview'" :class="tab === 'overview' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300'" class="px-3 py-2 text-sm rounded-md">
                 Overview
             </button>
@@ -34,7 +36,7 @@
             <button type="button" @click="tab = 'debug'" :class="tab === 'debug' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300'" class="px-3 py-2 text-sm rounded-md">
                 Debug
             </button>
-        </div>
+                </div>
 
         @php
             $permissionsEnforced = ! $project->ftp_enabled && ! $project->ssh_enabled;
@@ -123,10 +125,19 @@
                         <x-loading-spinner target="checkHealth" />
                         Health Check
                     </button>
-                    <button type="button" wire:click="auditProject" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300 inline-flex items-center">
-                        <x-loading-spinner target="auditProject" />
-                        Audit Projects
-                    </button>
+                    @if ($isEnterprise ?? false)
+                        <button type="button" wire:click="auditProject" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300 inline-flex items-center">
+                            <x-loading-spinner target="auditProject" />
+                            Audit Project
+                        </button>
+                    @else
+                        <button type="button" onclick="window.dispatchEvent(new CustomEvent('gwm-open-enterprise-modal', { detail: { feature: 'Automatic Project & Container Audits' } }));" class="px-3 py-2 text-sm rounded-md border border-amber-300 text-amber-700 hover:text-amber-800 dark:border-amber-500/60 dark:text-amber-300 inline-flex items-center gap-1.5">
+                            <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M10 1a4 4 0 00-4 4v2H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-1V5a4 4 0 00-4-4zm-2 6V5a2 2 0 114 0v2H8z" clip-rule="evenodd" />
+                            </svg>
+                            Audit Project
+                        </button>
+                    @endif
                     @if ($permissionsEnforced)
                         <button type="button" wire:click="fixPermissions" class="px-3 py-2 text-sm rounded-md border border-amber-300 text-amber-700 hover:text-amber-800 dark:border-amber-500/60 dark:text-amber-300 inline-flex items-center">
                             <x-loading-spinner target="fixPermissions" />
@@ -258,10 +269,19 @@
                     <x-loading-spinner target="checkUpdates" />
                     Check Updates
                 </button>
-                <button type="button" wire:click="auditProject" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300 inline-flex items-center">
-                    <x-loading-spinner target="auditProject" />
-                    Audit Projects
-                </button>
+                @if ($isEnterprise ?? false)
+                    <button type="button" wire:click="auditProject" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300 inline-flex items-center">
+                        <x-loading-spinner target="auditProject" />
+                        Audit Project
+                    </button>
+                @else
+                    <button type="button" onclick="window.dispatchEvent(new CustomEvent('gwm-open-enterprise-modal', { detail: { feature: 'Automatic Project & Container Audits' } }));" class="px-3 py-2 text-sm rounded-md border border-amber-300 text-amber-700 hover:text-amber-800 dark:border-amber-500/60 dark:text-amber-300 inline-flex items-center gap-1.5">
+                        <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M10 1a4 4 0 00-4 4v2H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-1V5a4 4 0 00-4-4zm-2 6V5a2 2 0 114 0v2H8z" clip-rule="evenodd" />
+                        </svg>
+                        Audit Project
+                    </button>
+                @endif
                 @if ($rollbackAvailable)
                     <button type="button" wire:click="rollback" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
                         <x-loading-spinner target="rollback" />
@@ -397,6 +417,8 @@
                     {{ $deployments->links() }}
                 </div>
             @endif
+                </div>
+            </div>
         </div>
     </div>
 

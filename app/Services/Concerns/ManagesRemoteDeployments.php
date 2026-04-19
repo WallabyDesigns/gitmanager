@@ -65,6 +65,8 @@ trait ManagesRemoteDeployments
                             );
                         }
 
+                        $this->maybeRunPythonRequirementsOverSsh($project, $connection, $output);
+
                         if ($project->run_build_command && $project->build_command) {
                             $this->runSshBuildCommandWithNpmRecovery($project, $connection, $output);
                         }
@@ -73,6 +75,7 @@ trait ManagesRemoteDeployments
                             $this->runSshCommand($connection, $project->test_command, $output);
                         }
 
+                        $this->maybeRunNextJsRuntimeOverSsh($project, $connection, $output);
                         $this->maybeRunLaravelMigrationsOverSsh($project, $connection, $output);
                         $this->maybeRunLaravelClearCacheOverSsh($project, $connection, $output);
                     }, $output, 'SSH initial deploy tasks');
@@ -142,6 +145,8 @@ trait ManagesRemoteDeployments
                     );
                 }
 
+                $this->maybeRunPythonRequirementsOverSsh($project, $connection, $output);
+
                 if ($project->run_build_command && $project->build_command) {
                     $this->runSshBuildCommandWithNpmRecovery($project, $connection, $output);
                 }
@@ -150,6 +155,7 @@ trait ManagesRemoteDeployments
                     $this->runSshCommand($connection, $project->test_command, $output);
                 }
 
+                $this->maybeRunNextJsRuntimeOverSsh($project, $connection, $output);
                 $this->maybeRunLaravelMigrationsOverSsh($project, $connection, $output);
                 $this->maybeRunLaravelClearCacheOverSsh($project, $connection, $output);
             }, $output, 'SSH post-deploy tasks');
@@ -286,10 +292,13 @@ trait ManagesRemoteDeployments
                         );
                     }
 
+                    $this->maybeRunPythonRequirementsOverSsh($project, $connection, $output);
+
                     if ($project->run_build_command && $project->build_command) {
                         $this->runSshBuildCommandWithNpmRecovery($project, $connection, $output);
                     }
 
+                    $this->maybeRunNextJsRuntimeOverSsh($project, $connection, $output);
                     $this->maybeRunLaravelClearCacheOverSsh($project, $connection, $output);
                 }, $output, 'SSH post-rollback tasks');
 
@@ -621,6 +630,83 @@ trait ManagesRemoteDeployments
         };
     }
 
+    private function maybeRunPythonRequirementsOverSsh(Project $project, array $connection, array &$output): void
+    {
+        if (($project->project_type ?? '') !== 'python') {
+            return;
+        }
+
+        $output[] = 'Running Python requirements install over SSH.';
+        $this->maybeStreamOutput($output, true);
+
+        $command = 'if [ ! -f requirements.txt ]; then '
+            .'echo "Python requirements.txt not found. Skipping Python dependency install."; '
+            .'exit 0; '
+            .'fi; '
+            .'if [ ! -d .venv ]; then '
+            .'python3 -m venv .venv || python -m venv .venv; '
+            .'fi; '
+            .'./.venv/bin/python -m pip install --upgrade pip; '
+            .'./.venv/bin/python -m pip install -r requirements.txt';
+
+        $this->runSshCommand($connection, $command, $output);
+    }
+
+    private function maybeRunNextJsRuntimeOverSsh(Project $project, array $connection, array &$output): void
+    {
+        if (($project->project_type ?? '') !== 'nextjs') {
+            return;
+        }
+
+        $port = $this->resolveNextJsRuntimePort($project);
+        $output[] = 'Starting Next.js SSR runtime over SSH on port '.$port.'.';
+        $this->maybeStreamOutput($output, true);
+
+        $command = 'mkdir -p .gwm; '
+            .'if [ -f .gwm/nextjs.pid ]; then kill $(cat .gwm/nextjs.pid) >/dev/null 2>&1 || true; fi; '
+            .'nohup npm run start -- --port='.(int) $port.' > .gwm/nextjs.log 2>&1 & echo $! > .gwm/nextjs.pid; '
+            .'sleep 1; '
+            .'if ! kill -0 $(cat .gwm/nextjs.pid) >/dev/null 2>&1; then '
+            .'echo "Next.js runtime exited during startup."; '
+            .'if [ -f .gwm/nextjs.log ]; then tail -n 40 .gwm/nextjs.log; fi; '
+            .'exit 1; '
+            .'fi';
+
+        $this->runSshCommand($connection, $command, $output);
+    }
+
+    private function resolveNextJsRuntimePort(Project $project): int
+    {
+        $fallback = (int) config('gitmanager.nextjs_ssh_runtime_port', 3000);
+        if ($fallback <= 0 || $fallback > 65535) {
+            $fallback = 3000;
+        }
+
+        $healthUrl = trim((string) ($project->health_url ?? ''));
+        if ($healthUrl === '') {
+            return $fallback;
+        }
+
+        if (str_contains($healthUrl, '://')) {
+            $port = parse_url($healthUrl, PHP_URL_PORT);
+            if (is_numeric($port)) {
+                $port = (int) $port;
+                if ($port > 0 && $port <= 65535) {
+                    return $port;
+                }
+            }
+        }
+
+        if (preg_match('/:(\d{2,5})\b/', $healthUrl, $matches)) {
+            $port = (int) ($matches[1] ?? 0);
+            if ($port > 0 && $port <= 65535) {
+                return $port;
+            }
+        }
+
+        return $fallback;
+    }
+
     private function maybeRunLaravelClearCacheOverSsh(Project $project, array $connection, array &$output): void
     {
         if (($project->project_type ?? '') !== 'laravel') {
@@ -746,8 +832,9 @@ trait ManagesRemoteDeployments
         }
 
         $exclude = $this->ftpExcludePaths($project, $extraExcludePaths);
+        $whitelist = $this->ftpWhitelistPaths($project);
         $ftpService = app(\App\Services\FtpService::class);
-        $ftpService->sync($project, $executionPath, $exclude, $output);
+        $ftpService->sync($project, $executionPath, $exclude, $output, $whitelist);
 
         $projectType = trim((string) ($project->project_type ?? ''));
         if ($projectType === '' || $projectType === 'laravel') {
@@ -767,7 +854,7 @@ trait ManagesRemoteDeployments
             'bootstrap/cache',
         ];
 
-        foreach ($this->parseExcludePaths($project) as $path) {
+        foreach ($this->parsePathList((string) ($project->exclude_paths ?? '')) as $path) {
             $paths[] = $path;
         }
 
@@ -776,6 +863,39 @@ trait ManagesRemoteDeployments
         }
 
         return array_values(array_unique(array_filter(array_map('trim', $paths), fn (string $path) => $path !== '')));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function ftpWhitelistPaths(Project $project): array
+    {
+        return $this->parsePathList((string) ($project->whitelist_paths ?? ''));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function parsePathList(string $raw): array
+    {
+        if ($raw === '') {
+            return [];
+        }
+
+        $normalized = str_replace(["\r\n", "\r"], "\n", $raw);
+        $normalized = str_replace(',', "\n", $normalized);
+
+        $paths = [];
+        foreach (explode("\n", $normalized) as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+
+            $paths[] = $line;
+        }
+
+        return array_values(array_unique($paths));
     }
 
     /**

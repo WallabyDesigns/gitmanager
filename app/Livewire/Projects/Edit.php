@@ -3,6 +3,7 @@
 namespace App\Livewire\Projects;
 
 use App\Models\Project;
+use App\Services\EditionService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -16,13 +17,23 @@ class Edit extends Component
 
     public Project $project;
     public array $form = [];
+    public array $projectTypes = [];
+    public bool $isEnterprise = false;
+    public string $lastAllowedProjectType = 'custom';
     public ?string $ftpTestStatus = null;
     public ?string $ftpTestMessage = null;
+    public int $containerProjectLimit = 3;
+    public int $containerProjectCount = 0;
 
     public function mount(Project $project): void
     {
         $this->authorize('update', $project);
         $this->project = $project;
+        $edition = app(EditionService::class);
+        $this->isEnterprise = $edition->current() === EditionService::ENTERPRISE;
+        $this->containerProjectLimit = $this->resolveContainerProjectLimit();
+        $this->refreshContainerProjectStats();
+        $this->projectTypes = $this->projectTypeOptions($this->isEnterprise);
         $this->form = [
             'name' => $project->name,
             'project_type' => $project->project_type ?? 'custom',
@@ -40,6 +51,7 @@ class Edit extends Component
             'test_command' => $project->test_command,
             'allow_dependency_updates' => $project->allow_dependency_updates,
             'exclude_paths' => $project->exclude_paths,
+            'whitelist_paths' => $project->whitelist_paths,
             'env_content' => $this->seedContent($project, '.env'),
             'htaccess_content' => $this->seedContent($project, '.htaccess'),
             'ftp_enabled' => $project->ftp_enabled,
@@ -51,12 +63,14 @@ class Edit extends Component
             'ssh_commands' => $project->ssh_commands,
             'ignore_migration_table_exists' => $project->ignore_migration_table_exists ?? false,
         ];
+        $this->lastAllowedProjectType = (string) ($this->form['project_type'] ?? 'custom');
     }
 
     public function render()
     {
         return view('livewire.projects.edit', [
             'ftpAccounts' => \App\Models\FtpAccount::query()->orderBy('name')->get(),
+            'projectTypes' => $this->projectTypes,
         ])
             ->layout('layouts.app', [
                 'title' => 'Edit ' . $this->project->name,
@@ -99,8 +113,43 @@ class Edit extends Component
         }
     }
 
+    public function updatedFormProjectType(string $value): void
+    {
+        if ($value === 'container' && ! $this->canUseContainerProjectType()) {
+            $this->addError('form.project_type', $this->containerLimitMessage());
+            $this->dispatch('gwm-open-enterprise-modal', feature: 'Unlimited Container Projects');
+            $this->form['project_type'] = $this->lastAllowedProjectType !== ''
+                ? $this->lastAllowedProjectType
+                : 'custom';
+            return;
+        }
+
+        if ($this->isPremiumProjectType($value) && ! $this->isEnterprise) {
+            $this->dispatch('gwm-open-enterprise-modal', feature: $this->projectTypeLabel($value).' Project Type');
+            $this->form['project_type'] = $this->lastAllowedProjectType !== ''
+                ? $this->lastAllowedProjectType
+                : 'custom';
+            return;
+        }
+
+        $this->lastAllowedProjectType = $value;
+    }
+
     public function save(): void
     {
+        $projectType = (string) ($this->form['project_type'] ?? '');
+        if ($projectType === 'container' && ! $this->canUseContainerProjectType()) {
+            $this->addError('form.project_type', $this->containerLimitMessage());
+            $this->dispatch('gwm-open-enterprise-modal', feature: 'Unlimited Container Projects');
+            return;
+        }
+
+        if ($this->isPremiumProjectType($projectType) && ! $this->isEnterprise) {
+            $this->addError('form.project_type', $this->projectTypeLabel($projectType).' is available in Enterprise Edition.');
+            $this->dispatch('gwm-open-enterprise-modal', feature: $this->projectTypeLabel($projectType).' Project Type');
+            return;
+        }
+
         $validated = $this->validate($this->rules());
         $payload = $validated['form'];
         $payload['ftp_root_path'] = $this->normalizeOptionalPath($payload['ftp_root_path'] ?? null);
@@ -152,7 +201,7 @@ class Edit extends Component
     {
         return [
             'form.name' => ['required', 'string', 'max:255'],
-            'form.project_type' => ['required', 'string', Rule::in(['laravel', 'node', 'static', 'custom'])],
+            'form.project_type' => ['required', 'string', Rule::in(['laravel', 'node', 'static', 'nextjs', 'react', 'python', 'container', 'custom'])],
             'form.repo_url' => ['nullable', 'string', 'max:255'],
             'form.site_url' => ['nullable', 'url', 'max:255'],
             'form.local_path' => [
@@ -182,6 +231,7 @@ class Edit extends Component
             ],
             'form.allow_dependency_updates' => ['boolean'],
             'form.exclude_paths' => ['nullable', 'string'],
+            'form.whitelist_paths' => ['nullable', 'string'],
             'form.env_content' => ['nullable', 'string'],
             'form.htaccess_content' => ['nullable', 'string'],
             'form.ftp_enabled' => ['boolean'],
@@ -329,5 +379,130 @@ class Edit extends Component
         }
 
         return null;
+    }
+
+    /**
+     * @return array<int, array{value: string, label: string, description: string, locked: bool, locked_message?: string}>
+     */
+    private function projectTypeOptions(bool $isEnterprise): array
+    {
+        $canUseContainerType = $this->canUseContainerProjectType();
+
+        return [
+            [
+                'value' => 'laravel',
+                'label' => 'Laravel',
+                'description' => 'Composer, npm, Vite build, and artisan tests.',
+                'locked' => false,
+            ],
+            [
+                'value' => 'node',
+                'label' => 'Node',
+                'description' => 'npm install/build/test workflow.',
+                'locked' => false,
+            ],
+            [
+                'value' => 'static',
+                'label' => 'Static',
+                'description' => 'Static or frontend-only build output.',
+                'locked' => false,
+            ],
+            [
+                'value' => 'nextjs',
+                'label' => 'Next.js',
+                'description' => 'Dynamic React SSR/ISR pipeline (Enterprise).',
+                'locked' => ! $isEnterprise,
+                'locked_message' => 'Next.js projects are available in Enterprise Edition.',
+            ],
+            [
+                'value' => 'react',
+                'label' => 'React App',
+                'description' => 'Dynamic React SPA pipeline (Enterprise).',
+                'locked' => ! $isEnterprise,
+                'locked_message' => 'React App projects are available in Enterprise Edition.',
+            ],
+            [
+                'value' => 'python',
+                'label' => 'Python',
+                'description' => 'Python virtualenv + pip pipeline (Enterprise).',
+                'locked' => ! $isEnterprise,
+                'locked_message' => 'Python projects are available in Enterprise Edition.',
+            ],
+            [
+                'value' => 'container',
+                'label' => 'Container',
+                'description' => $isEnterprise
+                    ? 'Containerized workload pipeline.'
+                    : 'Containerized workload pipeline (Community includes '.$this->containerProjectLimit.' project slots).',
+                'locked' => ! $canUseContainerType,
+                'locked_message' => $isEnterprise
+                    ? 'Container projects are enabled.'
+                    : $this->containerLimitMessage(),
+            ],
+            [
+                'value' => 'custom',
+                'label' => 'Custom',
+                'description' => 'Manually configure build/deploy settings.',
+                'locked' => false,
+            ],
+        ];
+    }
+
+    private function isPremiumProjectType(string $type): bool
+    {
+        return in_array($type, ['python', 'nextjs', 'react'], true);
+    }
+
+    private function projectTypeLabel(string $type): string
+    {
+        foreach ($this->projectTypes as $item) {
+            if (($item['value'] ?? '') === $type) {
+                return (string) ($item['label'] ?? $type);
+            }
+        }
+
+        return ucfirst($type);
+    }
+
+    private function refreshContainerProjectStats(): void
+    {
+        $userId = Auth::id();
+        if (! $userId) {
+            $this->containerProjectCount = 0;
+            return;
+        }
+
+        $this->containerProjectCount = Project::query()
+            ->where('user_id', $userId)
+            ->where('project_type', 'container')
+            ->count();
+    }
+
+    private function canUseContainerProjectType(): bool
+    {
+        if ($this->isEnterprise) {
+            return true;
+        }
+
+        $currentType = (string) ($this->project->project_type ?? '');
+        if ($currentType === 'container') {
+            return true;
+        }
+
+        return $this->containerProjectCount < $this->containerProjectLimit;
+    }
+
+    private function resolveContainerProjectLimit(): int
+    {
+        if (class_exists(\GitManagerEnterprise\Support\EnterpriseFeatureConfig::class)) {
+            return max(1, \GitManagerEnterprise\Support\EnterpriseFeatureConfig::dockerFreeNodeLimit());
+        }
+
+        return max(1, (int) config('gitmanager.docker_free_node_limit', 3));
+    }
+
+    private function containerLimitMessage(): string
+    {
+        return 'You have reached the Community limit of '.$this->containerProjectLimit.' container projects. Upgrade to Enterprise for unlimited container projects.';
     }
 }

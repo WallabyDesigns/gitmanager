@@ -253,6 +253,8 @@ class DeploymentService
                                 }
                             }
 
+                            $this->maybeRunPythonRequirements($project, $executionPath, $output);
+
                             if ($project->run_build_command && $project->build_command) {
                                 $this->runBuildCommandWithNpmRecovery($project, $executionPath, $output);
                             }
@@ -361,6 +363,8 @@ class DeploymentService
                             );
                         }
                     }
+
+                    $this->maybeRunPythonRequirements($project, $executionPath, $output);
 
                     if ($project->run_build_command && $project->build_command) {
                         $this->runBuildCommandWithNpmRecovery($project, $executionPath, $output);
@@ -568,6 +572,8 @@ class DeploymentService
                             );
                         }
                     }
+
+                    $this->maybeRunPythonRequirements($project, $executionPath, $output);
 
                     if ($project->run_build_command && $project->build_command) {
                         $this->runBuildCommandWithNpmRecovery($project, $executionPath, $output);
@@ -945,6 +951,8 @@ class DeploymentService
                     );
                 }
 
+                $this->maybeRunPythonRequirements($project, $stagePath, $output);
+
                 if ($project->run_build_command && $project->build_command) {
                     $this->runBuildCommandWithNpmRecovery($project, $stagePath, $output, 'Staging build command');
                 }
@@ -1013,6 +1021,110 @@ class DeploymentService
         $output[] = 'Created '.$label.'.';
     }
 
+    /**
+     * @param array<int, string> $output
+     */
+    private function maybeRunPythonRequirements(Project $project, string $executionPath, array &$output): void
+    {
+        if (trim((string) ($project->project_type ?? '')) !== 'python') {
+            return;
+        }
+
+        $requirementsPath = $executionPath.DIRECTORY_SEPARATOR.'requirements.txt';
+        if (! is_file($requirementsPath)) {
+            $output[] = 'Python requirements.txt not found. Skipping Python dependency install.';
+            return;
+        }
+
+        if ($project->ftp_enabled && ! $project->ssh_enabled) {
+            $output[] = 'Python dependency install skipped for FTP-only deployment. Enable SSH deployment to install requirements on the target host.';
+            return;
+        }
+
+        $venvPath = $executionPath.DIRECTORY_SEPARATOR.'.venv';
+        if (! is_dir($venvPath)) {
+            $this->runPythonCommandWithFallback(
+                $executionPath,
+                $output,
+                'Python virtual environment setup',
+                [
+                    ['python3', '-m', 'venv', '.venv'],
+                    ['python', '-m', 'venv', '.venv'],
+                    ['py', '-3', '-m', 'venv', '.venv'],
+                ]
+            );
+        } else {
+            $output[] = 'Python virtual environment detected at .venv.';
+        }
+
+        $venvPython = $this->pythonVenvBinary($executionPath);
+        if ($venvPython !== null) {
+            $this->runProjectProcess([$venvPython, '-m', 'pip', 'install', '--upgrade', 'pip'], $output, $executionPath);
+            $this->runProjectProcess([$venvPython, '-m', 'pip', 'install', '-r', 'requirements.txt'], $output, $executionPath);
+            return;
+        }
+
+        $output[] = 'Python virtualenv binary not found, falling back to system Python pip.';
+        $this->runPythonCommandWithFallback(
+            $executionPath,
+            $output,
+            'Python pip upgrade',
+            [
+                ['python3', '-m', 'pip', 'install', '--upgrade', 'pip'],
+                ['python', '-m', 'pip', 'install', '--upgrade', 'pip'],
+                ['py', '-3', '-m', 'pip', 'install', '--upgrade', 'pip'],
+            ]
+        );
+        $this->runPythonCommandWithFallback(
+            $executionPath,
+            $output,
+            'Python requirements install',
+            [
+                ['python3', '-m', 'pip', 'install', '-r', 'requirements.txt'],
+                ['python', '-m', 'pip', 'install', '-r', 'requirements.txt'],
+                ['py', '-3', '-m', 'pip', 'install', '-r', 'requirements.txt'],
+            ]
+        );
+    }
+
+    /**
+     * @param array<int, string> $output
+     * @param array<int, array<int, string>> $commands
+     */
+    private function runPythonCommandWithFallback(string $workingPath, array &$output, string $label, array $commands): void
+    {
+        $lastMessage = null;
+
+        foreach ($commands as $command) {
+            try {
+                $this->runProjectProcess($command, $output, $workingPath);
+                return;
+            } catch (\Throwable $exception) {
+                $lastMessage = $exception->getMessage();
+                $output[] = $label.' attempt failed: '.$this->formatCommand($command);
+            }
+        }
+
+        throw new \RuntimeException($label.' failed. '.($lastMessage ?? 'No supported Python runtime was found.'));
+    }
+
+    private function pythonVenvBinary(string $executionPath): ?string
+    {
+        $candidates = [
+            $executionPath.DIRECTORY_SEPARATOR.'.venv'.DIRECTORY_SEPARATOR.'bin'.DIRECTORY_SEPARATOR.'python',
+            $executionPath.DIRECTORY_SEPARATOR.'.venv'.DIRECTORY_SEPARATOR.'Scripts'.DIRECTORY_SEPARATOR.'python.exe',
+            $executionPath.DIRECTORY_SEPARATOR.'.venv'.DIRECTORY_SEPARATOR.'Scripts'.DIRECTORY_SEPARATOR.'python',
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_file($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
     private function basicHtaccessTemplate(string $projectType): string
     {
         return app(HtaccessTemplateService::class)->forProjectType($projectType);
@@ -1035,6 +1147,7 @@ class DeploymentService
             || $project->run_build_command
             || $project->run_test_command
             || ($project->project_type ?? '') === 'laravel'
+            || ($project->project_type ?? '') === 'python'
         );
     }
 

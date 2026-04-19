@@ -4,13 +4,15 @@
     "type": "project",
     "description": "The skeleton application for the Laravel framework.",
     "keywords": ["laravel", "framework"],
-    "license": "MIT",
+    "license": "Zlib",
     "require": {
         "php": "^8.2",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
         "livewire/livewire": "^3.6.4",
-        "livewire/volt": "^1.7.0"
+        "livewire/volt": "^1.7.0",
+        "stripe/stripe-php": "^16.0",
+        "wallabydesigns/gitmanager-enterprise": "^1.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -75,6 +77,15 @@
             "dont-discover": []
         }
     },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "E:/vsprojects/gitmanagerenterprise",
+            "options": {
+                "symlink": true
+            }
+        }
+    ],
     "config": {
         "optimize-autoloader": true,
         "preferred-install": "dist",

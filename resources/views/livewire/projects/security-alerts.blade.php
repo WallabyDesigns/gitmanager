@@ -9,10 +9,19 @@
             </button>
         </div>
         <div class="flex flex-wrap gap-2">
-            <button type="button" wire:click="auditProject" wire:loading.attr="disabled" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
-                <x-loading-spinner target="auditProject" />
-                Audit Project
-            </button>
+            @if ($isEnterprise ?? false)
+                <button type="button" wire:click="auditProject" wire:loading.attr="disabled" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
+                    <x-loading-spinner target="auditProject" />
+                    Audit Project
+                </button>
+            @else
+                <button type="button" onclick="window.dispatchEvent(new CustomEvent('gwm-open-enterprise-modal', { detail: { feature: 'Automatic Project & Container Audits' } }));" class="px-3 py-2 text-sm rounded-md border border-amber-300 text-amber-700 hover:text-amber-800 dark:border-amber-500/60 dark:text-amber-300 inline-flex items-center gap-1.5">
+                    <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M10 1a4 4 0 00-4 4v2H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-1V5a4 4 0 00-4-4zm-2 6V5a2 2 0 114 0v2H8z" clip-rule="evenodd" />
+                    </svg>
+                    Audit Project
+                </button>
+            @endif
             <button type="button" wire:click="sync" wire:loading.attr="disabled" class="px-3 py-2 text-sm rounded-md border border-indigo-300 text-indigo-600 hover:text-indigo-800 dark:border-indigo-500/50 dark:text-indigo-300 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
                 <x-loading-spinner target="sync" />
                 Sync Alerts
