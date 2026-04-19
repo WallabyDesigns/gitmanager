@@ -366,7 +366,7 @@ class SelfUpdateService
                 $remoteHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'origin/'.$branch], $output)->getOutput());
 
                 if ($fromHash === $remoteHash) {
-                    $enterprisePackage = $this->getEnterprisePackageUpdateStatus($repoPath, $output);
+                    $enterprisePackage = $this->getEnterprisePackageStatus($repoPath, $output);
                     if (($enterprisePackage['status'] ?? '') === 'update-available') {
                         $output[] = 'Enterprise package update available: '.($enterprisePackage['current'] ?? 'unknown').' → '.($enterprisePackage['latest'] ?? 'unknown').'.';
                         $update->status = 'warning';
@@ -513,7 +513,7 @@ class SelfUpdateService
 
             $current = $this->tryRevParse($repoPath);
             $latest = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'origin/'.$branch], $output)->getOutput());
-            $enterprisePackage = $this->getEnterprisePackageUpdateStatus($repoPath, $output);
+            $enterprisePackage = $this->getEnterprisePackageStatus($repoPath, $output);
             $enterpriseUpdateAvailable = ($enterprisePackage['status'] ?? '') === 'update-available';
 
             if (! $current || $latest === '') {
@@ -565,7 +565,7 @@ class SelfUpdateService
      *   message: string
      * }
      */
-    private function getEnterprisePackageUpdateStatus(string $repoPath, array &$output): array
+    public function getEnterprisePackageStatus(string $repoPath, array &$output): array
     {
         $packageName = $this->enterprisePackageName();
         if (! (bool) config('gitmanager.enterprise.check_updates', true)) {
@@ -1194,13 +1194,80 @@ class SelfUpdateService
             $this->maybeRunAppClearCache($repoPath, $output);
         }
 
-        $enterprisePackage = $this->getEnterprisePackageUpdateStatus($repoPath, $output);
+        $enterprisePackage = $this->getEnterprisePackageStatus($repoPath, $output);
+        if (in_array($enterprisePackage['status'] ?? '', ['not-installed', 'update-available'], true)) {
+            $this->installOrUpdateEnterprisePackage($repoPath, $output, $enterprisePackage);
+            $enterprisePackage = $this->getEnterprisePackageStatus($repoPath, $output);
+        }
         $output[] = $enterprisePackage['message'] ?? 'Enterprise package update check completed.';
         if (($enterprisePackage['status'] ?? '') === 'update-available') {
             $output[] = 'Enterprise package update available: '.($enterprisePackage['current'] ?? 'unknown').' → '.($enterprisePackage['latest'] ?? 'unknown').'.';
         }
 
         $this->applyPostUpdatePermissions($repoPath, $output);
+    }
+
+    public function installOrUpdateEnterprisePackage(string $repoPath, array &$output, array $enterprisePackage): void
+    {
+        /** @var LicenseService $license */
+        $license = app(LicenseService::class);
+
+        if (! $license->hasValidEnterpriseLicense()) {
+            return;
+        }
+
+        if (! $this->binaryAvailable($this->composerBinary())) {
+            $output[] = 'Enterprise package: composer binary not available, skipping.';
+            return;
+        }
+
+        $packageName = trim((string) ($enterprisePackage['name'] ?? $this->enterprisePackageName()));
+        $status = $enterprisePackage['status'] ?? '';
+
+        $this->writeEnterpriseComposerAuth($repoPath, $license);
+
+        if ($status === 'not-installed') {
+            $output[] = 'Installing enterprise package: '.$packageName.'.';
+            $this->runProcess(
+                [$this->composerBinary(), 'require', $packageName, '^1.0', '--no-dev', '--optimize-autoloader', '--no-interaction'],
+                $output,
+                $repoPath,
+                false
+            );
+        } elseif ($status === 'update-available') {
+            $output[] = 'Updating enterprise package: '.$packageName.' ('.(string) ($enterprisePackage['current'] ?? '?').' → '.(string) ($enterprisePackage['latest'] ?? '?').').';
+            $this->runProcess(
+                [$this->composerBinary(), 'update', $packageName, '--no-dev', '--optimize-autoloader', '--no-interaction'],
+                $output,
+                $repoPath,
+                false
+            );
+        }
+    }
+
+    private function writeEnterpriseComposerAuth(string $repoPath, LicenseService $license): void
+    {
+        $authContext = $license->supportAuthContext();
+        $licenseKey = trim((string) ($authContext['license_key'] ?? ''));
+        $installationUuid = $license->installationUuid();
+
+        if ($licenseKey === '' || $installationUuid === '') {
+            return;
+        }
+
+        $authPath = $repoPath.DIRECTORY_SEPARATOR.'auth.json';
+        $existing = [];
+        if (is_file($authPath)) {
+            $decoded = json_decode((string) file_get_contents($authPath), true);
+            $existing = is_array($decoded) ? $decoded : [];
+        }
+
+        $existing['http-basic']['gitwebmanager.com'] = [
+            'username' => $licenseKey,
+            'password' => $installationUuid,
+        ];
+
+        file_put_contents($authPath, json_encode($existing, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n");
     }
 
     private function maybeRunAppClearCache(string $repoPath, array &$output): void

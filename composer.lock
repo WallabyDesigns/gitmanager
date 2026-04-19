@@ -6214,46 +6214,6 @@
                 }
             ],
             "time": "2024-11-21T01:49:47+00:00"
-        },
-        {
-            "name": "wallabydesigns/gitmanager-enterprise",
-            "version": "1.0.0",
-            "dist": {
-                "type": "path",
-                "url": "E:/vsprojects/gitmanagerenterprise",
-                "reference": "02105c52aee57b3c2e3054edea7014a23c826e9d"
-            },
-            "require": {
-                "laravel/framework": "^12.0",
-                "livewire/livewire": "^3.6",
-                "php": "^8.2"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "GitManagerEnterprise\\EnterpriseServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "GitManagerEnterprise\\": "src/"
-                }
-            },
-            "scripts": {
-                "build:premium": [
-                    "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-premium-package.ps1"
-                ]
-            },
-            "license": [
-                "proprietary"
-            ],
-            "description": "Enterprise features for Git Web Manager",
-            "transport-options": {
-                "symlink": true,
-                "relative": false
-            }
         }
     ],
     "packages-dev": [
