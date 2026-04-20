@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'webhooks/github',
             'webhooks/stripe',
         ]);
+        $middleware->appendToGroup('web', \App\Http\Middleware\CheckEnvMigration::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

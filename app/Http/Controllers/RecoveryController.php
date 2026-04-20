@@ -2,20 +2,59 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\EnvBackupService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\Process\Process;
 
 class RecoveryController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, EnvBackupService $envBackup)
     {
         $log = $this->readLogTail($this->logPath());
 
         return view('recovery', [
             'log' => $log,
             'status' => session('rebuild_status'),
+            'envBackups' => $envBackup->list(),
+            'envStatus' => session('env_backup_status'),
         ]);
+    }
+
+    public function createEnvBackup(Request $request, EnvBackupService $envBackup)
+    {
+        try {
+            $envBackup->backup('manual');
+            $message = 'Environment backup created successfully.';
+        } catch (\Throwable $e) {
+            $message = 'Backup failed: '.$e->getMessage();
+        }
+
+        return redirect()->route('recovery.index')->with('env_backup_status', $message);
+    }
+
+    public function restoreEnvBackup(Request $request, EnvBackupService $envBackup, string $filename)
+    {
+        try {
+            $envBackup->restore($filename);
+            $message = "Environment restored from backup: {$filename}";
+        } catch (\Throwable $e) {
+            $message = 'Restore failed: '.$e->getMessage();
+        }
+
+        return redirect()->route('recovery.index')->with('env_backup_status', $message);
+    }
+
+    public function deleteEnvBackup(Request $request, EnvBackupService $envBackup, string $filename)
+    {
+        try {
+            $envBackup->delete($filename);
+            $message = "Backup deleted: {$filename}";
+        } catch (\Throwable $e) {
+            $message = 'Delete failed: '.$e->getMessage();
+        }
+
+        return redirect()->route('recovery.index')->with('env_backup_status', $message);
     }
 
     public function rebuild(Request $request)

@@ -6,6 +6,8 @@ use App\Models\DeploymentQueueItem;
 use App\Models\User;
 use App\Services\DeploymentQueueService;
 use App\Services\EditionService;
+use App\Services\EnvBackupService;
+use App\Services\EnvManagerService;
 use App\Services\LicenseService;
 use App\Services\SchedulerService;
 use App\Services\SettingsService;
@@ -17,6 +19,7 @@ class Settings extends Component
     public const SECTION_APPLICATION = 'application';
     public const SECTION_AUDITS = 'audits';
     public const SECTION_LICENSING = 'licensing';
+    public const SECTION_ENVIRONMENT = 'environment';
     // Legacy alias retained so older links continue to work.
     public const SECTION_REGIONAL = 'regional';
 
@@ -39,7 +42,16 @@ class Settings extends Component
     public bool $isLocalInstall = false;
     public bool $localLicenseTlsBypassEnabled = false;
 
-    public function mount(EditionService $edition, SettingsService $settings, LicenseService $license): void
+    /** @var array<string, array{key: string, value: string, description: string}> */
+    public array $gwmKeys = [];
+    /** @var array<string, string> */
+    public array $gwmEdits = [];
+    /** @var array<int, array{filename: string, created_at: string, size: int, label: string}> */
+    public array $envBackups = [];
+    public string $envBackupLabel = '';
+    public bool $envSaveSuccess = false;
+
+    public function mount(EditionService $edition, SettingsService $settings, LicenseService $license, EnvManagerService $envManager, EnvBackupService $backupService): void
     {
         $this->checkUpdates = (bool) ($settings->get('system.check_updates', true));
         $this->autoUpdate = (bool) ($settings->get('system.auto_update', (bool) config('gitmanager.self_update.enabled', true)));
@@ -76,6 +88,10 @@ class Settings extends Component
 
         $requestedSection = $this->resolveRequestedSection();
         $this->selectSettingsSection($requestedSection);
+
+        if ($this->settingsSection === self::SECTION_ENVIRONMENT) {
+            $this->loadEnvironmentSection($envManager, $backupService);
+        }
     }
 
     public function render(EditionService $edition, SchedulerService $scheduler): \Illuminate\View\View
@@ -109,9 +125,13 @@ class Settings extends Component
         $this->dispatch('$refresh');
     }
 
-    public function selectSettingsSection(string $section): void
+    public function selectSettingsSection(string $section, EnvManagerService $envManager = null, EnvBackupService $backupService = null): void
     {
         $this->settingsSection = $this->normalizeSection($section);
+
+        if ($this->settingsSection === self::SECTION_ENVIRONMENT && $envManager && $backupService) {
+            $this->loadEnvironmentSection($envManager, $backupService);
+        }
     }
 
     public function runScheduler(SchedulerService $scheduler): void
@@ -280,6 +300,7 @@ class Settings extends Component
             'system.audits' => self::SECTION_AUDITS,
             'system.licensing' => self::SECTION_LICENSING,
             'system.scheduler' => self::SECTION_SCHEDULER,
+            'system.environment' => self::SECTION_ENVIRONMENT,
             default => self::SECTION_SCHEDULER,
         };
     }
@@ -296,11 +317,74 @@ class Settings extends Component
             self::SECTION_APPLICATION,
             self::SECTION_AUDITS,
             self::SECTION_LICENSING,
+            self::SECTION_ENVIRONMENT,
         ];
 
         return in_array($normalized, $allowed, true)
             ? $normalized
             : self::SECTION_SCHEDULER;
+    }
+
+    public function loadEnvironmentSection(EnvManagerService $envManager, EnvBackupService $backupService): void
+    {
+        $this->gwmKeys = $envManager->getGwmKeys();
+        $this->gwmEdits = array_map(fn ($k) => $k['value'], $this->gwmKeys);
+        $this->envBackups = $backupService->list();
+    }
+
+    public function saveEnvKey(string $key, EnvBackupService $backupService, EnvManagerService $envManager): void
+    {
+        if (! str_starts_with($key, 'GWM_') || in_array($key, EnvManagerService::HIDDEN_KEYS, true)) {
+            return;
+        }
+
+        $value = (string) ($this->gwmEdits[$key] ?? '');
+
+        try {
+            $backupService->backup('settings-edit');
+        } catch (\Throwable) {
+        }
+
+        $envManager->set($key, $value);
+        $this->gwmKeys = $envManager->getGwmKeys();
+        $this->gwmEdits = array_map(fn ($k) => $k['value'], $this->gwmKeys);
+        $this->envSaveSuccess = true;
+        $this->dispatch('notify', message: "{$key} updated.");
+    }
+
+    public function createEnvBackup(EnvBackupService $backupService): void
+    {
+        try {
+            $label = trim($this->envBackupLabel);
+            $backupService->backup($label !== '' ? $label : 'manual');
+            $this->envBackupLabel = '';
+            $this->envBackups = $backupService->list();
+            $this->dispatch('notify', message: 'Environment backup created.');
+        } catch (\Throwable $e) {
+            $this->dispatch('notify', message: 'Backup failed: '.$e->getMessage());
+        }
+    }
+
+    public function restoreEnvBackup(string $filename, EnvBackupService $backupService): void
+    {
+        try {
+            $backupService->restore($filename);
+            $this->envBackups = $backupService->list();
+            $this->dispatch('notify', message: 'Environment restored from backup.');
+        } catch (\Throwable $e) {
+            $this->dispatch('notify', message: 'Restore failed: '.$e->getMessage());
+        }
+    }
+
+    public function deleteEnvBackup(string $filename, EnvBackupService $backupService): void
+    {
+        try {
+            $backupService->delete($filename);
+            $this->envBackups = $backupService->list();
+            $this->dispatch('notify', message: 'Backup deleted.');
+        } catch (\Throwable $e) {
+            $this->dispatch('notify', message: 'Delete failed: '.$e->getMessage());
+        }
     }
 
     private function detectLocalInstall(): bool

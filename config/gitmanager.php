@@ -79,7 +79,7 @@ return [
         'timeout' => env('GWM_SUPPORT_TIMEOUT', 15),
     ],
     'enterprise' => [
-        'package_name' => env('GWM_ENTERPRISE_PACKAGE_NAME', 'wallabydesigns/gitmanager-enterprise'),
-        'check_updates' => env('GWM_ENTERPRISE_CHECK_UPDATES', true),
+        'package_name' => 'wallabydesigns/gitmanager-enterprise',
+        'check_updates' => true,
     ],
 ];

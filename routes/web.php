@@ -4,6 +4,7 @@ use App\Http\Controllers\RecoveryController;
 use App\Http\Controllers\SelfUpdateController;
 use App\Http\Controllers\Webhooks\GitHubWebhookController;
 use App\Livewire\AppUpdates\Index as AppUpdatesIndex;
+use App\Livewire\System\EnvMigration;
 use App\Livewire\Projects\Create as ProjectsCreate;
 use App\Livewire\Projects\Edit as ProjectsEdit;
 use App\Livewire\Projects\Index as ProjectsIndex;
@@ -51,6 +52,11 @@ Route::middleware(['auth', 'verified', EnsurePasswordChanged::class])->group(fun
     Route::get('/users', UsersIndex::class)->middleware(EnsureAdminUser::class)->name('users.index');
     Route::get('/recovery', [RecoveryController::class, 'index'])->name('recovery.index');
     Route::post('/rebuild', [RecoveryController::class, 'rebuild'])->name('recovery.rebuild');
+    Route::post('/recovery/env-backup', [RecoveryController::class, 'createEnvBackup'])->name('recovery.env-backup.create');
+    Route::post('/recovery/env-backup/{filename}/restore', [RecoveryController::class, 'restoreEnvBackup'])->name('recovery.env-backup.restore');
+    Route::post('/recovery/env-backup/{filename}/delete', [RecoveryController::class, 'deleteEnvBackup'])->name('recovery.env-backup.delete');
+
+    Route::get('/env/migrate', EnvMigration::class)->name('env.migrate');
     Route::get('/preview/500', function () {
         $exception = new RuntimeException('Preview error: this is a sample message for the 500 page.');
 
@@ -79,6 +85,7 @@ Route::middleware(['auth', 'verified', EnsurePasswordChanged::class])->group(fun
         Route::get('/system/audits', SystemSettings::class)->name('system.audits');
         Route::get('/system/licensing', SystemSettings::class)->name('system.licensing');
         Route::get('/system/email', SystemEmailSettings::class)->name('system.email');
+        Route::get('/system/environment', SystemSettings::class)->name('system.environment');
         Route::get('/system/support', SystemSupport::class)->name('system.support');
         Route::get('/system/white-label', SystemWhiteLabel::class)->name('system.white-label');
         Route::get('/workflows', WorkflowsIndex::class)->name('workflows.index');

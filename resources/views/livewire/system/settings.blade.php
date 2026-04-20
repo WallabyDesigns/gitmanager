@@ -410,6 +410,107 @@
                     </div>
                 @endif
 
+                @if ($settingsSection === 'environment')
+                    <div class="space-y-6">
+                        {{-- GWM Keys --}}
+                        <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 overflow-hidden">
+                            <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                                <div>
+                                    <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">GWM Environment Variables</h3>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">All <code class="font-mono">GWM_*</code> keys from your <code class="font-mono">.env</code> file. Changes take effect immediately.</p>
+                                </div>
+                            </div>
+                            <div class="divide-y divide-slate-100 dark:divide-slate-800">
+                                @forelse ($gwmKeys as $key => $meta)
+                                    <div class="px-6 py-4 grid grid-cols-1 lg:grid-cols-[1fr,auto] gap-3 items-start">
+                                        <div class="space-y-1 min-w-0">
+                                            <div class="text-xs font-mono font-semibold text-indigo-600 dark:text-indigo-400">{{ $key }}</div>
+                                            @if ($meta['description'])
+                                                <div class="text-xs text-slate-500 dark:text-slate-400">{{ $meta['description'] }}</div>
+                                            @endif
+                                            <input
+                                                wire:model="gwmEdits.{{ $key }}"
+                                                type="{{ str_contains(strtolower($key), 'password') || str_contains(strtolower($key), 'secret') ? 'password' : 'text' }}"
+                                                placeholder="{{ $meta['default'] !== '' ? $meta['default'] : '' }}"
+                                                class="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm font-mono text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-indigo-400 focus:outline-none"
+                                            >
+                                            @if ($meta['default'] !== '' && ($gwmEdits[$key] ?? '') === '')
+                                                <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">Default: <code class="font-mono">{{ $meta['default'] }}</code></p>
+                                            @endif
+                                        </div>
+                                        <button
+                                            wire:click="saveEnvKey('{{ $key }}')"
+                                            class="shrink-0 mt-6 lg:mt-7 px-3 py-1.5 rounded-md border border-indigo-400/60 text-xs font-semibold text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition inline-flex items-center gap-1"
+                                        >
+                                            <x-loading-spinner target="saveEnvKey('{{ $key }}')" />
+                                            Save
+                                        </button>
+                                    </div>
+                                @empty
+                                    <div class="px-6 py-8 text-sm text-slate-500 dark:text-slate-400 text-center">No GWM_* variables found in your .env file.</div>
+                                @endforelse
+                            </div>
+                        </div>
+
+                        {{-- Env Backups --}}
+                        <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 overflow-hidden">
+                            <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+                                <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Environment Backups</h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Snapshots of your <code class="font-mono">.env</code> file. Restore any backup to roll back configuration changes. The current file is saved automatically before each restore.</p>
+                            </div>
+                            <div class="px-6 py-4 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800">
+                                <input wire:model="envBackupLabel" type="text" placeholder="Label (optional)"
+                                       class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 focus:border-indigo-400 focus:outline-none w-48">
+                                <button wire:click="createEnvBackup" class="px-3 py-1.5 text-xs rounded-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-indigo-300 hover:text-indigo-600 transition inline-flex items-center gap-1">
+                                    <x-loading-spinner target="createEnvBackup" />
+                                    Create Backup
+                                </button>
+                            </div>
+                            @if (count($envBackups) > 0)
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-sm">
+                                        <thead class="bg-slate-50 dark:bg-slate-800/50">
+                                            <tr>
+                                                @foreach (['Filename', 'Created', 'Size', 'Actions'] as $h)
+                                                    <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{{ $h }}</th>
+                                                @endforeach
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                                            @foreach ($envBackups as $backup)
+                                                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                                                    <td class="px-4 py-3 font-mono text-xs text-slate-600 dark:text-slate-300">{{ $backup['filename'] }}</td>
+                                                    <td class="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{{ $backup['created_at'] }}</td>
+                                                    <td class="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{{ number_format($backup['size'] / 1024, 1) }} KB</td>
+                                                    <td class="px-4 py-3">
+                                                        <div class="flex items-center gap-2">
+                                                            <button
+                                                                wire:click="restoreEnvBackup('{{ $backup['filename'] }}')"
+                                                                wire:confirm="Restore this backup? Your current .env will be saved first."
+                                                                class="text-xs px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-indigo-300 hover:text-indigo-600 transition">
+                                                                Restore
+                                                            </button>
+                                                            <button
+                                                                wire:click="deleteEnvBackup('{{ $backup['filename'] }}')"
+                                                                wire:confirm="Delete this backup permanently?"
+                                                                class="text-xs px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-slate-500 hover:border-rose-300 hover:text-rose-600 transition">
+                                                                Delete
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @else
+                                <div class="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400">No backups yet. Create one above.</div>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+
+                @if ($settingsSection !== 'environment')
                 <div class="flex flex-wrap items-center gap-3" x-data="{ saved: false, timer: null }" x-on:settings-saved.window="
                     saved = true;
                     clearTimeout(timer);
@@ -422,6 +523,7 @@
                     <span wire:dirty class="text-xs text-amber-400">Settings are unsaved.</span>
                     <span x-show="saved" x-transition.opacity.duration.200ms class="text-xs text-emerald-400">Settings saved.</span>
                 </div>
+                @endif
             </div>
         </div>
     </div>

@@ -23,5 +23,10 @@
             'status' => $status ?? null,
             'output' => $log ?? '',
         ])
+
+        @include('partials.env-backup-panel', [
+            'backups' => $envBackups ?? [],
+            'status' => $envStatus ?? null,
+        ])
     </body>
 </html>

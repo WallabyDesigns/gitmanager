@@ -45,6 +45,10 @@
             </a>
             @if (!request()->routeIs('recovery.index'))
                 <a href="{{ route('recovery.index') }}" style="{{ $buttonStyle }}">Open Recovery Page</a>
+            @else
+                <a href="#env-backups" style="{{ $buttonStyle }}" onclick="document.getElementById('env-backups-panel')?.scrollIntoView({behavior:'smooth'});return false;">
+                    Restore .env Backup
+                </a>
             @endif
             @if (auth()->user()?->isAdmin())
                 <a href="{{ route('system.updates') }}" style="{{ $buttonStyle }}">System Updates</a>
