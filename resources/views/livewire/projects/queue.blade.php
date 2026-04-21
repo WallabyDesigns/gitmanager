@@ -150,7 +150,12 @@
                             </div>
                             <div class="flex flex-wrap gap-2">
                                 @if ($item->status === 'queued')
-                                    <button type="button" wire:click="processItem({{ $item->id }})" class="px-3 py-1.5 text-xs rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-900 dark:border-emerald-500/60 dark:text-emerald-300 dark:hover:text-white">
+                                    <button type="button"
+                                            wire:click="processItem({{ $item->id }})"
+                                            wire:loading.attr="disabled"
+                                            wire:target="processItem({{ $item->id }})"
+                                            class="px-3 py-1.5 text-xs rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-900 dark:border-emerald-500/60 dark:text-emerald-300 dark:hover:text-white inline-flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
+                                        <x-loading-spinner target="processItem({{ $item->id }})" size="w-3 h-3" />
                                         Process Item
                                     </button>
                                     <button type="button" wire:click="moveUp({{ $item->id }})" class="px-3 py-1.5 text-xs rounded-md border border-slate-200 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-white">

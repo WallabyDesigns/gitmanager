@@ -138,6 +138,9 @@ class SupportService
         }
 
         $url = rtrim($baseUrl, '/').'/'.ltrim($path, '/');
+        if ($this->license->allowInsecureLocalTlsForEndpoint($url)) {
+            $request = $request->withOptions(['verify' => false]);
+        }
 
         try {
             $response = match (strtolower($method)) {
@@ -148,7 +151,7 @@ class SupportService
                 default => throw new \InvalidArgumentException("Unsupported HTTP method: {$method}"),
             };
         } catch (\Throwable $exception) {
-            throw new RuntimeException('Support request failed: '.$exception->getMessage());
+            throw new RuntimeException($this->formatRequestExceptionMessage($exception));
         }
 
         if (! $response->successful()) {
@@ -235,5 +238,21 @@ class SupportService
         }
 
         return false;
+    }
+
+    private function formatRequestExceptionMessage(\Throwable $exception): string
+    {
+        $raw = trim($exception->getMessage());
+        $lower = strtolower($raw);
+
+        if (str_contains($lower, 'curl error 60')) {
+            if (app()->environment(['local', 'testing'])) {
+                return 'Support request failed: SSL trust store is missing or outdated on this server (cURL error 60). Install/update CA certificates, or for local testing only enable the local TLS repair in System -> Edition & License or set GWM_LICENSE_ALLOW_INSECURE_LOCAL_TLS=true.';
+            }
+
+            return 'Support request failed: SSL trust store is missing or outdated on this server (cURL error 60). Install/update CA certificates (for example apt install ca-certificates), then restart PHP-FPM/web server.';
+        }
+
+        return 'Support request failed: '.$raw;
     }
 }

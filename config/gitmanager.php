@@ -77,6 +77,8 @@ return [
         // https://<license-domain>/api/v1/support
         'api_url' => env('GWM_SUPPORT_API_URL', ''),
         'timeout' => env('GWM_SUPPORT_TIMEOUT', 15),
+        // Local/testing TLS bypass for support requests reuses the license repair setting:
+        // system.license.allow_insecure_local_tls / GWM_LICENSE_ALLOW_INSECURE_LOCAL_TLS
     ],
     'enterprise' => [
         'package_name' => 'wallabydesigns/gitmanager-enterprise',

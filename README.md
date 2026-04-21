@@ -55,11 +55,11 @@ npm run build
 ```
 
 ## Enterprise Package Source
-This repository currently requires `wallabydesigns/gitmanager-enterprise` in `composer.json`.
+`wallabydesigns/gitmanager-enterprise` is intended to be installed by default because it contributes shared/free-version functionality as well as enterprise-only capabilities.
 
-- Development can use a Composer `path` repository (for example `E:/vsprojects/gitmanagerenterprise`).
-- Production should use a private Composer repository endpoint with credentials.
-- If you want Community-only code with no enterprise package dependency, remove that package from `composer.json` before `composer install`.
+- Premium access should be decided by the licensing website/API at runtime, not by prompting end users for repository credentials in the terminal.
+- The app no longer writes Composer auth to `auth.json` or tries to bootstrap terminal credentials itself.
+- If Composer is still prompting for `gitwebmanager.com` credentials, that indicates the remote package endpoint still needs to be adjusted to allow the default install flow without terminal authentication.
 
 ## Docker Installation
 Docker is required to run the container setup.

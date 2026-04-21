@@ -707,7 +707,7 @@ class LicenseService
         }
     }
 
-    private function allowInsecureLocalTlsForEndpoint(string $endpoint): bool
+    public function allowInsecureLocalTlsForEndpoint(string $endpoint): bool
     {
         if (! $this->isLocalInstallContext()) {
             return false;

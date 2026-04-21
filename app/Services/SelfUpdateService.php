@@ -586,7 +586,7 @@ class SelfUpdateService
         }
 
         $process = $this->runProcess(
-            ['composer', 'show', $packageName, '--latest', '--format=json'],
+            ['composer', 'show', $packageName, '--latest', '--format=json', '--no-interaction'],
             $output,
             $repoPath,
             false
@@ -1209,13 +1209,6 @@ class SelfUpdateService
 
     public function installOrUpdateEnterprisePackage(string $repoPath, array &$output, array $enterprisePackage): void
     {
-        /** @var LicenseService $license */
-        $license = app(LicenseService::class);
-
-        if (! $license->hasValidEnterpriseLicense()) {
-            return;
-        }
-
         if (! $this->binaryAvailable($this->composerBinary())) {
             $output[] = 'Enterprise package: composer binary not available, skipping.';
             return;
@@ -1223,8 +1216,6 @@ class SelfUpdateService
 
         $packageName = trim((string) ($enterprisePackage['name'] ?? $this->enterprisePackageName()));
         $status = $enterprisePackage['status'] ?? '';
-
-        $this->writeEnterpriseComposerAuth($repoPath, $license);
 
         if ($status === 'not-installed') {
             $output[] = 'Installing enterprise package: '.$packageName.'.';
@@ -1243,31 +1234,6 @@ class SelfUpdateService
                 false
             );
         }
-    }
-
-    private function writeEnterpriseComposerAuth(string $repoPath, LicenseService $license): void
-    {
-        $authContext = $license->supportAuthContext();
-        $licenseKey = trim((string) ($authContext['license_key'] ?? ''));
-        $installationUuid = $license->installationUuid();
-
-        if ($licenseKey === '' || $installationUuid === '') {
-            return;
-        }
-
-        $authPath = $repoPath.DIRECTORY_SEPARATOR.'auth.json';
-        $existing = [];
-        if (is_file($authPath)) {
-            $decoded = json_decode((string) file_get_contents($authPath), true);
-            $existing = is_array($decoded) ? $decoded : [];
-        }
-
-        $existing['http-basic']['gitwebmanager.com'] = [
-            'username' => $licenseKey,
-            'password' => $installationUuid,
-        ];
-
-        file_put_contents($authPath, json_encode($existing, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n");
     }
 
     private function maybeRunAppClearCache(string $repoPath, array &$output): void

@@ -11,10 +11,8 @@
         "laravel/tinker": "^2.10.1",
         "livewire/livewire": "^3.6.4",
         "livewire/volt": "^1.7.0",
-        "stripe/stripe-php": "^16.0"
-    },
-    "suggest": {
-        "wallabydesigns/gitmanager-enterprise": "Required for enterprise features. Installed automatically when an enterprise license is activated."
+        "stripe/stripe-php": "^16.0",
+        "wallabydesigns/gitmanager-enterprise": "^1.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
