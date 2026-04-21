@@ -59,21 +59,17 @@ class FtpService
             return ['status' => 'error', 'message' => 'FTP login failed. Check username/password.'];
         }
 
-        @ftp_pasv($connection, $passive);
+        $passiveInUse = $passive;
+        @ftp_pasv($connection, $passiveInUse);
 
         $configuredRootPath = $this->normalizeRemotePath($rootPath ?: '');
-        if ($configuredRootPath !== '' && $configuredRootPath !== '.' && ! @ftp_chdir($connection, $configuredRootPath)) {
+        if (! $this->enterRemotePath($connection, $configuredRootPath)) {
             $this->safeClose($connection);
             return ['status' => 'error', 'message' => 'Unable to access the remote root path: '.$configuredRootPath];
         }
 
-        // Write test should target the current working directory after chdir.
-        // Some FTP servers reject absolute paths here even though chdir succeeded.
-        $effectivePath = $configuredRootPath !== ''
-            ? $configuredRootPath
-            : ((string) (@ftp_pwd($connection) ?: '.'));
-
-        $writeTest = $this->testWrite($connection, '.', $effectivePath);
+        $effectivePath = (string) (@ftp_pwd($connection) ?: '.');
+        $writeTest = $this->verifyWritableConnection($connection, $effectivePath, $passiveInUse, true);
         if ($writeTest['status'] !== 'ok' && $configuredRootPath === '') {
             $writeTest['message'] .= ' Tip: set a writable FTP Root Path (for example /public_html).';
         }
@@ -197,7 +193,17 @@ class FtpService
 
         $connection = $this->openSyncConnection($output);
 
-        $writeTest = $this->testWrite($connection, '.');
+        $passiveInUse = (bool) $this->syncContext['passive'];
+        $writeTest = $this->verifyWritableConnection(
+            $connection,
+            (string) (@ftp_pwd($connection) ?: '.'),
+            $passiveInUse,
+            true
+        );
+        if ($passiveInUse !== (bool) $this->syncContext['passive']) {
+            $this->syncContext['passive'] = $passiveInUse;
+            $output[] = 'FTPS write test required passive mode '.($passiveInUse ? 'on' : 'off').' for this session.';
+        }
         if ($writeTest['status'] !== 'ok') {
             $output[] = 'FTPS write test failed: '.$writeTest['message'];
             $this->safeClose($connection);
@@ -270,7 +276,17 @@ class FtpService
 
         $connection = $this->openSyncConnection($output);
 
-        $writeTest = $this->testWrite($connection, '.');
+        $passiveInUse = (bool) $this->syncContext['passive'];
+        $writeTest = $this->verifyWritableConnection(
+            $connection,
+            (string) (@ftp_pwd($connection) ?: '.'),
+            $passiveInUse,
+            true
+        );
+        if ($passiveInUse !== (bool) $this->syncContext['passive']) {
+            $this->syncContext['passive'] = $passiveInUse;
+            $output[] = 'FTPS write test required passive mode '.($passiveInUse ? 'on' : 'off').' for this session.';
+        }
         if ($writeTest['status'] !== 'ok') {
             $output[] = 'FTPS write test failed: '.$writeTest['message'];
             $this->safeClose($connection);
@@ -504,6 +520,83 @@ class FtpService
             $output[] = 'FTPS reconnect failed: '.$exception->getMessage();
             throw $exception;
         }
+    }
+
+    /**
+     * @param resource|\FTP\Connection $connection
+     */
+    private function enterRemotePath($connection, string $rootPath): bool
+    {
+        $rootPath = $this->normalizeRemotePath($rootPath);
+        if ($rootPath === '' || $rootPath === '.') {
+            return true;
+        }
+
+        if (@ftp_chdir($connection, $rootPath)) {
+            return true;
+        }
+
+        try {
+            $this->ensureRemoteDirectory($connection, $rootPath);
+        } catch (\Throwable $e) {
+            return false;
+        }
+
+        return @ftp_chdir($connection, $rootPath);
+    }
+
+    /**
+     * @param resource|\FTP\Connection $connection
+     * @param bool $passive
+     * @return array{status: string, message: string}
+     */
+    private function verifyWritableConnection($connection, string $displayPath, bool &$passive, bool $allowPassiveToggle = true): array
+    {
+        $displayPath = trim($displayPath) !== '' ? trim($displayPath) : '.';
+        $initial = $this->testWriteWithPathFallback($connection, $displayPath);
+        if ($initial['status'] === 'ok') {
+            return $initial;
+        }
+
+        if (! $allowPassiveToggle) {
+            return $initial;
+        }
+
+        $toggled = ! $passive;
+        @ftp_pasv($connection, $toggled);
+        $retry = $this->testWriteWithPathFallback($connection, $displayPath);
+        if ($retry['status'] === 'ok') {
+            $passive = $toggled;
+            $retry['message'] .= ' Connection succeeded after switching passive mode '.($toggled ? 'on' : 'off').'.';
+            return $retry;
+        }
+
+        @ftp_pasv($connection, $passive);
+        $initial['message'] .= ' Try toggling passive mode in FTP/SSH Access.';
+
+        return $initial;
+    }
+
+    /**
+     * @param resource|\FTP\Connection $connection
+     * @return array{status: string, message: string}
+     */
+    private function testWriteWithPathFallback($connection, string $displayPath): array
+    {
+        $result = $this->testWrite($connection, '.', $displayPath);
+        if ($result['status'] === 'ok') {
+            return $result;
+        }
+
+        $pwd = $this->normalizeRemotePath((string) (@ftp_pwd($connection) ?: ''));
+        if ($pwd !== '' && $pwd !== '.') {
+            $absolute = $this->testWrite($connection, $pwd, $displayPath);
+            if ($absolute['status'] === 'ok') {
+                return $absolute;
+            }
+        }
+
+        return $result;
     }
 
     private function normalizeRemotePath(string $path): string
