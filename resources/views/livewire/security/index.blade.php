@@ -1,7 +1,9 @@
 <div class="py-10">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        @include('livewire.system.partials.tabs')
-        <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid gap-6 lg:grid-cols-[260px,1fr]">
+            @include('livewire.system.partials.tabs')
+            <div class="space-y-6">
+                <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-3 flex-wrap">
                     <a href="{{ route('system.security', ['tab' => 'current']) }}" class="px-3 py-2 text-sm rounded-md {{ $tab === 'current' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300' }}">
@@ -37,7 +39,7 @@
             </div>
         @endif
 
-        <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
+                <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
             <div class="space-y-6">
                 @if ($alerts->isNotEmpty())
                     <div class="space-y-4">
@@ -144,6 +146,8 @@
                 @if ($alerts->isEmpty() && $auditIssues->isEmpty())
                     <p class="text-sm text-slate-500 dark:text-slate-400">No issues found for this tab.</p>
                 @endif
+            </div>
+                </div>
             </div>
         </div>
     </div>

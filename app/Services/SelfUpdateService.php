@@ -13,9 +13,20 @@ class SelfUpdateService
     private const REPO_URL = 'https://github.com/wallabydesigns/gitmanager.git';
     private const DEFAULT_BRANCH = 'main';
     private const STATUS_CACHE_KEY = 'gwm_self_update_status';
+    private const DEFAULT_ENTERPRISE_PACKAGE = 'wallabydesigns/gitmanager-enterprise';
 
     /**
-     * @return array{status: string, current?: string|null, latest?: string|null, branch?: string|null, checked_at?: string|null, error?: string|null}
+     * @return array{
+     *   status: string,
+     *   core_status?: string,
+     *   current?: string|null,
+     *   latest?: string|null,
+     *   branch?: string|null,
+     *   checked_at?: string|null,
+     *   error?: string|null,
+     *   enterprise_update_available?: bool,
+     *   enterprise_package?: array<string, mixed>
+     * }
      */
     public function getUpdateStatus(bool $force = false): array
     {
@@ -355,7 +366,14 @@ class SelfUpdateService
                 $remoteHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'origin/'.$branch], $output)->getOutput());
 
                 if ($fromHash === $remoteHash) {
-                    $update->status = 'skipped';
+                    $enterprisePackage = $this->getEnterprisePackageStatus($repoPath, $output);
+                    if (($enterprisePackage['status'] ?? '') === 'update-available') {
+                        $output[] = 'Enterprise package update available: '.($enterprisePackage['current'] ?? 'unknown').' → '.($enterprisePackage['latest'] ?? 'unknown').'.';
+                        $update->status = 'warning';
+                    } else {
+                        $output[] = $enterprisePackage['message'] ?? 'Enterprise package update check completed.';
+                        $update->status = 'skipped';
+                    }
                     $update->from_hash = $fromHash;
                     $update->to_hash = $fromHash;
                     $update->output_log = implode("\n", $output);
@@ -467,13 +485,24 @@ class SelfUpdateService
     }
 
     /**
-     * @return array{status: string, current?: string|null, latest?: string|null, branch?: string|null, checked_at?: string|null, error?: string|null}
+     * @return array{
+     *   status: string,
+     *   core_status?: string,
+     *   current?: string|null,
+     *   latest?: string|null,
+     *   branch?: string|null,
+     *   checked_at?: string|null,
+     *   error?: string|null,
+     *   enterprise_update_available?: bool,
+     *   enterprise_package?: array<string, mixed>
+     * }
      */
     private function computeUpdateStatus(): array
     {
         $repoPath = base_path();
         $output = [];
         $branch = null;
+        $enterprisePackage = $this->defaultEnterprisePackageStatus('unknown', 'Enterprise package update checks are unavailable.');
 
         try {
             $this->ensureGitRepository($repoPath);
@@ -484,32 +513,216 @@ class SelfUpdateService
 
             $current = $this->tryRevParse($repoPath);
             $latest = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'origin/'.$branch], $output)->getOutput());
+            $enterprisePackage = $this->getEnterprisePackageStatus($repoPath, $output);
+            $enterpriseUpdateAvailable = ($enterprisePackage['status'] ?? '') === 'update-available';
 
             if (! $current || $latest === '') {
                 return [
-                    'status' => 'unknown',
+                    'status' => $enterpriseUpdateAvailable ? 'update-available' : 'unknown',
+                    'core_status' => 'unknown',
                     'current' => $current,
                     'latest' => $latest !== '' ? $latest : null,
                     'branch' => $branch,
                     'checked_at' => now()->toDateTimeString(),
+                    'enterprise_update_available' => $enterpriseUpdateAvailable,
+                    'enterprise_package' => $enterprisePackage,
                 ];
             }
 
+            $coreStatus = $current === $latest ? 'up-to-date' : 'update-available';
+
             return [
-                'status' => $current === $latest ? 'up-to-date' : 'update-available',
+                'status' => ($coreStatus === 'update-available' || $enterpriseUpdateAvailable) ? 'update-available' : 'up-to-date',
+                'core_status' => $coreStatus,
                 'current' => $current,
                 'latest' => $latest,
                 'branch' => $branch,
                 'checked_at' => now()->toDateTimeString(),
+                'enterprise_update_available' => $enterpriseUpdateAvailable,
+                'enterprise_package' => $enterprisePackage,
             ];
         } catch (\Throwable $exception) {
             return [
-                'status' => 'unknown',
+                'status' => ($enterprisePackage['status'] ?? '') === 'update-available' ? 'update-available' : 'unknown',
+                'core_status' => 'unknown',
                 'branch' => $branch,
                 'checked_at' => now()->toDateTimeString(),
                 'error' => $exception->getMessage(),
+                'enterprise_update_available' => ($enterprisePackage['status'] ?? '') === 'update-available',
+                'enterprise_package' => $enterprisePackage,
             ];
         }
+    }
+
+    /**
+     * @return array{
+     *   name: string,
+     *   required: bool,
+     *   installed: bool,
+     *   current: ?string,
+     *   latest: ?string,
+     *   status: string,
+     *   message: string
+     * }
+     */
+    public function getEnterprisePackageStatus(string $repoPath, array &$output): array
+    {
+        $packageName = $this->enterprisePackageName();
+        if (! (bool) config('gitmanager.enterprise.check_updates', true)) {
+            return $this->defaultEnterprisePackageStatus('disabled', 'Enterprise package update checks are disabled.', $packageName);
+        }
+
+        if ($packageName === '') {
+            return $this->defaultEnterprisePackageStatus('unknown', 'Enterprise package name is not configured.', $packageName);
+        }
+
+        $required = $this->composerRequiresPackage($repoPath, $packageName);
+        if (! $required && ! class_exists(\GitManagerEnterprise\EnterpriseServiceProvider::class)) {
+            return $this->defaultEnterprisePackageStatus('not-installed', 'Enterprise package is not installed on this panel.', $packageName, false, false);
+        }
+
+        if (! $this->binaryAvailable($this->composerBinary())) {
+            return $this->defaultEnterprisePackageStatus('unknown', 'Composer binary not available; unable to check enterprise package updates.', $packageName, $required, false);
+        }
+
+        $process = $this->runProcess(
+            ['composer', 'show', $packageName, '--latest', '--format=json'],
+            $output,
+            $repoPath,
+            false
+        );
+        if (! $process->isSuccessful()) {
+            $error = trim($process->getErrorOutput());
+            if ($error === '') {
+                $error = trim($process->getOutput());
+            }
+
+            return $this->defaultEnterprisePackageStatus(
+                'unknown',
+                'Unable to determine enterprise package update status.'.($error !== '' ? ' '.$error : ''),
+                $packageName,
+                $required,
+                false
+            );
+        }
+
+        $payload = json_decode((string) $process->getOutput(), true);
+        if (! is_array($payload)) {
+            return $this->defaultEnterprisePackageStatus('unknown', 'Invalid Composer response while checking enterprise package updates.', $packageName, $required, true);
+        }
+
+        $versions = $payload['versions'] ?? [];
+        $current = null;
+        if (is_array($versions)) {
+            foreach ($versions as $candidate) {
+                if (! is_string($candidate)) {
+                    continue;
+                }
+                $candidate = trim($candidate);
+                if ($candidate === '' || $candidate === 'dev-main' || str_starts_with($candidate, '9999999-dev')) {
+                    continue;
+                }
+                $current = $candidate;
+                break;
+            }
+        }
+        if ($current === null && is_string($payload['version'] ?? null)) {
+            $current = trim((string) $payload['version']);
+        }
+
+        $latest = is_string($payload['latest'] ?? null)
+            ? trim((string) $payload['latest'])
+            : null;
+        if ($latest === '') {
+            $latest = null;
+        }
+
+        if (($current === null || $current === '') && ($latest === null || $latest === '')) {
+            return $this->defaultEnterprisePackageStatus('unknown', 'Enterprise package is installed but version details are unavailable.', $packageName, $required, true);
+        }
+
+        $current = $current !== null && $current !== '' ? $current : null;
+        $latest = $latest !== null && $latest !== '' ? $latest : $current;
+
+        $updateAvailable = false;
+        if ($current !== null && $latest !== null) {
+            $normalizedCurrent = ltrim($current, 'vV');
+            $normalizedLatest = ltrim($latest, 'vV');
+
+            if (preg_match('/^\d+(\.\d+){0,3}([\-+].*)?$/', $normalizedCurrent) === 1
+                && preg_match('/^\d+(\.\d+){0,3}([\-+].*)?$/', $normalizedLatest) === 1) {
+                $updateAvailable = version_compare($normalizedCurrent, $normalizedLatest, '<');
+            } else {
+                $updateAvailable = ! hash_equals($current, $latest);
+            }
+        }
+
+        return [
+            'name' => $packageName,
+            'required' => $required,
+            'installed' => true,
+            'current' => $current,
+            'latest' => $latest,
+            'status' => $updateAvailable ? 'update-available' : 'up-to-date',
+            'message' => $updateAvailable
+                ? 'Enterprise package update is available.'
+                : 'Enterprise package is up to date.',
+        ];
+    }
+
+    /**
+     * @return array{
+     *   name: string,
+     *   required: bool,
+     *   installed: bool,
+     *   current: ?string,
+     *   latest: ?string,
+     *   status: string,
+     *   message: string
+     * }
+     */
+    private function defaultEnterprisePackageStatus(
+        string $status,
+        string $message,
+        ?string $packageName = null,
+        bool $required = false,
+        bool $installed = false
+    ): array {
+        return [
+            'name' => $packageName ?? $this->enterprisePackageName(),
+            'required' => $required,
+            'installed' => $installed,
+            'current' => null,
+            'latest' => null,
+            'status' => $status,
+            'message' => $message,
+        ];
+    }
+
+    private function enterprisePackageName(): string
+    {
+        $configured = trim((string) config('gitmanager.enterprise.package_name', self::DEFAULT_ENTERPRISE_PACKAGE));
+
+        return $configured !== '' ? $configured : self::DEFAULT_ENTERPRISE_PACKAGE;
+    }
+
+    private function composerRequiresPackage(string $repoPath, string $packageName): bool
+    {
+        $composerFile = $repoPath.DIRECTORY_SEPARATOR.'composer.json';
+        if (! is_file($composerFile)) {
+            return false;
+        }
+
+        $json = json_decode((string) file_get_contents($composerFile), true);
+        if (! is_array($json)) {
+            return false;
+        }
+
+        $requires = $json['require'] ?? [];
+        $requiresDev = $json['require-dev'] ?? [];
+
+        return (is_array($requires) && array_key_exists($packageName, $requires))
+            || (is_array($requiresDev) && array_key_exists($packageName, $requiresDev));
     }
 
     private function resolveRollbackTarget(?string $targetHash, array &$output): ?string
@@ -981,7 +1194,80 @@ class SelfUpdateService
             $this->maybeRunAppClearCache($repoPath, $output);
         }
 
+        $enterprisePackage = $this->getEnterprisePackageStatus($repoPath, $output);
+        if (in_array($enterprisePackage['status'] ?? '', ['not-installed', 'update-available'], true)) {
+            $this->installOrUpdateEnterprisePackage($repoPath, $output, $enterprisePackage);
+            $enterprisePackage = $this->getEnterprisePackageStatus($repoPath, $output);
+        }
+        $output[] = $enterprisePackage['message'] ?? 'Enterprise package update check completed.';
+        if (($enterprisePackage['status'] ?? '') === 'update-available') {
+            $output[] = 'Enterprise package update available: '.($enterprisePackage['current'] ?? 'unknown').' → '.($enterprisePackage['latest'] ?? 'unknown').'.';
+        }
+
         $this->applyPostUpdatePermissions($repoPath, $output);
+    }
+
+    public function installOrUpdateEnterprisePackage(string $repoPath, array &$output, array $enterprisePackage): void
+    {
+        /** @var LicenseService $license */
+        $license = app(LicenseService::class);
+
+        if (! $license->hasValidEnterpriseLicense()) {
+            return;
+        }
+
+        if (! $this->binaryAvailable($this->composerBinary())) {
+            $output[] = 'Enterprise package: composer binary not available, skipping.';
+            return;
+        }
+
+        $packageName = trim((string) ($enterprisePackage['name'] ?? $this->enterprisePackageName()));
+        $status = $enterprisePackage['status'] ?? '';
+
+        $this->writeEnterpriseComposerAuth($repoPath, $license);
+
+        if ($status === 'not-installed') {
+            $output[] = 'Installing enterprise package: '.$packageName.'.';
+            $this->runProcess(
+                [$this->composerBinary(), 'require', $packageName, '^1.0', '--no-dev', '--optimize-autoloader', '--no-interaction'],
+                $output,
+                $repoPath,
+                false
+            );
+        } elseif ($status === 'update-available') {
+            $output[] = 'Updating enterprise package: '.$packageName.' ('.(string) ($enterprisePackage['current'] ?? '?').' → '.(string) ($enterprisePackage['latest'] ?? '?').').';
+            $this->runProcess(
+                [$this->composerBinary(), 'update', $packageName, '--no-dev', '--optimize-autoloader', '--no-interaction'],
+                $output,
+                $repoPath,
+                false
+            );
+        }
+    }
+
+    private function writeEnterpriseComposerAuth(string $repoPath, LicenseService $license): void
+    {
+        $authContext = $license->supportAuthContext();
+        $licenseKey = trim((string) ($authContext['license_key'] ?? ''));
+        $installationUuid = $license->installationUuid();
+
+        if ($licenseKey === '' || $installationUuid === '') {
+            return;
+        }
+
+        $authPath = $repoPath.DIRECTORY_SEPARATOR.'auth.json';
+        $existing = [];
+        if (is_file($authPath)) {
+            $decoded = json_decode((string) file_get_contents($authPath), true);
+            $existing = is_array($decoded) ? $decoded : [];
+        }
+
+        $existing['http-basic']['gitwebmanager.com'] = [
+            'username' => $licenseKey,
+            'password' => $installationUuid,
+        ];
+
+        file_put_contents($authPath, json_encode($existing, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n");
     }
 
     private function maybeRunAppClearCache(string $repoPath, array &$output): void

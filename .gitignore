@@ -26,3 +26,6 @@ Homestead.yaml
 Thumbs.db
 error.txt
 goals.md
+migrationguide.md
+# Internal implementation notes (never commit)
+.internal-notes/

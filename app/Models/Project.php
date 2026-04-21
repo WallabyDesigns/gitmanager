@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,6 +10,7 @@ use App\Models\FtpAccount;
 
 class Project extends Model
 {
+    use HasFactory;
     protected $fillable = [
         'user_id',
         'name',
@@ -42,6 +44,7 @@ class Project extends Model
         'test_command',
         'allow_dependency_updates',
         'exclude_paths',
+        'whitelist_paths',
         'ftp_account_id',
         'ftp_root_path',
         'ftp_enabled',

@@ -14,9 +14,9 @@ The docs site is maintained in a separate repository: `gitmanager-docs`.
 Local workspace path:
 - `E:\vsprojects\gitmanager-docs`
 
-You can read it directly here: [documentation](https://wallabydesigns.github.io/gitmanager/).
+You can read them directly here: [documentation](https://docs.gitwebmanager.com).
 
-[![documentation](/assets/docs.png)](https://wallabydesigns.github.io/gitmanager/)
+[![documentation](/assets/docs.png)](https://docs.gitwebmanager.com)
 
 ## Why Use It
 - Replace manual `git pull` + build + rollback steps with one UI.
@@ -28,12 +28,15 @@ You can read it directly here: [documentation](https://wallabydesigns.github.io/
 - **Project management:** Create and manage Git-backed projects with per-project settings, paths, branches, and deployment behavior.
 - **Path conflict awareness:** `local_path` values can be reused across projects (including FTP projects using common paths like `/public_html`), and the UI now shows a warning when a path is shared.
 - **Deploy workflows:** Run deploy, force deploy, and rollback actions with logs and status history.
-- **Task queue:** Queue and process background work in order (including deploy-related tasks and audits), with controls to reorder, cancel, and process now.
+- **Task queue:** Queue and process background work in order (including deploy-related tasks and Enterprise audit jobs), with controls to reorder, cancel, and process now.
+- **Container control center:** Manage Docker nodes, runtime health, containers, and managed PostgreSQL/MySQL database containers from one workspace.
+- **Tiered container licensing:** Community edition includes Docker with up to 3 nodes; Enterprise unlocks unlimited nodes and premium automation.
 - **Scheduler health:** Monitor heartbeat status, run scheduler actions manually, and manage cron setup from the UI.
 - **Auto deploy + webhooks:** Trigger updates from scheduled checks or GitHub webhook events.
 - **Health monitoring:** Track project health endpoints with live state and last-checked visibility.
 - **Preview builds:** Generate preview builds for specific commits to validate changes safely.
-- **Dependency operations:** Run composer/npm actions and audits with per-run logs and issue visibility.
+- **Dependency operations:** Run composer/npm actions with per-run logs and issue visibility.
+- **Enterprise audit automation:** Enable scheduled project dependency audits plus managed container runtime audits.
 - **Security insights:** Review Dependabot and audit findings in one place, including remediation workflows.
 - **Workflow automations:** Configure rule-based notifications and webhooks for success/failure events.
 - **App self-update:** Update the manager itself with safe defaults and force-update recovery options.
@@ -50,6 +53,13 @@ php artisan migrate
 npm install
 npm run build
 ```
+
+## Enterprise Package Source
+This repository currently requires `wallabydesigns/gitmanager-enterprise` in `composer.json`.
+
+- Development can use a Composer `path` repository (for example `E:/vsprojects/gitmanagerenterprise`).
+- Production should use a private Composer repository endpoint with credentials.
+- If you want Community-only code with no enterprise package dependency, remove that package from `composer.json` before `composer install`.
 
 ## Docker Installation
 Docker is required to run the container setup.
@@ -108,13 +118,64 @@ Set these in `.env` as needed:
 - `GITHUB_WEBHOOK_SECRET` for webhook verification.
 - `GWM_GIT_BINARY`, `GWM_COMPOSER_BINARY`, `GWM_NPM_BINARY` for custom CLI paths.
 - `GWM_PHP_BINARY` / `GWM_PHP_PATH` for PHP CLI selection.
+- `GWM_DOCKER_BINARY` / `GWM_KUBECTL_BINARY` for container CLI overrides.
 - `GWM_PROCESS_PATH` to prepend PATH (Node, PHP, etc).
 - `GWM_SELF_UPDATE_ENABLED` to enable self updates.
 - `GWM_SELF_UPDATE_EXCLUDE_PATHS` to skip paths (default: `docs`).
 - `GWM_PREVIEW_PATH` and `GWM_PREVIEW_BASE_URL` for preview builds.
 - `GWM_DEPLOY_QUEUE_ENABLED` to enable queued tasks.
+- `GWM_LICENSE_ALLOW_INSECURE_LOCAL_TLS` for local/testing only when your dev machine cannot validate the license server certificate chain.
+- Enterprise licensing runtime config (verification URL, timeout, cache window, IP policy, signature secret) is resolved from the private enterprise package.
+- Commercial package values (edition mapping, product IDs, tier limits, price display) are managed in the private enterprise package.
+- Enterprise access is resolved from signed license responses (including installation UUID + optional IP checks), not local public-env edition toggles.
 
 Legacy `GPM_*` keys are still supported for backward compatibility.
+
+## Enterprise License Runtime Security
+Enterprise runtime secrets are designed to be stored encrypted in the app database (settings table), then hydrated from your external licensing API response.
+
+- Local secret storage:
+  - License key is stored encrypted.
+  - Response-signing secret and request-signing secret are stored encrypted when provided by the license API.
+  - Stripe secret and Stripe webhook secret are stored encrypted when provided by the license API.
+- Transport hardening:
+  - Production license verification requires an HTTPS endpoint.
+  - The app can attach signed request headers (`X-GWM-License-Signature`, `X-GWM-License-Timestamp`, `X-GWM-License-Installation`) when a request-signing secret is configured.
+  - The app validates response signatures (`X-GWM-License-Signature`) when signature verification is enabled.
+- Runtime config hydration:
+  - License verification responses may include `runtime_config` and `commerce` payloads.
+  - When present, these values are persisted to encrypted/locked settings and used for subsequent checks and checkout/webhook config.
+
+Expected verification response shape (minimum):
+
+```json
+{
+  "valid": true,
+  "edition": "enterprise",
+  "installation_uuid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "message": "License validated.",
+  "bound_ip": "203.0.113.10",
+  "expires_at": "2026-12-31T23:59:59Z",
+  "grace_ends_at": "2027-01-07T23:59:59Z",
+  "runtime_config": {
+    "verify_url": "https://gitwebmanager.com/api/v1/license/verify",
+    "timeout": 10,
+    "cache_seconds": 900,
+    "strict_ip": true,
+    "public_ip": "203.0.113.10",
+    "verify_signature": true,
+    "response_signing_secret": "server_generated_secret",
+    "request_signing_secret": "server_generated_secret"
+  },
+  "commerce": {
+    "enterprise_price_id": "price_xxx",
+    "enterprise_product_id": "prod_xxx",
+    "enterprise_display_price": "29.99",
+    "stripe_secret": "sk_live_xxx",
+    "stripe_webhook_secret": "whsec_xxx"
+  }
+}
+```
 
 ## Scheduler & Queue
 Start a worker for webhook deployments:
@@ -135,13 +196,27 @@ Scheduled commands include:
 - `dependabot:auto-merge` (hourly)
 - `gitmanager:self-update` (daily at 02:30 if enabled)
 
-## GitHub Webhooks
+## Webhooks
 Set GitHub to POST to:
 ```
 /webhooks/github
 ```
 
 Use the same `GITHUB_WEBHOOK_SECRET` in GitHub and `.env`.
+
+Enterprise Stripe events should POST to:
+```
+/webhooks/stripe
+```
+
+Stripe webhook secret is read from enterprise runtime config (encrypted settings) with enterprise package env fallback support.
+
+## Enterprise Checkout Flow
+- Checkout entry point: `POST /checkout/enterprise`.
+- Success redirect: `/checkout/enterprise/success`.
+- Cancel redirect: `/checkout/enterprise/cancel`.
+- Trusted testing installs can use `/checkout/enterprise/testing` to validate UX without charging a card.
+- Successful checkout and Stripe payment webhooks trigger license verification and enterprise activation logic.
 
 ## App Updates
 The app can update itself from its repo. By default it preserves local changes when detected. If an update fails, you can run a **Force Update** to hard-reset to the remote branch while preserving `.env`, `storage/`, `.htaccess`, and `GWM_SELF_UPDATE_EXCLUDE_PATHS`.

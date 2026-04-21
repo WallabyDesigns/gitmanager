@@ -20,11 +20,18 @@ class Edit extends Component
     public ?string $localPathUsageWarning = null;
     public ?string $ftpTestStatus = null;
     public ?string $ftpTestMessage = null;
+    public int $containerProjectLimit = 3;
+    public int $containerProjectCount = 0;
 
     public function mount(Project $project): void
     {
         $this->authorize('update', $project);
         $this->project = $project;
+        $edition = app(EditionService::class);
+        $this->isEnterprise = $edition->current() === EditionService::ENTERPRISE;
+        $this->containerProjectLimit = $this->resolveContainerProjectLimit();
+        $this->refreshContainerProjectStats();
+        $this->projectTypes = $this->projectTypeOptions($this->isEnterprise);
         $this->form = [
             'name' => $project->name,
             'directory_path' => $project->directory_path,
@@ -43,6 +50,7 @@ class Edit extends Component
             'test_command' => $project->test_command,
             'allow_dependency_updates' => $project->allow_dependency_updates,
             'exclude_paths' => $project->exclude_paths,
+            'whitelist_paths' => $project->whitelist_paths,
             'env_content' => $this->seedContent($project, '.env'),
             'htaccess_content' => $this->seedContent($project, '.htaccess'),
             'ftp_enabled' => $project->ftp_enabled,
@@ -61,6 +69,7 @@ class Edit extends Component
     {
         return view('livewire.projects.edit', [
             'ftpAccounts' => \App\Models\FtpAccount::query()->orderBy('name')->get(),
+            'projectTypes' => $this->projectTypes,
         ])
             ->layout('layouts.app', [
                 'title' => 'Edit ' . $this->project->name,
@@ -108,8 +117,43 @@ class Edit extends Component
         }
     }
 
+    public function updatedFormProjectType(string $value): void
+    {
+        if ($value === 'container' && ! $this->canUseContainerProjectType()) {
+            $this->addError('form.project_type', $this->containerLimitMessage());
+            $this->dispatch('gwm-open-enterprise-modal', feature: 'Unlimited Container Projects');
+            $this->form['project_type'] = $this->lastAllowedProjectType !== ''
+                ? $this->lastAllowedProjectType
+                : 'custom';
+            return;
+        }
+
+        if ($this->isPremiumProjectType($value) && ! $this->isEnterprise) {
+            $this->dispatch('gwm-open-enterprise-modal', feature: $this->projectTypeLabel($value).' Project Type');
+            $this->form['project_type'] = $this->lastAllowedProjectType !== ''
+                ? $this->lastAllowedProjectType
+                : 'custom';
+            return;
+        }
+
+        $this->lastAllowedProjectType = $value;
+    }
+
     public function save(): void
     {
+        $projectType = (string) ($this->form['project_type'] ?? '');
+        if ($projectType === 'container' && ! $this->canUseContainerProjectType()) {
+            $this->addError('form.project_type', $this->containerLimitMessage());
+            $this->dispatch('gwm-open-enterprise-modal', feature: 'Unlimited Container Projects');
+            return;
+        }
+
+        if ($this->isPremiumProjectType($projectType) && ! $this->isEnterprise) {
+            $this->addError('form.project_type', $this->projectTypeLabel($projectType).' is available in Enterprise Edition.');
+            $this->dispatch('gwm-open-enterprise-modal', feature: $this->projectTypeLabel($projectType).' Project Type');
+            return;
+        }
+
         $validated = $this->validate($this->rules());
         $payload = $validated['form'];
         $payload['directory_path'] = $this->normalizeDirectoryPath($payload['directory_path'] ?? null);
@@ -187,6 +231,7 @@ class Edit extends Component
             ],
             'form.allow_dependency_updates' => ['boolean'],
             'form.exclude_paths' => ['nullable', 'string'],
+            'form.whitelist_paths' => ['nullable', 'string'],
             'form.env_content' => ['nullable', 'string'],
             'form.htaccess_content' => ['nullable', 'string'],
             'form.ftp_enabled' => ['boolean'],

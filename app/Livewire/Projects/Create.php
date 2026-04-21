@@ -31,36 +31,29 @@ class Create extends Component
     public ?string $envExampleSource = null;
     public ?string $envExampleMessage = null;
     public ?string $envExampleFilename = null;
+    public bool $isEnterprise = false;
+    public string $lastAllowedProjectType = 'laravel';
     private bool $settingDefaults = false;
 
+    public int $communityProjectLimit = 5;
+    public int $projectCount = 0;
+
+    public int $containerProjectLimit = 3;
+    public int $containerProjectCount = 0;
+
     /**
-     * @var array<int, array{value: string, label: string, description: string}>
+     * @var array<int, array{value: string, label: string, description: string, locked: bool, locked_message?: string}>
      */
-    public array $projectTypes = [
-        [
-            'value' => 'laravel',
-            'label' => 'Laravel',
-            'description' => 'Composer, npm, Vite build, and artisan tests.',
-        ],
-        [
-            'value' => 'node',
-            'label' => 'Node',
-            'description' => 'npm install/build/test workflow.',
-        ],
-        [
-            'value' => 'static',
-            'label' => 'Static',
-            'description' => 'Static or frontend-only build output.',
-        ],
-        [
-            'value' => 'custom',
-            'label' => 'Custom',
-            'description' => 'Manually configure build/deploy settings.',
-        ],
-    ];
+    public array $projectTypes = [];
 
     public function mount(): void
     {
+        $edition = app(EditionService::class);
+        $this->isEnterprise = $edition->current() === EditionService::ENTERPRISE;
+        $this->refreshProjectStats();
+        $this->containerProjectLimit = $this->resolveContainerProjectLimit();
+        $this->refreshContainerProjectStats();
+        $this->projectTypes = $this->projectTypeOptions($this->isEnterprise);
         $this->form = [
             'name' => '',
             'directory_path' => '',
@@ -79,6 +72,7 @@ class Create extends Component
             'test_command' => 'php artisan test',
             'allow_dependency_updates' => true,
             'exclude_paths' => '',
+            'whitelist_paths' => '',
             'env_content' => '',
             'env_use_example' => false,
             'htaccess_content' => '',
@@ -110,6 +104,24 @@ class Create extends Component
 
     public function updatedFormProjectType(string $value): void
     {
+        if ($value === 'container' && ! $this->canUseContainerProjectType()) {
+            $this->addError('form.project_type', $this->containerLimitMessage());
+            $this->dispatch('gwm-open-enterprise-modal', feature: 'Unlimited Container Projects');
+            $this->form['project_type'] = $this->lastAllowedProjectType !== ''
+                ? $this->lastAllowedProjectType
+                : 'custom';
+            return;
+        }
+
+        if ($this->isPremiumProjectType($value) && ! $this->isEnterprise) {
+            $this->dispatch('gwm-open-enterprise-modal', feature: $this->projectTypeLabel($value).' Project Type');
+            $this->form['project_type'] = $this->lastAllowedProjectType !== ''
+                ? $this->lastAllowedProjectType
+                : 'custom';
+            return;
+        }
+
+        $this->lastAllowedProjectType = $value;
         $this->applyProjectTypeDefaults($value);
         $this->prefillConfigurationDefaults();
     }
@@ -232,6 +244,16 @@ class Create extends Component
     public function nextStep(): void
     {
         $this->validate($this->stepRules($this->step));
+
+        if ($this->step === 1) {
+            $this->refreshProjectStats();
+            if (! $this->canCreateProject()) {
+                $this->addError('form.name', $this->projectLimitMessage());
+                $this->dispatch('gwm-open-enterprise-modal', feature: 'Unlimited Projects');
+                return;
+            }
+        }
+
         $this->step = min(3, $this->step + 1);
         if ($this->step === 2) {
             $this->prefillConfigurationDefaults();
@@ -245,6 +267,26 @@ class Create extends Component
 
     public function save(): void
     {
+        $this->refreshProjectStats();
+        if (! $this->canCreateProject()) {
+            $this->addError('form.name', $this->projectLimitMessage());
+            $this->dispatch('gwm-open-enterprise-modal', feature: 'Unlimited Projects');
+            return;
+        }
+
+        $projectType = (string) ($this->form['project_type'] ?? '');
+        if ($projectType === 'container' && ! $this->canUseContainerProjectType()) {
+            $this->addError('form.project_type', $this->containerLimitMessage());
+            $this->dispatch('gwm-open-enterprise-modal', feature: 'Unlimited Container Projects');
+            return;
+        }
+
+        if ($this->isPremiumProjectType($projectType) && ! $this->isEnterprise) {
+            $this->addError('form.project_type', $this->projectTypeLabel($projectType).' is available in Enterprise Edition.');
+            $this->dispatch('gwm-open-enterprise-modal', feature: $this->projectTypeLabel($projectType).' Project Type');
+            return;
+        }
+
         $validated = $this->validate($this->rules());
         $payload = $validated['form'];
         $payload['directory_path'] = $this->normalizeDirectoryPath($payload['directory_path'] ?? null);
@@ -373,6 +415,7 @@ class Create extends Component
             'form.allow_dependency_updates' => ['boolean'],
             'form.ignore_migration_table_exists' => ['boolean'],
             'form.exclude_paths' => ['nullable', 'string'],
+            'form.whitelist_paths' => ['nullable', 'string'],
             'form.env_content' => ['nullable', 'string'],
             'form.env_use_example' => ['boolean'],
             'form.htaccess_content' => ['nullable', 'string'],
@@ -408,6 +451,7 @@ class Create extends Component
                 'form.default_branch' => ['required', 'string', 'max:255'],
                 'form.health_url' => ['nullable', 'string', 'max:255'],
                 'form.exclude_paths' => ['nullable', 'string'],
+                'form.whitelist_paths' => ['nullable', 'string'],
                 'form.ftp_enabled' => ['boolean'],
                 'form.ftp_account_id' => [
                     'nullable',
@@ -464,6 +508,46 @@ class Create extends Component
                 'run_npm_install' => true,
                 'run_build_command' => true,
                 'build_command' => 'npm run build',
+                'run_test_command' => false,
+                'test_command' => '',
+                'allow_dependency_updates' => false,
+            ],
+            'nextjs' => [
+                'health_url' => '',
+                'run_composer_install' => false,
+                'run_npm_install' => true,
+                'run_build_command' => true,
+                'build_command' => 'npm run build',
+                'run_test_command' => false,
+                'test_command' => 'npm test',
+                'allow_dependency_updates' => true,
+            ],
+            'react' => [
+                'health_url' => '',
+                'run_composer_install' => false,
+                'run_npm_install' => true,
+                'run_build_command' => true,
+                'build_command' => 'npm run build',
+                'run_test_command' => false,
+                'test_command' => 'npm test',
+                'allow_dependency_updates' => true,
+            ],
+            'python' => [
+                'health_url' => '',
+                'run_composer_install' => false,
+                'run_npm_install' => false,
+                'run_build_command' => false,
+                'build_command' => '',
+                'run_test_command' => true,
+                'test_command' => 'pytest',
+                'allow_dependency_updates' => false,
+            ],
+            'container' => [
+                'health_url' => '',
+                'run_composer_install' => false,
+                'run_npm_install' => false,
+                'run_build_command' => false,
+                'build_command' => '',
                 'run_test_command' => false,
                 'test_command' => '',
                 'allow_dependency_updates' => false,

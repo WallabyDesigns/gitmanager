@@ -161,7 +161,7 @@ class FtpService
     /**
      * @param array<int, string> $excludePaths
      */
-    public function sync(Project $project, string $localPath, array $excludePaths, array &$output): void
+    public function sync(Project $project, string $localPath, array $excludePaths, array &$output, array $whitelistPaths = []): void
     {
         $project->refresh();
         $project->loadMissing('ftpAccount');
@@ -217,10 +217,13 @@ class FtpService
             'directories' => 0,
         ];
 
+        $excludePaths = $this->normalizePathPatterns($excludePaths);
+        $whitelistPaths = $this->normalizePathPatterns($whitelistPaths);
+
         $output[] = 'Starting FTPS sync to '.$account->host.($rootPath && $rootPath !== '.' ? ' ('.$rootPath.')' : '').'.';
 
         try {
-            $this->syncDirectory($connection, $localPath, '', $excludePaths, $stats, $output);
+            $this->syncDirectory($connection, $localPath, '', $excludePaths, $whitelistPaths, $stats, $output);
         } finally {
             $this->safeClose($connection);
             $this->syncContext = null;
@@ -259,6 +262,29 @@ class FtpService
         $files = array_values(array_unique(array_filter(array_map('trim', $files), fn (string $file) => $file !== '')));
         if ($files === []) {
             $output[] = 'FTPS file sync skipped: no files to upload.';
+            return;
+        }
+
+        $excludePaths = $this->projectExcludePaths($project);
+        $whitelistPaths = $this->projectWhitelistPaths($project);
+        if ($whitelistPaths !== [] || $excludePaths !== []) {
+            $files = array_values(array_filter($files, function (string $relative) use ($excludePaths, $whitelistPaths): bool {
+                $relative = ltrim(str_replace(['\\', '/'], '/', $relative), '/');
+
+                if ($relative === '') {
+                    return false;
+                }
+
+                if (! $this->shouldInclude($relative, $whitelistPaths)) {
+                    return false;
+                }
+
+                return ! $this->shouldExclude($relative, $excludePaths);
+            }));
+        }
+
+        if ($files === []) {
+            $output[] = 'FTPS file sync skipped: all candidate files were filtered by whitelist/excluded paths.';
             return;
         }
 
@@ -706,9 +732,10 @@ class FtpService
     /**
      * @param resource|\FTP\Connection $connection
      * @param array<int, string> $excludePaths
+     * @param array<int, string> $whitelistPaths
      * @param array{files: int, uploaded: int, skipped: int, directories: int} $stats
      */
-    private function syncDirectory(&$connection, string $localPath, string $remoteRoot, array $excludePaths, array &$stats, array &$output): void
+    private function syncDirectory(&$connection, string $localPath, string $remoteRoot, array $excludePaths, array $whitelistPaths, array &$stats, array &$output): void
     {
         $localPath = rtrim($localPath, DIRECTORY_SEPARATOR);
 
@@ -724,6 +751,10 @@ class FtpService
 
             $relative = $iterator->getSubPathname();
             $relative = str_replace(['\\', '/'], '/', $relative);
+
+            if (! $this->shouldInclude($relative, $whitelistPaths)) {
+                continue;
+            }
 
             if ($this->shouldExclude($relative, $excludePaths)) {
                 continue;
@@ -905,6 +936,70 @@ class FtpService
     }
 
     /**
+     * @return array<int, string>
+     */
+    private function projectExcludePaths(Project $project): array
+    {
+        return $this->parsePathList((string) ($project->exclude_paths ?? ''));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function projectWhitelistPaths(Project $project): array
+    {
+        return $this->parsePathList((string) ($project->whitelist_paths ?? ''));
+    }
+
+    /**
+     * @param array<int, string> $patterns
+     * @return array<int, string>
+     */
+    private function normalizePathPatterns(array $patterns): array
+    {
+        $normalized = [];
+        foreach ($patterns as $pattern) {
+            if (! is_string($pattern)) {
+                continue;
+            }
+
+            $candidate = trim(str_replace('\\', '/', $pattern));
+            if ($candidate === '') {
+                continue;
+            }
+
+            $normalized[] = ltrim($candidate, '/');
+        }
+
+        return array_values(array_unique($normalized));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function parsePathList(string $raw): array
+    {
+        if (trim($raw) === '') {
+            return [];
+        }
+
+        $normalized = str_replace(["\r\n", "\r"], "\n", $raw);
+        $normalized = str_replace(',', "\n", $normalized);
+
+        $paths = [];
+        foreach (explode("\n", $normalized) as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+
+            $paths[] = str_replace('\\', '/', $line);
+        }
+
+        return array_values(array_unique($paths));
+    }
+
+    /**
      * @param resource|\FTP\Connection $connection
      */
     private function shouldUpload($connection, string $remotePath, string $localPath): bool
@@ -938,6 +1033,39 @@ class FtpService
         $relative = ltrim($relative, '/');
 
         foreach ($excludePaths as $pattern) {
+            $pattern = trim(str_replace('\\', '/', $pattern));
+            if ($pattern === '') {
+                continue;
+            }
+
+            $pattern = ltrim($pattern, '/');
+            if (str_contains($pattern, '*')) {
+                if (fnmatch($pattern, $relative)) {
+                    return true;
+                }
+                continue;
+            }
+
+            if ($relative === $pattern || str_starts_with($relative, rtrim($pattern, '/').'/')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param array<int, string> $whitelistPaths
+     */
+    private function shouldInclude(string $relative, array $whitelistPaths): bool
+    {
+        if ($whitelistPaths === []) {
+            return true;
+        }
+
+        $relative = ltrim($relative, '/');
+
+        foreach ($whitelistPaths as $pattern) {
             $pattern = trim(str_replace('\\', '/', $pattern));
             if ($pattern === '') {
                 continue;

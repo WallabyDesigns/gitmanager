@@ -1,9 +1,12 @@
 <div class="py-10">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        @include('livewire.ftp-accounts.partials.tabs')
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid gap-6 lg:grid-cols-[260px,1fr]">
+            @include('livewire.projects.partials.tabs', ['showSchedulerNotice' => false])
+            <div class="space-y-6">
+                @include('livewire.ftp-accounts.partials.tabs')
 
-        @if ($tab === 'create')
-            <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-6">
+                @if ($tab === 'create')
+                    <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-6">
                 <div>
                     <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ $editingId ? 'Edit FTP/SSH Access' : 'Create FTP/SSH Access' }}</h3>
                     <p class="text-sm text-slate-500 dark:text-slate-400">Store FTP/SSH credentials securely and reuse them across projects.</p>
@@ -120,13 +123,13 @@
                         <span class="text-xs text-slate-500 dark:text-slate-400">{{ $sshTestMessage }}</span>
                     @endif
                 </div>
-            </div>
-        @endif
+                    </div>
+                @endif
 
-        @if ($tab === 'list')
-            <div class="space-y-4">
-                @forelse ($accounts as $account)
-                    <button type="button" wire:click="edit({{ $account->id }})" class="w-full text-left rounded-lg border border-slate-200/70 bg-white dark:bg-slate-900 dark:border-slate-800 p-4 transition hover:border-indigo-300 hover:shadow-sm dark:hover:border-indigo-500/60">
+                @if ($tab === 'list')
+                    <div class="space-y-4">
+                        @forelse ($accounts as $account)
+                            <button type="button" wire:click="edit({{ $account->id }})" class="w-full text-left rounded-lg border border-slate-200/70 bg-white dark:bg-slate-900 dark:border-slate-800 p-4 transition hover:border-indigo-300 hover:shadow-sm dark:hover:border-indigo-500/60">
                         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <div class="flex flex-wrap items-center gap-2">
@@ -164,13 +167,15 @@
                                 <svg width="32px" height="32px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M6 12H18M18 12L13 7M18 12L13 17" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--darkreader-inline-stroke: var(--darkreader-text-ffffff, #e8e6e3);" data-darkreader-inline-stroke=""></path> </g></svg>
                             </div>
                         </div>
-                    </button>
-                @empty
-                    <div class="rounded-lg border border-dashed border-slate-300/70 dark:border-slate-700 p-6 text-sm text-slate-500 dark:text-slate-400">
-                        No FTP/SSH access records yet.
+                            </button>
+                        @empty
+                            <div class="rounded-lg border border-dashed border-slate-300/70 dark:border-slate-700 p-6 text-sm text-slate-500 dark:text-slate-400">
+                                No FTP/SSH access records yet.
+                            </div>
+                        @endforelse
                     </div>
-                @endforelse
+                @endif
             </div>
-        @endif
+        </div>
     </div>
 </div>

@@ -14,11 +14,30 @@
         <div>
             <x-input-label for="project_type" value="Project Type" />
             <select id="project_type" class="mt-1 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" wire:model.live="form.project_type">
-                <option value="laravel">Laravel</option>
-                <option value="node">Node</option>
-                <option value="static">Static</option>
-                <option value="custom">Custom</option>
+                @php
+                    $options = $projectTypes ?? [
+                        ['value' => 'laravel', 'label' => 'Laravel', 'locked' => false],
+                        ['value' => 'node', 'label' => 'Node', 'locked' => false],
+                        ['value' => 'static', 'label' => 'Static', 'locked' => false],
+                        ['value' => 'nextjs', 'label' => 'Next.js', 'locked' => true, 'locked_message' => 'Next.js projects are available in Enterprise Edition.'],
+                        ['value' => 'react', 'label' => 'React App', 'locked' => true, 'locked_message' => 'React App projects are available in Enterprise Edition.'],
+                        ['value' => 'python', 'label' => 'Python', 'locked' => true],
+                        ['value' => 'container', 'label' => 'Container', 'locked' => false],
+                        ['value' => 'custom', 'label' => 'Custom', 'locked' => false],
+                    ];
+                    $selected = collect($options)->firstWhere('value', $form['project_type'] ?? 'custom');
+                @endphp
+                @foreach ($options as $option)
+                    <option value="{{ $option['value'] }}">
+                        {{ $option['label'] }}{{ ! empty($option['locked']) ? ' 🔒' : '' }}
+                    </option>
+                @endforeach
             </select>
+            @if (! empty($selected['locked']))
+                <p class="mt-1 text-xs text-amber-500 dark:text-amber-300">
+                    {{ $selected['locked_message'] ?? 'This project type is currently unavailable.' }}
+                </p>
+            @endif
             <x-input-error :messages="$errors->get('form.project_type')" class="mt-2" />
         </div>
         <div>
@@ -73,6 +92,12 @@
             <textarea id="exclude_paths" rows="4" class="mt-1 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" wire:model.live="form.exclude_paths" placeholder="storage/app/uploads&#10;public/uploads&#10;cache/*"></textarea>
             <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">One entry per line (or comma-separated). These paths are preserved during force deploy cleanup. The `storage` folder is always excluded.</p>
             <x-input-error :messages="$errors->get('form.exclude_paths')" class="mt-2" />
+        </div>
+        <div class="sm:col-span-2">
+            <x-input-label for="whitelist_paths" value="Whitelist Paths" />
+            <textarea id="whitelist_paths" rows="4" class="mt-1 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" wire:model.live="form.whitelist_paths" placeholder="public/build&#10;public/assets&#10;index.php"></textarea>
+            <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">One entry per line (or comma-separated). If empty, all project paths are allowed. When set, FTPS deploy sync only uploads matching files/directories.</p>
+            <x-input-error :messages="$errors->get('form.whitelist_paths')" class="mt-2" />
         </div>
         <div class="sm:col-span-2 grid gap-4">
             <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">

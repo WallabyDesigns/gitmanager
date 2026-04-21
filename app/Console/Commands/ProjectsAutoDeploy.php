@@ -5,6 +5,8 @@ namespace App\Console\Commands;
 use App\Models\Project;
 use App\Services\DeploymentQueueService;
 use App\Services\DeploymentService;
+use App\Services\EditionService;
+use App\Services\LicenseService;
 use App\Services\SchedulerService;
 use App\Services\SettingsService;
 use Illuminate\Console\Command;
@@ -34,11 +36,15 @@ class ProjectsAutoDeploy extends Command
         DeploymentService $service,
         DeploymentQueueService $queue,
         SchedulerService $scheduler,
-        SettingsService $settings
+        SettingsService $settings,
+        EditionService $edition,
+        LicenseService $license
     ): int
     {
         $scheduler->recordHeartbeat('schedule');
-        $auditEnabled = (bool) $settings->get('system.audit_enabled', false);
+        $auditEnabled = (bool) $settings->get('system.audit_enabled', false)
+            && $edition->current() === EditionService::ENTERPRISE
+            && $license->hasValidEnterpriseLicense();
         $projects = Project::query()
             ->where('auto_deploy', true)
             ->get();
@@ -95,6 +101,11 @@ class ProjectsAutoDeploy extends Command
             } catch (\Throwable $exception) {
                 $this->error("Failed for {$project->name}: {$exception->getMessage()}");
             }
+        }
+
+        if ($auditEnabled && $this->shouldRunInfrastructureAudit($settings)) {
+            $this->runInfrastructureAudit();
+            $settings->set('system.audit.last_infra_audit_at', now()->toIso8601String());
         }
 
         $service->flushHealthNotifications();
@@ -159,5 +170,66 @@ class ProjectsAutoDeploy extends Command
         }
 
         return $available;
+    }
+
+    private function shouldRunInfrastructureAudit(SettingsService $settings): bool
+    {
+        $raw = (string) $settings->get('system.audit.last_infra_audit_at', '');
+        if ($raw === '') {
+            return true;
+        }
+
+        try {
+            return Carbon::parse($raw)->lt(now()->subHour());
+        } catch (\Throwable $exception) {
+            return true;
+        }
+    }
+
+    private function runInfrastructureAudit(): void
+    {
+        $dockerServiceClass = 'GitManagerEnterprise\\Services\\DockerService';
+        $nodeModelClass = 'GitManagerEnterprise\\Models\\InfrastructureNode';
+
+        if (! class_exists($dockerServiceClass)) {
+            return;
+        }
+
+        try {
+            $docker = app($dockerServiceClass);
+            if (! method_exists($docker, 'auditContainers')) {
+                return;
+            }
+
+            $issues = 0;
+            $managed = 0;
+
+            $localReport = $docker->auditContainers();
+            $issues += (int) ($localReport['issues'] ?? 0);
+            $managed += (int) ($localReport['managed'] ?? 0);
+
+            if (class_exists($nodeModelClass)) {
+                $nodes = $nodeModelClass::query()->get();
+                foreach ($nodes as $node) {
+                    $report = $docker->auditContainers($node);
+                    $issues += (int) ($report['issues'] ?? 0);
+                    $managed += (int) ($report['managed'] ?? 0);
+                }
+            }
+
+            if ($managed === 0) {
+                $this->line('Infrastructure audit: no managed containers found.');
+                return;
+            }
+
+            if ($issues > 0) {
+                $this->warn("Infrastructure audit: {$issues} managed container(s) are not running.");
+                return;
+            }
+
+            $this->info("Infrastructure audit: {$managed} managed container(s) are healthy.");
+        } catch (\Throwable $exception) {
+            $this->warn('Infrastructure audit failed: '.$exception->getMessage());
+        }
     }
 }

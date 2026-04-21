@@ -1,6 +1,17 @@
+@php
+    $showSchedulerNotice = $showSchedulerNotice ?? true;
+    $queueEnabled = config('gitmanager.deploy_queue.enabled', true);
+    $scheduler = app(\App\Services\SchedulerService::class);
+    $schedulerGraceSeconds = max(600, (int) config('gitmanager.scheduler.stale_seconds', 600));
+    $schedulerHealthy = $scheduler->isHealthy($schedulerGraceSeconds);
+    $lastHeartbeat = $scheduler->lastHeartbeat();
+    $isAdmin = auth()->user()?->isAdmin() ?? false;
+@endphp
 <div class="py-10" wire:init="refreshHealth" wire:poll.60s="refreshHealth">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        @include('livewire.projects.partials.tabs', ['showBulkActions' => true])
+    
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid gap-6 lg:grid-cols-[260px,1fr]">
+            @include('livewire.projects.partials.tabs', ['showBulkActions' => true])
 
         <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-200 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 flex-1">

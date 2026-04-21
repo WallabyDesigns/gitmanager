@@ -10,7 +10,11 @@
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
         "livewire/livewire": "^3.6.4",
-        "livewire/volt": "^1.7.0"
+        "livewire/volt": "^1.7.0",
+        "stripe/stripe-php": "^16.0"
+    },
+    "suggest": {
+        "wallabydesigns/gitmanager-enterprise": "Required for enterprise features. Installed automatically when an enterprise license is activated."
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -75,6 +79,12 @@
             "dont-discover": []
         }
     },
+    "repositories": [
+        {
+            "type": "composer",
+            "url": "https://gitwebmanager.com/api/v1/packages/composer"
+        }
+    ],
     "config": {
         "optimize-autoloader": true,
         "preferred-install": "dist",
