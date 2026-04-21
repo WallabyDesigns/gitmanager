@@ -11,8 +11,8 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid gap-6 lg:grid-cols-[260px,1fr]">
             @include('livewire.system.partials.tabs')
-            <div class="space-y-6">
-                <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
+            <div class="min-w-0 space-y-6">
+                <div class="min-w-0 bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Update Status</h3>
@@ -92,7 +92,7 @@
             @endif
         </div>
 
-                <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
+                <div class="min-w-0 bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Run Update</h3>
@@ -160,7 +160,7 @@
             </div>
         </div>
 
-                <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
+                <div class="min-w-0 bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
             <div class="space-y-4">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -200,7 +200,7 @@
                     <div>
                         <div class="text-xs uppercase text-slate-400 dark:text-slate-500">Output</div>
                         <div
-                            class="mt-2 max-w-full max-h-80 overflow-auto rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-950/70"
+                            class="mt-2 w-full min-w-0 max-w-full max-h-80 overflow-auto rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-950/70"
                             style="scrollbar-gutter: stable;"
                             x-data
                             x-init="
@@ -214,14 +214,14 @@
                                 }
                             "
                         >
-                            <pre class="min-w-full w-max p-4 text-xs text-slate-200 whitespace-pre font-mono leading-relaxed">{{ $reverseLog($latest->output_log) ?? 'No output captured.' }}</pre>
+                            <pre class="inline-block min-w-full p-4 text-xs text-slate-200 whitespace-pre font-mono leading-relaxed align-top">{{ $reverseLog($latest->output_log) ?? 'No output captured.' }}</pre>
                         </div>
                     </div>
                 @endif
             </div>
         </div>
 
-                <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
+                <div class="min-w-0 bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Recent Updates</h3>
@@ -231,7 +231,7 @@
 
             <div class="mt-4 space-y-3">
                 @forelse ($recent as $update)
-                    <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
+                    <div class="min-w-0 rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
                         @php($updateWarning = $update->status === 'warning' || ($update->status === 'failed' && str_contains($update->output_log ?? '', 'stashed changes could not be restored')))
                         <div class="flex flex-wrap items-center justify-between gap-2">
                             <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -248,7 +248,7 @@
                             <details class="mt-3">
                                 <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">View log</summary>
                                 <div
-                                    class="mt-2 max-w-full max-h-80 overflow-auto rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40"
+                                    class="mt-2 w-full min-w-0 max-w-full max-h-80 overflow-auto rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40"
                                     style="scrollbar-gutter: stable;"
                                     x-data
                                     x-init="
@@ -262,7 +262,7 @@
                                         }
                                     "
                                 >
-                                    <pre class="min-w-full w-max p-3 text-xs text-slate-600 dark:text-slate-300 whitespace-pre font-mono leading-relaxed">{{ $reverseLog($update->output_log) }}</pre>
+                                    <pre class="inline-block min-w-full p-3 text-xs text-slate-600 dark:text-slate-300 whitespace-pre font-mono leading-relaxed align-top">{{ $reverseLog($update->output_log) }}</pre>
                                 </div>
                             </details>
                         @endif
