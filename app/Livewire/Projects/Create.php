@@ -796,6 +796,10 @@ class Create extends Component
                     return $normalizedProjectPath;
                 }
 
+                if ($baseRoot === '' && str_starts_with($normalizedProjectPath, '/')) {
+                    return $normalizedProjectPath;
+                }
+
                 $relativeProjectPath = ltrim($normalizedProjectPath, '/');
                 if ($relativeProjectPath !== '') {
                     return $baseRoot !== ''

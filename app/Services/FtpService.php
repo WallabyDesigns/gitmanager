@@ -655,6 +655,11 @@ class FtpService
                     return $normalizedProjectPath;
                 }
 
+                if ($baseRoot === '' && str_starts_with($normalizedProjectPath, '/')) {
+                    // Preserve absolute remote paths when no base root is set.
+                    return $normalizedProjectPath;
+                }
+
                 $relativeProjectPath = ltrim($normalizedProjectPath, '/');
                 if ($relativeProjectPath !== '') {
                     return $baseRoot !== ''
