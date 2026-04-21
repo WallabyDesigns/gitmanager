@@ -6,6 +6,12 @@
             <x-input-error :messages="$errors->get('form.name')" class="mt-2" />
         </div>
         <div>
+            <x-input-label for="directory_path" value="Project Directory (optional)" />
+            <x-text-input id="directory_path" class="mt-1 block w-full" wire:model.live="form.directory_path" placeholder="Clients/Acme/Website" />
+            <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">Use nested folders to organize projects. Leave blank to keep this project at the root level.</p>
+            <x-input-error :messages="$errors->get('form.directory_path')" class="mt-2" />
+        </div>
+        <div>
             <x-input-label for="project_type" value="Project Type" />
             <select id="project_type" class="mt-1 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" wire:model.live="form.project_type">
                 <option value="laravel">Laravel</option>
@@ -207,4 +213,3 @@
         @endif
     </div>
 </form>
-

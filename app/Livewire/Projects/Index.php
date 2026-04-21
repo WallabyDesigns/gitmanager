@@ -9,6 +9,7 @@ use App\Services\DeploymentQueueService;
 use App\Services\AuditService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Livewire\Component;
 
 class Index extends Component
@@ -102,6 +103,7 @@ class Index extends Component
             $baseQuery->where(function ($query) use ($search) {
                 $like = '%'.$search.'%';
                 $query->where('name', 'like', $like)
+                    ->orWhere('directory_path', 'like', $like)
                     ->orWhere('local_path', 'like', $like)
                     ->orWhere('repo_url', 'like', $like)
                     ->orWhere('site_url', 'like', $like);
@@ -122,6 +124,7 @@ class Index extends Component
         $projects = (clone $baseQuery)
             ->latest()
             ->get();
+        $projectTree = $this->buildProjectTree($projects);
 
         $projectIds = $projects->pluck('id')->all();
         $queueProjectIds = $projectIds === []
@@ -170,6 +173,7 @@ class Index extends Component
 
         return view('livewire.projects.index', [
             'projects' => $projects,
+            'projectTree' => $projectTree,
             'buildInProcess' => $buildInProcess,
             'auditInProcess' => $auditInProcess,
             'queueProjects' => $queueProjectIds,
@@ -193,6 +197,207 @@ class Index extends Component
             'header' => view('livewire.projects.partials.index-header'),
             'title' => 'Projects',
         ]);
+    }
+
+    /**
+     * @param \Illuminate\Support\Collection<int, \App\Models\Project> $projects
+     * @return array{
+     *     name: string,
+     *     path: string,
+     *     project_count: int,
+     *     issue_counts: array<string, int>,
+     *     directories: array<string, array<string, mixed>>,
+     *     projects: array<int, \App\Models\Project>
+     * }
+     */
+    private function buildProjectTree($projects): array
+    {
+        $root = [
+            'name' => 'Projects',
+            'path' => '',
+            'project_count' => 0,
+            'issue_counts' => $this->emptyIssueCounts(),
+            'directories' => [],
+            'projects' => [],
+        ];
+
+        foreach ($projects as $project) {
+            $segments = $this->directorySegments((string) ($project->directory_path ?? ''));
+            $issueFlags = $this->projectIssueFlags($project);
+            $this->insertProjectIntoTree($root, $segments, $project, $issueFlags);
+        }
+
+        $this->sortTreeNode($root);
+
+        return $root;
+    }
+
+    /**
+     * @param array{
+     *     name: string,
+     *     path: string,
+     *     project_count: int,
+     *     issue_counts: array<string, int>,
+     *     directories: array<string, array<string, mixed>>,
+     *     projects: array<int, \App\Models\Project>
+     * } $node
+     * @param array<int, string> $segments
+     * @param array<string, int> $issueFlags
+     */
+    private function insertProjectIntoTree(array &$node, array $segments, \App\Models\Project $project, array $issueFlags): void
+    {
+        $node['project_count'] = (int) ($node['project_count'] ?? 0) + 1;
+        $this->applyIssueCounts($node, $issueFlags);
+
+        if ($segments === []) {
+            $node['projects'][] = $project;
+            return;
+        }
+
+        $segment = array_shift($segments);
+        if (! is_string($segment) || trim($segment) === '') {
+            $node['projects'][] = $project;
+            return;
+        }
+
+        $label = trim($segment);
+        $key = Str::lower($label);
+
+        if (! isset($node['directories'][$key])) {
+            $path = trim(((string) ($node['path'] ?? '')).'/'.$label, '/');
+            $node['directories'][$key] = [
+                'name' => $label,
+                'path' => $path,
+                'project_count' => 0,
+                'issue_counts' => $this->emptyIssueCounts(),
+                'directories' => [],
+                'projects' => [],
+            ];
+        }
+
+        $this->insertProjectIntoTree($node['directories'][$key], $segments, $project, $issueFlags);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function directorySegments(string $path): array
+    {
+        $normalized = str_replace('\\', '/', $path);
+        $normalized = preg_replace('/\/+/', '/', $normalized) ?? $normalized;
+        $normalized = trim($normalized);
+        $normalized = trim($normalized, '/');
+
+        if ($normalized === '') {
+            return [];
+        }
+
+        return array_values(array_filter(
+            array_map(static fn (string $segment) => trim($segment), explode('/', $normalized)),
+            static fn (string $segment) => $segment !== ''
+        ));
+    }
+
+    /**
+     * @param array{
+     *     name: string,
+     *     path: string,
+     *     project_count: int,
+     *     issue_counts: array<string, int>,
+     *     directories: array<string, array<string, mixed>>,
+     *     projects: array<int, \App\Models\Project>
+     * } $node
+     */
+    private function sortTreeNode(array &$node): void
+    {
+        uasort($node['directories'], static function (array $left, array $right): int {
+            return strnatcasecmp((string) ($left['name'] ?? ''), (string) ($right['name'] ?? ''));
+        });
+
+        usort($node['projects'], static function (\App\Models\Project $left, \App\Models\Project $right): int {
+            return strnatcasecmp((string) $left->name, (string) $right->name);
+        });
+
+        foreach ($node['directories'] as &$child) {
+            $this->sortTreeNode($child);
+        }
+        unset($child);
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function emptyIssueCounts(): array
+    {
+        return [
+            'permissions' => 0,
+            'updates' => 0,
+            'vulnerabilities' => 0,
+            'composer' => 0,
+            'npm' => 0,
+            'ftp' => 0,
+            'ssh' => 0,
+        ];
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function projectIssueFlags(\App\Models\Project $project): array
+    {
+        $ftpNeedsTest = $project->ftp_enabled
+            && $project->ftpAccount
+            && $project->ftpAccount->ftpNeedsTest();
+        $sshNeedsTest = $project->ssh_enabled
+            && $project->ftpAccount
+            && $project->ftpAccount->sshNeedsTest();
+
+        $permissionsIssue = ! $project->ftp_enabled
+            && ! $project->ssh_enabled
+            && $project->permissions_locked;
+        $ftpIssue = $project->ftp_enabled
+            && $project->ftpAccount
+            && in_array($project->ftpAccount->ftp_test_status, ['error', 'warning'], true)
+            && ! $ftpNeedsTest;
+        $sshIssue = $project->ssh_enabled
+            && $project->ftpAccount
+            && in_array($project->ftpAccount->ssh_test_status, ['error', 'warning'], true)
+            && ! $sshNeedsTest;
+        $composerIssue = in_array($project->last_composer_status ?? null, ['failed', 'warning'], true);
+        $npmIssue = in_array($project->last_npm_status ?? null, ['failed', 'warning'], true);
+        $vulnerabilityIssue = (int) ($project->audit_open_count ?? 0) > 0;
+
+        return [
+            'permissions' => $permissionsIssue ? 1 : 0,
+            'updates' => $project->updates_available ? 1 : 0,
+            'vulnerabilities' => $vulnerabilityIssue ? 1 : 0,
+            'composer' => $composerIssue ? 1 : 0,
+            'npm' => $npmIssue ? 1 : 0,
+            'ftp' => $ftpIssue ? 1 : 0,
+            'ssh' => $sshIssue ? 1 : 0,
+        ];
+    }
+
+    /**
+     * @param array{
+     *     name: string,
+     *     path: string,
+     *     project_count: int,
+     *     issue_counts: array<string, int>,
+     *     directories: array<string, array<string, mixed>>,
+     *     projects: array<int, \App\Models\Project>
+     * } $node
+     * @param array<string, int> $issueFlags
+     */
+    private function applyIssueCounts(array &$node, array $issueFlags): void
+    {
+        if (! isset($node['issue_counts']) || ! is_array($node['issue_counts'])) {
+            $node['issue_counts'] = $this->emptyIssueCounts();
+        }
+
+        foreach ($this->emptyIssueCounts() as $key => $default) {
+            $node['issue_counts'][$key] = (int) ($node['issue_counts'][$key] ?? $default) + (int) ($issueFlags[$key] ?? 0);
+        }
     }
 
     private function queueEnabled(): bool

@@ -11,6 +11,7 @@ Artisan::command('inspire', function () {
 
 Schedule::command('scheduler:heartbeat')->everyMinute()->withoutOverlapping();
 Schedule::command('sitemap:generate')->daily();
+Schedule::command('app:self-audit')->everyTenMinutes()->withoutOverlapping();
 Schedule::command('projects:auto-deploy')->everyFiveMinutes()->withoutOverlapping();
 
 if (config('gitmanager.deploy_queue.enabled', true)) {

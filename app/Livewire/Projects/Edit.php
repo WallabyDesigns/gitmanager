@@ -3,6 +3,7 @@
 namespace App\Livewire\Projects;
 
 use App\Models\Project;
+use App\Rules\ProjectDirectoryPath;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -25,6 +26,7 @@ class Edit extends Component
         $this->project = $project;
         $this->form = [
             'name' => $project->name,
+            'directory_path' => $project->directory_path,
             'project_type' => $project->project_type ?? 'custom',
             'repo_url' => $project->repo_url,
             'site_url' => $project->site_url,
@@ -103,6 +105,7 @@ class Edit extends Component
     {
         $validated = $this->validate($this->rules());
         $payload = $validated['form'];
+        $payload['directory_path'] = $this->normalizeDirectoryPath($payload['directory_path'] ?? null);
         $payload['ftp_root_path'] = $this->normalizeOptionalPath($payload['ftp_root_path'] ?? null);
         $payload['ssh_root_path'] = $this->normalizeOptionalPath($payload['ssh_root_path'] ?? null);
         $this->project->update($payload);
@@ -152,6 +155,7 @@ class Edit extends Component
     {
         return [
             'form.name' => ['required', 'string', 'max:255'],
+            'form.directory_path' => ['nullable', 'string', 'max:255', new ProjectDirectoryPath()],
             'form.project_type' => ['required', 'string', Rule::in(['laravel', 'node', 'static', 'custom'])],
             'form.repo_url' => ['nullable', 'string', 'max:255'],
             'form.site_url' => ['nullable', 'url', 'max:255'],
@@ -202,6 +206,16 @@ class Edit extends Component
     private function normalizeOptionalPath($value): ?string
     {
         $value = trim((string) ($value ?? ''));
+
+        return $value !== '' ? $value : null;
+    }
+
+    private function normalizeDirectoryPath($value): ?string
+    {
+        $value = str_replace('\\', '/', (string) ($value ?? ''));
+        $value = preg_replace('/\/+/', '/', $value) ?? $value;
+        $value = trim($value);
+        $value = trim($value, '/');
 
         return $value !== '' ? $value : null;
     }

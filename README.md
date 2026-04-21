@@ -10,7 +10,9 @@ Git Web Manager is not affiliated with, endorsed by, or sponsored by Git or GitH
 [![please donate](https://img.shields.io/liberapay/receives/wallaby.svg?logo=liberapay)](https://liberapay.com/wallaby/donate)
 
 ## Documentation Site (GitHub Pages)
-This repo ships a static docs site in `docs/`.
+The docs site is maintained in a separate repository: `gitmanager-docs`.
+Local workspace path:
+- `E:\vsprojects\gitmanager-docs`
 
 You can read it directly here: [documentation](https://wallabydesigns.github.io/gitmanager/).
 
@@ -125,6 +127,7 @@ Ensure the scheduler runs (crontab entry):
 ```
 
 Scheduled commands include:
+- `app:self-audit` (every 10 minutes)
 - `projects:auto-deploy` (every 5 minutes)
 - `deployments:process-queue` (every minute)
 - `security:sync` (hourly)
@@ -150,10 +153,10 @@ php artisan gitmanager:self-update
 php artisan gitmanager:self-update --force
 ```
 
-To publish on GitHub Pages:
-1. Go to repo settings → Pages.
+To publish docs on GitHub Pages:
+1. Open the `gitmanager-docs` repository settings → Pages.
 2. Select **Deploy from a branch**.
-3. Choose branch `main` and folder `/docs`.
+3. Choose the docs repo `main` branch root.
 
 ## User Management & First Login
 - Registration is open only when there are no users (first admin setup).

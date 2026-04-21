@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Projects;
 
+use App\Rules\ProjectDirectoryPath;
 use App\Services\RepositoryBootstrapper;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -60,6 +61,7 @@ class Create extends Component
     {
         $this->form = [
             'name' => '',
+            'directory_path' => '',
             'project_type' => 'laravel',
             'repo_url' => '',
             'site_url' => '',
@@ -240,6 +242,7 @@ class Create extends Component
     {
         $validated = $this->validate($this->rules());
         $payload = $validated['form'];
+        $payload['directory_path'] = $this->normalizeDirectoryPath($payload['directory_path'] ?? null);
         $payload['ftp_root_path'] = $this->normalizeOptionalPath($payload['ftp_root_path'] ?? null);
         $payload['ssh_root_path'] = $this->normalizeOptionalPath($payload['ssh_root_path'] ?? null);
         unset($payload['env_use_example']);
@@ -339,6 +342,7 @@ class Create extends Component
     {
         return [
             'form.name' => ['required', 'string', 'max:255'],
+            'form.directory_path' => ['nullable', 'string', 'max:255', new ProjectDirectoryPath()],
             'form.project_type' => ['required', 'string', Rule::in(['laravel', 'node', 'static', 'custom'])],
             'form.repo_url' => ['nullable', 'string', 'max:255'],
             'form.site_url' => ['nullable', 'url', 'max:255'],
@@ -393,6 +397,7 @@ class Create extends Component
         if ($step === 1) {
             return [
                 'form.name' => ['required', 'string', 'max:255'],
+                'form.directory_path' => ['nullable', 'string', 'max:255', new ProjectDirectoryPath()],
                 'form.project_type' => ['required', 'string', Rule::in(['laravel', 'node', 'static', 'custom'])],
                 'form.repo_url' => ['nullable', 'string', 'max:255'],
                 'form.site_url' => ['nullable', 'url', 'max:255'],
@@ -763,6 +768,16 @@ class Create extends Component
     private function normalizeOptionalPath($value): ?string
     {
         $value = trim((string) ($value ?? ''));
+
+        return $value !== '' ? $value : null;
+    }
+
+    private function normalizeDirectoryPath($value): ?string
+    {
+        $value = str_replace('\\', '/', (string) ($value ?? ''));
+        $value = preg_replace('/\/+/', '/', $value) ?? $value;
+        $value = trim($value);
+        $value = trim($value, '/');
 
         return $value !== '' ? $value : null;
     }

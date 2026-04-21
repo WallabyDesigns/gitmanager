@@ -23,139 +23,44 @@
         </div>
 
         <div class="mt-6 space-y-4">
-            @forelse ($projects as $project)
-                <div class="group relative rounded-lg border border-slate-200/70 bg-white dark:bg-slate-900 dark:border-slate-800 p-4 transition hover:border-indigo-300 hover:shadow-sm dark:hover:border-indigo-500/60">
-                    <a href="{{ route('projects.show', $project) }}" class="absolute inset-0 z-10 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60" aria-label="View {{ $project->name }} project"></a>
-                    <div class="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <div class="flex items-center gap-2">
-                                <h4 class="text-base font-semibold text-slate-900 dark:text-slate-100">{{ $project->name }}</h4>
-                                <x-loading-spinner target="checkAllHealth" size="w-3 h-3" />
-                                <x-loading-spinner target="checkAllUpdates" size="w-3 h-3" />
-                            </div>
-                            @php
-                                $healthStatus = $project->health_status ?? 'na';
-                                $healthLabel = $healthStatus === 'ok' ? 'Health: OK' : 'Health: N/A';
-                                $healthClass = $healthStatus === 'ok'
-                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
-                                    : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300';
-                                $ftpNeedsTest = $project->ftp_enabled
-                                    && $project->ftpAccount
-                                    && $project->ftpAccount->ftpNeedsTest();
-                                $sshNeedsTest = $project->ssh_enabled
-                                    && $project->ftpAccount
-                                    && $project->ftpAccount->sshNeedsTest();
-                                $permissionsIssue = ! $project->ftp_enabled
-                                    && ! $project->ssh_enabled
-                                    && $project->permissions_locked;
-                                $ftpIssue = $project->ftp_enabled
-                                    && $project->ftpAccount
-                                    && in_array($project->ftpAccount->ftp_test_status, ['error', 'warning'], true)
-                                    && ! $ftpNeedsTest;
-                                $sshIssue = $project->ssh_enabled
-                                    && $project->ftpAccount
-                                    && in_array($project->ftpAccount->ssh_test_status, ['error', 'warning'], true)
-                                    && ! $sshNeedsTest;
-                                $composerIssue = in_array($project->last_composer_status ?? null, ['failed', 'warning'], true);
-                                $npmIssue = in_array($project->last_npm_status ?? null, ['failed', 'warning'], true);
-                            @endphp
-                            <div class="mt-2 flex flex-wrap items-center gap-2">
-                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $healthClass }}">
-                                    {{ $healthLabel }}
-                                </span>
-                                @if ($permissionsIssue)
-                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-                                        Permissions
-                                    </span>
-                                @endif
-                                @if ($project->updates_available)
-                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
-                                        Updates Available
-                                    </span>
-                                @endif
-                                @if (($project->audit_open_count ?? 0) > 0)
-                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
-                                        Vulnerabilities found
-                                    </span>
-                                @endif
-                                @if ($composerIssue)
-                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-                                        Composer Issue
-                                    </span>
-                                @endif
-                                @if ($npmIssue)
-                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-                                        Npm Issue
-                                    </span>
-                                @endif
-                                @if ($project->ftp_enabled)
-                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
-                                        FTPS
-                                    </span>
-                                @endif
-                                @if ($ftpNeedsTest)
-                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                        FTP Needs Test
-                                    </span>
-                                @endif
-                                @if ($sshNeedsTest)
-                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                        SSH Needs Test
-                                    </span>
-                                @endif
-                                @if ($ftpIssue)
-                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
-                                        FTP Issue
-                                    </span>
-                                @endif
-                                @if ($sshIssue)
-                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
-                                        SSH Issue
-                                    </span>
-                                @endif
-                                @if (in_array($project->id, $queueProjects ?? [], true))
-                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                                        In Queue
-                                    </span>
-                                @endif
-                                @if (in_array($project->id, $auditInProcess ?? [], true))
-                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-                                        Audit in process
-                                    </span>
-                                @endif
-                                @if (in_array($project->id, $buildInProcess ?? [], true))
-                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
-                                        Build in process
-                                    </span>
-                                @endif
-                            </div>
-                            @if ($project->site_url)
-                                <a href="{{ $project->site_url }}" target="_blank" rel="noopener noreferrer" class="relative z-20 text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-300 dark:hover:text-indigo-200 break-all">
-                                    {{ $project->site_url }}
-                                </a>
-                            @else
-                                <p class="text-sm text-slate-500 dark:text-slate-400">{{ $project->local_path }}</p>
-                            @endif
-                            <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
-                                @php($lastDeploy = $project->last_deployed_at ?? ($project->last_successful_deploy_at ?? null))
-                                @php($lastChecked = $project->updates_checked_at)
-                                Last deployed: {{ \App\Support\DateFormatter::forUser($lastDeploy, 'M j, Y g:i a', 'Never') }}.
-                                Last checked: {{ \App\Support\DateFormatter::forUser($lastChecked, 'M j, Y g:i a', 'Never') }}
-                            </div>
-                            <div class="mt-1 text-xs text-slate-400 dark:text-slate-500">
-                                Last health check: {{ \App\Support\DateFormatter::forUser($project->health_checked_at, 'M j, Y g:i a', 'Never') }}
-                            </div>
-                        </div>
-                            <div class="text-xs text-slate-400 dark:text-slate-500 hidden sm:block">
-                                <svg width="32px" height="32px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M6 12H18M18 12L13 7M18 12L13 17" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--darkreader-inline-stroke: var(--darkreader-text-ffffff, #e8e6e3);" data-darkreader-inline-stroke=""></path> </g></svg>
-                            </div>
-                    </div>
-                </div>
-            @empty
+            @php
+                $rootProjects = $projectTree['projects'] ?? [];
+                $directoryNodes = array_values($projectTree['directories'] ?? []);
+                $hasProjects = ! empty($rootProjects) || ! empty($directoryNodes);
+            @endphp
+
+            @if (! $hasProjects)
                 <div class="rounded-lg border border-dashed border-slate-300/70 dark:border-slate-700 p-6 text-sm text-slate-500 dark:text-slate-400">
                     No projects yet. Add one above to get started.
                 </div>
-            @endforelse
+            @else
+                @if (! empty($rootProjects))
+                    <div class="space-y-4">
+                        @foreach ($rootProjects as $project)
+                            @include('livewire.projects.partials.project-card', [
+                                'project' => $project,
+                                'queueProjects' => $queueProjects ?? [],
+                                'auditInProcess' => $auditInProcess ?? [],
+                                'buildInProcess' => $buildInProcess ?? [],
+                            ])
+                        @endforeach
+                    </div>
+                @endif
+
+                @if (! empty($directoryNodes))
+                    <div class="space-y-3">
+                        @foreach ($directoryNodes as $node)
+                            @include('livewire.projects.partials.directory-node', [
+                                'node' => $node,
+                                'depth' => 0,
+                                'queueProjects' => $queueProjects ?? [],
+                                'auditInProcess' => $auditInProcess ?? [],
+                                'buildInProcess' => $buildInProcess ?? [],
+                            ])
+                        @endforeach
+                    </div>
+                @endif
+            @endif
         </div>
     </div>
 </div>

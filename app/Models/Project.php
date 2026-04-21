@@ -12,6 +12,7 @@ class Project extends Model
     protected $fillable = [
         'user_id',
         'name',
+        'directory_path',
         'project_type',
         'repo_url',
         'site_url',
