@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Projects;
 
+use App\Models\Project;
 use App\Rules\ProjectDirectoryPath;
 use App\Services\RepositoryBootstrapper;
 use Illuminate\Support\Facades\Auth;
@@ -18,6 +19,7 @@ class Create extends Component
     public ?string $permissionStatus = null;
     public ?string $permissionMessage = null;
     public ?string $permissionParent = null;
+    public ?string $localPathUsageWarning = null;
     public ?string $ftpTestStatus = null;
     public ?string $ftpTestMessage = null;
     public bool $envTouched = false;
@@ -92,6 +94,7 @@ class Create extends Component
 
         $this->applyProjectTypeDefaults('laravel');
         $this->prefillConfigurationDefaults(true);
+        $this->refreshLocalPathUsageWarning();
     }
 
     public function render()
@@ -123,6 +126,8 @@ class Create extends Component
 
     public function updatedFormLocalPath(string $value): void
     {
+        $this->refreshLocalPathUsageWarning();
+
         if (! $this->checkPermissions) {
             $this->prefillConfigurationDefaults();
             return;
@@ -326,12 +331,18 @@ class Create extends Component
             return;
         }
 
-        $rootPath = trim((string) ($this->form['local_path'] ?? ''));
+        $rootPath = trim((string) ($this->form['ftp_root_path'] ?? ''));
         if ($rootPath === '') {
-            $this->ftpTestStatus = 'error';
-            $this->ftpTestMessage = 'Project Local Path is required for FTP sync.';
-            return;
+            $rootPath = trim((string) ($account->root_path ?? ''));
         }
+
+        if ($rootPath === '') {
+            $legacyPath = trim((string) ($this->form['local_path'] ?? ''));
+            if ($this->looksLikeRemotePath($legacyPath)) {
+                $rootPath = $legacyPath;
+            }
+        }
+
         $result = app(\App\Services\FtpService::class)->testAccount($account, $rootPath !== '' ? $rootPath : null);
 
         $this->ftpTestStatus = $result['status'] ?? 'error';
@@ -350,7 +361,6 @@ class Create extends Component
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('projects', 'local_path'),
             ],
             'form.default_branch' => ['required', 'string', 'max:255'],
             'form.auto_deploy' => ['boolean'],
@@ -405,7 +415,6 @@ class Create extends Component
                     'required',
                     'string',
                     'max:255',
-                    Rule::unique('projects', 'local_path'),
                 ],
                 'form.default_branch' => ['required', 'string', 'max:255'],
                 'form.health_url' => ['nullable', 'string', 'max:255'],
@@ -780,5 +789,44 @@ class Create extends Component
         $value = trim($value, '/');
 
         return $value !== '' ? $value : null;
+    }
+
+    private function looksLikeRemotePath(string $path): bool
+    {
+        if ($path === '') {
+            return false;
+        }
+
+        if (preg_match('/^[a-zA-Z]:[\\\\\\/]/', $path) === 1) {
+            return false;
+        }
+
+        if (str_contains($path, '\\')) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function refreshLocalPathUsageWarning(): void
+    {
+        $path = trim((string) ($this->form['local_path'] ?? ''));
+        if ($path === '') {
+            $this->localPathUsageWarning = null;
+            return;
+        }
+
+        $projectNames = Project::query()
+            ->where('local_path', $path)
+            ->orderBy('name')
+            ->pluck('name')
+            ->all();
+
+        if ($projectNames === []) {
+            $this->localPathUsageWarning = null;
+            return;
+        }
+
+        $this->localPathUsageWarning = 'This local path is already used by: '.implode(', ', $projectNames).'. You can continue, but deployments may overlap.';
     }
 }

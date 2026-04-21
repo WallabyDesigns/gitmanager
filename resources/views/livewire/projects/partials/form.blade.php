@@ -36,6 +36,11 @@
             <x-input-label for="local_path" value="Local Path" />
             <x-text-input id="local_path" class="mt-1 block w-full" wire:model.live="form.local_path" placeholder="/home/user/testwebsite" />
             <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">Local build workspace on this server. FTP-only deployments will use a storage workspace if this path isn't writable.</p>
+            @if ($localPathUsageWarning ?? null)
+                <div class="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+                    {{ $localPathUsageWarning }}
+                </div>
+            @endif
             <x-input-error :messages="$errors->get('form.local_path')" class="mt-2" />
         </div>
         <div>

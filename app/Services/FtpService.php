@@ -168,7 +168,7 @@ class FtpService
 
         $rootPath = $this->resolveRootPath($project);
         if ($rootPath === '') {
-            throw new \RuntimeException('Project Local Path is required for FTP sync. Set it in Project Settings to avoid syncing to the server root.');
+            throw new \RuntimeException('Remote Root Path is required for FTP sync. Set it on the project or selected FTP/SSH access record.');
         }
 
         if (! $this->ftpAvailable((bool) $account->ssl)) {
@@ -235,7 +235,7 @@ class FtpService
 
         $rootPath = $this->resolveRootPath($project);
         if ($rootPath === '') {
-            throw new \RuntimeException('Project Local Path is required for FTP sync. Set it in Project Settings to avoid syncing to the server root.');
+            throw new \RuntimeException('Remote Root Path is required for FTP sync. Set it on the project or selected FTP/SSH access record.');
         }
 
         if (! $this->ftpAvailable((bool) $account->ssl)) {
@@ -364,7 +364,7 @@ class FtpService
 
             $rootPath = $this->resolveRootPath($project);
             if ($rootPath === '') {
-                $output[] = 'FTP-only pipeline skipped: Project Local Path is not configured.';
+                $output[] = 'FTP-only pipeline skipped: Remote Root Path is not configured.';
                 return [];
             }
             $rootPath = $this->normalizeRemotePath($rootPath);
@@ -509,7 +509,43 @@ class FtpService
 
     private function resolveRootPath(Project $project): string
     {
-        return trim((string) $project->local_path);
+        $projectRoot = trim((string) ($project->ftp_root_path ?? ''));
+        if ($projectRoot !== '') {
+            return $projectRoot;
+        }
+
+        $accountRoot = trim((string) ($project->ftpAccount->root_path ?? ''));
+        if ($accountRoot !== '') {
+            return $accountRoot;
+        }
+
+        // Backward-compatible fallback: older records may have stored the remote
+        // path in local_path. Ignore obvious local filesystem paths.
+        $legacyPath = trim((string) ($project->local_path ?? ''));
+        if ($this->looksLikeRemotePath($legacyPath)) {
+            return $legacyPath;
+        }
+
+        return '';
+    }
+
+    private function looksLikeRemotePath(string $path): bool
+    {
+        if ($path === '') {
+            return false;
+        }
+
+        // Windows absolute paths are local filesystem paths, not FTP roots.
+        if (preg_match('/^[a-zA-Z]:[\\\\\\/]/', $path) === 1) {
+            return false;
+        }
+
+        // Backslashes strongly indicate a local path on Windows.
+        if (str_contains($path, '\\')) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -789,7 +825,7 @@ class FtpService
         @unlink($temp);
 
         if (! $success) {
-            return ['status' => 'warning', 'message' => 'Connected, but unable to write to the remote path.'];
+            return ['status' => 'warning', 'message' => 'Connected, but unable to write to the remote path: '.$remoteRoot];
         }
 
         @ftp_delete($connection, $remote);

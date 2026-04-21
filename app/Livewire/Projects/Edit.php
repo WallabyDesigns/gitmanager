@@ -17,6 +17,7 @@ class Edit extends Component
 
     public Project $project;
     public array $form = [];
+    public ?string $localPathUsageWarning = null;
     public ?string $ftpTestStatus = null;
     public ?string $ftpTestMessage = null;
 
@@ -53,6 +54,7 @@ class Edit extends Component
             'ssh_commands' => $project->ssh_commands,
             'ignore_migration_table_exists' => $project->ignore_migration_table_exists ?? false,
         ];
+        $this->refreshLocalPathUsageWarning();
     }
 
     public function render()
@@ -75,6 +77,11 @@ class Edit extends Component
         }
 
         $this->testFtpConnection();
+    }
+
+    public function updatedFormLocalPath(): void
+    {
+        $this->refreshLocalPathUsageWarning();
     }
 
     public function updatedFormFtpEnabled(bool $value): void
@@ -139,12 +146,18 @@ class Edit extends Component
             return;
         }
 
-        $rootPath = trim((string) ($this->form['local_path'] ?? ''));
+        $rootPath = trim((string) ($this->form['ftp_root_path'] ?? ''));
         if ($rootPath === '') {
-            $this->ftpTestStatus = 'error';
-            $this->ftpTestMessage = 'Project Local Path is required for FTP sync.';
-            return;
+            $rootPath = trim((string) ($account->root_path ?? ''));
         }
+
+        if ($rootPath === '') {
+            $legacyPath = trim((string) ($this->form['local_path'] ?? ''));
+            if ($this->looksLikeRemotePath($legacyPath)) {
+                $rootPath = $legacyPath;
+            }
+        }
+
         $result = app(\App\Services\FtpService::class)->testAccount($account, $rootPath !== '' ? $rootPath : null);
 
         $this->ftpTestStatus = $result['status'] ?? 'error';
@@ -163,7 +176,6 @@ class Edit extends Component
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('projects', 'local_path')->ignore($this->project->id),
             ],
             'form.default_branch' => ['required', 'string', 'max:255'],
             'form.auto_deploy' => ['boolean'],
@@ -343,5 +355,45 @@ class Edit extends Component
         }
 
         return null;
+    }
+
+    private function looksLikeRemotePath(string $path): bool
+    {
+        if ($path === '') {
+            return false;
+        }
+
+        if (preg_match('/^[a-zA-Z]:[\\\\\\/]/', $path) === 1) {
+            return false;
+        }
+
+        if (str_contains($path, '\\')) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function refreshLocalPathUsageWarning(): void
+    {
+        $path = trim((string) ($this->form['local_path'] ?? ''));
+        if ($path === '') {
+            $this->localPathUsageWarning = null;
+            return;
+        }
+
+        $projectNames = Project::query()
+            ->where('local_path', $path)
+            ->whereKeyNot($this->project->id)
+            ->orderBy('name')
+            ->pluck('name')
+            ->all();
+
+        if ($projectNames === []) {
+            $this->localPathUsageWarning = null;
+            return;
+        }
+
+        $this->localPathUsageWarning = 'This local path is already used by: '.implode(', ', $projectNames).'. You can continue, but deployments may overlap.';
     }
 }
