@@ -59,8 +59,7 @@ class FtpService
             return ['status' => 'error', 'message' => 'FTP login failed. Check username/password.'];
         }
 
-        $passiveInUse = $passive;
-        @ftp_pasv($connection, $passiveInUse);
+        @ftp_pasv($connection, $passive);
 
         $configuredRootPath = $this->normalizeRemotePath($rootPath ?: '');
         if (! $this->enterRemotePath($connection, $configuredRootPath)) {
@@ -69,7 +68,7 @@ class FtpService
         }
 
         $effectivePath = (string) (@ftp_pwd($connection) ?: '.');
-        $writeTest = $this->verifyWritableConnection($connection, $effectivePath, $passiveInUse, true);
+        $writeTest = $this->testDirectoryWrite($connection, $effectivePath);
         if ($writeTest['status'] !== 'ok' && $configuredRootPath === '') {
             $writeTest['message'] .= ' Tip: set a writable FTP Root Path (for example /public_html).';
         }
@@ -597,6 +596,33 @@ class FtpService
         }
 
         return $result;
+    }
+
+    /**
+     * Lightweight write check used for UI test buttons to avoid long transfer
+     * timeouts behind proxies/load balancers. Actual file upload checks still
+     * run during FTP sync.
+     *
+     * @param resource|\FTP\Connection $connection
+     * @return array{status: string, message: string}
+     */
+    private function testDirectoryWrite($connection, string $displayPath): array
+    {
+        $displayPath = trim($displayPath) !== '' ? trim($displayPath) : '.';
+        $directory = '.gwm-test-dir-'.uniqid();
+
+        $created = @ftp_mkdir($connection, $directory);
+        if ($created === false) {
+            return ['status' => 'warning', 'message' => 'Connected, but unable to write to the remote path: '.$displayPath];
+        }
+
+        $createdPath = is_string($created) ? $created : $directory;
+        @ftp_rmdir($connection, $createdPath);
+        if ($createdPath !== $directory) {
+            @ftp_rmdir($connection, $directory);
+        }
+
+        return ['status' => 'ok', 'message' => 'Connection verified and remote path is writable.'];
     }
 
     private function normalizeRemotePath(string $path): string
