@@ -2,8 +2,10 @@
 
 namespace App\Livewire\Projects;
 
+use App\Livewire\Projects\Concerns\InteractsWithProjectTypes;
 use App\Models\Project;
 use App\Rules\ProjectDirectoryPath;
+use App\Services\EditionService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -12,6 +14,7 @@ use Livewire\Component;
 class Edit extends Component
 {
     use AuthorizesRequests;
+    use InteractsWithProjectTypes;
 
     public string $projectsTab = 'list';
 
@@ -20,6 +23,9 @@ class Edit extends Component
     public ?string $localPathUsageWarning = null;
     public ?string $ftpTestStatus = null;
     public ?string $ftpTestMessage = null;
+    public bool $isEnterprise = false;
+    public array $projectTypes = [];
+    public string $lastAllowedProjectType = 'custom';
     public int $containerProjectLimit = 3;
     public int $containerProjectCount = 0;
 
@@ -62,6 +68,7 @@ class Edit extends Component
             'ssh_commands' => $project->ssh_commands,
             'ignore_migration_table_exists' => $project->ignore_migration_table_exists ?? false,
         ];
+        $this->lastAllowedProjectType = (string) ($project->project_type ?? 'custom');
         $this->refreshLocalPathUsageWarning();
     }
 
@@ -202,7 +209,7 @@ class Edit extends Component
         return [
             'form.name' => ['required', 'string', 'max:255'],
             'form.directory_path' => ['nullable', 'string', 'max:255', new ProjectDirectoryPath()],
-            'form.project_type' => ['required', 'string', Rule::in(['laravel', 'node', 'static', 'custom'])],
+            'form.project_type' => ['required', 'string', Rule::in($this->projectTypeValues())],
             'form.repo_url' => ['nullable', 'string', 'max:255'],
             'form.site_url' => ['nullable', 'url', 'max:255'],
             'form.local_path' => [

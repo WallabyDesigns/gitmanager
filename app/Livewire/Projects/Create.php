@@ -2,8 +2,10 @@
 
 namespace App\Livewire\Projects;
 
+use App\Livewire\Projects\Concerns\InteractsWithProjectTypes;
 use App\Models\Project;
 use App\Rules\ProjectDirectoryPath;
+use App\Services\EditionService;
 use App\Services\RepositoryBootstrapper;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -11,6 +13,8 @@ use Livewire\Component;
 
 class Create extends Component
 {
+    use InteractsWithProjectTypes;
+
     public string $projectsTab = 'create';
 
     public array $form = [];
@@ -385,7 +389,7 @@ class Create extends Component
         return [
             'form.name' => ['required', 'string', 'max:255'],
             'form.directory_path' => ['nullable', 'string', 'max:255', new ProjectDirectoryPath()],
-            'form.project_type' => ['required', 'string', Rule::in(['laravel', 'node', 'static', 'custom'])],
+            'form.project_type' => ['required', 'string', Rule::in($this->projectTypeValues())],
             'form.repo_url' => ['nullable', 'string', 'max:255'],
             'form.site_url' => ['nullable', 'url', 'max:255'],
             'form.local_path' => [
@@ -440,7 +444,7 @@ class Create extends Component
             return [
                 'form.name' => ['required', 'string', 'max:255'],
                 'form.directory_path' => ['nullable', 'string', 'max:255', new ProjectDirectoryPath()],
-                'form.project_type' => ['required', 'string', Rule::in(['laravel', 'node', 'static', 'custom'])],
+                'form.project_type' => ['required', 'string', Rule::in($this->projectTypeValues())],
                 'form.repo_url' => ['nullable', 'string', 'max:255'],
                 'form.site_url' => ['nullable', 'url', 'max:255'],
                 'form.local_path' => [
