@@ -1063,11 +1063,13 @@ class DeploymentService
         $localPath = trim((string) $project->local_path);
         $repoPath = '';
 
-        if ($localPath !== '' && $this->isPathWritableForGit($localPath)) {
+        if ($this->shouldUseFtpWorkspace($project)) {
+            // In FTP-only mode, local_path is treated as the remote target path.
+            // Builds and git operations run from the managed FTP workspace.
+            $repoPath = $this->ensureFtpWorkspace($project);
+        } elseif ($localPath !== '' && $this->isPathWritableForGit($localPath)) {
             $this->ensurePath($localPath);
             $repoPath = $localPath;
-        } elseif ($this->shouldUseFtpWorkspace($project)) {
-            $repoPath = $this->ensureFtpWorkspace($project);
         } else {
             $this->ensurePath($localPath);
             $repoPath = $localPath;
@@ -1162,6 +1164,13 @@ class DeploymentService
 
     private function getRepoPathIfExists(Project $project): ?string
     {
+        if ($this->shouldUseFtpWorkspace($project)) {
+            $workspace = $this->ftpWorkspacePath($project);
+            if (is_dir($workspace.DIRECTORY_SEPARATOR.'.git')) {
+                return $workspace;
+            }
+        }
+
         $localPath = trim((string) $project->local_path);
         if ($localPath !== '' && is_dir($localPath.DIRECTORY_SEPARATOR.'.git')) {
             return $localPath;

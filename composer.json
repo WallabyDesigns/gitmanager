@@ -1,10 +1,10 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "wallabydesigns/gitmanager",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
-    "license": "MIT",
+    "description": "Git Web Manager (GWM) - self-hosted Git deployment and infrastructure management panel.",
+    "keywords": ["git", "deployment", "devops", "laravel", "livewire", "git-web-manager"],
+    "license": "Zlib",
     "require": {
         "php": "^8.2",
         "laravel/framework": "^12.0",

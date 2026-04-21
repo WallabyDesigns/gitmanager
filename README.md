@@ -26,6 +26,7 @@ You can read it directly here: [documentation](https://wallabydesigns.github.io/
 
 ## Feature Overview
 - **Project management:** Create and manage Git-backed projects with per-project settings, paths, branches, and deployment behavior.
+- **Path conflict awareness:** `local_path` values can be reused across projects (including FTP projects using common paths like `/public_html`), and the UI now shows a warning when a path is shared.
 - **Deploy workflows:** Run deploy, force deploy, and rollback actions with logs and status history.
 - **Task queue:** Queue and process background work in order (including deploy-related tasks and audits), with controls to reorder, cancel, and process now.
 - **Scheduler health:** Monitor heartbeat status, run scheduler actions manually, and manage cron setup from the UI.
@@ -168,4 +169,4 @@ To publish docs on GitHub Pages:
 Issues and pull requests are welcome. Please include clear reproduction steps and environment details for bugs.
 
 ## License
-MIT License. See LICENSE for details.
+zlib License. See LICENSE for details.

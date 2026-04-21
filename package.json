@@ -1,5 +1,16 @@
 {
     "$schema": "https://www.schemastore.org/package.json",
+    "name": "gitmanager",
+    "description": "Git Web Manager (GWM) - self-hosted Git deployment and infrastructure management panel.",
+    "keywords": [
+        "git",
+        "deployment",
+        "devops",
+        "laravel",
+        "livewire",
+        "git-web-manager"
+    ],
+    "license": "Zlib",
     "private": true,
     "type": "module",
     "scripts": {

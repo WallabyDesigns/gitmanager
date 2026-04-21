@@ -61,13 +61,22 @@ class FtpService
 
         @ftp_pasv($connection, $passive);
 
-        $rootPath = $this->normalizeRemotePath($rootPath ?: '');
-        if ($rootPath !== '' && $rootPath !== '.' && ! @ftp_chdir($connection, $rootPath)) {
+        $configuredRootPath = $this->normalizeRemotePath($rootPath ?: '');
+        if ($configuredRootPath !== '' && $configuredRootPath !== '.' && ! @ftp_chdir($connection, $configuredRootPath)) {
             $this->safeClose($connection);
-            return ['status' => 'error', 'message' => 'Unable to access the remote root path: '.$rootPath];
+            return ['status' => 'error', 'message' => 'Unable to access the remote root path: '.$configuredRootPath];
         }
 
-        $writeTest = $this->testWrite($connection, $rootPath);
+        // Write test should target the current working directory after chdir.
+        // Some FTP servers reject absolute paths here even though chdir succeeded.
+        $effectivePath = $configuredRootPath !== ''
+            ? $configuredRootPath
+            : ((string) (@ftp_pwd($connection) ?: '.'));
+
+        $writeTest = $this->testWrite($connection, '.', $effectivePath);
+        if ($writeTest['status'] !== 'ok' && $configuredRootPath === '') {
+            $writeTest['message'] .= ' Tip: set a writable FTP Root Path (for example /public_html).';
+        }
         $this->safeClose($connection);
 
         return $writeTest;
@@ -509,24 +518,34 @@ class FtpService
 
     private function resolveRootPath(Project $project): string
     {
-        $projectRoot = trim((string) ($project->ftp_root_path ?? ''));
-        if ($projectRoot !== '') {
-            return $projectRoot;
+        $baseRoot = trim((string) ($project->ftp_root_path ?? ''));
+        if ($baseRoot === '') {
+            $baseRoot = trim((string) ($project->ftpAccount->root_path ?? ''));
+        }
+        $baseRoot = $this->normalizeRemotePath($baseRoot);
+
+        // For FTP projects, local_path represents the remote subdirectory under
+        // the configured FTP root. Example: {ftp_root_path}/{local_path}.
+        $projectPath = trim((string) ($project->local_path ?? ''));
+        if ($projectPath !== '' && $this->looksLikeRemotePath($projectPath)) {
+            $normalizedProjectPath = $this->normalizeRemotePath($projectPath);
+            if ($normalizedProjectPath !== '' && $normalizedProjectPath !== '.') {
+                if ($baseRoot !== '' && $this->remotePathIncludesBase($normalizedProjectPath, $baseRoot)) {
+                    // Compatibility: if local_path already contains the base
+                    // root, do not prefix it again.
+                    return $normalizedProjectPath;
+                }
+
+                $relativeProjectPath = ltrim($normalizedProjectPath, '/');
+                if ($relativeProjectPath !== '') {
+                    return $baseRoot !== ''
+                        ? $this->joinRemotePath($baseRoot, $relativeProjectPath)
+                        : $relativeProjectPath;
+                }
+            }
         }
 
-        $accountRoot = trim((string) ($project->ftpAccount->root_path ?? ''));
-        if ($accountRoot !== '') {
-            return $accountRoot;
-        }
-
-        // Backward-compatible fallback: older records may have stored the remote
-        // path in local_path. Ignore obvious local filesystem paths.
-        $legacyPath = trim((string) ($project->local_path ?? ''));
-        if ($this->looksLikeRemotePath($legacyPath)) {
-            return $legacyPath;
-        }
-
-        return '';
+        return $baseRoot;
     }
 
     private function looksLikeRemotePath(string $path): bool
@@ -546,6 +565,18 @@ class FtpService
         }
 
         return true;
+    }
+
+    private function remotePathIncludesBase(string $path, string $base): bool
+    {
+        $path = ltrim($this->normalizeRemotePath($path), '/');
+        $base = ltrim($this->normalizeRemotePath($base), '/');
+
+        if ($path === '' || $base === '') {
+            return false;
+        }
+
+        return $path === $base || str_starts_with($path, $base.'/');
     }
 
     /**
@@ -808,12 +839,16 @@ class FtpService
      * @param resource|\FTP\Connection $connection
      * @return array{status: string, message: string}
      */
-    private function testWrite($connection, string $rootPath): array
+    private function testWrite($connection, string $rootPath, ?string $displayPath = null): array
     {
         $rootPath = $rootPath === '' ? '.' : $rootPath;
         $filename = 'gwm-test-'.uniqid().'.txt';
         $remoteRoot = rtrim($rootPath, '/');
         $remote = ($remoteRoot === '' || $remoteRoot === '.') ? $filename : $remoteRoot.'/'.$filename;
+        $displayPath = trim((string) ($displayPath ?? $remoteRoot));
+        if ($displayPath === '') {
+            $displayPath = '.';
+        }
 
         $temp = tempnam(sys_get_temp_dir(), 'gwm');
         if (! $temp) {
@@ -825,7 +860,7 @@ class FtpService
         @unlink($temp);
 
         if (! $success) {
-            return ['status' => 'warning', 'message' => 'Connected, but unable to write to the remote path: '.$remoteRoot];
+            return ['status' => 'warning', 'message' => 'Connected, but unable to write to the remote path: '.$displayPath];
         }
 
         @ftp_delete($connection, $remote);

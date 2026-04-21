@@ -146,18 +146,7 @@ class Edit extends Component
             return;
         }
 
-        $rootPath = trim((string) ($this->form['ftp_root_path'] ?? ''));
-        if ($rootPath === '') {
-            $rootPath = trim((string) ($account->root_path ?? ''));
-        }
-
-        if ($rootPath === '') {
-            $legacyPath = trim((string) ($this->form['local_path'] ?? ''));
-            if ($this->looksLikeRemotePath($legacyPath)) {
-                $rootPath = $legacyPath;
-            }
-        }
-
+        $rootPath = $this->resolveFtpRemotePathForTest($account);
         $result = app(\App\Services\FtpService::class)->testAccount($account, $rootPath !== '' ? $rootPath : null);
 
         $this->ftpTestStatus = $result['status'] ?? 'error';
@@ -230,6 +219,44 @@ class Edit extends Component
         $value = trim($value, '/');
 
         return $value !== '' ? $value : null;
+    }
+
+    private function resolveFtpRemotePathForTest(\App\Models\FtpAccount $account): string
+    {
+        $baseRoot = trim((string) ($this->form['ftp_root_path'] ?? ''));
+        if ($baseRoot === '') {
+            $baseRoot = trim((string) ($account->root_path ?? ''));
+        }
+        $baseRoot = $this->normalizeRemotePath($baseRoot);
+
+        $projectPath = trim((string) ($this->form['local_path'] ?? ''));
+        if ($projectPath !== '' && $this->looksLikeRemotePath($projectPath)) {
+            $normalizedProjectPath = $this->normalizeRemotePath($projectPath);
+            if ($normalizedProjectPath !== '' && $normalizedProjectPath !== '.') {
+                if ($baseRoot !== '' && $this->remotePathIncludesBase($normalizedProjectPath, $baseRoot)) {
+                    return $normalizedProjectPath;
+                }
+
+                $relativeProjectPath = ltrim($normalizedProjectPath, '/');
+                if ($relativeProjectPath !== '') {
+                    return $baseRoot !== ''
+                        ? $baseRoot.'/'.$relativeProjectPath
+                        : $relativeProjectPath;
+                }
+            }
+        }
+
+        return $baseRoot;
+    }
+
+    private function normalizeRemotePath(string $path): string
+    {
+        $path = trim(str_replace('\\', '/', $path));
+        if ($path === '') {
+            return '';
+        }
+
+        return rtrim($path, '/');
     }
 
     private function seedContent(Project $project, string $filename): string
@@ -372,6 +399,18 @@ class Edit extends Component
         }
 
         return true;
+    }
+
+    private function remotePathIncludesBase(string $path, string $base): bool
+    {
+        $path = ltrim($this->normalizeRemotePath($path), '/');
+        $base = ltrim($this->normalizeRemotePath($base), '/');
+
+        if ($path === '' || $base === '') {
+            return false;
+        }
+
+        return $path === $base || str_starts_with($path, $base.'/');
     }
 
     private function refreshLocalPathUsageWarning(): void
