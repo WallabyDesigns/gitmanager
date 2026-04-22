@@ -321,6 +321,7 @@ class SelfUpdateService
             $fromHash = null;
             $toHash = null;
             $remoteHash = null;
+            $targetHash = null;
             $branch = null;
             $stashed = false;
             $backupPath = null;
@@ -366,6 +367,9 @@ class SelfUpdateService
                 $this->protectHtaccess($repoPath, $output);
                 $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune'], $output);
                 $remoteHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'origin/'.$branch], $output)->getOutput());
+                $targetHash = $forceUpdate
+                    ? $remoteHash
+                    : $this->resolveUpdateTargetHash($repoPath, $fromHash, $remoteHash, $output);
 
                 if ($fromHash === $remoteHash) {
                     $enterpriseSync = $this->syncEnterprisePackage($repoPath, $output, true);
@@ -416,12 +420,12 @@ class SelfUpdateService
                     $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', 'origin/'.$branch], $output);
                     $this->runGitClean($repoPath, $this->forceCleanExcludePaths(), $output);
                 } elseif ($fromHash) {
-                    $this->mergeFastForward($repoPath, $branch, $output, $untrackedBackups);
+                    $this->mergeFastForward($repoPath, $targetHash ?: 'origin/'.$branch, $output, $untrackedBackups);
                 } else {
                     if ($backupPath) {
                         $output[] = 'No initial commit detected; applying update with a forced checkout.';
                     }
-                    $command = ['git', '-C', $repoPath, 'checkout', '-B', $branch, 'origin/'.$branch];
+                    $command = ['git', '-C', $repoPath, 'checkout', '-B', $branch, $targetHash ?: 'origin/'.$branch];
                     if ($backupPath) {
                         $command[] = '--force';
                     }
@@ -492,7 +496,7 @@ class SelfUpdateService
                 }
 
                 $status = 'failed';
-                if ($toHash && $remoteHash && $toHash === $remoteHash) {
+                if ($toHash && $targetHash && $toHash === $targetHash) {
                     $status = 'warning';
                     $output[] = 'Update applied, but post-update tasks failed. Review the log and retry if needed.';
                 }
@@ -1316,7 +1320,11 @@ class SelfUpdateService
     private function runPostUpdateTasks(string $repoPath, ?string $fromHash, ?string $toHash, array &$output): void
     {
         if (is_file(base_path('composer.json'))) {
-            $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $repoPath);
+            if ($this->shouldRunComposerInstall($repoPath, $fromHash, $toHash, $output)) {
+                $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $repoPath);
+            } else {
+                $output[] = 'Skipping composer install: no dependency changes detected.';
+            }
         }
 
         if (is_file(base_path('package.json'))) {
@@ -1591,6 +1599,85 @@ class SelfUpdateService
         return trim(implode("\n", $filtered));
     }
 
+    protected function resolveUpdateTargetHash(string $repoPath, ?string $fromHash, string $remoteHash, array &$output): string
+    {
+        if (! $fromHash || $remoteHash === '' || $fromHash === $remoteHash) {
+            return $remoteHash;
+        }
+
+        $maxCommits = max(1, $this->selfUpdateMaxCommitsPerRun());
+        $pendingCount = $this->countPendingUpdateCommits($repoPath, $fromHash, $remoteHash);
+
+        if ($pendingCount <= 0 || $pendingCount <= $maxCommits) {
+            return $remoteHash;
+        }
+
+        $pendingHashes = $this->pendingUpdateCommits($repoPath, $fromHash, $remoteHash, $maxCommits);
+        if ($pendingHashes === []) {
+            return $remoteHash;
+        }
+
+        $selectedCount = count($pendingHashes);
+        $targetHash = $pendingHashes[$selectedCount - 1];
+        $remainingCount = max(0, $pendingCount - $selectedCount);
+
+        $output[] = 'Incremental self-update enabled: applying '.$selectedCount.' of '.$pendingCount.' pending commit(s) this run.';
+        $output[] = 'Self-update target for this run: '.$targetHash;
+        if ($remainingCount > 0) {
+            $output[] = $remainingCount.' commit(s) will remain after this update.';
+        }
+
+        return $targetHash;
+    }
+
+    protected function selfUpdateMaxCommitsPerRun(): int
+    {
+        return (int) config('gitmanager.self_update.max_commits_per_run', 1);
+    }
+
+    protected function countPendingUpdateCommits(string $repoPath, string $fromHash, string $toHash): int
+    {
+        $output = [];
+        $process = $this->runProcess(
+            ['git', '-C', $repoPath, 'rev-list', '--count', $fromHash.'..'.$toHash],
+            $output,
+            null,
+            false
+        );
+
+        if (! $process->isSuccessful()) {
+            return 0;
+        }
+
+        return max(0, (int) trim($process->getOutput()));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function pendingUpdateCommits(string $repoPath, string $fromHash, string $toHash, int $maxCount): array
+    {
+        if ($maxCount < 1) {
+            return [];
+        }
+
+        $output = [];
+        $process = $this->runProcess(
+            ['git', '-C', $repoPath, 'rev-list', '--reverse', '--max-count='.$maxCount, $fromHash.'..'.$toHash],
+            $output,
+            null,
+            false
+        );
+
+        if (! $process->isSuccessful()) {
+            return [];
+        }
+
+        $lines = array_filter(array_map('trim', explode("\n", trim($process->getOutput()))));
+
+        return array_values($lines);
+    }
+
     /**
      * @return array<int, string>
      */
@@ -1732,17 +1819,17 @@ class SelfUpdateService
         }
     }
 
-    private function mergeFastForward(string $repoPath, string $branch, array &$output, array &$untrackedBackups): void
+    private function mergeFastForward(string $repoPath, string $targetRef, array &$output, array &$untrackedBackups): void
     {
         try {
-            $this->runProcess(['git', '-C', $repoPath, 'merge', '--ff-only', 'origin/'.$branch], $output);
+            $this->runProcess(['git', '-C', $repoPath, 'merge', '--ff-only', $targetRef], $output);
             return;
         } catch (ProcessFailedException $exception) {
             $paths = $this->extractMergeUntrackedPaths($exception);
             if ($paths === []) {
                 if ($this->isDivergedFastForwardError($exception)) {
-                    $output[] = 'Fast-forward not possible; performing merge with origin/'.$branch.'.';
-                    $merge = $this->runProcess(['git', '-C', $repoPath, 'merge', '--no-ff', 'origin/'.$branch], $output, null, false);
+                    $output[] = 'Fast-forward not possible; performing merge with '.$targetRef.'.';
+                    $merge = $this->runProcess(['git', '-C', $repoPath, 'merge', '--no-ff', $targetRef], $output, null, false);
                     if (! $merge->isSuccessful()) {
                         $output[] = 'Merge failed; attempting to abort.';
                         $this->runProcess(['git', '-C', $repoPath, 'merge', '--abort'], $output, null, false);
@@ -1761,7 +1848,7 @@ class SelfUpdateService
             }
             $this->removeUntrackedFiles($repoPath, $paths, $output);
 
-            $this->runProcess(['git', '-C', $repoPath, 'merge', '--ff-only', 'origin/'.$branch], $output);
+            $this->runProcess(['git', '-C', $repoPath, 'merge', '--ff-only', $targetRef], $output);
         }
     }
 
@@ -1921,6 +2008,21 @@ class SelfUpdateService
         }
 
         return true;
+    }
+
+    private function shouldRunComposerInstall(string $repoPath, ?string $fromHash, ?string $toHash, array &$output): bool
+    {
+        $vendor = $repoPath.DIRECTORY_SEPARATOR.'vendor';
+        if (! is_dir($vendor)) {
+            $output[] = 'Composer install required: vendor is missing.';
+
+            return true;
+        }
+
+        return $this->gitPathsChanged($repoPath, $fromHash, $toHash, [
+            'composer.json',
+            'composer.lock',
+        ]);
     }
 
     private function logNpmDiagnostics(array &$output): void
@@ -2398,7 +2500,18 @@ class SelfUpdateService
     {
         $command = $this->normalizeCommand($command);
         $process = new Process($command, $workingDir, array_merge($this->baseEnv(), $this->gitEnv()));
-        $process->setTimeout(900);
+        $timeout = (int) config('gitmanager.self_update.process_timeout', config('gitmanager.process_timeout', 900));
+        if ($timeout <= 0) {
+            $process->setTimeout(null);
+            if (function_exists('set_time_limit')) {
+                @set_time_limit(0);
+            }
+        } else {
+            $process->setTimeout($timeout);
+            if (function_exists('set_time_limit')) {
+                @set_time_limit($timeout + 30);
+            }
+        }
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
         });

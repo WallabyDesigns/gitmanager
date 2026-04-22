@@ -155,6 +155,14 @@ class Show extends Component
         }
 
         app(DeploymentQueueService::class)->cancelQueuedGroup($this->project, 'deploy');
+        if ($this->queueEnabled()) {
+            app(DeploymentQueueService::class)->enqueue($this->project, 'deploy', ['reason' => 'manual_deploy'], Auth::user());
+            $this->dispatch('notify', message: 'Deployment queued.');
+            $this->dispatch('reload-page', delay: 300);
+
+            return;
+        }
+
         $deployment = $service->deploy($this->project, Auth::user());
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -175,6 +183,14 @@ class Show extends Component
         }
 
         app(DeploymentQueueService::class)->cancelQueuedGroup($this->project, 'force_deploy');
+        if ($this->queueEnabled()) {
+            app(DeploymentQueueService::class)->enqueue($this->project, 'force_deploy', ['reason' => 'manual_force_deploy'], Auth::user());
+            $this->dispatch('notify', message: 'Force deployment queued.');
+            $this->dispatch('reload-page', delay: 300);
+
+            return;
+        }
+
         $deployment = $service->deploy($this->project, Auth::user(), true);
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -191,6 +207,14 @@ class Show extends Component
         }
 
         app(DeploymentQueueService::class)->cancelQueuedGroup($this->project, 'deploy');
+        if ($this->queueEnabled()) {
+            app(DeploymentQueueService::class)->enqueue($this->project, 'deploy', ['reason' => 'manual_staged_deploy', 'ignore_permissions_lock' => true], Auth::user());
+            $this->dispatch('notify', message: 'Deployment queued with staged install.');
+            $this->dispatch('reload-page', delay: 300);
+
+            return;
+        }
+
         $deployment = $service->deploy($this->project, Auth::user(), false, true);
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -211,6 +235,14 @@ class Show extends Component
         }
 
         app(DeploymentQueueService::class)->cancelQueuedGroup($this->project, 'rollback');
+        if ($this->queueEnabled()) {
+            app(DeploymentQueueService::class)->enqueue($this->project, 'rollback', ['reason' => 'manual_rollback'], Auth::user());
+            $this->dispatch('notify', message: 'Rollback queued.');
+            $this->dispatch('reload-page', delay: 300);
+
+            return;
+        }
+
         $deployment = $service->rollback($this->project, Auth::user());
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'

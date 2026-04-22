@@ -30,6 +30,11 @@ class DeploymentService
         private readonly LaravelDeploymentCheckService $laravelDeploymentCheckService,
     ) {}
 
+    protected function resolveProcessTimeout(): int
+    {
+        return (int) config('gitmanager.deployments.process_timeout', config('gitmanager.process_timeout', 900));
+    }
+
     public function checkHealth(Project $project, bool $log = false, bool $notifyOnFailure = false): string
     {
         return $this->healthCheckService->checkHealth($project, $log, $notifyOnFailure);

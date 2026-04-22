@@ -139,8 +139,16 @@ trait RunsProcesses
 
     private function applyProcessTimeout(Process $process): void
     {
-        $timeout = (int) config('gitmanager.process_timeout', 600);
+        $timeout = method_exists($this, 'resolveProcessTimeout')
+            ? (int) $this->resolveProcessTimeout()
+            : (int) config('gitmanager.process_timeout', 600);
+
         if ($timeout <= 0) {
+            $process->setTimeout(null);
+            if (function_exists('set_time_limit')) {
+                @set_time_limit(0);
+            }
+
             return;
         }
 

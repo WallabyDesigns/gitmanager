@@ -22,6 +22,15 @@ class DeployProjectFromWebhook implements ShouldQueue
 
     public function __construct(public int $projectId)
     {
+        $configured = (int) config('gitmanager.deployments.job_timeout', 0);
+        if ($configured > 0) {
+            $this->timeout = $configured;
+
+            return;
+        }
+
+        $processTimeout = (int) config('gitmanager.deployments.process_timeout', config('gitmanager.process_timeout', 900));
+        $this->timeout = $processTimeout > 0 ? $processTimeout + 300 : 0;
     }
 
     public function handle(DeploymentService $service, DeploymentQueueService $queue): void

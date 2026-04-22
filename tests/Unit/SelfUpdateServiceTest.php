@@ -159,6 +159,79 @@ class SelfUpdateServiceTest extends TestCase
         $this->assertStringContainsString('reported success', $guard['message']);
     }
 
+    public function test_resolve_update_target_hash_limits_incremental_backlog(): void
+    {
+        config([
+            'gitmanager.self_update.max_commits_per_run' => 1,
+        ]);
+
+        $service = new class extends SelfUpdateService
+        {
+            public int $pendingCount = 3;
+
+            /** @var list<string> */
+            public array $pendingHashes = ['bbb222'];
+
+            public function inspectResolveUpdateTargetHash(string $repoPath, ?string $fromHash, string $toHash, array &$output): string
+            {
+                return $this->resolveUpdateTargetHash($repoPath, $fromHash, $toHash, $output);
+            }
+
+            protected function countPendingUpdateCommits(string $repoPath, string $fromHash, string $toHash): int
+            {
+                return $this->pendingCount;
+            }
+
+            protected function pendingUpdateCommits(string $repoPath, string $fromHash, string $toHash, int $maxCount): array
+            {
+                return array_slice($this->pendingHashes, 0, $maxCount);
+            }
+        };
+
+        $output = [];
+        $target = $service->inspectResolveUpdateTargetHash(base_path(), 'aaa111', 'ddd444', $output);
+
+        $this->assertSame('bbb222', $target);
+        $this->assertStringContainsString('Incremental self-update enabled', implode("\n", $output));
+        $this->assertStringContainsString('2 commit(s) will remain', implode("\n", $output));
+    }
+
+    public function test_resolve_update_target_hash_uses_latest_when_batch_covers_backlog(): void
+    {
+        config([
+            'gitmanager.self_update.max_commits_per_run' => 3,
+        ]);
+
+        $service = new class extends SelfUpdateService
+        {
+            public int $pendingCount = 2;
+
+            /** @var list<string> */
+            public array $pendingHashes = ['bbb222', 'ccc333'];
+
+            public function inspectResolveUpdateTargetHash(string $repoPath, ?string $fromHash, string $toHash, array &$output): string
+            {
+                return $this->resolveUpdateTargetHash($repoPath, $fromHash, $toHash, $output);
+            }
+
+            protected function countPendingUpdateCommits(string $repoPath, string $fromHash, string $toHash): int
+            {
+                return $this->pendingCount;
+            }
+
+            protected function pendingUpdateCommits(string $repoPath, string $fromHash, string $toHash, int $maxCount): array
+            {
+                return array_slice($this->pendingHashes, 0, $maxCount);
+            }
+        };
+
+        $output = [];
+        $target = $service->inspectResolveUpdateTargetHash(base_path(), 'aaa111', 'ccc333', $output);
+
+        $this->assertSame('ccc333', $target);
+        $this->assertSame([], $output);
+    }
+
     public function test_sync_enterprise_package_applies_available_update(): void
     {
         $service = new class extends SelfUpdateService

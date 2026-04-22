@@ -383,7 +383,12 @@ class DeploymentQueueService
                     break;
                 case 'deploy':
                 default:
-                    $deployment = $service->deploy($project, $user, false);
+                    $deployment = $service->deploy(
+                        $project,
+                        $user,
+                        false,
+                        (bool) ($payload['ignore_permissions_lock'] ?? false)
+                    );
                     $markFailed = $deployment->status !== 'success';
                     break;
             }

@@ -13,6 +13,8 @@ return [
         // Disable by default outside production to avoid clobbering local dev changes.
         'enabled' => env('GWM_SELF_UPDATE_ENABLED', env('GPM_SELF_UPDATE_ENABLED', env('APP_ENV', 'production') === 'production')),
         'exclude_paths' => array_values(array_filter(array_map('trim', explode(',', env('GWM_SELF_UPDATE_EXCLUDE_PATHS', env('GPM_SELF_UPDATE_EXCLUDE_PATHS', 'docs')))))),
+        'process_timeout' => env('GWM_SELF_UPDATE_PROCESS_TIMEOUT', env('GPM_SELF_UPDATE_PROCESS_TIMEOUT', env('GWM_PROCESS_TIMEOUT', env('GPM_PROCESS_TIMEOUT', 1800)))),
+        'max_commits_per_run' => env('GWM_SELF_UPDATE_MAX_COMMITS_PER_RUN', env('GPM_SELF_UPDATE_MAX_COMMITS_PER_RUN', 1)),
         'deployment_guard' => [
             'enabled' => env('GWM_SELF_UPDATE_DEPLOYMENT_GUARD', true),
             'environment' => env('GWM_SELF_UPDATE_DEPLOYMENT_ENVIRONMENT', 'production'),
@@ -30,6 +32,8 @@ return [
     ],
     'deployments' => [
         'stale_seconds' => env('GWM_DEPLOYMENT_STALE_SECONDS', 3600),
+        'process_timeout' => env('GWM_DEPLOYMENT_PROCESS_TIMEOUT', env('GPM_DEPLOYMENT_PROCESS_TIMEOUT', env('GWM_PROCESS_TIMEOUT', env('GPM_PROCESS_TIMEOUT', 1800)))),
+        'job_timeout' => env('GWM_DEPLOYMENT_JOB_TIMEOUT', env('GPM_DEPLOYMENT_JOB_TIMEOUT', 0)),
     ],
     'deploy_staging' => [
         'enabled' => env('GWM_DEPLOY_STAGING_ENABLED', true),
