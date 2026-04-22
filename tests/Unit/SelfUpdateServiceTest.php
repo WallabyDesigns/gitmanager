@@ -159,6 +159,107 @@ class SelfUpdateServiceTest extends TestCase
         $this->assertStringContainsString('reported success', $guard['message']);
     }
 
+    public function test_sync_enterprise_package_applies_available_update(): void
+    {
+        $service = new class extends SelfUpdateService
+        {
+            /** @var list<array<string, mixed>> */
+            public array $statuses = [];
+
+            public bool $installCalled = false;
+
+            public function getEnterprisePackageStatus(string $repoPath, array &$output): array
+            {
+                return array_shift($this->statuses) ?? [];
+            }
+
+            public function installOrUpdateEnterprisePackage(string $repoPath, array &$output, array $enterprisePackage): void
+            {
+                $this->installCalled = true;
+                $output[] = 'Updating enterprise package.';
+            }
+
+            /**
+             * @return array<string, mixed>
+             */
+            public function inspectSync(string $repoPath, array &$output, bool $applyChanges): array
+            {
+                return $this->syncEnterprisePackage($repoPath, $output, $applyChanges);
+            }
+        };
+
+        $service->statuses = [
+            [
+                'name' => 'wallabydesigns/gitmanager-enterprise',
+                'status' => 'update-available',
+                'current' => '1.0.0',
+                'latest' => '1.0.1',
+                'message' => 'Enterprise package update is available.',
+            ],
+            [
+                'name' => 'wallabydesigns/gitmanager-enterprise',
+                'status' => 'up-to-date',
+                'current' => '1.0.1',
+                'latest' => '1.0.1',
+                'message' => 'Enterprise package is up to date.',
+            ],
+        ];
+
+        $output = [];
+        $result = $service->inspectSync(base_path(), $output, true);
+
+        $this->assertTrue($service->installCalled);
+        $this->assertTrue($result['performed']);
+        $this->assertSame('update-available', $result['initial']['status']);
+        $this->assertSame('up-to-date', $result['current']['status']);
+    }
+
+    public function test_sync_enterprise_package_skips_when_already_current(): void
+    {
+        $service = new class extends SelfUpdateService
+        {
+            /** @var list<array<string, mixed>> */
+            public array $statuses = [];
+
+            public bool $installCalled = false;
+
+            public function getEnterprisePackageStatus(string $repoPath, array &$output): array
+            {
+                return array_shift($this->statuses) ?? [];
+            }
+
+            public function installOrUpdateEnterprisePackage(string $repoPath, array &$output, array $enterprisePackage): void
+            {
+                $this->installCalled = true;
+            }
+
+            /**
+             * @return array<string, mixed>
+             */
+            public function inspectSync(string $repoPath, array &$output, bool $applyChanges): array
+            {
+                return $this->syncEnterprisePackage($repoPath, $output, $applyChanges);
+            }
+        };
+
+        $service->statuses = [
+            [
+                'name' => 'wallabydesigns/gitmanager-enterprise',
+                'status' => 'up-to-date',
+                'current' => '1.0.1',
+                'latest' => '1.0.1',
+                'message' => 'Enterprise package is up to date.',
+            ],
+        ];
+
+        $output = [];
+        $result = $service->inspectSync(base_path(), $output, true);
+
+        $this->assertFalse($service->installCalled);
+        $this->assertFalse($result['performed']);
+        $this->assertSame('up-to-date', $result['current']['status']);
+    }
+
     /**
      * @param array<string, mixed> $composer
      * @param array<string, mixed>|null $lock

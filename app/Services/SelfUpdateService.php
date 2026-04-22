@@ -368,14 +368,20 @@ class SelfUpdateService
                 $remoteHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'origin/'.$branch], $output)->getOutput());
 
                 if ($fromHash === $remoteHash) {
-                    $enterprisePackage = $this->getEnterprisePackageStatus($repoPath, $output);
-                    if (($enterprisePackage['status'] ?? '') === 'update-available') {
+                    $enterpriseSync = $this->syncEnterprisePackage($repoPath, $output, true);
+                    $enterprisePackage = $enterpriseSync['current'] ?? [];
+
+                    if (($enterpriseSync['performed'] ?? false) === true) {
+                        $resolved = in_array(($enterprisePackage['status'] ?? ''), ['up-to-date'], true);
+                        $update->status = $resolved ? 'success' : 'warning';
+                    } elseif (($enterprisePackage['status'] ?? '') === 'update-available') {
                         $output[] = 'Enterprise package update available: '.($enterprisePackage['current'] ?? 'unknown').' → '.($enterprisePackage['latest'] ?? 'unknown').'.';
                         $update->status = 'warning';
                     } else {
                         $output[] = $enterprisePackage['message'] ?? 'Enterprise package update check completed.';
                         $update->status = 'skipped';
                     }
+
                     $update->from_hash = $fromHash;
                     $update->to_hash = $fromHash;
                     $update->output_log = implode("\n", $output);
@@ -1367,11 +1373,8 @@ class SelfUpdateService
             $this->maybeRunAppClearCache($repoPath, $output);
         }
 
-        $enterprisePackage = $this->getEnterprisePackageStatus($repoPath, $output);
-        if (in_array($enterprisePackage['status'] ?? '', ['not-installed', 'update-available'], true)) {
-            $this->installOrUpdateEnterprisePackage($repoPath, $output, $enterprisePackage);
-            $enterprisePackage = $this->getEnterprisePackageStatus($repoPath, $output);
-        }
+        $enterpriseSync = $this->syncEnterprisePackage($repoPath, $output, true);
+        $enterprisePackage = $enterpriseSync['current'] ?? [];
         $output[] = $enterprisePackage['message'] ?? 'Enterprise package update check completed.';
         if (($enterprisePackage['status'] ?? '') === 'update-available') {
             $output[] = 'Enterprise package update available: '.($enterprisePackage['current'] ?? 'unknown').' → '.($enterprisePackage['latest'] ?? 'unknown').'.';
@@ -1407,6 +1410,32 @@ class SelfUpdateService
                 false
             );
         }
+    }
+
+    /**
+     * @return array{
+     *   initial: array<string, mixed>,
+     *   current: array<string, mixed>,
+     *   performed: bool
+     * }
+     */
+    protected function syncEnterprisePackage(string $repoPath, array &$output, bool $applyChanges): array
+    {
+        $initial = $this->getEnterprisePackageStatus($repoPath, $output);
+        $current = $initial;
+        $performed = false;
+
+        if ($applyChanges && in_array(($initial['status'] ?? ''), ['not-installed', 'update-available'], true)) {
+            $this->installOrUpdateEnterprisePackage($repoPath, $output, $initial);
+            $current = $this->getEnterprisePackageStatus($repoPath, $output);
+            $performed = true;
+        }
+
+        return [
+            'initial' => $initial,
+            'current' => $current,
+            'performed' => $performed,
+        ];
     }
 
     private function maybeRunAppClearCache(string $repoPath, array &$output): void
