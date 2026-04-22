@@ -55,6 +55,7 @@ class Index extends Component
         $message = match ($update->status) {
             'success' => 'Git Web Manager updated successfully.',
             'skipped' => 'Git Web Manager is already up to date.',
+            'blocked' => 'Update is on hold because the latest GitHub deployment has not reported success.',
             'warning' => 'Update applied with warnings. Review the logs for details.',
             default => 'Update failed. Review the logs for details.',
         };
@@ -95,6 +96,7 @@ class Index extends Component
         $message = match ($this->updateStatus['status'] ?? 'unknown') {
             'up-to-date' => 'Git Web Manager is up to date.',
             'update-available' => 'A newer version is available.',
+            'blocked' => 'A newer version exists, but updates are on hold until GitHub reports a healthy deployment.',
             default => 'Unable to determine update status.',
         };
 

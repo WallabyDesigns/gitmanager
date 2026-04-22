@@ -13,6 +13,10 @@ return [
         // Disable by default outside production to avoid clobbering local dev changes.
         'enabled' => env('GWM_SELF_UPDATE_ENABLED', env('GPM_SELF_UPDATE_ENABLED', env('APP_ENV', 'production') === 'production')),
         'exclude_paths' => array_values(array_filter(array_map('trim', explode(',', env('GWM_SELF_UPDATE_EXCLUDE_PATHS', env('GPM_SELF_UPDATE_EXCLUDE_PATHS', 'docs')))))),
+        'deployment_guard' => [
+            'enabled' => env('GWM_SELF_UPDATE_DEPLOYMENT_GUARD', true),
+            'environment' => env('GWM_SELF_UPDATE_DEPLOYMENT_ENVIRONMENT', 'production'),
+        ],
     ],
 
     'preview' => [

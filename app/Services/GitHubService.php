@@ -85,7 +85,12 @@ class GitHubService
 
     public function resolveRepoFullName(Project $project): ?string
     {
-        $repoUrl = trim((string) $project->repo_url);
+        return $this->resolveRepoFullNameFromUrl((string) $project->repo_url);
+    }
+
+    public function resolveRepoFullNameFromUrl(string $repoUrl): ?string
+    {
+        $repoUrl = trim($repoUrl);
         if ($repoUrl === '') {
             return null;
         }
@@ -121,6 +126,118 @@ class GitHubService
         }
 
         return $segments[0].'/'.$segments[1];
+    }
+
+    /**
+     * @return array{
+     *   deployment_id: int,
+     *   ref: string,
+     *   state: string,
+     *   environment: ?string,
+     *   description: ?string,
+     *   created_at: ?string,
+     *   updated_at: ?string,
+     *   target_url: ?string,
+     *   log_url: ?string
+     * }|null
+     */
+    public function getLatestDeploymentStatusForRef(string $repo, string $ref, ?string $environment = null): ?array
+    {
+        $repo = trim($repo);
+        $ref = trim($ref);
+        $environment = trim((string) $environment);
+
+        if ($repo === '' || $ref === '') {
+            return null;
+        }
+
+        $deployments = $this->fetchDeployments($repo, $ref, $environment);
+
+        if ($deployments === [] && $environment !== '') {
+            $deployments = $this->fetchDeployments($repo, $ref, null);
+        }
+
+        foreach ($deployments as $deployment) {
+            $deploymentId = $deployment['id'] ?? null;
+            if (! is_numeric($deploymentId)) {
+                continue;
+            }
+
+            $statusResponse = $this->client()->get("/repos/{$repo}/deployments/{$deploymentId}/statuses", [
+                'per_page' => 1,
+            ]);
+
+            if (! $statusResponse->successful()) {
+                continue;
+            }
+
+            $statuses = $statusResponse->json();
+            if (! is_array($statuses) || $statuses === []) {
+                continue;
+            }
+
+            $status = $statuses[0] ?? null;
+            if (! is_array($status)) {
+                continue;
+            }
+
+            $state = trim((string) ($status['state'] ?? ''));
+            if ($state === '') {
+                continue;
+            }
+
+            $resolvedEnvironment = $status['environment'] ?? $deployment['environment'] ?? null;
+            $resolvedEnvironment = is_string($resolvedEnvironment) ? trim($resolvedEnvironment) : null;
+            $description = $status['description'] ?? null;
+            $description = is_string($description) ? trim($description) : null;
+            $createdAt = $status['created_at'] ?? null;
+            $createdAt = is_string($createdAt) ? trim($createdAt) : null;
+            $updatedAt = $status['updated_at'] ?? null;
+            $updatedAt = is_string($updatedAt) ? trim($updatedAt) : null;
+            $targetUrl = $status['target_url'] ?? null;
+            $targetUrl = is_string($targetUrl) ? trim($targetUrl) : null;
+            $logUrl = $status['log_url'] ?? null;
+            $logUrl = is_string($logUrl) ? trim($logUrl) : null;
+
+            return [
+                'deployment_id' => (int) $deploymentId,
+                'ref' => $ref,
+                'state' => strtolower($state),
+                'environment' => $resolvedEnvironment !== '' ? $resolvedEnvironment : null,
+                'description' => $description !== '' ? $description : null,
+                'created_at' => $createdAt !== '' ? $createdAt : null,
+                'updated_at' => $updatedAt !== '' ? $updatedAt : null,
+                'target_url' => $targetUrl !== '' ? $targetUrl : null,
+                'log_url' => $logUrl !== '' ? $logUrl : null,
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function fetchDeployments(string $repo, string $ref, ?string $environment = null): array
+    {
+        $query = [
+            'sha' => $ref,
+            'per_page' => 10,
+        ];
+
+        $environment = trim((string) $environment);
+        if ($environment !== '') {
+            $query['environment'] = $environment;
+        }
+
+        $response = $this->client()->get("/repos/{$repo}/deployments", $query);
+        if (! $response->successful()) {
+            return [];
+        }
+
+        $deployments = $response->json();
+
+        return is_array($deployments) ? $deployments : [];
     }
 
     private function client(): PendingRequest

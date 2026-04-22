@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Services\GitHubService;
 use App\Services\SelfUpdateService;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -82,6 +83,82 @@ class SelfUpdateServiceTest extends TestCase
         $this->assertContains('Enterprise package: composer binary not available, skipping.', $output);
     }
 
+    public function test_deployment_guard_blocks_failed_github_report(): void
+    {
+        config([
+            'gitmanager.self_update.deployment_guard.enabled' => true,
+            'gitmanager.self_update.deployment_guard.environment' => 'production',
+        ]);
+
+        $this->mock(GitHubService::class, function ($mock) {
+            $mock->shouldReceive('resolveRepoFullNameFromUrl')
+                ->once()
+                ->andReturn('wallabydesigns/gitmanager');
+
+            $mock->shouldReceive('getLatestDeploymentStatusForRef')
+                ->once()
+                ->with('wallabydesigns/gitmanager', 'abc1234', 'production')
+                ->andReturn([
+                    'deployment_id' => 42,
+                    'ref' => 'abc1234',
+                    'state' => 'failure',
+                    'environment' => 'production',
+                    'description' => 'Smoke tests failed.',
+                    'created_at' => '2026-04-22T01:00:00Z',
+                    'updated_at' => '2026-04-22T01:05:00Z',
+                    'target_url' => 'https://github.com/wallabydesigns/gitmanager/deployments/42',
+                    'log_url' => 'https://github.com/wallabydesigns/gitmanager/actions/runs/42',
+                ]);
+        });
+
+        $guard = $this->deploymentGuard('abc1234');
+
+        $this->assertSame('blocked', $guard['status']);
+        $this->assertTrue($guard['checked']);
+        $this->assertTrue($guard['blocked']);
+        $this->assertSame('failure', $guard['state']);
+        $this->assertSame('production', $guard['environment']);
+        $this->assertSame('Smoke tests failed.', $guard['description']);
+        $this->assertStringContainsString('on hold', $guard['message']);
+    }
+
+    public function test_deployment_guard_allows_successful_github_report(): void
+    {
+        config([
+            'gitmanager.self_update.deployment_guard.enabled' => true,
+            'gitmanager.self_update.deployment_guard.environment' => 'production',
+        ]);
+
+        $this->mock(GitHubService::class, function ($mock) {
+            $mock->shouldReceive('resolveRepoFullNameFromUrl')
+                ->once()
+                ->andReturn('wallabydesigns/gitmanager');
+
+            $mock->shouldReceive('getLatestDeploymentStatusForRef')
+                ->once()
+                ->with('wallabydesigns/gitmanager', 'def5678', 'production')
+                ->andReturn([
+                    'deployment_id' => 99,
+                    'ref' => 'def5678',
+                    'state' => 'success',
+                    'environment' => 'production',
+                    'description' => 'Deployment finished successfully.',
+                    'created_at' => '2026-04-22T02:00:00Z',
+                    'updated_at' => '2026-04-22T02:04:00Z',
+                    'target_url' => 'https://github.com/wallabydesigns/gitmanager/deployments/99',
+                    'log_url' => null,
+                ]);
+        });
+
+        $guard = $this->deploymentGuard('def5678');
+
+        $this->assertSame('healthy', $guard['status']);
+        $this->assertTrue($guard['checked']);
+        $this->assertFalse($guard['blocked']);
+        $this->assertSame('success', $guard['state']);
+        $this->assertStringContainsString('reported success', $guard['message']);
+    }
+
     /**
      * @param array<string, mixed> $composer
      * @param array<string, mixed>|null $lock
@@ -100,5 +177,24 @@ class SelfUpdateServiceTest extends TestCase
         $this->tempPaths[] = $path;
 
         return $path;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function deploymentGuard(string $hash): array
+    {
+        $service = new class extends SelfUpdateService
+        {
+            /**
+             * @return array<string, mixed>
+             */
+            public function inspectDeploymentGuard(string $hash): array
+            {
+                return $this->resolveDeploymentGuard($hash);
+            }
+        };
+
+        return $service->inspectDeploymentGuard($hash);
     }
 }

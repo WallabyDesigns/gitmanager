@@ -24,8 +24,10 @@ class SelfUpdateService
      *   branch?: string|null,
      *   checked_at?: string|null,
      *   error?: string|null,
+     *   update_allowed?: bool,
      *   enterprise_update_available?: bool,
-     *   enterprise_package?: array<string, mixed>
+     *   enterprise_package?: array<string, mixed>,
+     *   deployment_guard?: array<string, mixed>
      * }
      */
     public function getUpdateStatus(bool $force = false): array
@@ -383,6 +385,26 @@ class SelfUpdateService
                     return $update;
                 }
 
+                if (! $forceUpdate) {
+                    $deploymentGuard = $this->resolveDeploymentGuard($remoteHash);
+                    if (($deploymentGuard['blocked'] ?? false) === true) {
+                        $output[] = $deploymentGuard['message'] ?? 'Normal updates are on hold until the latest GitHub deployment reports success.';
+                        $reportUrl = trim((string) ($deploymentGuard['target_url'] ?? $deploymentGuard['log_url'] ?? ''));
+                        if ($reportUrl !== '') {
+                            $output[] = 'Deployment report: '.$reportUrl;
+                        }
+
+                        $update->status = 'blocked';
+                        $update->from_hash = $fromHash;
+                        $update->to_hash = $remoteHash;
+                        $update->output_log = implode("\n", $output);
+                        $update->finished_at = now();
+                        $update->save();
+
+                        return $update;
+                    }
+                }
+
                 if ($forceUpdate) {
                     $output[] = 'Force updating working tree to origin/'.$branch.'.';
                     $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', 'origin/'.$branch], $output);
@@ -493,8 +515,10 @@ class SelfUpdateService
      *   branch?: string|null,
      *   checked_at?: string|null,
      *   error?: string|null,
+     *   update_allowed?: bool,
      *   enterprise_update_available?: bool,
-     *   enterprise_package?: array<string, mixed>
+     *   enterprise_package?: array<string, mixed>,
+     *   deployment_guard?: array<string, mixed>
      * }
      */
     private function computeUpdateStatus(): array
@@ -503,6 +527,7 @@ class SelfUpdateService
         $output = [];
         $branch = null;
         $enterprisePackage = $this->defaultEnterprisePackageStatus('unknown', 'Enterprise package update checks are unavailable.');
+        $deploymentGuard = $this->defaultDeploymentGuardStatus('not-needed', 'No pending core update to validate.');
 
         try {
             $this->ensureGitRepository($repoPath);
@@ -530,16 +555,27 @@ class SelfUpdateService
             }
 
             $coreStatus = $current === $latest ? 'up-to-date' : 'update-available';
+            if ($coreStatus === 'update-available') {
+                $deploymentGuard = $this->resolveDeploymentGuard($latest);
+            }
+
+            $updateAllowed = ! (($deploymentGuard['blocked'] ?? false) && $coreStatus === 'update-available');
+            $status = ($coreStatus === 'update-available' || $enterpriseUpdateAvailable) ? 'update-available' : 'up-to-date';
+            if (! $updateAllowed) {
+                $status = 'blocked';
+            }
 
             return [
-                'status' => ($coreStatus === 'update-available' || $enterpriseUpdateAvailable) ? 'update-available' : 'up-to-date',
+                'status' => $status,
                 'core_status' => $coreStatus,
                 'current' => $current,
                 'latest' => $latest,
                 'branch' => $branch,
                 'checked_at' => now()->toDateTimeString(),
+                'update_allowed' => $updateAllowed,
                 'enterprise_update_available' => $enterpriseUpdateAvailable,
                 'enterprise_package' => $enterprisePackage,
+                'deployment_guard' => $deploymentGuard,
             ];
         } catch (\Throwable $exception) {
             return [
@@ -548,8 +584,10 @@ class SelfUpdateService
                 'branch' => $branch,
                 'checked_at' => now()->toDateTimeString(),
                 'error' => $exception->getMessage(),
+                'update_allowed' => true,
                 'enterprise_update_available' => ($enterprisePackage['status'] ?? '') === 'update-available',
                 'enterprise_package' => $enterprisePackage,
+                'deployment_guard' => $deploymentGuard,
             ];
         }
     }
@@ -697,6 +735,141 @@ class SelfUpdateService
             'status' => $status,
             'message' => $message,
         ];
+    }
+
+    /**
+     * @return array{
+     *   status: string,
+     *   checked: bool,
+     *   blocked: bool,
+     *   ref: ?string,
+     *   state: ?string,
+     *   environment: ?string,
+     *   description: ?string,
+     *   created_at: ?string,
+     *   updated_at: ?string,
+     *   target_url: ?string,
+     *   log_url: ?string,
+     *   message: string
+     * }
+     */
+    protected function defaultDeploymentGuardStatus(
+        string $status,
+        string $message,
+        bool $checked = false,
+        bool $blocked = false,
+        ?string $ref = null
+    ): array {
+        return [
+            'status' => $status,
+            'checked' => $checked,
+            'blocked' => $blocked,
+            'ref' => $ref,
+            'state' => null,
+            'environment' => null,
+            'description' => null,
+            'created_at' => null,
+            'updated_at' => null,
+            'target_url' => null,
+            'log_url' => null,
+            'message' => $message,
+        ];
+    }
+
+    /**
+     * @return array{
+     *   status: string,
+     *   checked: bool,
+     *   blocked: bool,
+     *   ref: ?string,
+     *   state: ?string,
+     *   environment: ?string,
+     *   description: ?string,
+     *   created_at: ?string,
+     *   updated_at: ?string,
+     *   target_url: ?string,
+     *   log_url: ?string,
+     *   message: string
+     * }
+     */
+    protected function resolveDeploymentGuard(?string $targetHash): array
+    {
+        $targetHash = trim((string) $targetHash);
+        if ($targetHash === '') {
+            return $this->defaultDeploymentGuardStatus('unknown', 'No release hash is available for deployment health checks.');
+        }
+
+        if (! $this->shouldObserveDeploymentReports()) {
+            return $this->defaultDeploymentGuardStatus('disabled', 'GitHub deployment health checks are disabled.', false, false, $targetHash);
+        }
+
+        try {
+            $github = app(GitHubService::class);
+            $repo = $github->resolveRepoFullNameFromUrl(self::REPO_URL);
+            if ($repo === null) {
+                return $this->defaultDeploymentGuardStatus('unknown', 'Unable to resolve the updater repository on GitHub.', false, false, $targetHash);
+            }
+
+            $report = $github->getLatestDeploymentStatusForRef($repo, $targetHash, $this->deploymentGuardEnvironment());
+            if (! is_array($report)) {
+                return $this->defaultDeploymentGuardStatus('unreported', 'No GitHub deployment report was found for the latest release yet.', true, false, $targetHash);
+            }
+
+            $state = strtolower(trim((string) ($report['state'] ?? 'unknown')));
+            $environment = trim((string) ($report['environment'] ?? ''));
+            $description = trim((string) ($report['description'] ?? ''));
+            $stateLabel = strtoupper(str_replace(['-', '_'], ' ', $state));
+            $blocked = $state !== 'success';
+
+            $message = $blocked
+                ? 'Latest GitHub deployment is not healthy yet, so normal updates are on hold.'
+                : 'Latest GitHub deployment reported success for this release.';
+
+            if ($environment !== '') {
+                $message .= ' Environment: '.$environment.'.';
+            }
+
+            if ($description !== '') {
+                $message .= ' '.$description;
+            } else {
+                $message .= ' Status: '.$stateLabel.'.';
+            }
+
+            return [
+                'status' => $blocked ? 'blocked' : 'healthy',
+                'checked' => true,
+                'blocked' => $blocked,
+                'ref' => $targetHash,
+                'state' => $state !== '' ? $state : null,
+                'environment' => $environment !== '' ? $environment : null,
+                'description' => $description !== '' ? $description : null,
+                'created_at' => is_string($report['created_at'] ?? null) ? trim((string) $report['created_at']) : null,
+                'updated_at' => is_string($report['updated_at'] ?? null) ? trim((string) $report['updated_at']) : null,
+                'target_url' => is_string($report['target_url'] ?? null) ? trim((string) $report['target_url']) : null,
+                'log_url' => is_string($report['log_url'] ?? null) ? trim((string) $report['log_url']) : null,
+                'message' => $message,
+            ];
+        } catch (\Throwable $exception) {
+            return $this->defaultDeploymentGuardStatus(
+                'unknown',
+                'GitHub deployment health checks could not be completed: '.$exception->getMessage(),
+                false,
+                false,
+                $targetHash
+            );
+        }
+    }
+
+    protected function shouldObserveDeploymentReports(): bool
+    {
+        return (bool) config('gitmanager.self_update.deployment_guard.enabled', true);
+    }
+
+    protected function deploymentGuardEnvironment(): ?string
+    {
+        $environment = trim((string) config('gitmanager.self_update.deployment_guard.environment', 'production'));
+
+        return $environment !== '' ? $environment : null;
     }
 
     private function enterprisePackageName(): string
