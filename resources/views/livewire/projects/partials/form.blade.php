@@ -23,7 +23,7 @@
                         ['value' => 'react', 'label' => 'React App', 'locked' => true, 'locked_message' => 'React App projects are available in Enterprise Edition.'],
                         ['value' => 'python', 'label' => 'Python', 'locked' => true],
                         ['value' => 'container', 'label' => 'Container', 'locked' => false],
-                        ['value' => 'custom', 'label' => 'Custom', 'locked' => false],
+                        ['value' => 'custom', 'label' => 'Custom', 'locked' => true, 'locked_message' => 'Custom projects are available in Enterprise Edition.'],
                     ];
                     $selected = collect($options)->firstWhere('value', $form['project_type'] ?? 'custom');
                 @endphp

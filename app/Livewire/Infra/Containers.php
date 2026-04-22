@@ -11,6 +11,7 @@ use Livewire\Component;
 class Containers extends Component
 {
     public string $initialSection = 'overview';
+    public bool $isEnterprise = false;
 
     // Data
     public array $containers  = [];
@@ -97,8 +98,14 @@ class Containers extends Component
 
     public function mount(?string $section = null): void
     {
+        $this->isEnterprise = app(EditionService::class)->current() === EditionService::ENTERPRISE;
+
         if (is_string($section) && $section !== '') {
             $this->initialSection = $section;
+        }
+
+        if (! $this->canUseSwarm() && $this->initialSection === 'swarm') {
+            $this->initialSection = 'overview';
         }
     }
 
@@ -119,7 +126,7 @@ class Containers extends Component
             'images'     => $this->loadImages($docker),
             'volumes'    => $this->loadVolumes($docker),
             'networks'   => $this->loadNetworks($docker),
-            'swarm'      => $this->loadSwarm($docker),
+            'swarm'      => $this->canUseSwarm() ? $this->loadSwarm($docker) : null,
             'databases'  => $this->loadDatabases($docker),
             default      => null,
         };
@@ -466,6 +473,10 @@ class Containers extends Component
 
     public function initSwarm(): void
     {
+        if (! $this->ensureSwarmAccess()) {
+            return;
+        }
+
         $result = app(DockerService::class)->initSwarm($this->swarmAdvertise);
         $this->flash($result['success'] ? 'Swarm initialised.' : $result['error'], $result['success'] ? 'success' : 'error');
         $this->showSwarmInit = false;
@@ -474,6 +485,10 @@ class Containers extends Component
 
     public function openScaleModal(string $service, int $current): void
     {
+        if (! $this->ensureSwarmAccess()) {
+            return;
+        }
+
         $this->scaleService  = $service;
         $this->scaleReplicas = $current;
         $this->showScale     = true;
@@ -481,6 +496,10 @@ class Containers extends Component
 
     public function scaleService(): void
     {
+        if (! $this->ensureSwarmAccess()) {
+            return;
+        }
+
         $result = app(DockerService::class)->scaleService($this->scaleService, $this->scaleReplicas);
         $this->flash($result['success'] ? "Scaled {$this->scaleService} to {$this->scaleReplicas} replica(s)." : $result['error'], $result['success'] ? 'success' : 'error');
         $this->showScale = false;
@@ -560,6 +579,25 @@ class Containers extends Component
     {
         $this->flashMessage = $message;
         $this->flashType    = $type;
+    }
+
+    private function canUseSwarm(): bool
+    {
+        return $this->isEnterprise;
+    }
+
+    private function ensureSwarmAccess(): bool
+    {
+        if ($this->canUseSwarm()) {
+            return true;
+        }
+
+        $this->showSwarmInit = false;
+        $this->showScale = false;
+        $this->initialSection = 'overview';
+        $this->dispatch('gwm-open-enterprise-modal', feature: 'Docker Swarm');
+
+        return false;
     }
 
     private function isDatabaseContainer(array $container): bool
@@ -815,10 +853,11 @@ class Containers extends Component
     public function render(EditionService $edition): \Illuminate\View\View
     {
         $enterpriseInstalled = class_exists(\GitManagerEnterprise\Livewire\Infrastructure\Containers::class);
+        $this->isEnterprise = $edition->current() === EditionService::ENTERPRISE;
 
         return view('livewire.infra.containers', [
             'enterpriseInstalled' => $enterpriseInstalled,
-            'isEnterprise'        => $enterpriseInstalled && $edition->current() === EditionService::ENTERPRISE,
+            'isEnterprise'        => $this->isEnterprise,
             'templates'           => $this->getTemplates(),
         ])->layout('layouts.app', [
             'title'  => 'Infrastructure',

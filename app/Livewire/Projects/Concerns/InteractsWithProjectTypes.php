@@ -84,7 +84,8 @@ trait InteractsWithProjectTypes
                 'value' => 'custom',
                 'label' => 'Custom',
                 'description' => 'Start from a blank deployment profile and configure each step manually.',
-                'locked' => false,
+                'locked' => ! $isEnterprise,
+                'locked_message' => 'Custom projects are available in Enterprise Edition.',
             ],
         ];
     }
@@ -154,7 +155,7 @@ trait InteractsWithProjectTypes
 
     private function isPremiumProjectType(string $value): bool
     {
-        return in_array($value, ['nextjs', 'react', 'python'], true);
+        return in_array($value, ['nextjs', 'react', 'python', 'custom'], true);
     }
 
     private function projectTypeLabel(string $value): string
