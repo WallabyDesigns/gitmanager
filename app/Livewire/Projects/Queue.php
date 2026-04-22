@@ -220,6 +220,21 @@ class Queue extends Component
     }
 
     /**
+     * @return array{label: string, context: string|null}
+     */
+    public function actionPresentation(DeploymentQueueItem $item): array
+    {
+        $payload = is_array($item->payload) ? $item->payload : [];
+        $reason = trim((string) ($payload['reason'] ?? ''));
+        $source = trim((string) ($payload['source'] ?? ''));
+
+        return [
+            'label' => $this->actionLabel($item->action),
+            'context' => $this->actionContextLabel($item->action, $reason, $source),
+        ];
+    }
+
+    /**
      * @return array<int, string>
      */
     private function deploymentColumns(): array
@@ -245,5 +260,61 @@ class Queue extends Component
     private function logPreviewSql(string $column, int $limit): string
     {
         return "CASE WHEN length({$column}) > {$limit} THEN substr({$column}, length({$column}) - {$limit} + 1) ELSE {$column} END";
+    }
+
+    private function actionLabel(string $action): string
+    {
+        return match ($action) {
+            'deploy' => 'Deployment',
+            'force_deploy' => 'Force Deployment',
+            'rollback' => 'Rollback',
+            'dependency_update' => 'Dependency Update',
+            'composer_install' => 'Composer Install',
+            'composer_update' => 'Composer Update',
+            'composer_audit' => 'Composer Audit',
+            'npm_install' => 'Npm Install',
+            'npm_update' => 'Npm Update',
+            'npm_audit_fix' => 'Npm Audit Fix',
+            'npm_audit_fix_force' => 'Npm Audit Fix (Force)',
+            'audit_project' => 'Project Audit',
+            'app_clear_cache' => 'App Clear Cache',
+            'laravel_migrate' => 'Laravel Migrate',
+            'preview_build' => 'Preview Build',
+            'custom_command' => 'Custom Command',
+            default => ucfirst(str_replace('_', ' ', $action)),
+        };
+    }
+
+    private function actionContextLabel(string $action, string $reason, string $source): ?string
+    {
+        $context = $reason !== '' ? $reason : $source;
+
+        return match ($context) {
+            'auto_update' => 'Auto Update',
+            'manual_update_check' => 'Update Check',
+            'project_created' => 'Project Created',
+            'env_saved' => '.env Saved',
+            'manual_deploy' => 'Manual Run',
+            'manual_force_deploy' => 'Manual Force Run',
+            'manual_staged_deploy' => 'Staged Install',
+            'manual_rollback' => 'Manual Rollback',
+            'manual_project_audit' => 'Manual Audit',
+            'bulk_project_audit' => 'Bulk Audit',
+            'scheduled_hourly_audit' => 'Scheduled Audit',
+            default => $this->fallbackContextLabel($action, $context),
+        };
+    }
+
+    private function fallbackContextLabel(string $action, string $context): ?string
+    {
+        if ($action === 'audit_project' && $context === '') {
+            return 'Audit';
+        }
+
+        if ($context === '') {
+            return null;
+        }
+
+        return ucfirst(str_replace('_', ' ', $context));
     }
 }

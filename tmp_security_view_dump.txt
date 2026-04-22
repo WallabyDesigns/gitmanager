@@ -7,12 +7,9 @@
                 @include('livewire.system.partials.tabs')
             @endif
             <div class="space-y-6">
-                @php
-                    $securityRoute = ($projectShell ?? false) ? 'projects.action-center' : 'system.security';
-                    $hasDependencyProjects = ($dependencyProjects ?? collect())->isNotEmpty();
-                @endphp
                 <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            @php($securityRoute = ($projectShell ?? false) ? 'projects.action-center' : 'system.security')
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-3 flex-wrap">
                     <a href="{{ route($securityRoute, ['tab' => 'current']) }}" class="px-3 py-2 text-sm rounded-md {{ $tab === 'current' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300' }}">
                         Current Issues ({{ $openCount }})
@@ -27,13 +24,13 @@
                         Sync Alerts
                     </button>
                 @endif
-                    </div>
-                    @if (! $sslVerifyEnabled)
-                        <div class="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">
-                            GitHub SSL verification is disabled. Sync runs without certificate validation.
-                        </div>
-                    @endif
+            </div>
+            @if (! $sslVerifyEnabled)
+                <div class="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">
+                    GitHub SSL verification is disabled. Sync runs without certificate validation.
                 </div>
+            @endif
+        </div>
 
         @if ($appUpdateFailed && $latestUpdate)
             <div class="bg-rose-500/10 border border-rose-500/30 text-rose-200 rounded-xl p-6">
@@ -50,8 +47,8 @@
         @endif
 
                 <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
-                    <div class="space-y-6">
-                @if ($hasDependencyProjects && $tab === 'current')
+            <div class="space-y-6">
+                @if (($dependencyProjects ?? collect())->isNotEmpty() && $tab === 'current')
                     <div class="space-y-4">
                         <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Dependency Issues</h4>
                         @foreach ($dependencyProjects as $project)
@@ -192,12 +189,13 @@
                     </div>
                 @endif
 
-                @if (! $hasDependencyProjects && $alerts->isEmpty() && $auditIssues->isEmpty())
+                @if (($dependencyProjects ?? collect())->isEmpty() && $alerts->isEmpty() && $auditIssues->isEmpty())
                     <p class="text-sm text-slate-500 dark:text-slate-400">No issues found for this tab.</p>
                 @endif
-                    </div>
+            </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+

@@ -1,12 +1,3 @@
-@php
-    $showSchedulerNotice = $showSchedulerNotice ?? true;
-    $queueEnabled = config('gitmanager.deploy_queue.enabled', true);
-    $scheduler = app(\App\Services\SchedulerService::class);
-    $schedulerGraceSeconds = max(600, (int) config('gitmanager.scheduler.stale_seconds', 600));
-    $schedulerHealthy = $scheduler->isHealthy($schedulerGraceSeconds);
-    $lastHeartbeat = $scheduler->lastHeartbeat();
-    $isAdmin = auth()->user()?->isAdmin() ?? false;
-@endphp
 <div class="py-10" wire:init="refreshHealth" wire:poll.60s="refreshHealth">
     
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

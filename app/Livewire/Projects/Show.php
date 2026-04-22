@@ -569,6 +569,20 @@ class Show extends Component
             return;
         }
 
+        if ($this->queueEnabled()) {
+            $item = app(DeploymentQueueService::class)->enqueue($this->project, 'audit_project', [
+                'auto_fix' => true,
+                'send_email' => true,
+                'source' => 'manual_project_audit',
+            ], Auth::user());
+
+            $this->dispatch('notify', message: $item->wasRecentlyCreated
+                ? 'Project audit queued.'
+                : 'Project audit is already queued.');
+
+            return;
+        }
+
         $payload = $audit->auditProject($this->project, Auth::user(), true, true);
         $this->project->refresh();
         $this->dispatchAuditToast($payload['results'] ?? []);

@@ -10,7 +10,11 @@
                         <div>
                             Queued tasks are processed by the scheduler (<code>php artisan schedule:work</code>) or a cron task.
                             If the scheduler isn’t running, use “Process Queue” to advance items.
+                            @if (auth()->user()?->isAdmin())
+                                Manage scheduler health in <a href="{{ route('system.scheduler') }}" class="text-indigo-600 hover:text-indigo-500 dark:text-indigo-300 dark:hover:text-indigo-200">System Settings</a>.
+                            @endif
                         </div>
+                        <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">Project audits and update-triggered deployments appear here. App self-updates stay under System &gt; App Updates.</div>
                     </div>
                     <div class="flex flex-wrap gap-2">
                         <button type="button" wire:click="processNow" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white inline-flex items-center">
@@ -99,6 +103,7 @@
 
                 <div class="space-y-3">
                     @forelse ($items as $item)
+                        @php($presentation = $this->actionPresentation($item))
                         <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4 flex flex-col gap-3" wire:key="queue-item-{{ $item->id }}">
                             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
@@ -142,7 +147,11 @@
                                             default => $item->updated_at ?? $item->created_at,
                                         };
                                     @endphp
-                                    Action: {{ $item->action }} • Position: {{ $item->position }}
+                                    Action: {{ $presentation['label'] }}
+                                    @if (! empty($presentation['context']))
+                                        • {{ $presentation['context'] }}
+                                    @endif
+                                    • Position: {{ $item->position }}
                                     @if ($timestampValue)
                                         • {{ $timestampLabel }}: {{ \App\Support\DateFormatter::forUser($timestampValue, 'M j, Y g:i a') }}
                                     @endif

@@ -7,6 +7,7 @@ use App\Models\SecurityAlert;
 use App\Models\AuditIssue;
 use App\Models\Deployment;
 use App\Services\AuditService;
+use App\Services\DeploymentQueueService;
 use App\Services\DeploymentService;
 use App\Services\EditionService;
 use App\Services\SettingsService;
@@ -116,6 +117,20 @@ class SecurityAlerts extends Component
         }
 
         if ($this->blockIfPermissionsLocked('audit checks')) {
+            return;
+        }
+
+        if ((bool) config('gitmanager.deploy_queue.enabled', true)) {
+            $item = app(DeploymentQueueService::class)->enqueue($this->project, 'audit_project', [
+                'auto_fix' => true,
+                'send_email' => true,
+                'source' => 'manual_project_audit',
+            ], auth()->user());
+
+            $this->dispatch('notify', message: $item->wasRecentlyCreated
+                ? 'Project audit queued.'
+                : 'Project audit is already queued.');
+
             return;
         }
 

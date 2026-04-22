@@ -53,7 +53,7 @@ class ProjectsAutoDeploy extends Command
             try {
                 if ($service->checkForUpdates($project)) {
                     if (config('gitmanager.deploy_queue.enabled', true)) {
-                        $queue->enqueue($project, 'deploy');
+                        $queue->enqueue($project, 'deploy', ['reason' => 'auto_update']);
                         $this->info("Queued deploy for {$project->name}.");
                     } else {
                         $service->deploy($project);

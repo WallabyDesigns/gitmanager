@@ -58,6 +58,43 @@ class Index extends Component
             ->projects()
             ->get();
 
+        if ($this->queueEnabled()) {
+            $queued = 0;
+            $existing = 0;
+            $skipped = 0;
+
+            foreach ($projects as $project) {
+                if ($project->permissions_locked && ! $project->ftp_enabled && ! $project->ssh_enabled) {
+                    $skipped++;
+                    continue;
+                }
+
+                $item = app(DeploymentQueueService::class)->enqueue($project, 'audit_project', [
+                    'auto_fix' => true,
+                    'send_email' => true,
+                    'source' => 'bulk_project_audit',
+                ], Auth::user());
+
+                if ($item->wasRecentlyCreated) {
+                    $queued++;
+                } else {
+                    $existing++;
+                }
+            }
+
+            $message = "Queued {$queued} project audit(s).";
+            if ($existing > 0) {
+                $message .= " {$existing} already queued.";
+            }
+            if ($skipped > 0) {
+                $message .= " {$skipped} skipped because permissions are locked.";
+            }
+
+            $this->dispatch('notify', message: $message);
+
+            return;
+        }
+
         $results = $audit->auditProjects($projects, Auth::user(), true, true);
         $this->dispatchAuditToast($results);
     }

@@ -1,19 +1,66 @@
 @php
+    use App\Models\AppUpdate;
+    use App\Models\AuditIssue;
+    use App\Models\Deployment;
+    use App\Models\DeploymentQueueItem;
+    use App\Models\Project;
+    use App\Models\SecurityAlert;
+
     $showBulkActions = $showBulkActions ?? false;
-    $showSchedulerNotice = $showSchedulerNotice ?? true;
     $tab = $projectsTab ?? (request()->routeIs('projects.queue')
         ? 'queue'
         : (request()->routeIs('projects.create')
             ? 'create'
-            : (request()->routeIs('projects.scheduler') ? 'scheduler' : 'list')));
-    $queueEnabled = config('gitmanager.deploy_queue.enabled', true);
-    $scheduler = app(\App\Services\SchedulerService::class);
-    $schedulerGraceSeconds = max(600, (int) config('gitmanager.scheduler.stale_seconds', 600));
-    $schedulerHealthy = $scheduler->isHealthy($schedulerGraceSeconds);
-    $lastHeartbeat = $scheduler->lastHeartbeat();
-    $isAdmin = auth()->user()?->isAdmin() ?? false;
+            : (request()->routeIs('projects.action-center') ? 'action-center' : 'list')));
+    $user = auth()->user();
+    $userId = $user?->id;
+    $isAdmin = $user?->isAdmin() ?? false;
     $isEnterprise = app(\App\Services\EditionService::class)->current() === \App\Services\EditionService::ENTERPRISE;
     $isFtpRoute = request()->routeIs('ftp-accounts.*');
+    $queueCount = $userId
+        ? DeploymentQueueItem::query()
+            ->whereIn('status', ['queued', 'running'])
+            ->whereHas('project', fn ($query) => $query->where('user_id', $userId))
+            ->count()
+        : 0;
+    $securityCount = $userId
+        ? SecurityAlert::query()
+            ->where('state', 'open')
+            ->whereHas('project', fn ($query) => $query->where('user_id', $userId))
+            ->count()
+        : 0;
+    $auditCount = $userId
+        ? AuditIssue::query()
+            ->where('status', 'open')
+            ->whereHas('project', fn ($query) => $query->where('user_id', $userId))
+            ->count()
+        : 0;
+    $dependencyIssueCount = 0;
+    if ($userId) {
+        $dependencyIssueCount = Project::query()
+            ->where('user_id', $userId)
+            ->addSelect([
+                'last_composer_status' => Deployment::query()
+                    ->select('status')
+                    ->whereColumn('project_id', 'projects.id')
+                    ->whereIn('action', ['composer_install', 'composer_update', 'composer_audit'])
+                    ->latest('started_at')
+                    ->limit(1),
+                'last_npm_status' => Deployment::query()
+                    ->select('status')
+                    ->whereColumn('project_id', 'projects.id')
+                    ->whereIn('action', ['npm_install', 'npm_update', 'npm_audit_fix', 'npm_audit_fix_force'])
+                    ->latest('started_at')
+                    ->limit(1),
+            ])
+            ->get()
+            ->filter(fn ($project) => in_array($project->last_composer_status ?? null, ['failed', 'warning'], true)
+                || in_array($project->last_npm_status ?? null, ['failed', 'warning'], true))
+            ->count();
+    }
+    $latestUpdate = $isAdmin ? AppUpdate::query()->orderByDesc('started_at')->first() : null;
+    $updateIssueCount = $latestUpdate && $latestUpdate->status === 'failed' ? 1 : 0;
+    $actionCenterCount = $securityCount + $auditCount + $dependencyIssueCount + $updateIssueCount;
 @endphp
 
 <aside class="space-y-4">
@@ -21,7 +68,7 @@
         <div>
             <div class="text-xs uppercase tracking-[0.16em] text-slate-400">Projects</div>
             <div class="mt-1 text-lg font-semibold text-white">Workspace</div>
-            <div class="text-xs text-slate-400">Deploys, queue operations, remote access, and scheduler controls.</div>
+            <div class="text-xs text-slate-400">Deploys, action items, queue operations, and remote access.</div>
         </div>
 
         <nav class="mt-4 space-y-1.5">
@@ -44,14 +91,24 @@
                 class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'queue' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
             >
                 <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" /></svg>
-                Task Queue
+                <span class="inline-flex items-center gap-2">
+                    Task Queue
+                    @if ($queueCount > 0)
+                        <span class="inline-flex items-center justify-center rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] uppercase tracking-wide text-amber-200">{{ $queueCount }}</span>
+                    @endif
+                </span>
             </a>
             <a
-                href="{{ route('projects.scheduler') }}"
-                class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'scheduler' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
+                href="{{ route('projects.action-center') }}"
+                class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'action-center' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
             >
-                <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                Scheduler
+                <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10.34 3.94c.09-.542.56-.94 1.11-.94h1.1c.55 0 1.02.398 1.11.94l.154.925c.062.374.312.686.643.87.128.071.255.145.378.223.324.205.72.266 1.075.133l.88-.33a1.125 1.125 0 011.37.49l.55.952a1.125 1.125 0 01-.26 1.43l-.726.598c-.292.24-.437.613-.43.991.003.149.003.298 0 .447-.007.378.138.75.43.99l.726.599c.424.35.534.954.26 1.43l-.55.952a1.125 1.125 0 01-1.37.49l-.88-.33c-.355-.133-.751-.072-1.075.133-.123.078-.25.152-.378.223-.331.184-.581.496-.643.87l-.154.925c-.09.542-.56.94-1.11.94h-1.1c-.55 0-1.02-.398-1.11-.94l-.154-.925a1.125 1.125 0 00-.643-.87 6.343 6.343 0 01-.378-.223c-.324-.205-.72-.266-1.075-.133l-.88.33a1.125 1.125 0 01-1.37-.49l-.55-.952a1.125 1.125 0 01.26-1.43l.726-.598c.292-.24.437-.613.43-.991a9.079 9.079 0 010-.447c.007-.378-.138-.75-.43-.99l-.726-.599a1.125 1.125 0 01-.26-1.43l.55-.952a1.125 1.125 0 011.37-.49l.88.33c.355.133.751.072 1.075-.133.123-.078.25-.152.378-.223.331-.184.581-.496.643-.87l.154-.925z" /><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 12a2.25 2.25 0 104.5 0 2.25 2.25 0 00-4.5 0z" /></svg>
+                <span class="inline-flex items-center gap-2">
+                    Action Center
+                    @if ($actionCenterCount > 0)
+                        <span class="inline-flex items-center justify-center rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] uppercase tracking-wide text-rose-200">{{ $actionCenterCount }}</span>
+                    @endif
+                </span>
             </a>
             @if ($isAdmin)
                 <a

@@ -398,6 +398,16 @@
                         </div>
 
                         <div class="flex flex-wrap gap-2">
+                            @if (! $isEnterprise || $licenseStatusLower !== 'valid')
+                                <a
+                                    href="https://gitwebmanager.com"
+                                    target="_blank"
+                                    rel="noopener"
+                                    class="px-3 py-2 text-xs rounded-md border border-amber-300/70 text-amber-700 hover:text-amber-800 dark:border-amber-500/60 dark:text-amber-300 dark:hover:text-amber-200 inline-flex items-center"
+                                >
+                                    Buy Enterprise (${{ class_exists(\GitManagerEnterprise\Support\EnterpriseFeatureConfig::class) ? \GitManagerEnterprise\Support\EnterpriseFeatureConfig::displayPrice() : '29.99' }})
+                                </a>
+                            @endif
                             <button type="button" wire:click="verifyLicense" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white inline-flex items-center">
                                 <x-loading-spinner target="verifyLicense" />
                                 Verify License Now

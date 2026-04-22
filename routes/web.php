@@ -9,7 +9,6 @@ use App\Livewire\Projects\Create as ProjectsCreate;
 use App\Livewire\Projects\Edit as ProjectsEdit;
 use App\Livewire\Projects\Index as ProjectsIndex;
 use App\Livewire\Projects\Queue as ProjectsQueue;
-use App\Livewire\Projects\Scheduler as ProjectsScheduler;
 use App\Livewire\Projects\Show as ProjectsShow;
 use App\Livewire\FtpAccounts\Index as FtpAccountsIndex;
 use App\Livewire\Security\Index as SecurityIndex;
@@ -45,7 +44,8 @@ Route::post('/webhooks/github', GitHubWebhookController::class)
 Route::middleware(['auth', 'verified', EnsurePasswordChanged::class])->group(function () {
     Route::get('/projects', ProjectsIndex::class)->name('projects.index');
     Route::get('/projects/queue', ProjectsQueue::class)->name('projects.queue');
-    Route::get('/projects/scheduler', ProjectsScheduler::class)->name('projects.scheduler');
+    Route::get('/projects/action-center', SecurityIndex::class)->name('projects.action-center');
+    Route::redirect('/projects/scheduler', '/system/scheduler', 301)->name('projects.scheduler');
     Route::get('/projects/new', ProjectsCreate::class)->name('projects.create');
     Route::get('/projects/{project}/edit', ProjectsEdit::class)->name('projects.edit');
     Route::get('/projects/{project}', ProjectsShow::class)->name('projects.show');
