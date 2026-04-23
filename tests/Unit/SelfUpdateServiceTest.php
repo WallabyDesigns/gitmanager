@@ -235,6 +235,48 @@ class SelfUpdateServiceTest extends TestCase
         $this->assertSame([], $output);
     }
 
+    public function test_php_binary_prefers_live_env_override_over_cached_config(): void
+    {
+        config([
+            'gitmanager.php_binary' => 'php-from-config',
+        ]);
+
+        $override = 'C:\\php\\php-custom.exe';
+        $originalEnv = getenv('GWM_PHP_PATH');
+        $originalServer = $_SERVER['GWM_PHP_PATH'] ?? null;
+        $originalRequestEnv = $_ENV['GWM_PHP_PATH'] ?? null;
+
+        putenv('GWM_PHP_PATH='.$override);
+        $_SERVER['GWM_PHP_PATH'] = $override;
+        $_ENV['GWM_PHP_PATH'] = $override;
+
+        try {
+            $service = app(SelfUpdateService::class);
+            $method = new \ReflectionMethod($service, 'phpBinary');
+            $method->setAccessible(true);
+
+            $this->assertSame($override, $method->invoke($service));
+        } finally {
+            if ($originalEnv === false) {
+                putenv('GWM_PHP_PATH');
+            } else {
+                putenv('GWM_PHP_PATH='.$originalEnv);
+            }
+
+            if ($originalServer === null) {
+                unset($_SERVER['GWM_PHP_PATH']);
+            } else {
+                $_SERVER['GWM_PHP_PATH'] = $originalServer;
+            }
+
+            if ($originalRequestEnv === null) {
+                unset($_ENV['GWM_PHP_PATH']);
+            } else {
+                $_ENV['GWM_PHP_PATH'] = $originalRequestEnv;
+            }
+        }
+    }
+
     public function test_sync_enterprise_package_applies_available_update(): void
     {
         $service = new class extends SelfUpdateService

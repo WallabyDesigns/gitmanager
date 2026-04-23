@@ -2666,10 +2666,109 @@ class SelfUpdateService
 
     private function phpBinary(): string
     {
+        $override = $this->resolveEnvOverride([
+            'GWM_PHP_PATH',
+            'GWM_PHP_BINARY',
+            'GPM_PHP_PATH',
+            'GPM_PHP_BINARY',
+        ]);
+        if ($override !== null) {
+            return $override;
+        }
+
         $configured = trim((string) config('gitmanager.php_binary', 'php'));
         $configured = trim($configured, "\"' ");
 
         return $configured !== '' ? $configured : 'php';
+    }
+
+    private function resolveEnvOverride(array $keys): ?string
+    {
+        foreach ($keys as $key) {
+            $value = $this->readEnvOverride($key);
+            if ($value !== null) {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    private function readEnvOverride(string $key): ?string
+    {
+        $value = getenv($key);
+        if ($value === false || $value === '') {
+            $value = $_SERVER[$key] ?? ($_ENV[$key] ?? '');
+        }
+
+        $value = is_string($value) ? trim($value) : '';
+        if ($value !== '') {
+            return trim($value, "\"' ");
+        }
+
+        $envValues = $this->readEnvFile(base_path('.env'));
+        $fromEnvFile = trim((string) ($envValues[$key] ?? ''));
+
+        return $fromEnvFile !== '' ? trim($fromEnvFile, "\"' ") : null;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function readEnvFile(string $path): array
+    {
+        if (! is_file($path)) {
+            return [];
+        }
+
+        $lines = file($path, FILE_IGNORE_NEW_LINES);
+        if (! is_array($lines)) {
+            return [];
+        }
+
+        $values = [];
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '' || str_starts_with($line, '#')) {
+                continue;
+            }
+
+            if (str_starts_with($line, 'export ')) {
+                $line = trim(substr($line, 7));
+            }
+
+            if (! preg_match('/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/', $line, $matches)) {
+                continue;
+            }
+
+            $key = $matches[1];
+            $value = trim($matches[2]);
+
+            if ($value === '') {
+                $values[$key] = '';
+                continue;
+            }
+
+            $firstChar = $value[0];
+            $lastChar = substr($value, -1);
+
+            if (($firstChar === '"' && $lastChar === '"') || ($firstChar === "'" && $lastChar === "'")) {
+                $value = substr($value, 1, -1);
+                if ($firstChar === '"') {
+                    $value = str_replace(['\\n', '\\r', '\\"', '\\\\'], ["\n", "\r", '"', '\\'], $value);
+                }
+            } else {
+                if (str_contains($value, ' #')) {
+                    $value = explode(' #', $value, 2)[0];
+                } elseif (str_contains($value, "\t#")) {
+                    $value = explode("\t#", $value, 2)[0];
+                }
+            }
+
+            $values[$key] = trim($value);
+        }
+
+        return $values;
     }
 
     private function gitEnv(): array
