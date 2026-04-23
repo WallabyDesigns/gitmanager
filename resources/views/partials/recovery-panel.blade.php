@@ -18,15 +18,18 @@
 
 <style>
     #gwm-recovery-panel{
-        animation: appear 2s ease-out forwards;
+        animation: appear 2s ease-in forwards;
         animation-delay: 3s;
     }
-    
+
     @keyframes appear {
-        from {
+        0% {
             opacity: 0;
         }
-        to {
+        80% {
+            opacity: 0;
+        }
+        100% {
             opacity: 1;
         }
     }
