@@ -18,6 +18,7 @@
 
 <style>
     #gwm-recovery-panel{
+        opacity: 0;
         animation: appear 2s ease-in forwards;
         animation-delay: 3s;
     }
