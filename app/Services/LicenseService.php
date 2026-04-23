@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\InstallContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -734,18 +735,7 @@ class LicenseService
 
     private function isLocalInstallContext(): bool
     {
-        if (app()->environment(['local', 'testing'])) {
-            return true;
-        }
-
-        $host = strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST));
-        if ($host === '') {
-            return false;
-        }
-
-        return in_array($host, ['localhost', '127.0.0.1', '::1'], true)
-            || str_ends_with($host, '.local')
-            || str_ends_with($host, '.test');
+        return InstallContext::isLocalInstall();
     }
 
     private function envFallbackAllowed(): bool

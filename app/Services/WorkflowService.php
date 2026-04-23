@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Deployment;
 use App\Models\Project;
 use App\Models\Workflow;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
@@ -30,20 +31,15 @@ class WorkflowService
         if ($this->hasWorkflowRules()) {
             $workflows = Workflow::query()
                 ->where('enabled', true)
-                ->where('action', $deployment->action)
-                ->where('status', $deployment->status)
                 ->orderBy('id')
                 ->get();
 
             foreach ($workflows as $workflow) {
-                if ($workflow->channel === 'email') {
-                    $messages = array_merge($messages, $this->sendWorkflowEmail($workflow, $deployment, $project));
+                if (! $this->workflowMatchesDeployment($workflow, $deployment)) {
                     continue;
                 }
 
-                if ($workflow->channel === 'webhook') {
-                    $messages = array_merge($messages, $this->sendWorkflowWebhook($workflow, $deployment, $project));
-                }
+                $messages = array_merge($messages, $this->deliverWorkflow($workflow, $deployment, $project));
             }
 
             return $messages;
@@ -70,6 +66,35 @@ class WorkflowService
         }
 
         return $messages;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function deliverWorkflow(Workflow $workflow, Deployment $deployment, Project $project): array
+    {
+        $messages = [];
+
+        foreach ($workflow->deliveryDefinitions() as $delivery) {
+            $type = $delivery['type'] ?? null;
+
+            if ($type === 'email') {
+                $messages = array_merge($messages, $this->sendWorkflowEmail($workflow, $delivery, $deployment, $project));
+                continue;
+            }
+
+            if ($type === 'webhook') {
+                $messages = array_merge($messages, $this->sendWorkflowWebhook($workflow, $delivery, $deployment, $project));
+            }
+        }
+
+        return $messages;
+    }
+
+    private function workflowMatchesDeployment(Workflow $workflow, Deployment $deployment): bool
+    {
+        return in_array($deployment->action, $workflow->triggerActions(), true)
+            && in_array($deployment->status, $workflow->triggerStatuses(), true);
     }
 
     /**
@@ -123,13 +148,13 @@ class WorkflowService
 
             $secret = (string) $this->settings->getDecrypted('workflows.webhook.secret', '');
             if ($secret !== '') {
-                $signature = hash_hmac('sha256', json_encode($payload), $secret);
+                $signature = $this->signPayload($payload, $secret);
                 $request = $request->withHeaders([
                     'X-GWM-Signature' => $signature,
                 ]);
             }
 
-            $request->post($url, $payload);
+            $request->post($url, $payload)->throw();
             $messages[] = 'Workflow webhook sent to '.$url.'.';
         } catch (\Throwable $exception) {
             $messages[] = 'Workflow webhook failed: '.$exception->getMessage();
@@ -139,15 +164,17 @@ class WorkflowService
     }
 
     /**
+     * @param  array<string, mixed>  $delivery
      * @return array<int, string>
      */
-    private function sendWorkflowEmail(Workflow $workflow, Deployment $deployment, Project $project): array
+    private function sendWorkflowEmail(Workflow $workflow, array $delivery, Deployment $deployment, Project $project): array
     {
         $messages = [];
-        $recipients = $this->resolveRecipientsForWorkflow($workflow, $project);
+        $recipients = $this->resolveRecipientsForDelivery($delivery, $project);
+        $label = $this->deliveryLabel($workflow, $delivery);
 
         if ($recipients === []) {
-            return ['Workflow "'.$workflow->name.'" skipped (no recipients configured).'];
+            return ['Workflow "'.$workflow->name.'" '.$label.' skipped (no recipients configured).'];
         }
 
         try {
@@ -160,42 +187,44 @@ class WorkflowService
                 $message->to($recipients)->subject($subject);
             });
 
-            $messages[] = 'Workflow "'.$workflow->name.'" email sent to '.implode(', ', $recipients).'.';
+            $messages[] = 'Workflow "'.$workflow->name.'" '.$label.' sent to '.implode(', ', $recipients).'.';
         } catch (\Throwable $exception) {
-            $messages[] = 'Workflow "'.$workflow->name.'" email failed: '.$exception->getMessage();
+            $messages[] = 'Workflow "'.$workflow->name.'" '.$label.' failed: '.$exception->getMessage();
         }
 
         return $messages;
     }
 
     /**
+     * @param  array<string, mixed>  $delivery
      * @return array<int, string>
      */
-    private function sendWorkflowWebhook(Workflow $workflow, Deployment $deployment, Project $project): array
+    private function sendWorkflowWebhook(Workflow $workflow, array $delivery, Deployment $deployment, Project $project): array
     {
         $messages = [];
-        $url = trim((string) $workflow->webhook_url);
+        $url = trim((string) ($delivery['url'] ?? ''));
+        $label = $this->deliveryLabel($workflow, $delivery);
 
         if ($url === '') {
-            return ['Workflow "'.$workflow->name.'" skipped (no webhook URL configured).'];
+            return ['Workflow "'.$workflow->name.'" '.$label.' skipped (no webhook URL configured).'];
         }
 
-        $payload = $this->buildWebhookPayload($deployment, $project, $workflow);
+        $payload = $this->buildWebhookPayload($deployment, $project, $workflow, $delivery);
 
         try {
             $request = Http::timeout(8);
-            $secret = (string) ($workflow->webhook_secret ?? '');
+            $secret = $this->decryptDeliverySecret($delivery);
             if ($secret !== '') {
-                $signature = hash_hmac('sha256', json_encode($payload), $secret);
+                $signature = $this->signPayload($payload, $secret);
                 $request = $request->withHeaders([
                     'X-GWM-Signature' => $signature,
                 ]);
             }
 
-            $request->post($url, $payload);
-            $messages[] = 'Workflow "'.$workflow->name.'" webhook sent to '.$url.'.';
+            $request->post($url, $payload)->throw();
+            $messages[] = 'Workflow "'.$workflow->name.'" '.$label.' sent to '.$url.'.';
         } catch (\Throwable $exception) {
-            $messages[] = 'Workflow "'.$workflow->name.'" webhook failed: '.$exception->getMessage();
+            $messages[] = 'Workflow "'.$workflow->name.'" '.$label.' failed: '.$exception->getMessage();
         }
 
         return $messages;
@@ -231,17 +260,18 @@ class WorkflowService
     }
 
     /**
+     * @param  array<string, mixed>  $delivery
      * @return array<int, string>
      */
-    private function resolveRecipientsForWorkflow(Workflow $workflow, Project $project): array
+    private function resolveRecipientsForDelivery(array $delivery, Project $project): array
     {
         $recipients = [];
 
-        if ($workflow->include_owner && $project->user?->email) {
+        if ((bool) ($delivery['include_owner'] ?? false) && $project->user?->email) {
             $recipients[] = $project->user->email;
         }
 
-        $extra = (string) ($workflow->recipients ?? '');
+        $extra = (string) ($delivery['recipients'] ?? '');
         if ($extra !== '') {
             $list = preg_split('/[,\n]+/', $extra) ?: [];
             $recipients = array_merge($recipients, array_filter(array_map('trim', $list)));
@@ -268,9 +298,10 @@ class WorkflowService
     }
 
     /**
+     * @param  array<string, mixed>|null  $delivery
      * @return array<string, mixed>
      */
-    private function buildWebhookPayload(Deployment $deployment, Project $project, ?Workflow $workflow = null): array
+    private function buildWebhookPayload(Deployment $deployment, Project $project, ?Workflow $workflow = null, ?array $delivery = null): array
     {
         $eventKey = $deployment->action.'_'.$deployment->status;
         $eventStandard = $deployment->action.'.'.$deployment->status;
@@ -287,6 +318,7 @@ class WorkflowService
                 'repo' => $project->repo_url,
                 'branch' => $project->default_branch,
                 'path' => $project->local_path,
+                'site_url' => $project->site_url,
             ],
             'deployment' => [
                 'id' => $deployment->id,
@@ -297,6 +329,12 @@ class WorkflowService
                 'started_at' => optional($deployment->started_at)->toDateTimeString(),
                 'finished_at' => optional($deployment->finished_at)->toDateTimeString(),
             ],
+            'links' => [
+                'app' => route('projects.index'),
+                'project' => route('projects.show', $project),
+                'action_center' => route('projects.action-center'),
+                'system_updates' => route('system.updates'),
+            ],
         ];
 
         if ($workflow) {
@@ -306,6 +344,25 @@ class WorkflowService
                 'channel' => $workflow->channel,
                 'action' => $workflow->action,
                 'status' => $workflow->status,
+                'actions' => $workflow->triggerActions(),
+                'statuses' => $workflow->triggerStatuses(),
+                'deliveries' => array_map(function (array $workflowDelivery): array {
+                    return [
+                        'type' => $workflowDelivery['type'] ?? 'email',
+                        'name' => trim((string) ($workflowDelivery['name'] ?? '')),
+                        'target' => ($workflowDelivery['type'] ?? '') === 'webhook'
+                            ? trim((string) ($workflowDelivery['url'] ?? ''))
+                            : $this->formatEmailDeliveryTarget($workflowDelivery),
+                    ];
+                }, $workflow->deliveryDefinitions()),
+            ];
+        }
+
+        if ($delivery) {
+            $payload['destination'] = [
+                'type' => $delivery['type'] ?? 'webhook',
+                'name' => trim((string) ($delivery['name'] ?? '')),
+                'target' => trim((string) ($delivery['url'] ?? '')),
             ];
         }
 
@@ -323,5 +380,70 @@ class WorkflowService
     private function formatActionLabel(string $action): string
     {
         return Str::headline($action);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function signPayload(array $payload, string $secret): string
+    {
+        return hash_hmac('sha256', json_encode($payload, JSON_UNESCAPED_SLASHES), $secret);
+    }
+
+    /**
+     * @param  array<string, mixed>  $delivery
+     */
+    private function decryptDeliverySecret(array $delivery): string
+    {
+        $encrypted = $delivery['secret_encrypted'] ?? null;
+
+        if (! is_string($encrypted) || trim($encrypted) === '') {
+            return '';
+        }
+
+        try {
+            return Crypt::decryptString($encrypted);
+        } catch (\Throwable) {
+            return '';
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $delivery
+     */
+    private function deliveryLabel(Workflow $workflow, array $delivery): string
+    {
+        $name = trim((string) ($delivery['name'] ?? ''));
+        $type = ($delivery['type'] ?? 'delivery') === 'webhook' ? 'webhook' : 'email';
+
+        if ($name !== '') {
+            return $type.' "'.$name.'"';
+        }
+
+        return $type;
+    }
+
+    /**
+     * @param  array<string, mixed>  $delivery
+     */
+    private function formatEmailDeliveryTarget(array $delivery): string
+    {
+        $parts = [];
+
+        if ((bool) ($delivery['include_owner'] ?? false)) {
+            $parts[] = 'Project owner';
+        }
+
+        $extra = trim((string) ($delivery['recipients'] ?? ''));
+        if ($extra !== '') {
+            $list = preg_split('/[,\n]+/', $extra) ?: [];
+            $list = array_values(array_filter(array_map('trim', $list)));
+
+            if ($list !== []) {
+                $parts[] = count($list) === 1 ? $list[0] : count($list).' extra recipients';
+            }
+        }
+
+        return $parts !== [] ? implode(' + ', $parts) : 'No recipients configured';
     }
 }

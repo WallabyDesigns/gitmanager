@@ -1,10 +1,5 @@
 @php
-    use App\Models\AppUpdate;
-    use App\Models\AuditIssue;
-    use App\Models\Deployment;
-    use App\Models\DeploymentQueueItem;
-    use App\Models\Project;
-    use App\Models\SecurityAlert;
+    use App\Services\NavigationStateService;
 
     $showBulkActions = $showBulkActions ?? false;
     $tab = $projectsTab ?? (request()->routeIs('projects.queue')
@@ -12,55 +7,12 @@
         : (request()->routeIs('projects.create')
             ? 'create'
             : (request()->routeIs('projects.action-center') ? 'action-center' : 'list')));
-    $user = auth()->user();
-    $userId = $user?->id;
-    $isAdmin = $user?->isAdmin() ?? false;
-    $isEnterprise = app(\App\Services\EditionService::class)->current() === \App\Services\EditionService::ENTERPRISE;
+    $projectNavState = app(NavigationStateService::class)->projectsSidebarState(auth()->user());
+    $isAdmin = (bool) ($projectNavState['isAdmin'] ?? false);
+    $isEnterprise = (bool) ($projectNavState['isEnterprise'] ?? false);
     $isFtpRoute = request()->routeIs('ftp-accounts.*');
-    $queueCount = $userId
-        ? DeploymentQueueItem::query()
-            ->whereIn('status', ['queued', 'running'])
-            ->whereHas('project', fn ($query) => $query->where('user_id', $userId))
-            ->count()
-        : 0;
-    $securityCount = $userId
-        ? SecurityAlert::query()
-            ->where('state', 'open')
-            ->whereHas('project', fn ($query) => $query->where('user_id', $userId))
-            ->count()
-        : 0;
-    $auditCount = $userId
-        ? AuditIssue::query()
-            ->where('status', 'open')
-            ->whereHas('project', fn ($query) => $query->where('user_id', $userId))
-            ->count()
-        : 0;
-    $dependencyIssueCount = 0;
-    if ($userId) {
-        $dependencyIssueCount = Project::query()
-            ->where('user_id', $userId)
-            ->addSelect([
-                'last_composer_status' => Deployment::query()
-                    ->select('status')
-                    ->whereColumn('project_id', 'projects.id')
-                    ->whereIn('action', ['composer_install', 'composer_update', 'composer_audit'])
-                    ->latest('started_at')
-                    ->limit(1),
-                'last_npm_status' => Deployment::query()
-                    ->select('status')
-                    ->whereColumn('project_id', 'projects.id')
-                    ->whereIn('action', ['npm_install', 'npm_update', 'npm_audit_fix', 'npm_audit_fix_force'])
-                    ->latest('started_at')
-                    ->limit(1),
-            ])
-            ->get()
-            ->filter(fn ($project) => in_array($project->last_composer_status ?? null, ['failed', 'warning'], true)
-                || in_array($project->last_npm_status ?? null, ['failed', 'warning'], true))
-            ->count();
-    }
-    $latestUpdate = $isAdmin ? AppUpdate::query()->orderByDesc('started_at')->first() : null;
-    $updateIssueCount = $latestUpdate && $latestUpdate->status === 'failed' ? 1 : 0;
-    $actionCenterCount = $securityCount + $auditCount + $dependencyIssueCount + $updateIssueCount;
+    $queueCount = (int) ($projectNavState['queueCount'] ?? 0);
+    $actionCenterCount = (int) ($projectNavState['actionCenterCount'] ?? 0);
 
     $currentTabLabel = match ($tab) {
         'create' => 'Create Project',
@@ -109,6 +61,7 @@
             <nav class="mt-4 space-y-1.5" aria-label="Projects navigation">
                 <a
                     href="{{ route('projects.create') }}"
+                    wire:navigate.hover
                     class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'create' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                 >
                     <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -116,6 +69,7 @@
                 </a>
                 <a
                     href="{{ route('projects.index') }}"
+                    wire:navigate.hover
                     class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'list' && ! $isFtpRoute ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                 >
                     <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" /></svg>
@@ -123,6 +77,7 @@
                 </a>
                 <a
                     href="{{ route('projects.queue') }}"
+                    wire:navigate.hover
                     class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'queue' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                 >
                     <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" /></svg>
@@ -135,6 +90,7 @@
                 </a>
                 <a
                     href="{{ route('projects.action-center') }}"
+                    wire:navigate.hover
                     class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'action-center' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                 >
                     <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10.34 3.94c.09-.542.56-.94 1.11-.94h1.1c.55 0 1.02.398 1.11.94l.154.925c.062.374.312.686.643.87.128.071.255.145.378.223.324.205.72.266 1.075.133l.88-.33a1.125 1.125 0 011.37.49l.55.952a1.125 1.125 0 01-.26 1.43l-.726.598c-.292.24-.437.613-.43.991.003.149.003.298 0 .447-.007.378.138.75.43.99l.726.599c.424.35.534.954.26 1.43l-.55.952a1.125 1.125 0 01-1.37.49l-.88-.33c-.355-.133-.751-.072-1.075.133-.123.078-.25.152-.378.223-.331.184-.581.496-.643.87l-.154.925c-.09.542-.56.94-1.11.94h-1.1c-.55 0-1.02-.398-1.11-.94l-.154-.925a1.125 1.125 0 00-.643-.87 6.343 6.343 0 01-.378-.223c-.324-.205-.72-.266-1.075-.133l-.88.33a1.125 1.125 0 01-1.37-.49l-.55-.952a1.125 1.125 0 01.26-1.43l.726-.598c.292-.24.437-.613.43-.991a9.079 9.079 0 010-.447c.007-.378-.138-.75-.43-.99l-.726-.599a1.125 1.125 0 01-.26-1.43l.55-.952a1.125 1.125 0 011.37-.49l.88.33c.355.133.751.072 1.075-.133.123-.078.25-.152.378-.223.331-.184.581-.496.643-.87l.154-.925z" /><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 12a2.25 2.25 0 104.5 0 2.25 2.25 0 00-4.5 0z" /></svg>
@@ -146,10 +102,11 @@
                     </span>
                 </a>
                 @if ($isAdmin)
-                    <a
-                        href="{{ route('ftp-accounts.index') }}"
-                        class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ request()->routeIs('ftp-accounts.*') ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
-                    >
+                        <a
+                            href="{{ route('ftp-accounts.index') }}"
+                            wire:navigate.hover
+                            class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ request()->routeIs('ftp-accounts.*') ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
+                        >
                         <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg>
                         FTP/SSH Access
                     </a>
@@ -226,6 +183,7 @@
                 <nav class="p-4 space-y-1.5" aria-label="Projects navigation">
                     <a
                         href="{{ route('projects.create') }}"
+                        wire:navigate.hover
                         @click="open = false"
                         class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'create' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                     >
@@ -234,6 +192,7 @@
                     </a>
                     <a
                         href="{{ route('projects.index') }}"
+                        wire:navigate.hover
                         @click="open = false"
                         class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'list' && ! $isFtpRoute ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                     >
@@ -242,6 +201,7 @@
                     </a>
                     <a
                         href="{{ route('projects.queue') }}"
+                        wire:navigate.hover
                         @click="open = false"
                         class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'queue' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                     >
@@ -255,6 +215,7 @@
                     </a>
                     <a
                         href="{{ route('projects.action-center') }}"
+                        wire:navigate.hover
                         @click="open = false"
                         class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'action-center' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                     >
@@ -269,6 +230,7 @@
                     @if ($isAdmin)
                         <a
                             href="{{ route('ftp-accounts.index') }}"
+                            wire:navigate.hover
                             @click="open = false"
                             class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ request()->routeIs('ftp-accounts.*') ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                         >

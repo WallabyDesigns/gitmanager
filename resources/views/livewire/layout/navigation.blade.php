@@ -1,12 +1,7 @@
 <?php
 
 use App\Livewire\Actions\Logout;
-use App\Models\AppUpdate;
-use App\Models\AuditIssue;
-use App\Models\SecurityAlert;
-use App\Services\EditionService;
-use App\Services\SelfUpdateService;
-use App\Services\SettingsService;
+use App\Services\NavigationStateService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Volt\Component;
 
@@ -19,43 +14,15 @@ new class extends Component
     public bool $isEnterprise = false;
     public string $brandName = 'Git Web Manager';
 
-    public function mount(SelfUpdateService $selfUpdate, SettingsService $settings, EditionService $edition): void
+    public function mount(NavigationStateService $navigationState): void
     {
-        $userId = Auth::id();
-        $securityCount = $userId
-            ? SecurityAlert::query()
-                ->where('state', 'open')
-                ->whereHas('project', fn ($query) => $query->where('user_id', $userId))
-                ->count()
-            : 0;
-
-        $latestUpdate = AppUpdate::query()->orderByDesc('started_at')->first();
-        $updateIssueCount = $latestUpdate && $latestUpdate->status === 'failed' ? 1 : 0;
-
-        $auditCount = $userId
-            ? AuditIssue::query()
-                ->where('status', 'open')
-                ->whereHas('project', fn ($query) => $query->where('user_id', $userId))
-                ->count()
-            : 0;
-
-        $this->openAlerts = $securityCount + $auditCount + $updateIssueCount;
-
-        $this->checkUpdatesEnabled = (bool) $settings->get('system.check_updates', true);
-        if ($this->checkUpdatesEnabled) {
-            $status = $selfUpdate->getUpdateStatus();
-            $this->updateAvailable = ($status['status'] ?? '') === 'update-available';
-        }
-
-        $this->editionLabel = $edition->label();
-        $this->isEnterprise = $edition->current() === EditionService::ENTERPRISE;
-        $this->brandName = (string) config('app.name', 'Git Web Manager');
-        if ($this->isEnterprise) {
-            $customBrand = trim((string) $settings->get('system.white_label.name', ''));
-            if ($customBrand !== '') {
-                $this->brandName = $customBrand;
-            }
-        }
+        $state = $navigationState->topNavigationState(Auth::user());
+        $this->openAlerts = (int) ($state['openAlerts'] ?? 0);
+        $this->updateAvailable = (bool) ($state['updateAvailable'] ?? false);
+        $this->checkUpdatesEnabled = (bool) ($state['checkUpdatesEnabled'] ?? true);
+        $this->editionLabel = (string) ($state['editionLabel'] ?? 'Community Edition');
+        $this->isEnterprise = (bool) ($state['isEnterprise'] ?? false);
+        $this->brandName = (string) ($state['brandName'] ?? config('app.name', 'Git Web Manager'));
     }
     /**
      * Log the current user out of the application.
@@ -75,7 +42,7 @@ new class extends Component
             <div class="flex">
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center min-w-0">
-                    <a href="{{ route('projects.index') }}" class="flex items-center min-w-0">
+                    <a href="{{ route('projects.index') }}" wire:navigate.hover class="flex items-center min-w-0">
                         <x-application-logo class="block h-9 w-auto shrink-0 fill-current text-slate-800 dark:text-slate-100" />
                         <div class="min-w-0 px-2">
                             <h2 class="text-base sm:text-xl font-semibold text-slate-900 dark:text-slate-100 truncate">

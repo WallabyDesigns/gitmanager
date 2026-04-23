@@ -12,6 +12,7 @@ use App\Services\LicenseService;
 use App\Services\LogCleanupService;
 use App\Services\SchedulerService;
 use App\Services\SettingsService;
+use App\Support\InstallContext;
 use App\Support\SchedulerTaskIntervals;
 use Composer\InstalledVersions;
 use Livewire\Component;
@@ -456,20 +457,7 @@ class Settings extends Component
 
     private function detectLocalInstall(): bool
     {
-        if (app()->environment(['local', 'testing'])) {
-            return true;
-        }
-
-        $host = strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST));
-        if ($host === '') {
-            return false;
-        }
-
-        if (in_array($host, ['localhost', '127.0.0.1', '::1'], true)) {
-            return true;
-        }
-
-        return str_ends_with($host, '.local') || str_ends_with($host, '.test');
+        return InstallContext::isLocalInstall();
     }
 
     /**
