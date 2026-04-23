@@ -3,9 +3,9 @@
 
 Git Web Manager (GWM) is a self-hosted Laravel + Livewire application for deploying and monitoring Git-backed websites from a single dashboard. It handles deploys, rollbacks, health checks, preview builds by commit, dependency actions, and a security overview for Dependabot alerts.
 
-[![demo](/assets/snapshot.jpg)](https://www.youtube.com/watch?v=uppbkS9fids)
+[![demo](/assets/snapshot.jpg)](https://www.youtube.com/watch?v=mOFjSBnCGgc)
 
-Git Web Manager is not affiliated with, endorsed by, or sponsored by Git or GitHub. This is a completely free service that I work hard to maintain. Show your support if you found this useful!
+Git Web Manager is not affiliated with, endorsed by, or sponsored by Git or GitHub. This is a completely free service that I work hard to maintain. Show your support if you found this useful and want to support our efforts to provide meaningful content!
 
 [![please donate](https://img.shields.io/liberapay/receives/wallaby.svg?logo=liberapay)](https://liberapay.com/wallaby/donate)
 
