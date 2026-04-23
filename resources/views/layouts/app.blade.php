@@ -222,6 +222,7 @@
                 };
 
                 window.addEventListener('load', reveal, { once: true });
+                document.addEventListener('livewire:navigating', () => { revealed = false; });
                 document.addEventListener('livewire:navigated', reveal);
                 window.setTimeout(reveal, 2000);
 
