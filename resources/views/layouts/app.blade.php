@@ -222,8 +222,10 @@
                 };
 
                 window.addEventListener('load', reveal, { once: true });
-                document.addEventListener('livewire:navigating', () => { revealed = false; });
-                document.addEventListener('livewire:navigated', reveal);
+                document.addEventListener('livewire:navigated', () => {
+                    revealed = false;
+                    document.body?.classList.remove(preloadClass);
+                });
                 window.setTimeout(reveal, 2000);
 
                 if (document.readyState === 'complete') {

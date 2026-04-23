@@ -22,7 +22,7 @@
     };
 @endphp
 
-<div x-data="{ open: false }" class="contents" @keydown.escape.window="open = false" x-effect="document.body.classList.toggle('overflow-hidden', open)">
+<div x-data="{ open: false }" class="contents" @keydown.escape.window="open = false" @livewire:navigating.window="open = false" x-effect="document.body.classList.toggle('overflow-hidden', open)">
 
     {{-- Mobile trigger (hidden on lg+) --}}
     <div class="lg:hidden">
