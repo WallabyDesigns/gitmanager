@@ -21,12 +21,20 @@
                         Resolved Issues ({{ $resolvedCount }})
                     </a>
                 </div>
-                @if ($canSyncAlerts ?? false)
-                    <button type="button" wire:click="sync" wire:loading.attr="disabled" class="px-3 py-2 text-sm rounded-md border border-indigo-300 text-indigo-600 hover:text-indigo-800 dark:border-indigo-500/50 dark:text-indigo-300 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
-                        <x-loading-spinner target="sync" />
-                        Sync Alerts
-                    </button>
-                @endif
+                <div class="flex flex-wrap gap-2">
+                    @if (($canAttemptResolution ?? false) && $tab === 'current' && ($hasDependencyProjects || $alerts->isNotEmpty() || $auditIssues->isNotEmpty()))
+                        <button type="button" wire:click="resolveAll" wire:loading.attr="disabled" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/50 dark:text-emerald-300 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
+                            <x-loading-spinner target="resolveAll" />
+                            Attempt Resolve All
+                        </button>
+                    @endif
+                    @if ($canSyncAlerts ?? false)
+                        <button type="button" wire:click="sync" wire:loading.attr="disabled" class="px-3 py-2 text-sm rounded-md border border-indigo-300 text-indigo-600 hover:text-indigo-800 dark:border-indigo-500/50 dark:text-indigo-300 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
+                            <x-loading-spinner target="sync" />
+                            Sync Alerts
+                        </button>
+                    @endif
+                </div>
                     </div>
                     @if (! $sslVerifyEnabled)
                         <div class="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">
@@ -84,6 +92,12 @@
                                 </div>
                                 <div class="mt-3 flex flex-wrap gap-3 text-sm">
                                     <a href="{{ route('projects.show', $project) }}" class="text-indigo-600 dark:text-indigo-300">Open project</a>
+                                    @if ($tab === 'current')
+                                        <button type="button" wire:click="resolveDependencyProject({{ $project->id }})" wire:loading.attr="disabled" class="text-emerald-600 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-100 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
+                                            <x-loading-spinner target="resolveDependencyProject({{ $project->id }})" size="w-3 h-3" class="mr-1" />
+                                            Attempt Fix
+                                        </button>
+                                    @endif
                                 </div>
                             </div>
                         @endforeach
@@ -130,6 +144,13 @@
                                     @endif
                                 </div>
                                 <div class="mt-3 flex flex-wrap gap-3 text-sm">
+                                    @if ($tab === 'current')
+                                        <button type="button" wire:click="resolveSecurityAlert({{ $alert->id }})" wire:loading.attr="disabled" class="text-emerald-600 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-100 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
+                                            <x-loading-spinner target="resolveSecurityAlert({{ $alert->id }})" size="w-3 h-3" class="mr-1" />
+                                            Attempt Fix
+                                        </button>
+                                    @endif
+                                    <a href="{{ route('projects.show', $alert->project) }}" class="text-indigo-600 dark:text-indigo-300">Open project</a>
                                     @if ($alert->advisory_url)
                                         <a href="{{ $alert->advisory_url }}" target="_blank" class="text-indigo-600 dark:text-indigo-300">Advisory</a>
                                     @endif
@@ -185,6 +206,17 @@
                                     @endif
                                     @if ($issue->resolved_at)
                                         <span>Resolved: {{ \App\Support\DateFormatter::forUser($issue->resolved_at, 'M j, Y') }}</span>
+                                    @endif
+                                </div>
+                                <div class="mt-3 flex flex-wrap gap-3 text-sm">
+                                    @if ($tab === 'current')
+                                        <button type="button" wire:click="resolveAuditIssue({{ $issue->id }})" wire:loading.attr="disabled" class="text-emerald-600 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-100 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
+                                            <x-loading-spinner target="resolveAuditIssue({{ $issue->id }})" size="w-3 h-3" class="mr-1" />
+                                            Attempt Fix
+                                        </button>
+                                    @endif
+                                    @if ($issue->project)
+                                        <a href="{{ route('projects.show', $issue->project) }}" class="text-indigo-600 dark:text-indigo-300">Open project</a>
                                     @endif
                                 </div>
                             </div>

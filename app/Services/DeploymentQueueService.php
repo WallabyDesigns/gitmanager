@@ -10,6 +10,24 @@ use Illuminate\Support\Facades\DB;
 
 class DeploymentQueueService
 {
+    public function isIdle(): bool
+    {
+        $this->releaseStaleRunning();
+        app(DeploymentService::class)->releaseStaleRunningDeployments();
+
+        $hasQueuedOrRunningItems = DeploymentQueueItem::query()
+            ->whereIn('status', ['queued', 'running'])
+            ->exists();
+
+        if ($hasQueuedOrRunningItems) {
+            return false;
+        }
+
+        return ! Deployment::query()
+            ->where('status', 'running')
+            ->exists();
+    }
+
     public function enqueue(Project $project, string $action, array $payload = [], ?User $user = null): DeploymentQueueItem
     {
         $actionGroup = $this->actionGroup($action);
@@ -380,6 +398,50 @@ class DeploymentQueueService
                     $audit = $this->runAuditItem($project, $user, $payload);
                     $deployment = $audit['deployment'];
                     $markFailed = $audit['failed'];
+                    break;
+                case 'dependency_update':
+                    $deployment = $service->updateDependencies($project, $user);
+                    $markFailed = $deployment->status === 'failed';
+                    break;
+                case 'composer_install':
+                    $deployment = $service->composerInstall($project, $user);
+                    $markFailed = $deployment->status === 'failed';
+                    break;
+                case 'composer_update':
+                    $deployment = $service->composerUpdate($project, $user);
+                    $markFailed = $deployment->status === 'failed';
+                    break;
+                case 'composer_audit':
+                    $deployment = $service->composerAudit($project, $user);
+                    $markFailed = $deployment->status === 'failed';
+                    break;
+                case 'npm_install':
+                    $deployment = $service->npmInstall($project, $user);
+                    $markFailed = $deployment->status === 'failed';
+                    break;
+                case 'npm_update':
+                    $deployment = $service->npmUpdate($project, $user);
+                    $markFailed = $deployment->status === 'failed';
+                    break;
+                case 'npm_audit_fix':
+                    $deployment = $service->npmAuditFix($project, $user, false);
+                    $markFailed = $deployment->status === 'failed';
+                    break;
+                case 'npm_audit_fix_force':
+                    $deployment = $service->npmAuditFix($project, $user, true);
+                    $markFailed = $deployment->status === 'failed';
+                    break;
+                case 'app_clear_cache':
+                    $deployment = $service->appClearCache($project, $user);
+                    $markFailed = $deployment->status === 'failed';
+                    break;
+                case 'laravel_migrate':
+                    $deployment = $service->laravelMigrate($project, $user);
+                    $markFailed = $deployment->status === 'failed';
+                    break;
+                case 'custom_command':
+                    $deployment = $service->runCustomCommand($project, $user, (string) ($payload['command'] ?? ''));
+                    $markFailed = $deployment->status === 'failed';
                     break;
                 case 'deploy':
                 default:
