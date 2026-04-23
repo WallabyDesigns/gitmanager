@@ -27,7 +27,9 @@ class ActionCenterTest extends TestCase
         $this->actingAs($user)
             ->get(route('projects.action-center'))
             ->assertOk()
-            ->assertSee('Action Center');
+            ->assertSee('Action Center')
+            ->assertSee('Current Issues')
+            ->assertDontSee('Resolved Issues');
     }
 
     public function test_projects_action_center_shows_resolution_buttons_for_current_issues(): void
@@ -50,7 +52,9 @@ class ActionCenterTest extends TestCase
             ->get(route('projects.action-center'))
             ->assertOk()
             ->assertSee('Attempt Resolve All')
-            ->assertSee('Attempt Fix');
+            ->assertSee('Attempt Resolve All (Force)')
+            ->assertSee('Attempt Fix')
+            ->assertSee('Attempt Fix (Force)');
     }
 
     public function test_resolving_a_security_alert_queues_audit_and_update_actions_when_other_tasks_are_active(): void
@@ -177,6 +181,123 @@ class ActionCenterTest extends TestCase
         $this->assertSame([
             ['action' => 'audit_project', 'status' => 'completed'],
             ['action' => 'composer_update', 'status' => 'completed'],
+        ], $items);
+    }
+
+    public function test_force_fix_for_npm_audit_issue_queues_force_npm_action_when_other_tasks_are_active(): void
+    {
+        config()->set('gitmanager.deploy_queue.enabled', true);
+
+        $user = User::factory()->create();
+        $project = Project::factory()->create([
+            'user_id' => $user->id,
+            'permissions_locked' => false,
+            'ftp_enabled' => false,
+            'ssh_enabled' => false,
+        ]);
+
+        $issue = AuditIssue::query()->create([
+            'project_id' => $project->id,
+            'tool' => 'npm',
+            'status' => 'open',
+            'severity' => 'high',
+            'summary' => 'npm audit found vulnerabilities',
+        ]);
+
+        Deployment::query()->create([
+            'project_id' => $project->id,
+            'triggered_by' => $user->id,
+            'action' => 'deploy',
+            'status' => 'running',
+            'started_at' => now(),
+        ]);
+
+        $this->mock(EditionService::class, function ($mock): void {
+            $mock->shouldReceive('current')
+                ->andReturn(EditionService::ENTERPRISE);
+        });
+
+        Livewire::actingAs($user)
+            ->test(SecurityIndex::class)
+            ->call('resolveAuditIssueForce', $issue->id);
+
+        $actions = DeploymentQueueItem::query()
+            ->where('project_id', $project->id)
+            ->orderBy('position')
+            ->pluck('action')
+            ->all();
+
+        $this->assertSame(['audit_project', 'npm_audit_fix_force'], $actions);
+    }
+
+    public function test_force_fix_for_npm_alert_runs_immediately_when_queue_is_idle(): void
+    {
+        config()->set('gitmanager.deploy_queue.enabled', true);
+
+        $user = User::factory()->create();
+        $project = Project::factory()->create([
+            'user_id' => $user->id,
+            'permissions_locked' => false,
+            'ftp_enabled' => false,
+            'ssh_enabled' => false,
+        ]);
+
+        $alert = SecurityAlert::query()->create([
+            'project_id' => $project->id,
+            'github_alert_id' => 2003,
+            'state' => 'open',
+            'severity' => 'high',
+            'package_name' => 'vite',
+            'ecosystem' => 'npm',
+        ]);
+
+        $this->mock(EditionService::class, function ($mock): void {
+            $mock->shouldReceive('current')
+                ->andReturn(EditionService::ENTERPRISE);
+        });
+
+        $this->mock(AuditService::class, function ($mock): void {
+            $mock->shouldReceive('auditProject')
+                ->once()
+                ->andReturn([
+                    'results' => [],
+                ]);
+        });
+
+        $this->mock(DeploymentService::class, function ($mock) use ($project, $user): void {
+            $mock->shouldReceive('releaseStaleRunningDeployments')
+                ->once()
+                ->andReturnNull();
+            $mock->shouldReceive('npmAuditFix')
+                ->once()
+                ->withArgs(fn (Project $candidate, ?User $actor, bool $force): bool => $candidate->is($project) && $actor?->is($user) && $force)
+                ->andReturn(Deployment::query()->create([
+                    'project_id' => $project->id,
+                    'triggered_by' => $user->id,
+                    'action' => 'npm_audit_fix_force',
+                    'status' => 'success',
+                    'started_at' => now(),
+                    'finished_at' => now(),
+                ]));
+        });
+
+        Livewire::actingAs($user)
+            ->test(SecurityIndex::class)
+            ->call('resolveSecurityAlertForce', $alert->id);
+
+        $items = DeploymentQueueItem::query()
+            ->where('project_id', $project->id)
+            ->orderBy('position')
+            ->get(['action', 'status'])
+            ->map(fn (DeploymentQueueItem $item): array => [
+                'action' => $item->action,
+                'status' => $item->status,
+            ])
+            ->all();
+
+        $this->assertSame([
+            ['action' => 'audit_project', 'status' => 'completed'],
+            ['action' => 'npm_audit_fix_force', 'status' => 'completed'],
         ], $items);
     }
 

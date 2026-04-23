@@ -60,12 +60,13 @@ class DeploymentQueueService
         return $item;
     }
 
-    public function processNext(int $limit = 3): int
+    public function processNext(?int $limit = null): int
     {
         $this->normalizeQueuedPositions();
         $processed = 0;
+        $unlimited = $limit === null || $limit <= 0;
 
-        while ($processed < $limit) {
+        while ($unlimited || $processed < $limit) {
             $item = $this->reserveNext();
             if (! $item) {
                 break;

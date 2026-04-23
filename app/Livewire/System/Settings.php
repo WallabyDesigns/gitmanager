@@ -144,7 +144,7 @@ class Settings extends Component
 
     public function processQueue(DeploymentQueueService $queue, SchedulerService $scheduler): void
     {
-        $processed = $queue->processNext(3);
+        $processed = $queue->processNext((int) config('gitmanager.deploy_queue.batch_size', 0));
         $scheduler->recordManualRun();
         $scheduler->recordHeartbeat('manual');
 

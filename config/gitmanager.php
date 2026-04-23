@@ -28,6 +28,8 @@ return [
 
     'deploy_queue' => [
         'enabled' => env('GWM_DEPLOY_QUEUE_ENABLED', true),
+        // 0 drains the queue each time the processor runs.
+        'batch_size' => env('GWM_DEPLOY_QUEUE_BATCH_SIZE', 0),
         'stale_seconds' => env('GWM_DEPLOY_QUEUE_STALE_SECONDS', 900),
     ],
     'deployments' => [

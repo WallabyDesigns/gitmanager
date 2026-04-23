@@ -8,24 +8,25 @@
             @endif
             <div class="space-y-6">
                 @php
-                    $securityRoute = ($projectShell ?? false) ? 'projects.action-center' : 'system.security';
                     $hasDependencyProjects = ($dependencyProjects ?? collect())->isNotEmpty();
                 @endphp
                 <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div class="flex items-center gap-3 flex-wrap">
-                    <a href="{{ route($securityRoute, ['tab' => 'current']) }}" class="px-3 py-2 text-sm rounded-md {{ $tab === 'current' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300' }}">
-                        Current Issues ({{ $openCount }})
-                    </a>
-                    <a href="{{ route($securityRoute, ['tab' => 'resolved']) }}" class="px-3 py-2 text-sm rounded-md {{ $tab === 'resolved' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300' }}">
-                        Resolved Issues ({{ $resolvedCount }})
-                    </a>
-                </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Current Issues</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">
+                                {{ $openCount }} actionable issue{{ $openCount === 1 ? '' : 's' }} across dependency checks, alerts, and audits.
+                            </p>
+                        </div>
                 <div class="flex flex-wrap gap-2">
-                    @if (($canAttemptResolution ?? false) && $tab === 'current' && ($hasDependencyProjects || $alerts->isNotEmpty() || $auditIssues->isNotEmpty()))
+                    @if (($canAttemptResolution ?? false) && ($hasDependencyProjects || $alerts->isNotEmpty() || $auditIssues->isNotEmpty()))
                         <button type="button" wire:click="resolveAll" wire:loading.attr="disabled" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/50 dark:text-emerald-300 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
                             <x-loading-spinner target="resolveAll" />
                             Attempt Resolve All
+                        </button>
+                        <button type="button" wire:click="resolveAllForce" wire:loading.attr="disabled" onclick="return confirm('Force fixes can introduce breaking dependency changes. Continue?') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-rose-300 text-rose-700 hover:text-rose-800 dark:border-rose-500/50 dark:text-rose-300 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
+                            <x-loading-spinner target="resolveAllForce" />
+                            Attempt Resolve All (Force)
                         </button>
                     @endif
                     @if ($canSyncAlerts ?? false)
@@ -59,7 +60,7 @@
 
                 <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
                     <div class="space-y-6">
-                @if ($hasDependencyProjects && $tab === 'current')
+                @if ($hasDependencyProjects)
                     <div class="space-y-4">
                         <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Dependency Issues</h4>
                         @foreach ($dependencyProjects as $project)
@@ -92,12 +93,14 @@
                                 </div>
                                 <div class="mt-3 flex flex-wrap gap-3 text-sm">
                                     <a href="{{ route('projects.show', $project) }}" class="text-indigo-600 dark:text-indigo-300">Open project</a>
-                                    @if ($tab === 'current')
-                                        <button type="button" wire:click="resolveDependencyProject({{ $project->id }})" wire:loading.attr="disabled" class="text-emerald-600 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-100 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
-                                            <x-loading-spinner target="resolveDependencyProject({{ $project->id }})" size="w-3 h-3" class="mr-1" />
-                                            Attempt Fix
-                                        </button>
-                                    @endif
+                                    <button type="button" wire:click="resolveDependencyProject({{ $project->id }})" wire:loading.attr="disabled" class="text-emerald-600 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-100 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
+                                        <x-loading-spinner target="resolveDependencyProject({{ $project->id }})" size="w-3 h-3" class="mr-1" />
+                                        Attempt Fix
+                                    </button>
+                                    <button type="button" wire:click="resolveDependencyProjectForce({{ $project->id }})" wire:loading.attr="disabled" onclick="return confirm('Force fixes can introduce breaking dependency changes. Continue?') || event.stopImmediatePropagation()" class="text-rose-600 hover:text-rose-800 dark:text-rose-300 dark:hover:text-rose-100 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
+                                        <x-loading-spinner target="resolveDependencyProjectForce({{ $project->id }})" size="w-3 h-3" class="mr-1" />
+                                        Attempt Fix (Force)
+                                    </button>
                                 </div>
                             </div>
                         @endforeach
@@ -144,12 +147,14 @@
                                     @endif
                                 </div>
                                 <div class="mt-3 flex flex-wrap gap-3 text-sm">
-                                    @if ($tab === 'current')
-                                        <button type="button" wire:click="resolveSecurityAlert({{ $alert->id }})" wire:loading.attr="disabled" class="text-emerald-600 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-100 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
-                                            <x-loading-spinner target="resolveSecurityAlert({{ $alert->id }})" size="w-3 h-3" class="mr-1" />
-                                            Attempt Fix
-                                        </button>
-                                    @endif
+                                    <button type="button" wire:click="resolveSecurityAlert({{ $alert->id }})" wire:loading.attr="disabled" class="text-emerald-600 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-100 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
+                                        <x-loading-spinner target="resolveSecurityAlert({{ $alert->id }})" size="w-3 h-3" class="mr-1" />
+                                        Attempt Fix
+                                    </button>
+                                    <button type="button" wire:click="resolveSecurityAlertForce({{ $alert->id }})" wire:loading.attr="disabled" onclick="return confirm('Force fixes can introduce breaking dependency changes. Continue?') || event.stopImmediatePropagation()" class="text-rose-600 hover:text-rose-800 dark:text-rose-300 dark:hover:text-rose-100 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
+                                        <x-loading-spinner target="resolveSecurityAlertForce({{ $alert->id }})" size="w-3 h-3" class="mr-1" />
+                                        Attempt Fix (Force)
+                                    </button>
                                     <a href="{{ route('projects.show', $alert->project) }}" class="text-indigo-600 dark:text-indigo-300">Open project</a>
                                     @if ($alert->advisory_url)
                                         <a href="{{ $alert->advisory_url }}" target="_blank" class="text-indigo-600 dark:text-indigo-300">Advisory</a>
@@ -209,12 +214,14 @@
                                     @endif
                                 </div>
                                 <div class="mt-3 flex flex-wrap gap-3 text-sm">
-                                    @if ($tab === 'current')
-                                        <button type="button" wire:click="resolveAuditIssue({{ $issue->id }})" wire:loading.attr="disabled" class="text-emerald-600 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-100 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
-                                            <x-loading-spinner target="resolveAuditIssue({{ $issue->id }})" size="w-3 h-3" class="mr-1" />
-                                            Attempt Fix
-                                        </button>
-                                    @endif
+                                    <button type="button" wire:click="resolveAuditIssue({{ $issue->id }})" wire:loading.attr="disabled" class="text-emerald-600 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-100 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
+                                        <x-loading-spinner target="resolveAuditIssue({{ $issue->id }})" size="w-3 h-3" class="mr-1" />
+                                        Attempt Fix
+                                    </button>
+                                    <button type="button" wire:click="resolveAuditIssueForce({{ $issue->id }})" wire:loading.attr="disabled" onclick="return confirm('Force fixes can introduce breaking dependency changes. Continue?') || event.stopImmediatePropagation()" class="text-rose-600 hover:text-rose-800 dark:text-rose-300 dark:hover:text-rose-100 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
+                                        <x-loading-spinner target="resolveAuditIssueForce({{ $issue->id }})" size="w-3 h-3" class="mr-1" />
+                                        Attempt Fix (Force)
+                                    </button>
                                     @if ($issue->project)
                                         <a href="{{ route('projects.show', $issue->project) }}" class="text-indigo-600 dark:text-indigo-300">Open project</a>
                                     @endif
@@ -225,7 +232,7 @@
                 @endif
 
                 @if (! $hasDependencyProjects && $alerts->isEmpty() && $auditIssues->isEmpty())
-                    <p class="text-sm text-slate-500 dark:text-slate-400">No issues found for this tab.</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">No current issues found.</p>
                 @endif
                     </div>
                 </div>

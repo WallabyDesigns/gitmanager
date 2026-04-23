@@ -7,7 +7,7 @@ use Illuminate\Console\Command;
 
 class ProcessDeploymentQueue extends Command
 {
-    protected $signature = 'deployments:process-queue {--limit=3}';
+    protected $signature = 'deployments:process-queue {--limit=}';
 
     protected $description = 'Process queued task requests.';
 
@@ -18,7 +18,10 @@ class ProcessDeploymentQueue extends Command
             return self::SUCCESS;
         }
 
-        $limit = (int) $this->option('limit') ?: 3;
+        $limitOption = $this->option('limit');
+        $limit = $limitOption !== null && $limitOption !== ''
+            ? (int) $limitOption
+            : (int) config('gitmanager.deploy_queue.batch_size', 0);
         $processed = $queue->processNext($limit);
         $this->info("Processed {$processed} queued item(s).");
 

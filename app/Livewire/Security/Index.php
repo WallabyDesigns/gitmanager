@@ -38,25 +38,16 @@ class Index extends Component
 
     public function render()
     {
-        $tab = in_array($this->tab, ['current', 'resolved'], true) ? $this->tab : 'current';
         $projectShell = $this->projectShell;
         $canSyncAlerts = Auth::user()?->isAdmin() ?? false;
 
-        $query = $this->alertsQuery();
+        $alerts = $this->alertsQuery()
+            ->where('state', 'open');
 
-        $alerts = $tab === 'resolved'
-            ? $query->where('state', '!=', 'open')
-            : $query->where('state', 'open');
+        $auditIssues = $this->auditIssuesQuery()
+            ->where('status', 'open');
 
-        $auditQuery = $this->auditIssuesQuery();
-
-        $auditIssues = $tab === 'resolved'
-            ? $auditQuery->where('status', 'resolved')
-            : $auditQuery->where('status', 'open');
-
-        $dependencyProjects = $tab === 'current'
-            ? $this->dependencyIssueProjects()
-            : collect();
+        $dependencyProjects = $this->dependencyIssueProjects();
         $dependencyIssueCount = $dependencyProjects->count();
 
         $latestUpdate = $canSyncAlerts
@@ -76,16 +67,7 @@ class Index extends Component
         return view('livewire.security.index', [
             'alerts' => $alerts->orderByDesc('alert_created_at')->get(),
             'openCount' => $openCount,
-            'resolvedCount' => SecurityAlert::query()
-                ->where('state', '!=', 'open')
-                ->whereHas('project', fn ($query) => $query->where('user_id', Auth::id()))
-                ->count()
-                + AuditIssue::query()
-                    ->where('status', 'resolved')
-                    ->whereHas('project', fn ($query) => $query->where('user_id', Auth::id()))
-                    ->count(),
             'actionableCount' => $openCount + $updateIssueCount,
-            'tab' => $tab,
             'appUpdateFailed' => $latestUpdate && $latestUpdate->status === 'failed',
             'latestUpdate' => $latestUpdate,
             'sslVerifyEnabled' => $this->sslVerifyEnabled,
@@ -94,7 +76,7 @@ class Index extends Component
             'dependencyIssueCount' => $dependencyIssueCount,
             'projectShell' => $projectShell,
             'canSyncAlerts' => $canSyncAlerts,
-            'canAttemptResolution' => $this->tab === 'current',
+            'canAttemptResolution' => true,
         ])->layout('layouts.app', [
             'title' => $projectShell ? 'Action Center' : 'Security',
             'header' => $projectShell
@@ -121,12 +103,6 @@ class Index extends Component
         AuditService $audit,
         EditionService $edition,
     ): void {
-        if ($this->tab !== 'current') {
-            $this->dispatch('notify', message: 'Switch to Current Issues to resolve actionable items.');
-
-            return;
-        }
-
         $plans = $this->resolutionPlans();
         if ($plans === []) {
             $this->dispatch('notify', message: 'No actionable issues are available to resolve.');
@@ -148,6 +124,7 @@ class Index extends Component
                 (bool) $plan['npm_update'],
                 'action_center_bulk_resolve',
                 false,
+                false,
                 $queue,
                 $deployment,
                 $audit,
@@ -166,6 +143,54 @@ class Index extends Component
         }
 
         $this->dispatchResolutionSummary($summary, $this->queueEnabled());
+    }
+
+    public function resolveAllForce(
+        DeploymentQueueService $queue,
+        DeploymentService $deployment,
+        AuditService $audit,
+        EditionService $edition,
+    ): void {
+        $plans = $this->resolutionPlans();
+        if ($plans === []) {
+            $this->dispatch('notify', message: 'No actionable issues are available to resolve.');
+
+            return;
+        }
+
+        $summary = [
+            'projects' => 0,
+            'actions' => 0,
+            'skipped' => 0,
+        ];
+
+        foreach ($plans as $plan) {
+            $result = $this->attemptProjectResolution(
+                $plan['project'],
+                (bool) $plan['audit'],
+                (bool) $plan['composer_update'],
+                (bool) $plan['npm_update'],
+                'action_center_bulk_force_resolve',
+                false,
+                true,
+                $queue,
+                $deployment,
+                $audit,
+                $edition,
+            );
+
+            if ($result['skipped']) {
+                $summary['skipped']++;
+                continue;
+            }
+
+            if ($result['actions'] > 0) {
+                $summary['projects']++;
+                $summary['actions'] += $result['actions'];
+            }
+        }
+
+        $this->dispatchResolutionSummary($summary, $this->queueEnabled(), true);
     }
 
     public function resolveDependencyProject(
@@ -190,11 +215,44 @@ class Index extends Component
                 $npmIssue,
                 'action_center_dependency_issue',
                 true,
+                false,
                 $queue,
                 $deployment,
                 $audit,
                 $edition,
             ),
+        );
+    }
+
+    public function resolveDependencyProjectForce(
+        int $projectId,
+        DeploymentQueueService $queue,
+        DeploymentService $deployment,
+        AuditService $audit,
+        EditionService $edition,
+    ): void {
+        $project = $this->ownedProject($projectId);
+        $this->authorize('update', $project);
+
+        $composerIssue = in_array((string) $project->getAttribute('last_composer_status'), ['failed', 'warning'], true);
+        $npmIssue = in_array((string) $project->getAttribute('last_npm_status'), ['failed', 'warning'], true);
+
+        $this->dispatchSingleResolutionResult(
+            $project,
+            $this->attemptProjectResolution(
+                $project,
+                true,
+                $composerIssue,
+                $npmIssue,
+                'action_center_dependency_issue_force',
+                true,
+                true,
+                $queue,
+                $deployment,
+                $audit,
+                $edition,
+            ),
+            true,
         );
     }
 
@@ -227,11 +285,51 @@ class Index extends Component
                 $this->alertTargetsNpm($alert),
                 'action_center_security_alert',
                 true,
+                false,
                 $queue,
                 $deployment,
                 $audit,
                 $edition,
             ),
+        );
+    }
+
+    public function resolveSecurityAlertForce(
+        int $alertId,
+        DeploymentQueueService $queue,
+        DeploymentService $deployment,
+        AuditService $audit,
+        EditionService $edition,
+    ): void {
+        $alert = SecurityAlert::query()
+            ->where('id', $alertId)
+            ->whereHas('project', fn ($query) => $query->where('user_id', Auth::id()))
+            ->with('project')
+            ->firstOrFail();
+
+        $project = $alert->project;
+        if (! $project) {
+            abort(404);
+        }
+
+        $this->authorize('update', $project);
+
+        $this->dispatchSingleResolutionResult(
+            $project,
+            $this->attemptProjectResolution(
+                $project,
+                true,
+                $this->alertTargetsComposer($alert),
+                $this->alertTargetsNpm($alert),
+                'action_center_security_alert_force',
+                true,
+                true,
+                $queue,
+                $deployment,
+                $audit,
+                $edition,
+            ),
+            true,
         );
     }
 
@@ -265,11 +363,52 @@ class Index extends Component
                 $tool === 'npm',
                 'action_center_audit_issue',
                 true,
+                false,
                 $queue,
                 $deployment,
                 $audit,
                 $edition,
             ),
+        );
+    }
+
+    public function resolveAuditIssueForce(
+        int $issueId,
+        DeploymentQueueService $queue,
+        DeploymentService $deployment,
+        AuditService $audit,
+        EditionService $edition,
+    ): void {
+        $issue = AuditIssue::query()
+            ->where('id', $issueId)
+            ->whereHas('project', fn ($query) => $query->where('user_id', Auth::id()))
+            ->with('project')
+            ->firstOrFail();
+
+        $project = $issue->project;
+        if (! $project) {
+            abort(404);
+        }
+
+        $this->authorize('update', $project);
+
+        $tool = strtolower(trim((string) $issue->tool));
+        $this->dispatchSingleResolutionResult(
+            $project,
+            $this->attemptProjectResolution(
+                $project,
+                true,
+                $tool === 'composer',
+                $tool === 'npm',
+                'action_center_audit_issue_force',
+                true,
+                true,
+                $queue,
+                $deployment,
+                $audit,
+                $edition,
+            ),
+            true,
         );
     }
 
@@ -382,6 +521,7 @@ class Index extends Component
         bool $npmUpdate,
         string $source,
         bool $runImmediatelyWhenIdle,
+        bool $forceNpmFix,
         DeploymentQueueService $queue,
         DeploymentService $deployment,
         AuditService $audit,
@@ -434,7 +574,7 @@ class Index extends Component
             }
 
             if ($npmUpdate) {
-                $queuedItems[] = $queue->enqueue($project, 'npm_update', [
+                $queuedItems[] = $queue->enqueue($project, $forceNpmFix ? 'npm_audit_fix_force' : 'npm_update', [
                     'source' => $source,
                 ], Auth::user());
                 $actions++;
@@ -484,7 +624,11 @@ class Index extends Component
 
         if ($npmUpdate) {
             try {
-                $deployment->npmUpdate($project, Auth::user());
+                if ($forceNpmFix) {
+                    $deployment->npmAuditFix($project, Auth::user(), true);
+                } else {
+                    $deployment->npmUpdate($project, Auth::user());
+                }
                 $actions++;
             } catch (\Throwable $exception) {
                 report($exception);
@@ -498,7 +642,7 @@ class Index extends Component
         ];
     }
 
-    private function dispatchSingleResolutionResult(Project $project, array $result): void
+    private function dispatchSingleResolutionResult(Project $project, array $result, bool $forced = false): void
     {
         if ($result['skipped']) {
             $message = $this->projectPermissionsLocked($project)
@@ -510,9 +654,10 @@ class Index extends Component
             return;
         }
 
+        $label = $forced ? 'force repair action(s)' : 'repair action(s)';
         $message = match ($result['mode'] ?? 'queued') {
-            'executed' => "Started {$result['actions']} repair action(s) for {$project->name} immediately.",
-            default => "Queued {$result['actions']} repair action(s) for {$project->name}.",
+            'executed' => "Started {$result['actions']} {$label} for {$project->name} immediately.",
+            default => "Queued {$result['actions']} {$label} for {$project->name}.",
         };
 
         $this->dispatch('notify', message: $message);
@@ -521,7 +666,7 @@ class Index extends Component
     /**
      * @param array{projects:int, actions:int, skipped:int} $summary
      */
-    private function dispatchResolutionSummary(array $summary, bool $queueEnabled): void
+    private function dispatchResolutionSummary(array $summary, bool $queueEnabled, bool $forced = false): void
     {
         if ($summary['actions'] === 0) {
             $message = $summary['skipped'] > 0
@@ -534,7 +679,8 @@ class Index extends Component
         }
 
         $verb = $queueEnabled ? 'Queued' : 'Attempted';
-        $message = "{$verb} {$summary['actions']} repair action(s) across {$summary['projects']} project(s).";
+        $label = $forced ? 'force repair action(s)' : 'repair action(s)';
+        $message = "{$verb} {$summary['actions']} {$label} across {$summary['projects']} project(s).";
 
         if ($summary['skipped'] > 0) {
             $message .= ' Skipped '.$summary['skipped'].' project(s).';

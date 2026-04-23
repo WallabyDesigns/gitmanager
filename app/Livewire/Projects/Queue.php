@@ -28,7 +28,7 @@ class Queue extends Component
 
     public function processNow(DeploymentQueueService $queue, SchedulerService $scheduler): void
     {
-        $processed = $queue->processNext(3);
+        $processed = $queue->processNext((int) config('gitmanager.deploy_queue.batch_size', 0));
         $scheduler->recordManualRun();
 
         if ($processed === 0) {
