@@ -15,6 +15,23 @@
     $primaryStyle = 'display: inline-flex; align-items: center; justify-content: center; padding: 0.6rem 1rem; border-radius: 10px; border: 1px solid #38bdf8; background: #0ea5e9; color: #0f172a; text-decoration: none; font-weight: 700; cursor: pointer;';
 @endphp
 
+
+<style>
+    #gwm-recovery-panel{
+        animation: appear 2s ease-out forwards;
+        animation-delay: 3s;
+    }
+    
+    @keyframes appear {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+</style>
+
 <div id="gwm-recovery-panel" class="{{ $hiddenClass }}" style="{{ $wrapperStyle }}">
     <div style="{{ $panelStyle }}">
         <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
