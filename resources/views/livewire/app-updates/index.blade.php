@@ -68,13 +68,14 @@
             </div>
             @php($enterprisePackage = $updateStatus['enterprise_package'] ?? null)
             @php($deploymentGuard = $updateStatus['deployment_guard'] ?? null)
+            @php($deploymentGuardStatus = is_array($deploymentGuard) ? (string) ($deploymentGuard['status'] ?? 'not-needed') : 'not-needed')
             @if (is_array($enterprisePackage) && ! empty($enterprisePackage['message']))
                 @php($enterpriseStatus = $enterprisePackage['status'] ?? 'unknown')
                 <div class="mt-4 text-xs {{ $enterpriseStatus === 'update-available' ? 'text-amber-500 dark:text-amber-300' : 'text-slate-500 dark:text-slate-400' }}">
                     {{ $enterprisePackage['message'] }}
                 </div>
             @endif
-            @if (is_array($deploymentGuard) && ($deploymentGuard['status'] ?? 'not-needed') !== 'not-needed' && ! empty($deploymentGuard['message']))
+            @if (is_array($deploymentGuard) && ! in_array($deploymentGuardStatus, ['not-needed', 'unreported'], true) && ! empty($deploymentGuard['message']))
                 @php($guardBlocked = (bool) ($deploymentGuard['blocked'] ?? false))
                 @php($guardUrl = $deploymentGuard['target_url'] ?? $deploymentGuard['log_url'] ?? null)
                 <div class="mt-4 rounded-lg border {{ $guardBlocked ? 'border-amber-400/40 bg-amber-500/10' : 'border-slate-200/70 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40' }} p-4">
@@ -149,8 +150,7 @@
                 </div>
             @endif
             @if (! empty($pendingChanges))
-                @php($changeLogOpen = in_array(($updateStatus['status'] ?? ''), ['update-available', 'blocked'], true))
-                <details class="mt-4 rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 p-4" @if ($changeLogOpen) open @endif>
+                <details class="mt-4 rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 p-4">
                     <summary class="cursor-pointer text-sm font-semibold text-slate-700 dark:text-slate-200">
                         What's changed since your last update
                         <span class="text-xs font-normal text-slate-500 dark:text-slate-400">({{ count($pendingChanges) }} commits)</span>
