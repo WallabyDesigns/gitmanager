@@ -103,7 +103,9 @@
 
                 <div class="space-y-3">
                     @forelse ($items as $item)
-                        @php($presentation = $this->actionPresentation($item))
+                        @php
+                            $presentation = $this->actionPresentation($item);
+                        @endphp
                         <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4 flex flex-col gap-3" wire:key="queue-item-{{ $item->id }}">
                             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
@@ -177,7 +179,9 @@
                                         Cancel
                                     </button>
                                 @elseif ($item->status === 'running')
-                                    @php($staleCutoff = now()->subSeconds($staleSeconds ?? 900))
+                                    @php
+                                        $staleCutoff = now()->subSeconds($staleSeconds ?? 900);
+                                    @endphp
                                     <button type="button"
                                             wire:click="forceCancel({{ $item->id }})"
                                             onclick="return confirm('Force cancel this running item? This will release the queue lock but may not stop the underlying process.') || event.stopImmediatePropagation()"
@@ -190,7 +194,9 @@
                                 @endif
                             </div>
                             </div>
-                            @php($log = $item->deployment?->output_log ?? ($runningDeployments[$item->project_id]->output_log ?? null))
+                            @php
+                                $log = $item->deployment?->output_log ?? ($runningDeployments[$item->project_id]->output_log ?? null);
+                            @endphp
                             @if ($item->status === 'running' || $log)
                                 <details
                                     class="mt-2"
