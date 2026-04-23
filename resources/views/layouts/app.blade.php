@@ -148,7 +148,7 @@
                                     @csrf
                                 </form>
                                 <button type="button" @click="open = false; document.getElementById('gwm-enterprise-checkout-form').submit()" class="inline-flex items-center rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-400">
-                                    Buy Enterprise Edition
+                                    Continue to Checkout
                                 </button>
                             @else
                                 <a href="{{ route('login') }}" class="inline-flex items-center rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-400">
