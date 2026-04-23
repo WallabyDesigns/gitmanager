@@ -381,6 +381,7 @@
                         <div class="space-y-2 text-xs text-slate-500 dark:text-slate-400">
                             <div>Configured: {{ ! empty($licenseState['configured']) ? 'Yes' : 'No' }}</div>
                             <div>Licensed Edition: {{ ucfirst((string) ($licenseState['edition'] ?? 'community')) }}</div>
+                            <div>Package Version: {{ $systemPackageVersion }}</div>
                             <div>Installation UUID: {{ $licenseState['installation_uuid'] ?? 'Unknown' }}</div>
                             <div>Message: {{ $licenseState['message'] ?? 'No license state available.' }}</div>
                             <div>Bound IP: {{ $licenseState['bound_ip'] ?? 'Unknown' }}</div>

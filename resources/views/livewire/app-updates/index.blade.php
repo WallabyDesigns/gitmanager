@@ -68,30 +68,10 @@
             </div>
             @php($enterprisePackage = $updateStatus['enterprise_package'] ?? null)
             @php($deploymentGuard = $updateStatus['deployment_guard'] ?? null)
-            @if (is_array($enterprisePackage))
+            @if (is_array($enterprisePackage) && ! empty($enterprisePackage['message']))
                 @php($enterpriseStatus = $enterprisePackage['status'] ?? 'unknown')
-                <div class="mt-4 rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 p-4">
-                    <div class="flex flex-wrap items-center justify-between gap-2">
-                        <div class="text-sm font-semibold text-slate-800 dark:text-slate-100">Enterprise Package</div>
-                        <span class="px-2 py-1 rounded-full text-xs font-semibold {{ $enterpriseStatus === 'up-to-date' ? 'bg-emerald-500/20 text-emerald-200' : ($enterpriseStatus === 'update-available' ? 'bg-amber-500/20 text-amber-200' : ($enterpriseStatus === 'disabled' ? 'bg-slate-500/20 text-slate-200' : 'bg-slate-500/20 text-slate-200')) }}">
-                            {{ strtoupper(str_replace('-', ' ', $enterpriseStatus)) }}
-                        </span>
-                    </div>
-                    <div class="mt-2 grid gap-3 sm:grid-cols-2 text-xs text-slate-600 dark:text-slate-300">
-                        <div>
-                            <div class="uppercase tracking-wide text-slate-400 dark:text-slate-500">Current</div>
-                            <div class="font-mono text-slate-700 dark:text-slate-200">{{ $enterprisePackage['current'] ?? '—' }}</div>
-                        </div>
-                        <div>
-                            <div class="uppercase tracking-wide text-slate-400 dark:text-slate-500">Latest</div>
-                            <div class="font-mono text-slate-700 dark:text-slate-200">{{ $enterprisePackage['latest'] ?? '—' }}</div>
-                        </div>
-                    </div>
-                    @if (! empty($enterprisePackage['message']))
-                        <div class="mt-2 text-xs {{ $enterpriseStatus === 'update-available' ? 'text-amber-500 dark:text-amber-300' : 'text-slate-500 dark:text-slate-400' }}">
-                            {{ $enterprisePackage['message'] }}
-                        </div>
-                    @endif
+                <div class="mt-4 text-xs {{ $enterpriseStatus === 'update-available' ? 'text-amber-500 dark:text-amber-300' : 'text-slate-500 dark:text-slate-400' }}">
+                    {{ $enterprisePackage['message'] }}
                 </div>
             @endif
             @if (is_array($deploymentGuard) && ($deploymentGuard['status'] ?? 'not-needed') !== 'not-needed' && ! empty($deploymentGuard['message']))

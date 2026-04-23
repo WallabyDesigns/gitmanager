@@ -11,6 +11,7 @@ use App\Services\EnvManagerService;
 use App\Services\LicenseService;
 use App\Services\SchedulerService;
 use App\Services\SettingsService;
+use Composer\InstalledVersions;
 use Livewire\Component;
 
 class Settings extends Component
@@ -41,6 +42,7 @@ class Settings extends Component
     public string $settingsSection = self::SECTION_SCHEDULER;
     public bool $isLocalInstall = false;
     public bool $localLicenseTlsBypassEnabled = false;
+    public string $systemPackageVersion = 'Unknown';
 
     /** @var array<string, array{key: string, value: string, description: string}> */
     public array $gwmKeys = [];
@@ -75,6 +77,7 @@ class Settings extends Component
         $this->licenseState = $license->state();
         $this->isLocalInstall = $this->detectLocalInstall();
         $this->localLicenseTlsBypassEnabled = (bool) $settings->get('system.license.allow_insecure_local_tls', false);
+        $this->systemPackageVersion = $this->resolveSystemPackageVersion();
 
         $this->timezones = \DateTimeZone::listIdentifiers();
         $stored = (string) ($settings->get('system.timezone') ?? '');
@@ -403,5 +406,28 @@ class Settings extends Component
         }
 
         return str_ends_with($host, '.local') || str_ends_with($host, '.test');
+    }
+
+    private function resolveSystemPackageVersion(): string
+    {
+        $packageName = (string) config('gitmanager.enterprise.package_name', 'wallabydesigns/gitmanager-enterprise');
+        if ($packageName === '' || ! class_exists(InstalledVersions::class)) {
+            return 'Unknown';
+        }
+
+        try {
+            if (! InstalledVersions::isInstalled($packageName)) {
+                return 'Not installed';
+            }
+
+            $version = InstalledVersions::getPrettyVersion($packageName)
+                ?? InstalledVersions::getVersion($packageName);
+
+            $version = trim((string) $version);
+
+            return $version !== '' ? $version : 'Unknown';
+        } catch (\Throwable) {
+            return 'Unknown';
+        }
     }
 }

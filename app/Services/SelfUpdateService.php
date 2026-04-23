@@ -282,6 +282,7 @@ class SelfUpdateService
             $this->restoreSnapshots($repoPath, $htaccessSnapshots, $output);
             $this->restoreProtectedHtaccess($repoPath, $protectedHtaccess, $output);
             $this->removeExcludedPaths($repoPath, $output);
+            $this->recoverAfterFailedUpdate($repoPath, $toHash, $fromHash, $output);
 
             $update->status = 'failed';
             $update->from_hash = $fromHash;
@@ -374,20 +375,30 @@ class SelfUpdateService
                 if ($fromHash === $remoteHash) {
                     $enterpriseSync = $this->syncEnterprisePackage($repoPath, $output, true);
                     $enterprisePackage = $enterpriseSync['current'] ?? [];
+                    $performedEnterpriseSync = ($enterpriseSync['performed'] ?? false) === true;
 
-                    if (($enterpriseSync['performed'] ?? false) === true) {
+                    if ($performedEnterpriseSync) {
+                        $this->validateUpdatedApplication($repoPath, $output);
+                    }
+
+                    if ($performedEnterpriseSync) {
                         $resolved = in_array(($enterprisePackage['status'] ?? ''), ['up-to-date'], true);
                         $update->status = $resolved ? 'success' : 'warning';
                     } elseif (($enterprisePackage['status'] ?? '') === 'update-available') {
-                        $output[] = 'Enterprise package update available: '.($enterprisePackage['current'] ?? 'unknown').' → '.($enterprisePackage['latest'] ?? 'unknown').'.';
+                        $output[] = 'System package update available: '.($enterprisePackage['current'] ?? 'unknown').' → '.($enterprisePackage['latest'] ?? 'unknown').'.';
                         $update->status = 'warning';
                     } else {
-                        $output[] = $enterprisePackage['message'] ?? 'Enterprise package update check completed.';
+                        $output[] = $enterprisePackage['message'] ?? 'System package update check completed.';
                         $update->status = 'skipped';
                     }
 
-                    $update->from_hash = $fromHash;
-                    $update->to_hash = $fromHash;
+                    if (in_array($update->status, ['success', 'warning'], true)) {
+                        $update->from_hash = $fromHash;
+                        $update->to_hash = $fromHash;
+                    } else {
+                        $update->from_hash = null;
+                        $update->to_hash = null;
+                    }
                     $update->output_log = implode("\n", $output);
                     $update->finished_at = now();
                     $update->save();
@@ -405,8 +416,8 @@ class SelfUpdateService
                         }
 
                         $update->status = 'blocked';
-                        $update->from_hash = $fromHash;
-                        $update->to_hash = $remoteHash;
+                        $update->from_hash = null;
+                        $update->to_hash = null;
                         $update->output_log = implode("\n", $output);
                         $update->finished_at = now();
                         $update->save();
@@ -489,6 +500,7 @@ class SelfUpdateService
                 $this->restoreSnapshots($repoPath, $htaccessSnapshots, $output);
                 $this->restoreProtectedHtaccess($repoPath, $protectedHtaccess, $output);
                 $this->removeExcludedPaths($repoPath, $output);
+                $this->recoverAfterFailedUpdate($repoPath, $toHash, $fromHash, $output);
 
                 if ($attempt < 2) {
                     $output[] = 'Update failed. Retrying once.';
@@ -536,7 +548,7 @@ class SelfUpdateService
         $repoPath = base_path();
         $output = [];
         $branch = null;
-        $enterprisePackage = $this->defaultEnterprisePackageStatus('unknown', 'Enterprise package update checks are unavailable.');
+        $enterprisePackage = $this->defaultEnterprisePackageStatus('unknown', 'System package update checks are unavailable.');
         $deploymentGuard = $this->defaultDeploymentGuardStatus('not-needed', 'No pending core update to validate.');
 
         try {
@@ -617,20 +629,20 @@ class SelfUpdateService
     {
         $packageName = $this->enterprisePackageName();
         if (! (bool) config('gitmanager.enterprise.check_updates', true)) {
-            return $this->defaultEnterprisePackageStatus('disabled', 'Enterprise package update checks are disabled.', $packageName);
+            return $this->defaultEnterprisePackageStatus('disabled', 'System package update checks are disabled.', $packageName);
         }
 
         if ($packageName === '') {
-            return $this->defaultEnterprisePackageStatus('unknown', 'Enterprise package name is not configured.', $packageName);
+            return $this->defaultEnterprisePackageStatus('unknown', 'System package name is not configured.', $packageName);
         }
 
         $required = $this->composerRequiresPackage($repoPath, $packageName);
         if (! $required && ! class_exists(\GitManagerEnterprise\EnterpriseServiceProvider::class)) {
-            return $this->defaultEnterprisePackageStatus('not-installed', 'Enterprise package is not installed on this panel.', $packageName, false, false);
+            return $this->defaultEnterprisePackageStatus('not-installed', 'System package is not installed on this panel.', $packageName, false, false);
         }
 
         if (! $this->binaryAvailable($this->composerBinary())) {
-            return $this->defaultEnterprisePackageStatus('unknown', 'Composer binary not available; unable to check enterprise package updates.', $packageName, $required, false);
+            return $this->defaultEnterprisePackageStatus('unknown', 'Composer binary not available; unable to check system package updates.', $packageName, $required, false);
         }
 
         $process = $this->runProcess(
@@ -647,7 +659,7 @@ class SelfUpdateService
 
             return $this->defaultEnterprisePackageStatus(
                 'unknown',
-                'Unable to determine enterprise package update status.'.($error !== '' ? ' '.$error : ''),
+                'Unable to determine system package update status.'.($error !== '' ? ' '.$error : ''),
                 $packageName,
                 $required,
                 false
@@ -656,7 +668,7 @@ class SelfUpdateService
 
         $payload = json_decode((string) $process->getOutput(), true);
         if (! is_array($payload)) {
-            return $this->defaultEnterprisePackageStatus('unknown', 'Invalid Composer response while checking enterprise package updates.', $packageName, $required, true);
+            return $this->defaultEnterprisePackageStatus('unknown', 'Invalid Composer response while checking system package updates.', $packageName, $required, true);
         }
 
         $versions = $payload['versions'] ?? [];
@@ -686,7 +698,7 @@ class SelfUpdateService
         }
 
         if (($current === null || $current === '') && ($latest === null || $latest === '')) {
-            return $this->defaultEnterprisePackageStatus('unknown', 'Enterprise package is installed but version details are unavailable.', $packageName, $required, true);
+            return $this->defaultEnterprisePackageStatus('unknown', 'System package is installed but version details are unavailable.', $packageName, $required, true);
         }
 
         $current = $current !== null && $current !== '' ? $current : null;
@@ -713,8 +725,8 @@ class SelfUpdateService
             'latest' => $latest,
             'status' => $updateAvailable ? 'update-available' : 'up-to-date',
             'message' => $updateAvailable
-                ? 'Enterprise package update is available.'
-                : 'Enterprise package is up to date.',
+                ? 'System package update is available.'
+                : 'System package is up to date.',
         ];
     }
 
@@ -908,7 +920,7 @@ class SelfUpdateService
             || (is_array($requiresDev) && array_key_exists($packageName, $requiresDev));
     }
 
-    private function resolveRollbackTarget(?string $targetHash, array &$output): ?string
+    protected function resolveRollbackTarget(?string $targetHash, array &$output): ?string
     {
         $repoPath = base_path();
         $targetHash = trim((string) $targetHash);
@@ -924,11 +936,12 @@ class SelfUpdateService
         }
 
         $latest = AppUpdate::query()
+            ->whereIn('status', ['success', 'warning'])
             ->whereNotNull('from_hash')
             ->whereNotNull('to_hash')
             ->where('from_hash', '!=', '')
             ->where('to_hash', '!=', '')
-            ->where('status', '!=', 'running')
+            ->whereColumn('from_hash', '!=', 'to_hash')
             ->orderByDesc('started_at')
             ->first();
 
@@ -948,7 +961,7 @@ class SelfUpdateService
         return $target;
     }
 
-    private function isValidRollbackTarget(string $repoPath, string $target): bool
+    protected function isValidRollbackTarget(string $repoPath, string $target): bool
     {
         $target = trim($target);
         if ($target === '') {
@@ -1383,18 +1396,108 @@ class SelfUpdateService
 
         $enterpriseSync = $this->syncEnterprisePackage($repoPath, $output, true);
         $enterprisePackage = $enterpriseSync['current'] ?? [];
-        $output[] = $enterprisePackage['message'] ?? 'Enterprise package update check completed.';
+        $output[] = $enterprisePackage['message'] ?? 'System package update check completed.';
         if (($enterprisePackage['status'] ?? '') === 'update-available') {
-            $output[] = 'Enterprise package update available: '.($enterprisePackage['current'] ?? 'unknown').' → '.($enterprisePackage['latest'] ?? 'unknown').'.';
+            $output[] = 'System package update available: '.($enterprisePackage['current'] ?? 'unknown').' → '.($enterprisePackage['latest'] ?? 'unknown').'.';
         }
 
         $this->applyPostUpdatePermissions($repoPath, $output);
+        $this->validateUpdatedApplication($repoPath, $output);
+    }
+
+    protected function validateUpdatedApplication(string $repoPath, array &$output): void
+    {
+        $artisan = $repoPath.DIRECTORY_SEPARATOR.'artisan';
+        if (! is_file($artisan)) {
+            return;
+        }
+
+        $output[] = 'Validating application views after update.';
+        $this->runProcess(['php', 'artisan', 'view:clear'], $output, $repoPath, false);
+        $this->runProcess(['php', 'artisan', 'view:cache'], $output, $repoPath);
+        $this->lintCachedBladeViews($repoPath, $output);
+    }
+
+    protected function lintCachedBladeViews(string $repoPath, array &$output): void
+    {
+        $compiledPath = $repoPath.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'framework'.DIRECTORY_SEPARATOR.'views';
+        if (! is_dir($compiledPath)) {
+            return;
+        }
+
+        $files = glob($compiledPath.DIRECTORY_SEPARATOR.'*.php') ?: [];
+        sort($files);
+
+        foreach ($files as $file) {
+            $process = $this->runProcess(['php', '-l', $file], $output, null, false);
+            if ($process->isSuccessful()) {
+                continue;
+            }
+
+            $message = trim($process->getErrorOutput());
+            if ($message === '') {
+                $message = trim($process->getOutput());
+            }
+
+            throw new \RuntimeException(
+                'Compiled view validation failed for '.basename($file).($message !== '' ? ': '.$message : '.')
+            );
+        }
+    }
+
+    protected function recoverAfterFailedUpdate(string $repoPath, ?string $failedHash, ?string $restoredHash, array &$output): void
+    {
+        if (! $restoredHash) {
+            return;
+        }
+
+        $output[] = 'Restoring application dependencies and caches for '.$restoredHash.'.';
+
+        try {
+            if (is_file($repoPath.DIRECTORY_SEPARATOR.'composer.json')) {
+                if ($this->shouldRunComposerInstall($repoPath, $failedHash, $restoredHash, $output)) {
+                    $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $repoPath, false);
+                } else {
+                    $output[] = 'Rollback recovery: composer install not required.';
+                }
+            }
+
+            if (is_file($repoPath.DIRECTORY_SEPARATOR.'package.json')) {
+                $this->applyPostUpdatePermissions($repoPath, $output);
+                if ($this->canRunNpm($output)) {
+                    if ($this->shouldRunNpmInstall($repoPath, $failedHash, $restoredHash, $output)) {
+                        $this->runProcess($this->npmInstallCommand($repoPath), $output, $repoPath, false);
+                    } else {
+                        $output[] = 'Rollback recovery: npm install not required.';
+                    }
+
+                    if ($this->npmScriptExists('build')) {
+                        if ($this->shouldRunNpmBuild($repoPath, $failedHash, $restoredHash, $output)) {
+                            $this->prepareViteBuildDirectory($repoPath, $output);
+                            $this->runProcess(['npm', 'run', 'build'], $output, $repoPath, false);
+                        } else {
+                            $output[] = 'Rollback recovery: npm build not required.';
+                        }
+                    }
+                } else {
+                    $output[] = 'Rollback recovery: node/npm not available in PATH.';
+                }
+            }
+
+            if (is_file($repoPath.DIRECTORY_SEPARATOR.'artisan')) {
+                $this->runProcess(['php', 'artisan', 'optimize:clear'], $output, $repoPath, false);
+                $this->maybeRunAppClearCache($repoPath, $output);
+                $this->validateUpdatedApplication($repoPath, $output);
+            }
+        } catch (\Throwable $exception) {
+            $output[] = 'Warning: failed to refresh application state after rollback: '.$exception->getMessage();
+        }
     }
 
     public function installOrUpdateEnterprisePackage(string $repoPath, array &$output, array $enterprisePackage): void
     {
         if (! $this->binaryAvailable($this->composerBinary())) {
-            $output[] = 'Enterprise package: composer binary not available, skipping.';
+            $output[] = 'System package: composer binary not available, skipping.';
             return;
         }
 
@@ -1402,7 +1505,7 @@ class SelfUpdateService
         $status = $enterprisePackage['status'] ?? '';
 
         if ($status === 'not-installed') {
-            $output[] = 'Installing enterprise package: '.$packageName.'.';
+            $output[] = 'Installing system package: '.$packageName.'.';
             $this->runProcess(
                 [$this->composerBinary(), 'require', $packageName, '^1.0', '--no-dev', '--optimize-autoloader', '--no-interaction'],
                 $output,
@@ -1410,7 +1513,7 @@ class SelfUpdateService
                 false
             );
         } elseif ($status === 'update-available') {
-            $output[] = 'Updating enterprise package: '.$packageName.' ('.(string) ($enterprisePackage['current'] ?? '?').' → '.(string) ($enterprisePackage['latest'] ?? '?').').';
+            $output[] = 'Updating system package: '.$packageName.' ('.(string) ($enterprisePackage['current'] ?? '?').' → '.(string) ($enterprisePackage['latest'] ?? '?').').';
             $this->runProcess(
                 [$this->composerBinary(), 'update', $packageName, '--no-dev', '--optimize-autoloader', '--no-interaction'],
                 $output,

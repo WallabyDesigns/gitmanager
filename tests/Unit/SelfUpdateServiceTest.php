@@ -2,9 +2,12 @@
 
 namespace Tests\Unit;
 
+use App\Models\AppUpdate;
 use App\Services\GitHubService;
 use App\Services\SelfUpdateService;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -80,7 +83,7 @@ class SelfUpdateServiceTest extends TestCase
         ]);
 
         $this->assertFileDoesNotExist($projectPath.DIRECTORY_SEPARATOR.'auth.json');
-        $this->assertContains('Enterprise package: composer binary not available, skipping.', $output);
+        $this->assertContains('System package: composer binary not available, skipping.', $output);
     }
 
     public function test_deployment_guard_blocks_failed_github_report(): void
@@ -333,6 +336,89 @@ class SelfUpdateServiceTest extends TestCase
         $this->assertSame('up-to-date', $result['current']['status']);
     }
 
+    public function test_resolve_rollback_target_ignores_non_applied_attempts(): void
+    {
+        if (! Schema::hasTable('app_updates')) {
+            Schema::create('app_updates', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('triggered_by')->nullable();
+                $table->string('status')->default('running');
+                $table->string('from_hash')->nullable();
+                $table->string('to_hash')->nullable();
+                $table->longText('output_log')->nullable();
+                $table->timestamp('started_at')->nullable();
+                $table->timestamp('finished_at')->nullable();
+                $table->timestamps();
+            });
+        }
+
+        AppUpdate::query()->create([
+            'status' => 'success',
+            'from_hash' => 'good111',
+            'to_hash' => 'good222',
+            'started_at' => now()->subMinutes(5),
+        ]);
+
+        AppUpdate::query()->create([
+            'status' => 'warning',
+            'from_hash' => 'good222',
+            'to_hash' => 'good222',
+            'started_at' => now()->subMinutes(4),
+        ]);
+
+        AppUpdate::query()->create([
+            'status' => 'blocked',
+            'from_hash' => null,
+            'to_hash' => null,
+            'started_at' => now()->subMinutes(3),
+        ]);
+
+        AppUpdate::query()->create([
+            'status' => 'failed',
+            'from_hash' => 'bad333',
+            'to_hash' => 'bad444',
+            'started_at' => now()->subMinutes(2),
+        ]);
+
+        $service = new class extends SelfUpdateService
+        {
+            public function inspectResolveRollbackTarget(?string $targetHash, array &$output): ?string
+            {
+                return $this->resolveRollbackTarget($targetHash, $output);
+            }
+
+            protected function isValidRollbackTarget(string $repoPath, string $target): bool
+            {
+                return true;
+            }
+        };
+
+        $output = [];
+        $target = $service->inspectResolveRollbackTarget(null, $output);
+
+        $this->assertSame('good111', $target);
+        $this->assertStringContainsString('Using last update rollback target: good111', implode("\n", $output));
+    }
+
+    public function test_validate_updated_application_rejects_invalid_compiled_views(): void
+    {
+        $projectPath = $this->makeFakeArtisanProject('invalid');
+
+        $service = new class extends SelfUpdateService
+        {
+            public function inspectValidateUpdatedApplication(string $repoPath, array &$output): void
+            {
+                $this->validateUpdatedApplication($repoPath, $output);
+            }
+        };
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Compiled view validation failed');
+
+        $output = [];
+        $service->inspectValidateUpdatedApplication($projectPath, $output);
+    }
+
     /**
      * @param array<string, mixed> $composer
      * @param array<string, mixed>|null $lock
@@ -347,6 +433,57 @@ class SelfUpdateServiceTest extends TestCase
         if ($lock !== null) {
             file_put_contents($path.DIRECTORY_SEPARATOR.'composer.lock', json_encode($lock, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n");
         }
+
+        $this->tempPaths[] = $path;
+
+        return $path;
+    }
+
+    private function makeFakeArtisanProject(string $viewMode = 'valid'): string
+    {
+        $path = storage_path('framework/testing/self-update-artisan-'.Str::uuid());
+        File::ensureDirectoryExists($path.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'framework'.DIRECTORY_SEPARATOR.'views');
+
+        file_put_contents($path.DIRECTORY_SEPARATOR.'.view-mode', $viewMode);
+        file_put_contents($path.DIRECTORY_SEPARATOR.'artisan', <<<'PHP'
+<?php
+$command = $argv[1] ?? '';
+$viewsDir = __DIR__.'/storage/framework/views';
+if (! is_dir($viewsDir)) {
+    mkdir($viewsDir, 0775, true);
+}
+
+if ($command === 'view:clear') {
+    foreach (glob($viewsDir.'/*.php') ?: [] as $file) {
+        @unlink($file);
+    }
+    exit(0);
+}
+
+if ($command === 'view:cache') {
+    $modeFile = __DIR__.'/.view-mode';
+    $mode = is_file($modeFile) ? trim((string) file_get_contents($modeFile)) : 'valid';
+    $content = $mode === 'invalid'
+        ? "<?php if (\n"
+        : "<?php echo 'cached';\n";
+    file_put_contents($viewsDir.'/compiled.php', $content);
+    echo "Views cached\n";
+    exit(0);
+}
+
+if ($command === 'optimize:clear' || $command === 'app:clear-cache') {
+    echo "Cleared\n";
+    exit(0);
+}
+
+if ($command === 'list') {
+    echo json_encode(['commands' => [['name' => 'app:clear-cache']]]);
+    exit(0);
+}
+
+exit(0);
+PHP
+        );
 
         $this->tempPaths[] = $path;
 
