@@ -5,6 +5,11 @@
         }
         return $text;
     };
+    $outputLogTailChars = isset($outputLogTailChars) ? (int) $outputLogTailChars : 60000;
+    $supportsLazyRecentLogs = isset($this) && method_exists($this, 'toggleUpdateLog');
+    $expandedUpdateId = $expandedUpdateId ?? null;
+    $expandedUpdateLog = $expandedUpdateLog ?? null;
+    $expandedUpdateLogTruncated = (bool) ($expandedUpdateLogTruncated ?? false);
 @endphp
 
 <div class="py-10">
@@ -191,7 +196,8 @@
                         <p class="text-sm text-slate-500 dark:text-slate-400">Most recent update attempt for this app.</p>
                     </div>
                     @if ($latest)
-                        @php($latestWarning = $latest->status === 'warning' || $latest->status === 'blocked' || ($latest->status === 'failed' && str_contains($latest->output_log ?? '', 'stashed changes could not be restored')))
+                        @php($latestLogText = $latest->output_log_tail ?? $latest->output_log ?? '')
+                        @php($latestWarning = $latest->status === 'warning' || $latest->status === 'blocked' || ($latest->status === 'failed' && str_contains($latestLogText, 'stashed changes could not be restored')))
                         <span class="px-3 py-1 rounded-full text-xs font-semibold {{ $latestWarning ? 'bg-amber-500/20 text-amber-200' : ($latest->status === 'success' ? 'bg-emerald-500/20 text-emerald-200' : ($latest->status === 'failed' ? 'bg-rose-500/20 text-rose-200' : 'bg-slate-500/20 text-slate-200')) }}">
                             {{ $latest->status === 'blocked' ? 'ON HOLD' : ($latestWarning ? 'WARNING' : strtoupper($latest->status)) }}
                         </span>
@@ -242,7 +248,7 @@
                                 }
                             "
                         >
-                            <pre class="inline-block min-w-full p-4 text-xs text-slate-200 whitespace-pre font-mono leading-relaxed align-top">{{ $reverseLog($latest->output_log_tail ?? null) ?? 'No output captured.' }}</pre>
+                            <pre class="inline-block min-w-full p-4 text-xs text-slate-200 whitespace-pre font-mono leading-relaxed align-top">{{ $reverseLog($latest->output_log_tail ?? $latest->output_log ?? null) ?? 'No output captured.' }}</pre>
                         </div>
                     </div>
                 @endif
@@ -260,7 +266,8 @@
             <div class="mt-4 space-y-3">
                 @forelse ($recent as $update)
                     <div class="min-w-0 rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
-                        @php($updateWarning = $update->status === 'warning' || $update->status === 'blocked' || ($update->status === 'failed' && str_contains($update->output_log ?? '', 'stashed changes could not be restored')))
+                        @php($updateLogText = $update->output_log_tail ?? $update->output_log ?? '')
+                        @php($updateWarning = $update->status === 'warning' || $update->status === 'blocked' || ($update->status === 'failed' && str_contains($updateLogText, 'stashed changes could not be restored')))
                         <div class="flex flex-wrap items-center justify-between gap-2">
                             <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
                                 {{ \App\Support\DateFormatter::forUser($update->started_at, 'M j, Y g:i a', 'Queued') }}
@@ -272,39 +279,63 @@
                         <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
                             {{ $update->from_hash ?? '—' }} → {{ $update->to_hash ?? '—' }}
                         </div>
-                        @if (($update->output_log_length ?? 0) > 0)
-                            <div class="mt-3">
-                                <button
-                                    type="button"
-                                    wire:click="toggleUpdateLog({{ $update->id }})"
-                                    class="text-xs text-indigo-600 dark:text-indigo-300"
-                                >
-                                    {{ $expandedUpdateId === $update->id ? 'Hide log' : 'View log' }}
-                                </button>
-                            </div>
-                            @if ($expandedUpdateId === $update->id)
-                                <div
-                                    class="mt-2 w-full min-w-0 max-w-full max-h-80 overflow-auto rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40"
-                                    style="scrollbar-gutter: stable;"
-                                    x-data
-                                    x-init="
-                                        const frame = $el;
-                                        const scrollToBottom = () => { frame.scrollTop = frame.scrollHeight; };
-                                        $nextTick(scrollToBottom);
-                                        const observer = new MutationObserver(scrollToBottom);
-                                        observer.observe(frame, { childList: true, characterData: true, subtree: true });
-                                        if (typeof $cleanup === 'function') {
-                                            $cleanup(() => observer.disconnect());
-                                        }
-                                    "
-                                >
-                                    <pre class="inline-block min-w-full p-3 text-xs text-slate-600 dark:text-slate-300 whitespace-pre font-mono leading-relaxed align-top">{{ $reverseLog($expandedUpdateLog) }}</pre>
+                        @php($updateLogLength = (int) ($update->output_log_length ?? (($updateLogText !== '') ? strlen($updateLogText) : 0)))
+                        @if ($updateLogLength > 0)
+                            @if ($supportsLazyRecentLogs)
+                                <div class="mt-3">
+                                    <button
+                                        type="button"
+                                        wire:click="toggleUpdateLog({{ $update->id }})"
+                                        class="text-xs text-indigo-600 dark:text-indigo-300"
+                                    >
+                                        {{ $expandedUpdateId === $update->id ? 'Hide log' : 'View log' }}
+                                    </button>
                                 </div>
-                                @if ($expandedUpdateLogTruncated)
-                                    <div class="mt-2 text-[11px] text-amber-500 dark:text-amber-300">
-                                        Showing the last {{ number_format($outputLogTailChars) }} characters.
+                                @if ($expandedUpdateId === $update->id)
+                                    <div
+                                        class="mt-2 w-full min-w-0 max-w-full max-h-80 overflow-auto rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40"
+                                        style="scrollbar-gutter: stable;"
+                                        x-data
+                                        x-init="
+                                            const frame = $el;
+                                            const scrollToBottom = () => { frame.scrollTop = frame.scrollHeight; };
+                                            $nextTick(scrollToBottom);
+                                            const observer = new MutationObserver(scrollToBottom);
+                                            observer.observe(frame, { childList: true, characterData: true, subtree: true });
+                                            if (typeof $cleanup === 'function') {
+                                                $cleanup(() => observer.disconnect());
+                                            }
+                                        "
+                                    >
+                                        <pre class="inline-block min-w-full p-3 text-xs text-slate-600 dark:text-slate-300 whitespace-pre font-mono leading-relaxed align-top">{{ $reverseLog($expandedUpdateLog) }}</pre>
                                     </div>
+                                    @if ($expandedUpdateLogTruncated)
+                                        <div class="mt-2 text-[11px] text-amber-500 dark:text-amber-300">
+                                            Showing the last {{ number_format($outputLogTailChars) }} characters.
+                                        </div>
+                                    @endif
                                 @endif
+                            @else
+                                <details class="mt-3">
+                                    <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">View log</summary>
+                                    <div
+                                        class="mt-2 w-full min-w-0 max-w-full max-h-80 overflow-auto rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40"
+                                        style="scrollbar-gutter: stable;"
+                                        x-data
+                                        x-init="
+                                            const frame = $el;
+                                            const scrollToBottom = () => { frame.scrollTop = frame.scrollHeight; };
+                                            $nextTick(scrollToBottom);
+                                            const observer = new MutationObserver(scrollToBottom);
+                                            observer.observe(frame, { childList: true, characterData: true, subtree: true });
+                                            if (typeof $cleanup === 'function') {
+                                                $cleanup(() => observer.disconnect());
+                                            }
+                                        "
+                                    >
+                                        <pre class="inline-block min-w-full p-3 text-xs text-slate-600 dark:text-slate-300 whitespace-pre font-mono leading-relaxed align-top">{{ $reverseLog($updateLogText) }}</pre>
+                                    </div>
+                                </details>
                             @endif
                         @endif
                     </div>
