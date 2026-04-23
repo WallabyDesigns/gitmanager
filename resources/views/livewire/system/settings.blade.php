@@ -113,6 +113,65 @@
                     </div>
 
                     <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Stored Log Cleanup</h3>
+                            <span class="px-2 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wide {{ $logCleanupEnabled ? 'bg-emerald-500/20 text-emerald-200' : 'bg-slate-500/20 text-slate-200' }}">
+                                {{ $logCleanupEnabled ? 'Enabled' : 'Disabled' }}
+                            </span>
+                        </div>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">
+                            Clears old deployment and system update console logs from the database while keeping the history rows themselves.
+                        </p>
+
+                        <label class="flex items-start gap-3">
+                            <input type="checkbox" wire:model="logCleanupEnabled" class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
+                            <span class="text-sm text-slate-600 dark:text-slate-300">
+                                Enable automatic stored log cleanup
+                                <span class="block text-xs text-slate-400 dark:text-slate-500">Runs once per day when enabled.</span>
+                            </span>
+                        </label>
+
+                        <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 p-4">
+                            <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                                <div class="min-w-0">
+                                    <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">Retention Window</div>
+                                    <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">Remove stored logs older than this many days.</div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="3650"
+                                        wire:model.defer="logRetentionDays"
+                                        class="w-28 rounded-md border border-slate-200/70 bg-white/70 px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                                    />
+                                    <span class="rounded-md border border-slate-200/70 bg-white/70 px-3 py-2 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">Days</span>
+                                </div>
+                            </div>
+                            <x-input-error :messages="$errors->get('logRetentionDays')" class="mt-3" />
+                        </div>
+
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" wire:click="runLogCleanup" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white inline-flex items-center">
+                                <x-loading-spinner target="runLogCleanup" />
+                                Run Cleanup Now
+                            </button>
+                            <button
+                                type="button"
+                                wire:click="clearAllStoredLogs"
+                                onclick="return confirm('This will clear all stored deployment and self-update console logs from the database. Continue?')"
+                                class="px-3 py-2 text-xs rounded-md border border-rose-300/70 text-rose-700 hover:text-rose-900 dark:border-rose-500/40 dark:text-rose-200 dark:hover:text-white inline-flex items-center"
+                            >
+                                <x-loading-spinner target="clearAllStoredLogs" />
+                                Clear All Stored Logs
+                            </button>
+                        </div>
+                        <div class="text-xs text-slate-400 dark:text-slate-500">
+                            Manual cleanup keeps deployment and update status history, but removes the large console output text. The Clear All action also runs SQLite VACUUM when supported so disk space can be reclaimed.
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
                         <div>
                             <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Cron Setup</h3>
                             <p class="text-sm text-slate-500 dark:text-slate-400">

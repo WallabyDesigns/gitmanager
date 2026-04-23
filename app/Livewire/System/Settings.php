@@ -9,6 +9,7 @@ use App\Services\EditionService;
 use App\Services\EnvBackupService;
 use App\Services\EnvManagerService;
 use App\Services\LicenseService;
+use App\Services\LogCleanupService;
 use App\Services\SchedulerService;
 use App\Services\SettingsService;
 use App\Support\SchedulerTaskIntervals;
@@ -46,6 +47,8 @@ class Settings extends Component
     public string $systemPackageVersion = 'Unknown';
     /** @var array<string, array{value: int, unit: string}> */
     public array $schedulerTaskIntervals = [];
+    public bool $logCleanupEnabled = false;
+    public int $logRetentionDays = LogCleanupService::DEFAULT_RETENTION_DAYS;
 
     /** @var array<string, array{key: string, value: string, description: string}> */
     public array $gwmKeys = [];
@@ -83,6 +86,10 @@ class Settings extends Component
         $this->systemPackageVersion = $this->resolveSystemPackageVersion();
         $this->schedulerTaskIntervals = SchedulerTaskIntervals::normalize(
             $settings->get(SchedulerTaskIntervals::SETTINGS_KEY, [])
+        );
+        $this->logCleanupEnabled = (bool) $settings->get('system.logs.cleanup_enabled', false);
+        $this->logRetentionDays = LogCleanupService::normalizeRetentionDays(
+            $settings->get('system.logs.retention_days', LogCleanupService::DEFAULT_RETENTION_DAYS)
         );
 
         $this->timezones = \DateTimeZone::listIdentifiers();
@@ -178,6 +185,21 @@ class Settings extends Component
         $this->dispatch('$refresh');
     }
 
+    public function runLogCleanup(LogCleanupService $cleanup): void
+    {
+        $this->logRetentionDays = LogCleanupService::normalizeRetentionDays($this->logRetentionDays);
+        $result = $cleanup->cleanupOlderThanDays($this->logRetentionDays);
+        $this->dispatch('notify', message: $this->formatLogCleanupMessage($result, false));
+        $this->dispatch('$refresh');
+    }
+
+    public function clearAllStoredLogs(LogCleanupService $cleanup): void
+    {
+        $result = $cleanup->clearAll(false, true);
+        $this->dispatch('notify', message: $this->formatLogCleanupMessage($result, true));
+        $this->dispatch('$refresh');
+    }
+
     public function verifyLicense(LicenseService $license, EditionService $edition): void
     {
         if (trim($this->enterpriseLicenseKey) !== '') {
@@ -249,6 +271,8 @@ class Settings extends Component
             'timezone' => ['required', \Illuminate\Validation\Rule::in($this->timezones)],
             'enterpriseLicenseKey' => ['nullable', 'string', 'max:255'],
             'schedulerTaskIntervals' => ['required', 'array'],
+            'logCleanupEnabled' => ['boolean'],
+            'logRetentionDays' => ['required', 'integer', 'min:1', 'max:'.LogCleanupService::MAX_RETENTION_DAYS],
         ];
 
         foreach (SchedulerTaskIntervals::definitions() as $task => $definition) {
@@ -285,6 +309,7 @@ class Settings extends Component
         }
 
         $this->schedulerTaskIntervals = SchedulerTaskIntervals::normalize($this->schedulerTaskIntervals);
+        $this->logRetentionDays = LogCleanupService::normalizeRetentionDays($this->logRetentionDays);
 
         if (trim($this->enterpriseLicenseKey) !== '') {
             $license->setLicenseKey($this->enterpriseLicenseKey);
@@ -313,6 +338,8 @@ class Settings extends Component
         $settings->set('system.audit_auto_commit', $this->auditAutoCommit);
         $settings->set('system.timezone', $this->timezone);
         $settings->set(SchedulerTaskIntervals::SETTINGS_KEY, $this->schedulerTaskIntervals);
+        $settings->set('system.logs.cleanup_enabled', $this->logCleanupEnabled);
+        $settings->set('system.logs.retention_days', $this->logRetentionDays);
 
         $this->licenseState = $license->state();
 
@@ -493,5 +520,21 @@ class Settings extends Component
         } catch (\Throwable) {
             return 'Unknown';
         }
+    }
+
+    private function formatLogCleanupMessage(array $result, bool $clearedAll): string
+    {
+        $records = (int) ($result['total_records'] ?? 0);
+        $scope = $clearedAll
+            ? 'stored logs'
+            : 'stored logs older than '.$this->logRetentionDays.' day(s)';
+
+        $message = "Cleared {$records} {$scope}.";
+
+        if (($result['vacuumed'] ?? false) === true) {
+            $message .= ' SQLite VACUUM completed.';
+        }
+
+        return $message;
     }
 }

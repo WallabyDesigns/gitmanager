@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\LogCleanupService;
 use App\Services\SettingsService;
 use App\Support\SchedulerTaskIntervals;
 use Illuminate\Foundation\Inspiring;
@@ -59,4 +60,19 @@ try {
 
 if ($autoUpdates) {
     Schedule::command('gitmanager:self-update')->cron($schedulerTaskCron('self_update'))->withoutOverlapping();
+}
+
+$logCleanupEnabled = false;
+$logRetentionDays = LogCleanupService::DEFAULT_RETENTION_DAYS;
+try {
+    $logCleanupEnabled = (bool) app(SettingsService::class)->get('system.logs.cleanup_enabled', false);
+    $logRetentionDays = LogCleanupService::normalizeRetentionDays(
+        app(SettingsService::class)->get('system.logs.retention_days', LogCleanupService::DEFAULT_RETENTION_DAYS)
+    );
+} catch (\Throwable $exception) {
+    // Ignore settings lookup failures during early installs.
+}
+
+if ($logCleanupEnabled) {
+    Schedule::command('logs:cleanup', ['--days' => $logRetentionDays])->dailyAt('03:45')->withoutOverlapping();
 }

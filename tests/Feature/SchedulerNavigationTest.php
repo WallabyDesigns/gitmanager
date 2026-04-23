@@ -28,6 +28,7 @@ class SchedulerNavigationTest extends TestCase
             ->assertOk()
             ->assertSee('Scheduler Status')
             ->assertSee('Task Frequency')
+            ->assertSee('Stored Log Cleanup')
             ->assertDontSee('License Verification');
     }
 }

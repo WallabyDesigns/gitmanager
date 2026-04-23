@@ -222,6 +222,11 @@
 
                     <div>
                         <div class="text-xs uppercase text-slate-400 dark:text-slate-500">Output</div>
+                        @if (($latest->output_log_length ?? 0) > $outputLogTailChars)
+                            <div class="mt-2 text-xs text-amber-500 dark:text-amber-300">
+                                Showing the last {{ number_format($outputLogTailChars) }} characters to keep this page responsive.
+                            </div>
+                        @endif
                         <div
                             class="mt-2 w-full min-w-0 max-w-full max-h-80 overflow-auto rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-950/70"
                             style="scrollbar-gutter: stable;"
@@ -237,7 +242,7 @@
                                 }
                             "
                         >
-                            <pre class="inline-block min-w-full p-4 text-xs text-slate-200 whitespace-pre font-mono leading-relaxed align-top">{{ $reverseLog($latest->output_log) ?? 'No output captured.' }}</pre>
+                            <pre class="inline-block min-w-full p-4 text-xs text-slate-200 whitespace-pre font-mono leading-relaxed align-top">{{ $reverseLog($latest->output_log_tail ?? null) ?? 'No output captured.' }}</pre>
                         </div>
                     </div>
                 @endif
@@ -267,9 +272,17 @@
                         <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
                             {{ $update->from_hash ?? '—' }} → {{ $update->to_hash ?? '—' }}
                         </div>
-                        @if ($update->output_log)
-                            <details class="mt-3">
-                                <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">View log</summary>
+                        @if (($update->output_log_length ?? 0) > 0)
+                            <div class="mt-3">
+                                <button
+                                    type="button"
+                                    wire:click="toggleUpdateLog({{ $update->id }})"
+                                    class="text-xs text-indigo-600 dark:text-indigo-300"
+                                >
+                                    {{ $expandedUpdateId === $update->id ? 'Hide log' : 'View log' }}
+                                </button>
+                            </div>
+                            @if ($expandedUpdateId === $update->id)
                                 <div
                                     class="mt-2 w-full min-w-0 max-w-full max-h-80 overflow-auto rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40"
                                     style="scrollbar-gutter: stable;"
@@ -285,9 +298,14 @@
                                         }
                                     "
                                 >
-                                    <pre class="inline-block min-w-full p-3 text-xs text-slate-600 dark:text-slate-300 whitespace-pre font-mono leading-relaxed align-top">{{ $reverseLog($update->output_log) }}</pre>
+                                    <pre class="inline-block min-w-full p-3 text-xs text-slate-600 dark:text-slate-300 whitespace-pre font-mono leading-relaxed align-top">{{ $reverseLog($expandedUpdateLog) }}</pre>
                                 </div>
-                            </details>
+                                @if ($expandedUpdateLogTruncated)
+                                    <div class="mt-2 text-[11px] text-amber-500 dark:text-amber-300">
+                                        Showing the last {{ number_format($outputLogTailChars) }} characters.
+                                    </div>
+                                @endif
+                            @endif
                         @endif
                     </div>
                 @empty
