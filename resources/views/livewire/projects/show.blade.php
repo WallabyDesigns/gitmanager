@@ -2,7 +2,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid gap-6 lg:grid-cols-[260px,1fr]">
             @include('livewire.projects.partials.tabs')
-            <div class="space-y-6">
+            <div class="min-w-0 space-y-6">
                 <div class="flex flex-wrap gap-2">
             <button type="button" @click="tab = 'overview'" :class="tab === 'overview' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300'" class="px-3 py-2 text-sm rounded-md">
                 Overview
@@ -64,7 +64,7 @@
             </div>
         @endif
 
-        <div x-show="tab === 'overview'" x-cloak class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-6">
+        <div x-show="tab === 'overview'" x-cloak class="min-w-0 bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-6">
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div class="flex items-center gap-2">
                     @php
@@ -208,7 +208,7 @@
                 <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Latest Debug Logs</h3>
                 <div class="mt-3 space-y-3">
                     @forelse ($recentDebug as $deployment)
-                        <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
+                        <div class="min-w-0 rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
                             <div class="flex flex-wrap items-center justify-between gap-2">
                                 <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
                                     {{ ucfirst(str_replace('_', ' ', $deployment->action)) }}
@@ -263,7 +263,7 @@
             </div>
         </div>
 
-        <div x-show="tab === 'repository'" x-cloak class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-6">
+        <div x-show="tab === 'repository'" x-cloak class="min-w-0 bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-6">
             <div class="flex flex-wrap gap-2">
                 <button type="button" wire:click="checkUpdates" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 inline-flex items-center">
                     <x-loading-spinner target="checkUpdates" />
@@ -338,26 +338,26 @@
             </div>
         </div>
 
-        <div x-show="tab === 'dependencies'" x-cloak class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
+        <div x-show="tab === 'dependencies'" x-cloak class="min-w-0 bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
             @livewire('projects.dependency-actions', ['project' => $project], key('dep-actions-'.$project->id))
         </div>
 
-        <div x-show="tab === 'security'" x-cloak class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
+        <div x-show="tab === 'security'" x-cloak class="min-w-0 bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
             @livewire('projects.security-alerts', ['project' => $project], key('security-alerts-'.$project->id))
         </div>
 
         @if ($envTabEnabled)
-            <div x-show="tab === 'env'" x-cloak class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
+            <div x-show="tab === 'env'" x-cloak class="min-w-0 bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
                 @livewire('projects.env-editor', ['project' => $project], key('env-editor-'.$project->id))
             </div>
         @endif
 
-        <div x-show="tab === 'debug'" x-cloak class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
+        <div x-show="tab === 'debug'" x-cloak class="min-w-0 bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
             <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Debug Logs</h3>
 
             <div class="mt-4 space-y-4">
                 @forelse ($deployments as $deployment)
-                    <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
+                    <div class="min-w-0 rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
                         <div class="flex flex-wrap items-center justify-between gap-2">
                             <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
                                 {{ ucfirst(str_replace('_', ' ', $deployment->action)) }}

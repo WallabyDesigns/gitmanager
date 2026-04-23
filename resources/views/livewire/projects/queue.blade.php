@@ -3,7 +3,7 @@
         <div class="grid gap-6 lg:grid-cols-[260px,1fr]">
             @include('livewire.projects.partials.tabs')
 
-            <div class="space-y-6">
+            <div class="min-w-0 space-y-6">
                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-4 text-sm text-slate-600 dark:text-slate-300 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <div class="font-semibold text-slate-900 dark:text-slate-100">Queue Runner</div>
@@ -106,7 +106,7 @@
                         @php
                             $presentation = $this->actionPresentation($item);
                         @endphp
-                        <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4 flex flex-col gap-3" wire:key="queue-item-{{ $item->id }}">
+                        <div class="min-w-0 rounded-lg border border-slate-200/70 dark:border-slate-800 p-4 flex flex-col gap-3" wire:key="queue-item-{{ $item->id }}">
                             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <div class="flex items-center gap-2">

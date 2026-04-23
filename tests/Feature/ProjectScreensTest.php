@@ -36,6 +36,20 @@ class ProjectScreensTest extends TestCase
             ->assertSee('Edit '.$project->name);
     }
 
+    public function test_project_show_screen_loads(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->create([
+            'user_id' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('projects.show', $project));
+
+        $response
+            ->assertOk()
+            ->assertSee('Latest Debug Logs');
+    }
+
     public function test_queue_screen_loads(): void
     {
         $user = User::factory()->create();

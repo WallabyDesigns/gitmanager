@@ -1,4 +1,4 @@
-<div class="space-y-4">
+<div class="min-w-0 space-y-4">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex items-center gap-3 flex-wrap">
             <button type="button" wire:click="$set('tab', 'current')" class="px-3 py-2 text-sm rounded-md {{ $tab === 'current' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300' }}">
@@ -65,15 +65,16 @@
         </div>
     @endif
 
-    <div>
+    <div class="min-w-0">
         <div class="flex items-center justify-between gap-3">
             <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Latest Security Output</h4>
         </div>
         @php
             $latestSecurityOutput = $latestSecurityLog?->output_log;
         @endphp
-        <pre
-            class="mt-2 max-h-64 overflow-auto text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-200/70 dark:border-slate-800"
+        <div
+            class="mt-2 w-full min-w-0 max-w-full max-h-64 overflow-auto rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40"
+            style="scrollbar-gutter: stable;"
             x-data
             x-init="
                 const el = $el;
@@ -85,14 +86,16 @@
                     $cleanup(() => observer.disconnect());
                 }
             "
-        >{{ $latestSecurityOutput ?? 'No output yet.' }}</pre>
+        >
+            <pre class="inline-block min-w-full p-3 text-xs text-slate-600 dark:text-slate-300 whitespace-pre font-mono leading-relaxed align-top">{{ $latestSecurityOutput ?? 'No output yet.' }}</pre>
+        </div>
     </div>
 
     <div>
         <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Security Logs</h4>
         <div class="mt-3 space-y-3">
             @forelse ($securityLogs as $deployment)
-                <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
+                <div class="min-w-0 rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
                             {{ ucfirst(str_replace('_', ' ', $deployment->action)) }}
