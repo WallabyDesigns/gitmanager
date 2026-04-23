@@ -11,6 +11,7 @@ use App\Services\EnvManagerService;
 use App\Services\LicenseService;
 use App\Services\SchedulerService;
 use App\Services\SettingsService;
+use App\Support\SchedulerTaskIntervals;
 use Composer\InstalledVersions;
 use Livewire\Component;
 
@@ -43,6 +44,8 @@ class Settings extends Component
     public bool $isLocalInstall = false;
     public bool $localLicenseTlsBypassEnabled = false;
     public string $systemPackageVersion = 'Unknown';
+    /** @var array<string, array{value: int, unit: string}> */
+    public array $schedulerTaskIntervals = [];
 
     /** @var array<string, array{key: string, value: string, description: string}> */
     public array $gwmKeys = [];
@@ -78,6 +81,9 @@ class Settings extends Component
         $this->isLocalInstall = $this->detectLocalInstall();
         $this->localLicenseTlsBypassEnabled = (bool) $settings->get('system.license.allow_insecure_local_tls', false);
         $this->systemPackageVersion = $this->resolveSystemPackageVersion();
+        $this->schedulerTaskIntervals = SchedulerTaskIntervals::normalize(
+            $settings->get(SchedulerTaskIntervals::SETTINGS_KEY, [])
+        );
 
         $this->timezones = \DateTimeZone::listIdentifiers();
         $stored = (string) ($settings->get('system.timezone') ?? '');
@@ -113,6 +119,9 @@ class Settings extends Component
                 ->count(),
             'cronCommand' => $scheduler->cronCommand(),
             'editionLabel' => $edition->label(),
+            'schedulerTaskDefinitions' => SchedulerTaskIntervals::definitions(),
+            'schedulerTaskUnitOptions' => SchedulerTaskIntervals::unitOptions(),
+            'schedulerTaskStatuses' => $this->schedulerTaskStatuses(),
         ])
             ->layout('layouts.app', [
                 'title' => 'System Settings',
@@ -239,7 +248,13 @@ class Settings extends Component
         $rules = [
             'timezone' => ['required', \Illuminate\Validation\Rule::in($this->timezones)],
             'enterpriseLicenseKey' => ['nullable', 'string', 'max:255'],
+            'schedulerTaskIntervals' => ['required', 'array'],
         ];
+
+        foreach (SchedulerTaskIntervals::definitions() as $task => $definition) {
+            $rules["schedulerTaskIntervals.{$task}.value"] = ['required', 'integer', 'min:1', 'max:59'];
+            $rules["schedulerTaskIntervals.{$task}.unit"] = ['required', \Illuminate\Validation\Rule::in(array_keys(SchedulerTaskIntervals::unitOptions()))];
+        }
 
         if ($this->canSwapEditions) {
             $rules['edition'] = ['required', \Illuminate\Validation\Rule::in([
@@ -249,6 +264,27 @@ class Settings extends Component
         }
 
         $this->validate($rules);
+
+        foreach (SchedulerTaskIntervals::definitions() as $task => $definition) {
+            $unit = SchedulerTaskIntervals::normalizeUnit(
+                $this->schedulerTaskIntervals[$task]['unit'] ?? null,
+                (string) $definition['default_unit']
+            );
+            $value = (int) ($this->schedulerTaskIntervals[$task]['value'] ?? $definition['default_value']);
+
+            if ($unit === 'hours' && $value > 24) {
+                $this->addError(
+                    "schedulerTaskIntervals.{$task}.value",
+                    "The {$definition['label']} frequency may not exceed 24 hours."
+                );
+            }
+        }
+
+        if ($this->getErrorBag()->isNotEmpty()) {
+            return;
+        }
+
+        $this->schedulerTaskIntervals = SchedulerTaskIntervals::normalize($this->schedulerTaskIntervals);
 
         if (trim($this->enterpriseLicenseKey) !== '') {
             $license->setLicenseKey($this->enterpriseLicenseKey);
@@ -276,6 +312,7 @@ class Settings extends Component
         $settings->set('system.audit_email_enabled', $this->auditEmailEnabled);
         $settings->set('system.audit_auto_commit', $this->auditAutoCommit);
         $settings->set('system.timezone', $this->timezone);
+        $settings->set(SchedulerTaskIntervals::SETTINGS_KEY, $this->schedulerTaskIntervals);
 
         $this->licenseState = $license->state();
 
@@ -406,6 +443,33 @@ class Settings extends Component
         }
 
         return str_ends_with($host, '.local') || str_ends_with($host, '.test');
+    }
+
+    /**
+     * @return array<string, array{enabled: bool, label: string}>
+     */
+    private function schedulerTaskStatuses(): array
+    {
+        $selfUpdateAvailable = (bool) config('gitmanager.self_update.enabled', true);
+
+        return [
+            'project_health_checks' => [
+                'enabled' => true,
+                'label' => 'Enabled',
+            ],
+            'queue_processing' => [
+                'enabled' => (bool) config('gitmanager.deploy_queue.enabled', true),
+                'label' => (bool) config('gitmanager.deploy_queue.enabled', true) ? 'Enabled' : 'Disabled',
+            ],
+            'self_audit' => [
+                'enabled' => true,
+                'label' => 'Enabled',
+            ],
+            'self_update' => [
+                'enabled' => $selfUpdateAvailable && $this->autoUpdate,
+                'label' => $selfUpdateAvailable && $this->autoUpdate ? 'Enabled' : 'Disabled',
+            ],
+        ];
     }
 
     private function resolveSystemPackageVersion(): string

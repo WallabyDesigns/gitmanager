@@ -66,6 +66,54 @@
 
                     <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
                         <div>
+                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Task Frequency</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">
+                                Keep the cron running every minute. These controls decide how often each recurring task actually executes.
+                            </p>
+                        </div>
+
+                        <div class="space-y-4">
+                            @foreach ($schedulerTaskDefinitions as $task => $definition)
+                                @php
+                                    $taskStatus = $schedulerTaskStatuses[$task] ?? ['enabled' => true, 'label' => 'Enabled'];
+                                @endphp
+                                <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 p-4">
+                                    <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                                        <div class="min-w-0">
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ $definition['label'] }}</div>
+                                                <span class="px-2 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wide {{ ($taskStatus['enabled'] ?? false) ? 'bg-emerald-500/20 text-emerald-200' : 'bg-slate-500/20 text-slate-200' }}">
+                                                    {{ $taskStatus['label'] ?? (($taskStatus['enabled'] ?? false) ? 'Enabled' : 'Disabled') }}
+                                                </span>
+                                            </div>
+                                            <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ $definition['description'] }}</div>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max="{{ ($schedulerTaskIntervals[$task]['unit'] ?? $definition['default_unit']) === 'hours' ? 24 : 59 }}"
+                                                wire:model.defer="schedulerTaskIntervals.{{ $task }}.value"
+                                                class="w-24 rounded-md border border-slate-200/70 bg-white/70 px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                                            />
+                                            <select
+                                                wire:model.defer="schedulerTaskIntervals.{{ $task }}.unit"
+                                                class="w-24 rounded-md border border-slate-200/70 bg-white/70 px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                                            >
+                                                @foreach ($schedulerTaskUnitOptions as $unit => $label)
+                                                    <option value="{{ $unit }}">{{ $label }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <x-input-error :messages="$errors->get('schedulerTaskIntervals.'.$task.'.value')" class="mt-3" />
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
+                        <div>
                             <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Cron Setup</h3>
                             <p class="text-sm text-slate-500 dark:text-slate-400">
                                 Add the cron entry below to run the Laravel scheduler every minute.
@@ -132,6 +180,19 @@
                                 @endforeach
                             </div>
                         @endif
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3" x-data="{ saved: false, timer: null }" x-on:settings-saved.window="
+                        saved = true;
+                        clearTimeout(timer);
+                        timer = setTimeout(() => saved = false, 2000);
+                    ">
+                        <button type="button" wire:click="save" wire:loading.attr="disabled" disabled wire:dirty.remove.attr="disabled" class="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center">
+                            <x-loading-spinner target="save" />
+                            Save Settings
+                        </button>
+                        <span wire:dirty class="text-xs text-amber-400">Settings are unsaved.</span>
+                        <span x-show="saved" x-transition.opacity.duration.200ms class="text-xs text-emerald-400">Settings saved.</span>
                     </div>
                 @endif
 
@@ -521,7 +582,7 @@
                     </div>
                 @endif
 
-                @if ($settingsSection !== 'environment')
+                @if (! in_array($settingsSection, ['environment', 'scheduler'], true))
                 <div class="flex flex-wrap items-center gap-3" x-data="{ saved: false, timer: null }" x-on:settings-saved.window="
                     saved = true;
                     clearTimeout(timer);

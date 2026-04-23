@@ -18,4 +18,16 @@ class SchedulerNavigationTest extends TestCase
             ->get('/projects/scheduler')
             ->assertRedirect('/system/scheduler');
     }
+
+    public function test_system_scheduler_page_loads_for_admin(): void
+    {
+        $admin = User::factory()->create();
+
+        $this->actingAs($admin)
+            ->get('/system/scheduler')
+            ->assertOk()
+            ->assertSee('Scheduler Status')
+            ->assertSee('Task Frequency')
+            ->assertDontSee('License Verification');
+    }
 }
