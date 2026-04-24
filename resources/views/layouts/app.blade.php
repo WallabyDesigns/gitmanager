@@ -54,9 +54,12 @@
         @livewireStyles
         <style>
             [x-cloak] { display: none !important; }
+            :where(.nonrenderhide){
+                opacity: 0;
+            }
         </style>
     </head>
-    <body class="font-sans antialiased h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <body class="nonrenderhide opacity-100 font-sans antialiased h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
         <div class="min-h-screen">
             @if (! $viteReady)
                 <div class="gwm-fallback-alert">
@@ -72,7 +75,9 @@
                 ])
             @endauth
 
-            <livewire:layout.navigation />
+            @persist('nav')
+                <livewire:layout.navigation />
+            @endpersist
 
             <!-- Page Heading -->
             @if (isset($header))

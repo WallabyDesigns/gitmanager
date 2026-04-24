@@ -20,6 +20,6 @@ $classes = ($active ?? false)
             : 'inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-300 dark:hover:text-slate-100 dark:hover:border-slate-600 focus:outline-none transition duration-150 ease-in-out';
 @endphp
 
-<a @if ($shouldNavigate) wire:navigate.hover @endif {{ $attributes->merge(['class' => $classes]) }}>
+<a @if ($shouldNavigate) wire:navigate.hover @endif data-navlink="true" {{ $attributes->merge(['class' => $classes]) }}>
     {{ $slot }}
 </a>
