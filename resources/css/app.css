@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+#gwm-nav-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  height: 2px;
+  width: 0;
+  background: #6366f1;
+  pointer-events: none;
+  opacity: 0;
+}
+
 .wallaby {
   text-align: center;
   padding: 15px 0;

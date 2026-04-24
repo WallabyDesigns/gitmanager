@@ -28,8 +28,11 @@
 
         <title>{{ isset($title) ? $title . ' - ' . $brandName : $brandName }}</title>
 
+        <meta name="color-scheme" content="dark">
+
         <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.bunny.net">
+        <link rel="preconnect" href="https://fonts.bunny.net" crossorigin>
+        <link rel="dns-prefetch" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
         <!-- Scripts -->
@@ -48,6 +51,7 @@
                 .gwm-fallback-alert strong { color: #f8fafc; }
             </style>
         @endif
+        @livewireStyles
         <style>
             [x-cloak] { display: none !important; }
         </style>
@@ -207,6 +211,17 @@
                 }, Number.isNaN(delay) ? 500 : delay);
             });
 
+        </script>
+        <script data-navigate-once="true">
+            var Alpine = window.Alpine || {};
+            Alpine.navigate = Alpine.navigate || { disableProgressBar() {} };
+            window.Alpine = Alpine;
+        </script>
+        @livewireScripts
+        <script data-navigate-once="true">
+            document.addEventListener('livewire:init', () => {
+                window.Alpine?.navigate?.disableProgressBar?.();
+            }, { once: true });
         </script>
     </body>
 </html>

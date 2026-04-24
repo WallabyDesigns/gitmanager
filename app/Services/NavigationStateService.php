@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 
 class NavigationStateService
 {
-    private const CACHE_SECONDS = 15;
+    private const CACHE_SECONDS = 300;
 
     /**
      * @var array<string, mixed>

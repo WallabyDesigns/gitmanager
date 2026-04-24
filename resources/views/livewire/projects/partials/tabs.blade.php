@@ -64,7 +64,9 @@
                     wire:navigate.hover
                     class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'create' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                 >
-                    <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <svg class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
                     Create Project
                 </a>
                 <a
@@ -93,7 +95,11 @@
                     wire:navigate.hover
                     class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'action-center' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                 >
-                    <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10.34 3.94c.09-.542.56-.94 1.11-.94h1.1c.55 0 1.02.398 1.11.94l.154.925c.062.374.312.686.643.87.128.071.255.145.378.223.324.205.72.266 1.075.133l.88-.33a1.125 1.125 0 011.37.49l.55.952a1.125 1.125 0 01-.26 1.43l-.726.598c-.292.24-.437.613-.43.991.003.149.003.298 0 .447-.007.378.138.75.43.99l.726.599c.424.35.534.954.26 1.43l-.55.952a1.125 1.125 0 01-1.37.49l-.88-.33c-.355-.133-.751-.072-1.075.133-.123.078-.25.152-.378.223-.331.184-.581.496-.643.87l-.154.925c-.09.542-.56.94-1.11.94h-1.1c-.55 0-1.02-.398-1.11-.94l-.154-.925a1.125 1.125 0 00-.643-.87 6.343 6.343 0 01-.378-.223c-.324-.205-.72-.266-1.075-.133l-.88.33a1.125 1.125 0 01-1.37-.49l-.55-.952a1.125 1.125 0 01.26-1.43l.726-.598c.292-.24.437-.613.43-.991a9.079 9.079 0 010-.447c.007-.378-.138-.75-.43-.99l-.726-.599a1.125 1.125 0 01-.26-1.43l.55-.952a1.125 1.125 0 011.37-.49l.88.33c.355.133.751.072 1.075-.133.123-.078.25-.152.378-.223.331-.184.581-.496.643-.87l.154-.925z" /><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 12a2.25 2.25 0 104.5 0 2.25 2.25 0 00-4.5 0z" /></svg>
+                    <svg class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    </svg>
+
                     <span class="inline-flex items-center gap-2">
                         Action Center
                         @if ($actionCenterCount > 0)
@@ -131,7 +137,9 @@
                         </button>
                     @else
                         <button type="button" onclick="window.dispatchEvent(new CustomEvent('gwm-open-enterprise-modal', { detail: { feature: 'Automatic Project & Container Audits' } }));" class="w-full px-3 py-2 text-xs rounded-md border border-amber-400/50 text-amber-200 hover:text-amber-100 hover:border-amber-300 inline-flex items-center justify-center">
-                            <svg class="mr-1.5 h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
+                            <svg class="h-3.5 w-3.5 mr-1.5 shrink-0 text-amber-300" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M10 1a4 4 0 00-4 4v2H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-1V5a4 4 0 00-4-4zm-2 6V5a2 2 0 114 0v2H8z" clip-rule="evenodd"></path>
+                            </svg>
                             Audit Projects
                         </button>
                     @endif
