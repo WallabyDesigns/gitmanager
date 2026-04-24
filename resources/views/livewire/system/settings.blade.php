@@ -1,5 +1,22 @@
-<div class="py-10">
+<div class="py-10" wire:init="loadData">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        @if (! $loaded)
+            <div class="animate-pulse grid gap-6 lg:grid-cols-[260px,1fr]">
+                <div class="space-y-2 p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800">
+                    <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4"></div>
+                    <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-2/3"></div>
+                    <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4"></div>
+                    <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
+                    <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-2/3"></div>
+                    <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/5"></div>
+                </div>
+                <div class="space-y-4">
+                    <div class="h-28 bg-slate-200 dark:bg-slate-800 rounded-xl"></div>
+                    <div class="h-28 bg-slate-200 dark:bg-slate-800 rounded-xl"></div>
+                    <div class="h-40 bg-slate-200 dark:bg-slate-800 rounded-xl"></div>
+                </div>
+            </div>
+        @else
         <div class="grid gap-6 lg:grid-cols-[260px,1fr]">
             @include('livewire.system.partials.tabs')
 
@@ -656,5 +673,6 @@
                 @endif
             </div>
         </div>
+        @endif
     </div>
 </div>

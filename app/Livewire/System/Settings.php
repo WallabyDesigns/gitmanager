@@ -51,6 +51,8 @@ class Settings extends Component
     public bool $logCleanupEnabled = false;
     public int $logRetentionDays = LogCleanupService::DEFAULT_RETENTION_DAYS;
 
+    public bool $loaded = false;
+
     /** @var array<string, array{key: string, value: string, description: string}> */
     public array $gwmKeys = [];
     /** @var array<string, string> */
@@ -60,7 +62,12 @@ class Settings extends Component
     public string $envBackupLabel = '';
     public bool $envSaveSuccess = false;
 
-    public function mount(EditionService $edition, SettingsService $settings, LicenseService $license, EnvManagerService $envManager, EnvBackupService $backupService): void
+    public function mount(): void
+    {
+        $this->settingsSection = $this->resolveRequestedSection();
+    }
+
+    public function loadData(EditionService $edition, SettingsService $settings, LicenseService $license, EnvManagerService $envManager, EnvBackupService $backupService): void
     {
         $this->checkUpdates = (bool) ($settings->get('system.check_updates', true));
         $this->autoUpdate = (bool) ($settings->get('system.auto_update', (bool) config('gitmanager.self_update.enabled', true)));
@@ -103,12 +110,11 @@ class Settings extends Component
         }
         $this->timezone = $stored;
 
-        $requestedSection = $this->resolveRequestedSection();
-        $this->selectSettingsSection($requestedSection);
-
         if ($this->settingsSection === self::SECTION_ENVIRONMENT) {
             $this->loadEnvironmentSection($envManager, $backupService);
         }
+
+        $this->loaded = true;
     }
 
     public function render(EditionService $edition, SchedulerService $scheduler): \Illuminate\View\View
