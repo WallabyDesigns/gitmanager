@@ -61,7 +61,7 @@
             <nav class="mt-4 space-y-1.5" aria-label="Projects navigation">
                 <a
                     href="{{ route('projects.create') }}"
-                    wire:navigate.hover
+                    
                     class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'create' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                 >
                     <svg class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
@@ -71,7 +71,7 @@
                 </a>
                 <a
                     href="{{ route('projects.index') }}"
-                    wire:navigate.hover
+                    
                     class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'list' && ! $isFtpRoute ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                 >
                     <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" /></svg>
@@ -79,7 +79,7 @@
                 </a>
                 <a
                     href="{{ route('projects.queue') }}"
-                    wire:navigate.hover
+                    
                     class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'queue' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                 >
                     <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" /></svg>
@@ -92,7 +92,7 @@
                 </a>
                 <a
                     href="{{ route('projects.action-center') }}"
-                    wire:navigate.hover
+                    
                     class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'action-center' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                 >
                     <svg class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
@@ -110,7 +110,7 @@
                 @if ($isAdmin)
                         <a
                             href="{{ route('ftp-accounts.index') }}"
-                            wire:navigate.hover
+                            
                             class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ request()->routeIs('ftp-accounts.*') ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                         >
                         <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg>
@@ -191,7 +191,7 @@
                 <nav class="p-4 space-y-1.5" aria-label="Projects navigation">
                     <a
                         href="{{ route('projects.create') }}"
-                        wire:navigate.hover
+                        
                         @click="open = false"
                         class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'create' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                     >
@@ -200,7 +200,7 @@
                     </a>
                     <a
                         href="{{ route('projects.index') }}"
-                        wire:navigate.hover
+                        
                         @click="open = false"
                         class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'list' && ! $isFtpRoute ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                     >
@@ -209,7 +209,7 @@
                     </a>
                     <a
                         href="{{ route('projects.queue') }}"
-                        wire:navigate.hover
+                        
                         @click="open = false"
                         class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'queue' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                     >
@@ -223,7 +223,7 @@
                     </a>
                     <a
                         href="{{ route('projects.action-center') }}"
-                        wire:navigate.hover
+                        
                         @click="open = false"
                         class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'action-center' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                     >
@@ -238,7 +238,7 @@
                     @if ($isAdmin)
                         <a
                             href="{{ route('ftp-accounts.index') }}"
-                            wire:navigate.hover
+                            
                             @click="open = false"
                             class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ request()->routeIs('ftp-accounts.*') ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                         >

@@ -42,7 +42,7 @@ new class extends Component
             <div class="flex">
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center min-w-0">
-                    <a href="{{ route('projects.index') }}" wire:navigate.hover class="flex items-center min-w-0">
+                    <a href="{{ route('projects.index') }}"  class="flex items-center min-w-0">
                         <x-application-logo class="block h-9 w-auto shrink-0 fill-current text-slate-800 dark:text-slate-100" />
                         <div class="min-w-0 px-2">
                             <h2 class="text-base sm:text-xl font-semibold text-slate-900 dark:text-slate-100 truncate">

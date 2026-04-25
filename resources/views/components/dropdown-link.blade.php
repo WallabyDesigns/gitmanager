@@ -7,12 +7,14 @@
     $hasExternalScheme = in_array($scheme, ['mailto', 'tel'], true);
     $isAbsoluteHttpLink = in_array($scheme, ['http', 'https'], true);
     $isInternalAbsoluteLink = $isAbsoluteHttpLink && $host !== '' && $host === $currentHost;
-    $shouldNavigate = ! $attributes->has('target')
-        && ! $attributes->has('download')
-        && $href !== ''
-        && ! \Illuminate\Support\Str::startsWith($href, ['#'])
-        && ! $hasExternalScheme
-        && (! $isAbsoluteHttpLink || $isInternalAbsoluteLink);
+    // $shouldNavigate = ! $attributes->has('target')
+    //     && ! $attributes->has('download')
+    //     && $href !== ''
+    //     && ! \Illuminate\Support\Str::startsWith($href, ['#'])
+    //     && ! $hasExternalScheme
+    //     && (! $isAbsoluteHttpLink || $isInternalAbsoluteLink);
 @endphp
 
-<a @if ($shouldNavigate) wire:navigate.hover @endif {{ $attributes->merge(['class' => 'block w-full px-4 py-2 text-start text-sm leading-5 text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 focus:outline-none transition duration-150 ease-in-out']) }}>{{ $slot }}</a>
+<a 
+{{-- @if ($shouldNavigate) wire:navigate.hover @endif  --}}
+{{ $attributes->merge(['class' => 'block w-full px-4 py-2 text-start text-sm leading-5 text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 focus:outline-none transition duration-150 ease-in-out']) }}>{{ $slot }}</a>
