@@ -6217,11 +6217,11 @@
         },
         {
             "name": "wallabydesigns/gitmanager-enterprise",
-            "version": "1.0.3",
+            "version": "1.0.10",
             "dist": {
                 "type": "zip",
-                "url": "https://gitwebmanager.com/api/v1/packages/composer/dist/gitmanager-enterprise-1.0.3.zip",
-                "shasum": "38b6d708e692f01a4b73b9df31d2389f7b043f84"
+                "url": "https://gitwebmanager.com/api/v1/packages/composer/dist/gitmanager-enterprise-1.0.10.zip",
+                "shasum": "4fae218967969b58d14b2b3f6cfbc38d5dd3cc6c"
             },
             "require": {
                 "laravel/framework": "^12.0",
