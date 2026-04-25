@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AuditIssue;
 use App\Models\Deployment;
 use App\Models\Project;
 use App\Models\User;
@@ -880,6 +881,8 @@ class DeploymentService
                 $this->maybeSyncFtp($project, $executionPath, $output);
             }
 
+            $this->resolveDependencyAuditIssuesForAction($project, $action, $output);
+
             $deployment->status = 'success';
             $deployment->output_log = implode("\n", $output);
             $deployment->finished_at = now();
@@ -900,6 +903,79 @@ class DeploymentService
         }
 
         return $deployment;
+    }
+
+    /**
+     * @param array<int, string> $output
+     */
+    private function resolveDependencyAuditIssuesForAction(Project $project, string $action, array &$output): void
+    {
+        $tools = $this->auditToolsResolvedByAction($project, $action);
+        if ($tools === []) {
+            return;
+        }
+
+        foreach ($tools as $tool) {
+            try {
+                $issues = AuditIssue::query()
+                    ->where('project_id', $project->id)
+                    ->where('tool', $tool)
+                    ->where('status', 'open')
+                    ->get();
+
+                if ($issues->isEmpty()) {
+                    continue;
+                }
+
+                $summary = $this->dependencyAuditResolutionSummary($tool, $action);
+                foreach ($issues as $issue) {
+                    $issue->status = 'resolved';
+                    $issue->fix_summary = $summary;
+                    $issue->remaining_count = 0;
+                    $issue->resolved_at = now();
+                    $issue->last_seen_at = now();
+                    $issue->save();
+                }
+
+                $label = $tool === 'npm' ? 'Npm' : ucfirst($tool);
+                $count = $issues->count();
+                $output[] = $count === 1
+                    ? 'Resolved 1 open '.$label.' audit issue.'
+                    : 'Resolved '.$count.' open '.$label.' audit issues.';
+            } catch (\Throwable $exception) {
+                $output[] = 'Warning: unable to resolve '.$tool.' audit issues: '.$exception->getMessage();
+            }
+        }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function auditToolsResolvedByAction(Project $project, string $action): array
+    {
+        return match ($action) {
+            'composer_install', 'composer_update' => ['composer'],
+            'npm_install', 'npm_update', 'npm_audit_fix', 'npm_audit_fix_force' => ['npm'],
+            'dependency_update' => array_values(array_filter([
+                $project->run_composer_install ? 'composer' : null,
+                $project->run_npm_install ? 'npm' : null,
+            ])),
+            default => [],
+        };
+    }
+
+    private function dependencyAuditResolutionSummary(string $tool, string $action): string
+    {
+        return match ($action) {
+            'composer_install' => 'Composer install completed successfully.',
+            'composer_update' => 'Composer update completed successfully.',
+            'npm_install' => 'Npm install completed successfully.',
+            'npm_update' => 'Npm update completed successfully.',
+            'npm_audit_fix' => 'Npm audit fix completed successfully.',
+            'npm_audit_fix_force' => 'Npm audit fix --force completed successfully.',
+            'dependency_update' => ($tool === 'npm' ? 'Npm' : 'Composer').' dependency update completed successfully.',
+            default => ucfirst($tool).' dependency action completed successfully.',
+        };
     }
 
     // ──────────────────────────────────────────────────────────────────

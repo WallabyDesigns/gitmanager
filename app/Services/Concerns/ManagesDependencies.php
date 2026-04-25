@@ -98,6 +98,7 @@ trait ManagesDependencies
                 $deployment->status = 'success';
                 $deployment->from_hash = $fromHash;
                 $deployment->to_hash = $toHash;
+                $this->resolveDependencyAuditIssuesForAction($project, 'dependency_update', $output);
                 $this->appendWorkflowOutput($deployment, $project, $output);
                 $deployment->output_log = implode("\n", $output);
                 $deployment->finished_at = now();
@@ -177,11 +178,13 @@ trait ManagesDependencies
 
         try {
             if ($useFtpManifests) {
-                $this->refreshFtpManifestFiles($project, $executionPath, ['composer.json', 'composer.lock'], $output);
+                if (! $this->refreshFtpManifestFiles($project, $executionPath, ['composer.json', 'composer.lock'], $output, true)) {
+                    throw new \RuntimeException('Unable to refresh FTP Composer files before audit.');
+                }
             }
 
             $command = ['composer', 'audit'];
-            if ($useFtpManifests) {
+            if ($useFtpManifests && is_file($executionPath.DIRECTORY_SEPARATOR.'composer.lock')) {
                 $command[] = '--locked';
             }
 
@@ -306,7 +309,15 @@ trait ManagesDependencies
 
         return $this->runMaintenanceAction($project, $user, $force ? 'npm_audit_fix_force' : 'npm_audit_fix', function (string $path, array &$output) use ($force, $project): void {
             if ($this->shouldUseFtpWorkspace($project)) {
-                $this->refreshFtpManifestFiles($project, $path, ['package.json', 'package-lock.json', 'npm-shrinkwrap.json'], $output);
+                if (! $this->refreshFtpManifestFiles($project, $path, [
+                    'package.json',
+                    'package-lock.json',
+                    'npm-shrinkwrap.json',
+                    'pnpm-lock.yaml',
+                    'yarn.lock',
+                ], $output, true)) {
+                    throw new \RuntimeException('Unable to refresh FTP npm files before audit.');
+                }
             }
 
             $command = ['npm', 'audit', 'fix'];
@@ -337,6 +348,8 @@ trait ManagesDependencies
     public function auditDependencies(Project $project, ?User $user = null, bool $autoFix = true): array
     {
         $results = [];
+
+        $this->refreshFtpAuditManifestFiles($project);
 
         if ($this->hasComposer($project)) {
             $results['composer'] = $this->runComposerAuditFlow($project, $user, $autoFix);
@@ -592,20 +605,26 @@ trait ManagesDependencies
     /**
      * @param array<int, string> $files
      */
-    private function refreshFtpManifestFiles(Project $project, string $executionPath, array $files, array &$output): void
+    private function refreshFtpManifestFiles(Project $project, string $executionPath, array $files, array &$output, bool $deleteMissing = false): bool
     {
         if (! $this->shouldUseFtpWorkspace($project)) {
-            return;
+            return true;
         }
 
         $remoteFiles = app(\App\Services\FtpService::class)->fetchRemoteFiles($project, $files, $output);
         if ($remoteFiles === []) {
-            return;
+            return false;
         }
 
         foreach ($files as $file) {
             $contents = $remoteFiles[$file] ?? null;
             if ($contents === null) {
+                if ($deleteMissing) {
+                    $target = $executionPath.DIRECTORY_SEPARATOR.$file;
+                    if (is_file($target) && @unlink($target)) {
+                        $output[] = 'FTP manifest sync: removed stale '.$file.'.';
+                    }
+                }
                 continue;
             }
 
@@ -623,6 +642,33 @@ trait ManagesDependencies
             if (@file_put_contents($target, $contents) !== false) {
                 $output[] = 'FTP manifest sync: downloaded '.$file.'.';
             }
+        }
+
+        return true;
+    }
+
+    private function refreshFtpAuditManifestFiles(Project $project): void
+    {
+        if (! $this->shouldUseFtpWorkspace($project)) {
+            return;
+        }
+
+        try {
+            $repoPath = $this->resolveRepoPath($project);
+            $executionPath = $this->resolveExecutionPath($project, $repoPath);
+            $output = [];
+
+            $this->refreshFtpManifestFiles($project, $executionPath, [
+                'composer.json',
+                'composer.lock',
+                'package.json',
+                'package-lock.json',
+                'npm-shrinkwrap.json',
+                'pnpm-lock.yaml',
+                'yarn.lock',
+            ], $output, true);
+        } catch (\Throwable $exception) {
+            // Individual audit actions will surface connection or filesystem errors.
         }
     }
 
