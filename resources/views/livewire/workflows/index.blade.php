@@ -40,21 +40,15 @@
                         </div>
 
                         <div class="grid gap-4 xl:grid-cols-[1fr,1.4fr]">
-                            <div class="rounded-xl border border-slate-200/60 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/60 p-4 space-y-3">
-                                <div class="text-xs uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">Triggers</div>
+                            <div class="space-y-3">
                                 <div>
-                                    <div class="text-xs font-medium text-slate-500 dark:text-slate-400">Actions</div>
-                                    <div class="mt-2 flex flex-wrap gap-2">
+                                    <div class="text-xs font-medium text-slate-500 dark:text-slate-400">Actions & Outcomes:</div>
+                                    <div class="mt-2 gap-2 ">
                                         @foreach ($this->workflowActionLabels($workflow) as $label)
-                                            <span class="inline-flex items-center rounded-full border border-slate-200/70 dark:border-slate-700 px-2.5 py-1 text-xs text-slate-600 dark:text-slate-200">
+                                            <div class="inline-flex items-center rounded-full border border-slate-200/70 dark:border-slate-700 px-2.5 py-1 text-xs text-slate-600 dark:text-slate-200">
                                                 {{ $label }}
-                                            </span>
+                                            </div>
                                         @endforeach
-                                    </div>
-                                </div>
-                                <div>
-                                    <div class="text-xs font-medium text-slate-500 dark:text-slate-400">Outcomes</div>
-                                    <div class="mt-2 flex flex-wrap gap-2">
                                         @foreach ($this->workflowStatusLabels($workflow) as $label)
                                             <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs {{ str_contains(strtolower($label), 'success') ? 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-300' : 'bg-rose-500/10 text-rose-500 dark:text-rose-300' }}">
                                                 {{ $label }}
@@ -64,10 +58,9 @@
                                 </div>
                             </div>
 
-                            <div class="rounded-xl border border-slate-200/60 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/60 p-4 space-y-3">
+                            <div class="space-y-3">
                                 <div class="flex items-center justify-between gap-3">
                                     <div class="text-xs uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">Delivery Destinations</div>
-                                    <div class="text-xs text-slate-500 dark:text-slate-400">One workflow can fan out to multiple channels.</div>
                                 </div>
                                 <div class="grid gap-3">
                                     @foreach ($this->workflowDestinations($workflow) as $delivery)
@@ -83,11 +76,6 @@
                                             <div class="mt-2 text-sm text-slate-600 dark:text-slate-300">
                                                 {{ $this->deliveryTargetSummary($delivery) }}
                                             </div>
-                                            @if (($delivery['type'] ?? null) === 'webhook')
-                                                <div class="mt-2 text-xs text-slate-500 dark:text-slate-400 break-all">
-                                                    {{ $delivery['url'] ?? '' }}
-                                                </div>
-                                            @endif
                                         </div>
                                     @endforeach
                                 </div>
