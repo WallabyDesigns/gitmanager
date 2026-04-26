@@ -860,9 +860,9 @@ class Containers extends Component
             'isEnterprise'        => $this->isEnterprise,
             'templates'           => $this->getTemplates(),
         ])->layout('layouts.app', [
-            'title'  => 'Infrastructure',
+            'title'  => 'Docker',
             'header' => view('livewire.infra.partials.header', [
-                'title'    => 'Infrastructure',
+                'title'    => 'Docker',
                 'subtitle' => 'Manage Docker containers, images, volumes, networks, and swarm services.',
             ]),
         ]);

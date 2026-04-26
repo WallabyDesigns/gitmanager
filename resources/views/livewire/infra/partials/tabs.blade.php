@@ -3,7 +3,7 @@
     $hasKubernetes = \Illuminate\Support\Facades\Route::has('infra.kubernetes');
     $isContainersActive = $hasContainers && request()->routeIs('infra.containers*') && ! request()->routeIs('infra.kubernetes*');
     $isKubernetesActive = $hasKubernetes && request()->routeIs('infra.kubernetes*');
-    $currentInfraLabel = $isKubernetesActive ? 'Kubernetes' : 'Containers';
+    $currentInfraLabel = $isKubernetesActive ? 'Kubernetes' : 'Docker';
     $showMobileDropdown = $hasContainers && $hasKubernetes;
 @endphp
 
