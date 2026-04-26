@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e7aa22930097c600b6089c798e63672f",
+    "content-hash": "d8b6b4ce5d53ebc95e9682f2f9b5419d",
     "packages": [
         {
             "name": "brick/math",
@@ -6217,11 +6217,11 @@
         },
         {
             "name": "wallabydesigns/gitmanager-enterprise",
-            "version": "1.0.11",
+            "version": "1.1.0",
             "dist": {
                 "type": "zip",
-                "url": "https://gitwebmanager.com/api/v1/packages/composer/dist/gitmanager-enterprise-1.0.11.zip",
-                "shasum": "0080a83e08479bdb112ed04a16be646a75af9380"
+                "url": "https://gitwebmanager.com/api/v1/packages/composer/dist/gitmanager-enterprise-1.1.0.zip",
+                "shasum": "5be481e73598a2491fbb1a87f9b45e08f4a0546b"
             },
             "require": {
                 "laravel/framework": "^12.0",
