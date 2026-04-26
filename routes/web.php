@@ -95,31 +95,25 @@ Route::middleware(['auth', 'verified', EnsurePasswordChanged::class])->group(fun
     Route::redirect('/app-updates', '/system')->name('app-updates.index');
     Route::redirect('/security', '/system/security')->name('security.index');
 
-    Route::redirect('/containers', '/docker', 301);
-    Route::redirect('/containers/resources', '/docker', 301);
-    Route::redirect('/containers/kubernetes', '/docker/kubernetes', 301);
-    Route::redirect('/containers/kubernetes/{section}', '/docker/kubernetes/{section}', 301)
-        ->whereIn('section', ['access', 'workloads', 'controls', 'events', 'audit']);
-    Route::redirect('/containers/{section}', '/docker/{section}', 301)
-        ->whereIn('section', [
-            'overview', 'containers', 'images', 'volumes', 'networks',
-            'swarm', 'databases', 'templates',
-            // enterprise sections
-            'nodes', 'audits', 'stacks', 'deployments',
-            'builds', 'repos', 'procedures', 'actions', 'builders',
-            'syncs', 'alerts', 'updates', 'settings',
-        ]);
+    $dockerSections = [
+        'dashboard', 'overview', 'docker', 'containers', 'images', 'volumes', 'networks',
+        'swarm', 'databases', 'templates',
+        // enterprise sections
+        'servers', 'nodes', 'audits', 'stacks', 'deployments',
+        'builds', 'repos', 'procedures', 'actions', 'builders',
+        'syncs', 'alerts', 'updates', 'settings',
+    ];
 
-    Route::get('/docker', InfraContainers::class)->name('infra.containers');
+    Route::get('/containers', InfraContainers::class)->name('infra.containers.legacy');
+    Route::get('/containers/{section}', InfraContainers::class)
+        ->whereIn('section', $dockerSections)
+        ->name('infra.containers.section.legacy');
+    Route::redirect('/containers/resources', '/docker/dashboard', 301);
+
+    Route::redirect('/docker', '/docker/dashboard', 301);
+    Route::get('/docker/dashboard', InfraContainers::class)->name('infra.containers');
     Route::get('/docker/{section}', InfraContainers::class)
-        ->whereIn('section', [
-            'overview', 'containers', 'images', 'volumes', 'networks',
-            'swarm', 'databases', 'templates',
-            // enterprise sections
-            'nodes', 'audits', 'stacks', 'deployments',
-            'builds', 'repos', 'procedures', 'actions', 'builders',
-            'syncs', 'alerts', 'updates', 'settings',
-        ])
+        ->whereIn('section', $dockerSections)
         ->name('infra.containers.section');
 });
 

@@ -101,6 +101,13 @@ class Containers extends Component
         $this->isEnterprise = app(EditionService::class)->current() === EditionService::ENTERPRISE;
 
         if (is_string($section) && $section !== '') {
+            $section = match ($section) {
+                'dashboard' => 'overview',
+                'docker' => 'containers',
+                'servers' => 'nodes',
+                default => $section,
+            };
+
             $this->initialSection = $section;
         }
 
