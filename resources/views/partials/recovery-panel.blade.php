@@ -20,7 +20,7 @@
     #gwm-recovery-panel{
         opacity: 0;
         animation: appear 0.5s ease-in forwards;
-        animation-delay: 1s;
+        animation-delay: 0.5s;
     }
 
     @keyframes appear {

@@ -1,22 +1,5 @@
 <div class="py-10" wire:init="loadData">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        @if (! $loaded)
-            <div class="animate-pulse grid gap-6 lg:grid-cols-[260px,1fr]">
-                <div class="space-y-2 p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800">
-                    <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4"></div>
-                    <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-2/3"></div>
-                    <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4"></div>
-                    <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
-                    <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-2/3"></div>
-                    <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/5"></div>
-                </div>
-                <div class="space-y-4">
-                    <div class="h-28 bg-slate-200 dark:bg-slate-800 rounded-xl"></div>
-                    <div class="h-28 bg-slate-200 dark:bg-slate-800 rounded-xl"></div>
-                    <div class="h-40 bg-slate-200 dark:bg-slate-800 rounded-xl"></div>
-                </div>
-            </div>
-        @else
         <div class="grid gap-6 lg:grid-cols-[260px,1fr]">
             @include('livewire.system.partials.tabs')
 
@@ -607,7 +590,7 @@
                             </div>
                             <div class="px-6 py-4 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800">
                                 <input wire:model="envBackupLabel" type="text" placeholder="Label (optional)"
-                                       class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 focus:border-indigo-400 focus:outline-none w-48">
+                                        class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 focus:border-indigo-400 focus:outline-none w-48">
                                 <button wire:click="createEnvBackup" class="px-3 py-1.5 text-xs rounded-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-indigo-300 hover:text-indigo-600 transition inline-flex items-center gap-1">
                                     <x-loading-spinner target="createEnvBackup" />
                                     Create Backup
@@ -673,6 +656,5 @@
                 @endif
             </div>
         </div>
-        @endif
     </div>
 </div>
