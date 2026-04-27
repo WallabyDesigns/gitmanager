@@ -580,20 +580,13 @@ class Index extends Component
                 $actions++;
             }
 
-            if ($runImmediately) {
-                foreach ($queuedItems as $queuedItem) {
-                    $freshItem = $queuedItem->fresh();
-                    if (! $freshItem || $freshItem->status !== 'queued') {
-                        continue;
-                    }
-
-                    $queue->processItem($freshItem);
-                }
+            if ($runImmediately && $actions > 0) {
+                $started = $queue->startBackgroundProcessor($actions);
 
                 return [
                     'actions' => $actions,
-                    'skipped' => $actions === 0,
-                    'mode' => 'executed',
+                    'skipped' => false,
+                    'mode' => $started ? 'started' : 'queued',
                 ];
             }
 
@@ -656,6 +649,7 @@ class Index extends Component
 
         $label = $forced ? 'force repair action(s)' : 'repair action(s)';
         $message = match ($result['mode'] ?? 'queued') {
+            'started' => "Started {$result['actions']} {$label} for {$project->name}.",
             'executed' => "Started {$result['actions']} {$label} for {$project->name} immediately.",
             default => "Queued {$result['actions']} {$label} for {$project->name}.",
         };

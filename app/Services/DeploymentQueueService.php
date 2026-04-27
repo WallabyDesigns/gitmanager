@@ -7,6 +7,7 @@ use App\Models\Deployment;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\Process\Process;
 
 class DeploymentQueueService
 {
@@ -118,6 +119,55 @@ class DeploymentQueueService
         $this->normalizeQueuedPositions();
 
         return true;
+    }
+
+    public function startBackgroundProcessor(int $limit = 1): bool
+    {
+        $limit = max(1, $limit);
+
+        if (app()->runningUnitTests()) {
+            return true;
+        }
+
+        try {
+            $php = $this->phpBinary();
+            $artisan = base_path('artisan');
+
+            if (PHP_OS_FAMILY === 'Windows') {
+                $script = 'Start-Process'
+                    .' -FilePath '.$this->powershellQuote($php)
+                    .' -ArgumentList @('.implode(', ', array_map([$this, 'powershellQuote'], [
+                        $artisan,
+                        'deployments:process-queue',
+                        '--limit='.$limit,
+                    ])).')'
+                    .' -WorkingDirectory '.$this->powershellQuote(base_path())
+                    .' -WindowStyle Hidden';
+
+                $process = new Process([
+                    'powershell',
+                    '-NoProfile',
+                    '-ExecutionPolicy',
+                    'Bypass',
+                    '-Command',
+                    $script,
+                ], base_path());
+            } else {
+                $command = 'cd '.escapeshellarg(base_path())
+                    .' && nohup '.escapeshellarg($php).' '.escapeshellarg($artisan)
+                    .' deployments:process-queue --limit='.escapeshellarg((string) $limit)
+                    .' > /dev/null 2>&1 &';
+
+                $process = Process::fromShellCommandline($command, base_path());
+            }
+
+            $process->setTimeout(15);
+            $process->run();
+
+            return $process->isSuccessful();
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     public function normalizeQueuedPositions(): void
@@ -304,6 +354,19 @@ class DeploymentQueueService
         return max($configured, $processTimeout + 300);
     }
 
+    private function phpBinary(): string
+    {
+        $configured = trim((string) config('gitmanager.php_binary', 'php'));
+        $configured = trim($configured, "\"' ");
+
+        return $configured !== '' ? $configured : 'php';
+    }
+
+    private function powershellQuote(string $value): string
+    {
+        return "'".str_replace("'", "''", $value)."'";
+    }
+
     public function moveUp(DeploymentQueueItem $item): void
     {
         if ($item->status !== 'queued') {
@@ -386,6 +449,8 @@ class DeploymentQueueService
 
     private function runItem(DeploymentQueueItem $item): void
     {
+        $this->applyItemRuntimeBudget();
+
         $service = app(DeploymentService::class);
         $project = $item->project;
         $user = $item->queuedBy;
@@ -483,6 +548,21 @@ class DeploymentQueueService
 
         $item->finished_at = now();
         $item->save();
+    }
+
+    private function applyItemRuntimeBudget(): void
+    {
+        if (! function_exists('set_time_limit')) {
+            return;
+        }
+
+        $processTimeout = (int) config('gitmanager.deployments.process_timeout', config('gitmanager.process_timeout', 900));
+        if ($processTimeout <= 0) {
+            @set_time_limit(0);
+            return;
+        }
+
+        @set_time_limit($processTimeout + 300);
     }
 
     /**

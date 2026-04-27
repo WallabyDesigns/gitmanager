@@ -905,6 +905,11 @@ trait ManagesDependencies
             $output[] = 'Composer will use PHP binary: '.$phpBinary;
         }
 
+        $composerJson = $path.DIRECTORY_SEPARATOR.'composer.json';
+        if (! is_file($composerJson)) {
+            throw new \RuntimeException('Composer action cannot run because composer.json was not found in: '.$path);
+        }
+
         $this->permissionService->ensureWritableDirectory($path, $output, 'Project directory');
         if ($forceStaged) {
             $output[] = 'Running composer command using staged install.';
@@ -969,6 +974,11 @@ trait ManagesDependencies
         $projectWritable = is_writable($path);
         $modulesWritable = is_dir($modulesPath) ? is_writable($modulesPath) : $projectWritable;
         $commandVerb = strtolower((string) ($command[1] ?? ''));
+
+        $packageJson = $path.DIRECTORY_SEPARATOR.'package.json';
+        if (! is_file($packageJson)) {
+            throw new \RuntimeException('Npm action cannot run because package.json was not found in: '.$path);
+        }
 
         $this->permissionService->ensureWritableDirectory($path, $output, 'Project directory');
         $useStagedInstall = $forceStaged || ($commandVerb === 'ci' && is_dir($modulesPath));

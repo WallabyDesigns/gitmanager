@@ -80,6 +80,48 @@ class DependencyAuditIssueResolutionTest extends TestCase
         $this->assertContains('Resolved 1 open Npm audit issue.', $output);
     }
 
+    public function test_composer_runner_reports_missing_manifest_directory_before_running_process(): void
+    {
+        $path = storage_path('framework/testing/missing-composer-'.uniqid());
+        mkdir($path, 0775, true);
+
+        try {
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('composer.json was not found in: '.$path);
+
+            $output = [];
+            $service = app(DeploymentService::class);
+            $method = new \ReflectionMethod($service, 'runComposerCommandWithFallback');
+            $method->setAccessible(true);
+            $method->invokeArgs($service, [$path, &$output, 'Composer update', ['composer', 'update']]);
+        } finally {
+            if (is_dir($path)) {
+                rmdir($path);
+            }
+        }
+    }
+
+    public function test_npm_runner_reports_missing_manifest_directory_before_running_process(): void
+    {
+        $path = storage_path('framework/testing/missing-package-'.uniqid());
+        mkdir($path, 0775, true);
+
+        try {
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('package.json was not found in: '.$path);
+
+            $output = [];
+            $service = app(DeploymentService::class);
+            $method = new \ReflectionMethod($service, 'runNpmCommandWithFallback');
+            $method->setAccessible(true);
+            $method->invokeArgs($service, [$path, &$output, 'Npm update', ['npm', 'update'], true]);
+        } finally {
+            if (is_dir($path)) {
+                rmdir($path);
+            }
+        }
+    }
+
     /**
      * @param array<int, string> $output
      */

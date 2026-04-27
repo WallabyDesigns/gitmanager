@@ -22,9 +22,27 @@ class ProcessDeploymentQueue extends Command
         $limit = $limitOption !== null && $limitOption !== ''
             ? (int) $limitOption
             : (int) config('gitmanager.deploy_queue.batch_size', 0);
+
+        $this->applyRuntimeBudget($limit);
+
         $processed = $queue->processNext($limit);
         $this->info("Processed {$processed} queued item(s).");
 
         return self::SUCCESS;
+    }
+
+    private function applyRuntimeBudget(int $limit): void
+    {
+        if (! function_exists('set_time_limit')) {
+            return;
+        }
+
+        $processTimeout = (int) config('gitmanager.deployments.process_timeout', config('gitmanager.process_timeout', 900));
+        if ($processTimeout <= 0 || $limit <= 0) {
+            @set_time_limit(0);
+            return;
+        }
+
+        @set_time_limit(($processTimeout + 300) * max(1, $limit));
     }
 }

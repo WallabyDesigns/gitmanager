@@ -86,10 +86,7 @@ class ActionCenterTest extends TestCase
             'started_at' => now(),
         ]);
 
-        $this->mock(EditionService::class, function ($mock): void {
-            $mock->shouldReceive('current')
-                ->andReturn(EditionService::ENTERPRISE);
-        });
+        $this->mockEnterpriseEdition();
 
         Livewire::actingAs($user)
             ->test(SecurityIndex::class)
@@ -104,7 +101,7 @@ class ActionCenterTest extends TestCase
         $this->assertSame(['audit_project', 'composer_update'], $actions);
     }
 
-    public function test_resolving_a_security_alert_runs_immediately_when_queue_is_idle(): void
+    public function test_resolving_a_security_alert_queues_when_queue_is_idle(): void
     {
         config()->set('gitmanager.deploy_queue.enabled', true);
 
@@ -126,18 +123,7 @@ class ActionCenterTest extends TestCase
             'manifest_path' => null,
         ]);
 
-        $this->mock(EditionService::class, function ($mock): void {
-            $mock->shouldReceive('current')
-                ->andReturn(EditionService::ENTERPRISE);
-        });
-
-        $this->mock(AuditService::class, function ($mock): void {
-            $mock->shouldReceive('auditProject')
-                ->once()
-                ->andReturn([
-                    'results' => [],
-                ]);
-        });
+        $this->mockEnterpriseEdition();
 
         $this->mock(DeploymentService::class, function ($mock) use ($project, $user): void {
             $mock->shouldReceive('hasComposer')
@@ -151,17 +137,7 @@ class ActionCenterTest extends TestCase
             $mock->shouldReceive('releaseStaleRunningDeployments')
                 ->once()
                 ->andReturnNull();
-            $mock->shouldReceive('composerUpdate')
-                ->once()
-                ->withArgs(fn (Project $candidate, ?User $actor): bool => $candidate->is($project) && $actor?->is($user))
-                ->andReturn(Deployment::query()->create([
-                    'project_id' => $project->id,
-                    'triggered_by' => $user->id,
-                    'action' => 'composer_update',
-                    'status' => 'success',
-                    'started_at' => now(),
-                    'finished_at' => now(),
-                ]));
+            $mock->shouldNotReceive('composerUpdate');
         });
 
         Livewire::actingAs($user)
@@ -179,8 +155,8 @@ class ActionCenterTest extends TestCase
             ->all();
 
         $this->assertSame([
-            ['action' => 'audit_project', 'status' => 'completed'],
-            ['action' => 'composer_update', 'status' => 'completed'],
+            ['action' => 'audit_project', 'status' => 'queued'],
+            ['action' => 'composer_update', 'status' => 'queued'],
         ], $items);
     }
 
@@ -212,10 +188,7 @@ class ActionCenterTest extends TestCase
             'started_at' => now(),
         ]);
 
-        $this->mock(EditionService::class, function ($mock): void {
-            $mock->shouldReceive('current')
-                ->andReturn(EditionService::ENTERPRISE);
-        });
+        $this->mockEnterpriseEdition();
 
         Livewire::actingAs($user)
             ->test(SecurityIndex::class)
@@ -230,7 +203,7 @@ class ActionCenterTest extends TestCase
         $this->assertSame(['audit_project', 'npm_audit_fix_force'], $actions);
     }
 
-    public function test_force_fix_for_npm_alert_runs_immediately_when_queue_is_idle(): void
+    public function test_force_fix_for_npm_alert_queues_when_queue_is_idle(): void
     {
         config()->set('gitmanager.deploy_queue.enabled', true);
 
@@ -251,34 +224,13 @@ class ActionCenterTest extends TestCase
             'ecosystem' => 'npm',
         ]);
 
-        $this->mock(EditionService::class, function ($mock): void {
-            $mock->shouldReceive('current')
-                ->andReturn(EditionService::ENTERPRISE);
-        });
-
-        $this->mock(AuditService::class, function ($mock): void {
-            $mock->shouldReceive('auditProject')
-                ->once()
-                ->andReturn([
-                    'results' => [],
-                ]);
-        });
+        $this->mockEnterpriseEdition();
 
         $this->mock(DeploymentService::class, function ($mock) use ($project, $user): void {
             $mock->shouldReceive('releaseStaleRunningDeployments')
                 ->once()
                 ->andReturnNull();
-            $mock->shouldReceive('npmAuditFix')
-                ->once()
-                ->withArgs(fn (Project $candidate, ?User $actor, bool $force): bool => $candidate->is($project) && $actor?->is($user) && $force)
-                ->andReturn(Deployment::query()->create([
-                    'project_id' => $project->id,
-                    'triggered_by' => $user->id,
-                    'action' => 'npm_audit_fix_force',
-                    'status' => 'success',
-                    'started_at' => now(),
-                    'finished_at' => now(),
-                ]));
+            $mock->shouldNotReceive('npmAuditFix');
         });
 
         Livewire::actingAs($user)
@@ -296,8 +248,8 @@ class ActionCenterTest extends TestCase
             ->all();
 
         $this->assertSame([
-            ['action' => 'audit_project', 'status' => 'completed'],
-            ['action' => 'npm_audit_fix_force', 'status' => 'completed'],
+            ['action' => 'audit_project', 'status' => 'queued'],
+            ['action' => 'npm_audit_fix_force', 'status' => 'queued'],
         ], $items);
     }
 
@@ -336,10 +288,7 @@ class ActionCenterTest extends TestCase
             'summary' => 'npm audit found issues',
         ]);
 
-        $this->mock(EditionService::class, function ($mock): void {
-            $mock->shouldReceive('current')
-                ->andReturn(EditionService::ENTERPRISE);
-        });
+        $this->mockEnterpriseEdition();
 
         Livewire::actingAs($user)
             ->test(SecurityIndex::class)
@@ -382,10 +331,7 @@ class ActionCenterTest extends TestCase
             'ecosystem' => 'composer',
         ]);
 
-        $this->mock(EditionService::class, function ($mock): void {
-            $mock->shouldReceive('current')
-                ->andReturn(EditionService::ENTERPRISE);
-        });
+        $this->mockEnterpriseEdition();
 
         Livewire::actingAs($user)
             ->test(SecurityIndex::class)
@@ -403,5 +349,15 @@ class ActionCenterTest extends TestCase
             ->get(route('system.licensing'))
             ->assertOk()
             ->assertSee('Buy Enterprise');
+    }
+
+    private function mockEnterpriseEdition(): void
+    {
+        $this->mock(EditionService::class, function ($mock): void {
+            $mock->shouldReceive('current')
+                ->andReturn(EditionService::ENTERPRISE);
+            $mock->shouldReceive('label')
+                ->andReturn('Enterprise Edition');
+        });
     }
 }
