@@ -84,6 +84,7 @@
                                 <option value="composer_audit">Composer Audit</option>
                                 <option value="npm_install">Npm Install</option>
                                 <option value="npm_update">Npm Update</option>
+                                <option value="npm_audit">Npm Audit</option>
                                 <option value="npm_audit_fix">Npm Audit Fix</option>
                                 <option value="npm_audit_fix_force">Npm Audit Fix (Force)</option>
                                 <option value="audit_project">Project Audit</option>

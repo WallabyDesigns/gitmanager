@@ -643,9 +643,17 @@ class FtpService
         }
 
         $createdPath = is_string($created) ? $created : $directory;
+        $fileTest = $this->testWrite($connection, $createdPath, $displayPath);
         @ftp_rmdir($connection, $createdPath);
         if ($createdPath !== $directory) {
             @ftp_rmdir($connection, $directory);
+        }
+
+        if ($fileTest['status'] !== 'ok') {
+            return [
+                'status' => 'warning',
+                'message' => 'Connected and created a directory, but file uploads failed in the remote path: '.$displayPath.'. Check FTP upload permissions, quota, or passive mode.',
+            ];
         }
 
         return ['status' => 'ok', 'message' => 'Connection verified and remote path is writable.'];

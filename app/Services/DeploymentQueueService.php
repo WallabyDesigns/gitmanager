@@ -244,7 +244,7 @@ class DeploymentQueueService
 
     public function releaseStaleRunning(?int $graceSeconds = null): int
     {
-        $grace = $graceSeconds ?? (int) config('gitmanager.deploy_queue.stale_seconds', 900);
+        $grace = $graceSeconds ?? $this->runningGraceSeconds();
         if ($grace <= 0) {
             return 0;
         }
@@ -290,6 +290,18 @@ class DeploymentQueueService
         }
 
         return $released;
+    }
+
+    private function runningGraceSeconds(): int
+    {
+        $configured = (int) config('gitmanager.deploy_queue.stale_seconds', 900);
+        $processTimeout = (int) config('gitmanager.deployments.process_timeout', config('gitmanager.process_timeout', 900));
+
+        if ($processTimeout <= 0) {
+            return $configured;
+        }
+
+        return max($configured, $processTimeout + 300);
     }
 
     public function moveUp(DeploymentQueueItem $item): void
@@ -422,6 +434,10 @@ class DeploymentQueueService
                     break;
                 case 'npm_update':
                     $deployment = $service->npmUpdate($project, $user);
+                    $markFailed = $deployment->status === 'failed';
+                    break;
+                case 'npm_audit':
+                    $deployment = $service->npmAudit($project, $user);
                     $markFailed = $deployment->status === 'failed';
                     break;
                 case 'npm_audit_fix':

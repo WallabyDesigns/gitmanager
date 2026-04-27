@@ -971,6 +971,7 @@ class DeploymentService
             'composer_update' => 'Composer update completed successfully.',
             'npm_install' => 'Npm install completed successfully.',
             'npm_update' => 'Npm update completed successfully.',
+            'npm_audit' => 'Npm audit completed successfully.',
             'npm_audit_fix' => 'Npm audit fix completed successfully.',
             'npm_audit_fix_force' => 'Npm audit fix --force completed successfully.',
             'dependency_update' => ($tool === 'npm' ? 'Npm' : 'Composer').' dependency update completed successfully.',
@@ -1518,6 +1519,57 @@ class DeploymentService
         $seedService = app(\App\Services\ProjectSeedService::class);
         $seedService->applyIfMissing($project, '.env', $root, $output);
         $seedService->applyIfMissing($project, '.htaccess', $root, $output);
+        $this->applyRemoteFtpSeedsIfMissing($project, $root, $output);
+    }
+
+    /**
+     * @param array<int, string> $output
+     */
+    private function applyRemoteFtpSeedsIfMissing(Project $project, string $root, array &$output): void
+    {
+        if (! $this->shouldUseFtpWorkspace($project)) {
+            return;
+        }
+
+        $missing = [];
+        foreach (['.env', '.htaccess', 'public/.htaccess'] as $file) {
+            if (! is_file($root.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $file))) {
+                $missing[] = $file;
+            }
+        }
+
+        if ($missing === []) {
+            return;
+        }
+
+        try {
+            $remoteFiles = app(\App\Services\FtpService::class)->fetchRemoteFiles($project, $missing, $output);
+        } catch (\Throwable $exception) {
+            $output[] = 'FTP seed import skipped: '.$exception->getMessage();
+            return;
+        }
+
+        foreach ($missing as $file) {
+            $contents = $remoteFiles[$file] ?? null;
+            if ($contents === null) {
+                continue;
+            }
+
+            $target = $root.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $file);
+            $directory = dirname($target);
+            if (! is_dir($directory) && ! @mkdir($directory, 0775, true) && ! is_dir($directory)) {
+                $output[] = 'Unable to import remote '.$file.': target directory is not writable.';
+                continue;
+            }
+
+            if (@file_put_contents($target, $contents) === false) {
+                $output[] = 'Unable to import remote '.$file.' into FTP workspace.';
+                continue;
+            }
+
+            @chmod($target, 0664);
+            $output[] = 'Imported remote '.$file.' into FTP workspace.';
+        }
     }
 
     /**

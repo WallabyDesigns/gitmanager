@@ -204,7 +204,7 @@ class NavigationStateService
             $npmStatusSubquery = Deployment::query()
                 ->select('status')
                 ->whereColumn('project_id', 'projects.id')
-                ->whereIn('action', ['npm_install', 'npm_update', 'npm_audit_fix', 'npm_audit_fix_force'])
+                ->whereIn('action', ['npm_install', 'npm_update', 'npm_audit', 'npm_audit_fix', 'npm_audit_fix_force'])
                 ->latest('started_at')
                 ->limit(1);
 

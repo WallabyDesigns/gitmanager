@@ -4,6 +4,7 @@ namespace App\Livewire\Projects;
 
 use App\Models\Project;
 use App\Services\DeploymentService;
+use App\Services\DeploymentQueueService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
@@ -61,6 +62,10 @@ class DependencyActions extends Component
             return;
         }
 
+        if ($this->enqueueIfEnabled('dependency_update')) {
+            return;
+        }
+
         $deployment = $service->updateDependencies($this->project, Auth::user());
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -90,6 +95,10 @@ class DependencyActions extends Component
             return;
         }
 
+        if ($this->enqueueIfEnabled('composer_install')) {
+            return;
+        }
+
         $deployment = $service->composerInstall($this->project, Auth::user());
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -100,6 +109,10 @@ class DependencyActions extends Component
     public function composerUpdate(DeploymentService $service): void
     {
         if ($this->blockIfPermissionsLocked('composer update')) {
+            return;
+        }
+
+        if ($this->enqueueIfEnabled('composer_update')) {
             return;
         }
 
@@ -118,6 +131,10 @@ class DependencyActions extends Component
             return;
         }
 
+        if ($this->enqueueIfEnabled('composer_audit')) {
+            return;
+        }
+
         $deployment = $service->composerAudit($this->project, Auth::user());
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -128,6 +145,10 @@ class DependencyActions extends Component
     public function appClearCache(DeploymentService $service): void
     {
         if ($this->blockIfPermissionsLocked('cache clearing')) {
+            return;
+        }
+
+        if ($this->enqueueIfEnabled('app_clear_cache')) {
             return;
         }
 
@@ -144,6 +165,10 @@ class DependencyActions extends Component
             return;
         }
 
+        if ($this->enqueueIfEnabled('laravel_migrate')) {
+            return;
+        }
+
         $deployment = $service->laravelMigrate($this->project, Auth::user());
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -157,6 +182,10 @@ class DependencyActions extends Component
             return;
         }
 
+        if ($this->enqueueIfEnabled('npm_install')) {
+            return;
+        }
+
         $deployment = $service->npmInstall($this->project, Auth::user());
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -167,6 +196,10 @@ class DependencyActions extends Component
     public function npmUpdate(DeploymentService $service): void
     {
         if ($this->blockIfPermissionsLocked('npm update')) {
+            return;
+        }
+
+        if ($this->enqueueIfEnabled('npm_update')) {
             return;
         }
 
@@ -185,6 +218,10 @@ class DependencyActions extends Component
             return;
         }
 
+        if ($this->enqueueIfEnabled('npm_audit_fix')) {
+            return;
+        }
+
         $deployment = $service->npmAuditFix($this->project, Auth::user(), false);
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -197,6 +234,10 @@ class DependencyActions extends Component
     public function npmAuditFixForce(DeploymentService $service): void
     {
         if ($this->blockIfPermissionsLocked('npm audit fix')) {
+            return;
+        }
+
+        if ($this->enqueueIfEnabled('npm_audit_fix_force')) {
             return;
         }
 
@@ -267,11 +308,54 @@ class DependencyActions extends Component
             return;
         }
 
+        if ($this->enqueueIfEnabled('custom_command', ['command' => $this->customCommand])) {
+            return;
+        }
+
         $deployment = $service->runCustomCommand($this->project, Auth::user(), $this->customCommand);
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
             ? 'Command completed.'
             : 'Command failed. Check logs below.');
+    }
+
+    private function enqueueIfEnabled(string $action, array $payload = []): bool
+    {
+        if (! (bool) config('gitmanager.deploy_queue.enabled', true)) {
+            return false;
+        }
+
+        $item = app(DeploymentQueueService::class)->enqueue($this->project, $action, $payload + [
+            'reason' => 'manual_dependency_action',
+        ], Auth::user());
+
+        $this->dispatch('notify', message: $item->wasRecentlyCreated
+            ? $this->queuedMessage($action)
+            : $this->queuedMessage($action, true));
+        $this->dispatch('reload-page', delay: 300);
+
+        return true;
+    }
+
+    private function queuedMessage(string $action, bool $existing = false): string
+    {
+        $label = match ($action) {
+            'dependency_update' => 'Dependency update',
+            'composer_install' => 'Composer install',
+            'composer_update' => 'Composer update',
+            'composer_audit' => 'Composer audit',
+            'app_clear_cache' => 'app:clear-cache',
+            'laravel_migrate' => 'Laravel migration',
+            'npm_install' => 'Npm install',
+            'npm_update' => 'Npm update',
+            'npm_audit' => 'Npm audit',
+            'npm_audit_fix' => 'Npm audit fix',
+            'npm_audit_fix_force' => 'Npm audit fix (force)',
+            'custom_command' => 'Custom command',
+            default => ucfirst(str_replace('_', ' ', $action)),
+        };
+
+        return $existing ? "{$label} is already queued." : "{$label} queued.";
     }
 
     private function blockIfPermissionsLocked(string $context = 'deployments'): bool
@@ -295,6 +379,7 @@ class DependencyActions extends Component
             'laravel_migrate',
             'npm_install',
             'npm_update',
+            'npm_audit',
             'npm_audit_fix',
             'npm_audit_fix_force',
             'custom_command',

@@ -15,6 +15,10 @@ class SelfUpdateService
     private const STATUS_CACHE_KEY = 'gwm_self_update_status';
     private const DEFAULT_ENTERPRISE_PACKAGE = 'wallabydesigns/gitmanager-enterprise';
 
+    private ?AppUpdate $activeUpdate = null;
+    private int $lastOutputCount = 0;
+    private float $lastStreamAt = 0.0;
+
     /**
      * @return array{
      *   status: string,
@@ -171,6 +175,7 @@ class SelfUpdateService
             'status' => 'running',
             'started_at' => now(),
         ]);
+        $this->beginUpdateStream($update);
 
         $output = [];
         $fromHash = null;
@@ -311,6 +316,7 @@ class SelfUpdateService
             'status' => 'running',
             'started_at' => now(),
         ]);
+        $this->beginUpdateStream($update);
 
         $output = [];
         $forceUpdate = $force;
@@ -2617,13 +2623,51 @@ class SelfUpdateService
         }
         $process->run(function ($type, $buffer) use (&$output) {
             $output[] = trim($buffer);
+            $this->maybeStreamUpdate($output);
         });
+        $this->maybeStreamUpdate($output, true);
 
         if ($throwOnFailure && ! $process->isSuccessful()) {
             throw new ProcessFailedException($process);
         }
 
         return $process;
+    }
+
+    private function beginUpdateStream(AppUpdate $update): void
+    {
+        $this->activeUpdate = $update;
+        $this->lastOutputCount = 0;
+        $this->lastStreamAt = microtime(true);
+        $this->activeUpdate->output_log = '';
+        $this->activeUpdate->save();
+    }
+
+    private function maybeStreamUpdate(array $output, bool $force = false): void
+    {
+        if (! $this->activeUpdate) {
+            return;
+        }
+
+        $count = count($output);
+        if (! $force) {
+            if ($count === $this->lastOutputCount) {
+                return;
+            }
+
+            $now = microtime(true);
+            if (($count - $this->lastOutputCount) < 5 && ($now - $this->lastStreamAt) < 2.0) {
+                return;
+            }
+
+            $this->lastStreamAt = $now;
+        } else {
+            $this->lastStreamAt = microtime(true);
+        }
+
+        $this->lastOutputCount = $count;
+        $this->activeUpdate->output_log = implode("\n", $output);
+        $this->activeUpdate->save();
     }
 
     private function normalizeCommand(array $command): array

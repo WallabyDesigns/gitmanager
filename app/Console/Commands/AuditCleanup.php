@@ -75,7 +75,7 @@ class AuditCleanup extends Command
     {
         $actions = match ($tool) {
             'composer' => ['composer_audit'],
-            'npm' => ['npm_audit_fix', 'npm_audit_fix_force'],
+            'npm' => ['npm_audit', 'npm_audit_fix', 'npm_audit_fix_force'],
             default => [],
         };
 

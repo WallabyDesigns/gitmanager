@@ -274,6 +274,7 @@ class Queue extends Component
             'composer_audit' => 'Composer Audit',
             'npm_install' => 'Npm Install',
             'npm_update' => 'Npm Update',
+            'npm_audit' => 'Npm Audit',
             'npm_audit_fix' => 'Npm Audit Fix',
             'npm_audit_fix_force' => 'Npm Audit Fix (Force)',
             'audit_project' => 'Project Audit',

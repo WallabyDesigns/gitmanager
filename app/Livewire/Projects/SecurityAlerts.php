@@ -146,6 +146,10 @@ class SecurityAlerts extends Component
             return;
         }
 
+        if ($this->enqueueIfEnabled('composer_update')) {
+            return;
+        }
+
         $deployment = $service->composerUpdate($this->project, auth()->user());
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -158,6 +162,10 @@ class SecurityAlerts extends Component
     public function npmAuditFix(DeploymentService $service): void
     {
         if ($this->blockIfPermissionsLocked('npm audit fix')) {
+            return;
+        }
+
+        if ($this->enqueueIfEnabled('npm_audit_fix')) {
             return;
         }
 
@@ -176,6 +184,10 @@ class SecurityAlerts extends Component
             return;
         }
 
+        if ($this->enqueueIfEnabled('npm_audit_fix_force')) {
+            return;
+        }
+
         $deployment = $service->npmAuditFix($this->project, auth()->user(), true);
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
@@ -183,6 +195,30 @@ class SecurityAlerts extends Component
             : 'Npm audit fix (force) failed. Check logs below.');
 
         $this->maybePromptPush($service, $deployment->status === 'success', 'Npm audit fix (force)', $deployment->output_log);
+    }
+
+    private function enqueueIfEnabled(string $action): bool
+    {
+        if (! (bool) config('gitmanager.deploy_queue.enabled', true)) {
+            return false;
+        }
+
+        $item = app(DeploymentQueueService::class)->enqueue($this->project, $action, [
+            'reason' => 'manual_security_action',
+        ], auth()->user());
+
+        $label = match ($action) {
+            'composer_update' => 'Composer update',
+            'npm_audit_fix' => 'Npm audit fix',
+            'npm_audit_fix_force' => 'Npm audit fix (force)',
+            default => ucfirst(str_replace('_', ' ', $action)),
+        };
+
+        $this->dispatch('notify', message: $item->wasRecentlyCreated
+            ? "{$label} queued."
+            : "{$label} is already queued.");
+
+        return true;
     }
 
     public function commitAuditFix(DeploymentService $service): void
@@ -568,6 +604,7 @@ class SecurityAlerts extends Component
         return [
             'composer_audit',
             'composer_update',
+            'npm_audit',
             'npm_audit_fix',
             'npm_audit_fix_force',
         ];

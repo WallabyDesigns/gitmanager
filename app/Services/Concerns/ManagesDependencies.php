@@ -178,7 +178,7 @@ trait ManagesDependencies
 
         try {
             if ($useFtpManifests) {
-                if (! $this->refreshFtpManifestFiles($project, $executionPath, ['composer.json', 'composer.lock'], $output, true)) {
+                if (! $this->refreshFtpManifestFiles($project, $executionPath, ['composer.json', 'composer.lock'], $output, true, true)) {
                     throw new \RuntimeException('Unable to refresh FTP Composer files before audit.');
                 }
             }
@@ -315,7 +315,7 @@ trait ManagesDependencies
                     'npm-shrinkwrap.json',
                     'pnpm-lock.yaml',
                     'yarn.lock',
-                ], $output, true)) {
+                ], $output, true, true)) {
                     throw new \RuntimeException('Unable to refresh FTP npm files before audit.');
                 }
             }
@@ -444,7 +444,7 @@ trait ManagesDependencies
     private function runNpmAuditFlow(Project $project, ?User $user, bool $autoFix): array
     {
         $deploymentIds = [];
-        $deployment = $this->npmAuditFix($project, $user, false);
+        $deployment = $this->npmAudit($project, $user);
         $deploymentIds[] = $deployment->id;
 
         if ($deployment->status === 'failed') {
@@ -463,11 +463,59 @@ trait ManagesDependencies
         }
 
         $analysis = $this->parseNpmAuditLog($deployment->output_log);
-        $summary = $this->buildNpmSummary($deployment->status, $analysis);
-
+        $found = $analysis['found'];
+        $remaining = $analysis['remaining'];
+        $fixed = $analysis['fixed'];
+        $status = $deployment->status;
+        $fixApplied = false;
         $fixSummary = null;
-        if (($analysis['remaining'] ?? null) === 0 && ($analysis['fixed'] ?? 0) > 0) {
-            $fixed = (int) $analysis['fixed'];
+
+        if ($autoFix && $remaining !== null && $remaining > 0) {
+            $fixApplied = true;
+            $fix = $this->npmAuditFix($project, $user, false);
+            $deploymentIds[] = $fix->id;
+            $status = $fix->status;
+
+            if ($fix->status === 'failed') {
+                return [
+                    'tool' => 'npm',
+                    'status' => $fix->status,
+                    'found' => $found,
+                    'fixed' => null,
+                    'remaining' => $remaining,
+                    'severity' => $analysis['severity_summary'],
+                    'summary' => $this->resourceExhausted($fix->output_log)
+                        ? 'Npm audit fix failed because the host could not start another process/thread. Try again when the server is less busy or run the queued task from cron/CLI.'
+                        : 'Npm audit fix failed.',
+                    'fix_summary' => null,
+                    'fix_applied' => false,
+                    'deployment_ids' => $deploymentIds,
+                ];
+            }
+
+            $after = $this->npmAudit($project, $user);
+            $deploymentIds[] = $after->id;
+            $status = $after->status;
+            $afterAnalysis = $this->parseNpmAuditLog($after->output_log);
+            $afterRemaining = $afterAnalysis['remaining'];
+            if ($afterRemaining !== null) {
+                $remaining = $afterRemaining;
+            }
+            if ($found !== null && $remaining !== null) {
+                $fixed = max($found - $remaining, 0);
+            }
+        }
+
+        $summary = $this->buildNpmSummary($status, [
+            'remaining' => $remaining,
+            'fixed' => $fixed,
+            'found' => $found,
+            'total' => $analysis['total'],
+            'severity_summary' => $analysis['severity_summary'],
+        ]);
+
+        if ($fixApplied && $remaining === 0 && ($fixed ?? 0) > 0) {
+            $fixed = (int) $fixed;
             $fixSummary = $fixed === 1
                 ? 'Npm audit fixed 1 vulnerability.'
                 : "Npm audit fixed {$fixed} vulnerabilities.";
@@ -475,16 +523,56 @@ trait ManagesDependencies
 
         return [
             'tool' => 'npm',
-            'status' => $deployment->status,
-            'found' => $analysis['found'],
-            'fixed' => $analysis['fixed'],
-            'remaining' => $analysis['remaining'],
+            'status' => $status,
+            'found' => $found,
+            'fixed' => $fixed,
+            'remaining' => $remaining,
             'severity' => $analysis['severity_summary'],
             'summary' => $summary,
             'fix_summary' => $fixSummary,
-            'fix_applied' => true,
+            'fix_applied' => $fixApplied,
             'deployment_ids' => $deploymentIds,
         ];
+    }
+
+    public function npmAudit(Project $project, ?User $user = null): Deployment
+    {
+        $syncFtp = false;
+
+        $deployment = $this->runMaintenanceAction($project, $user, 'npm_audit', function (string $path, array &$output) use ($project): void {
+            if ($this->shouldUseFtpWorkspace($project)) {
+                if (! $this->refreshFtpManifestFiles($project, $path, [
+                    'package.json',
+                    'package-lock.json',
+                    'npm-shrinkwrap.json',
+                    'pnpm-lock.yaml',
+                    'yarn.lock',
+                ], $output, true, true)) {
+                    throw new \RuntimeException('Unable to refresh FTP npm files before audit.');
+                }
+            }
+
+            $this->logStep($output, 'Npm audit', $path, 'npm audit --json');
+            $process = $this->runProjectProcess(['npm', 'audit', '--json'], $output, $path, false);
+            $exitCode = $process->getExitCode() ?? 1;
+
+            if ($exitCode > 1) {
+                $message = $this->resourceExhausted(implode("\n", $output))
+                    ? 'Npm audit could not start because the host is out of process/thread capacity.'
+                    : 'Npm audit failed.';
+                throw new \RuntimeException($message);
+            }
+        }, false, $syncFtp);
+
+        if ($deployment->status === 'success') {
+            $analysis = $this->parseNpmAuditLog($deployment->output_log);
+            if (($analysis['remaining'] ?? 0) > 0) {
+                $deployment->status = 'warning';
+                $deployment->save();
+            }
+        }
+
+        return $deployment;
     }
 
     /**
@@ -539,6 +627,28 @@ trait ManagesDependencies
         $total = null;
         $remaining = null;
 
+        $json = $this->extractJsonObject($text);
+        if (is_array($json)) {
+            $metadata = $json['metadata']['vulnerabilities'] ?? null;
+            if (is_array($metadata)) {
+                $totalValue = $metadata['total'] ?? null;
+                if (is_numeric($totalValue)) {
+                    $found = (int) $totalValue;
+                    $remaining = (int) $totalValue;
+                    $total = (int) $totalValue;
+                }
+
+                $parts = [];
+                foreach (['critical', 'high', 'moderate', 'low', 'info'] as $severity) {
+                    $count = $metadata[$severity] ?? null;
+                    if (is_numeric($count) && (int) $count > 0) {
+                        $parts[] = ((int) $count).' '.$severity;
+                    }
+                }
+                $severitySummary = $parts !== [] ? implode(', ', $parts) : null;
+            }
+        }
+
         foreach ($lines as $line) {
             $line = trim($line);
             if ($line === '') {
@@ -579,6 +689,33 @@ trait ManagesDependencies
     }
 
     /**
+     * @return array<string, mixed>|null
+     */
+    private function extractJsonObject(string $text): ?array
+    {
+        $start = strpos($text, '{');
+        $end = strrpos($text, '}');
+        if ($start === false || $end === false || $end <= $start) {
+            return null;
+        }
+
+        $decoded = json_decode(substr($text, $start, $end - $start + 1), true);
+
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    private function resourceExhausted(?string $log): bool
+    {
+        $text = strtolower((string) $log);
+
+        return str_contains($text, 'resource temporarily unavailable')
+            || str_contains($text, 'uv_thread_create')
+            || str_contains($text, 'unable to launch a new process')
+            || str_contains($text, 'unable to fork')
+            || str_contains($text, 'cannot allocate memory');
+    }
+
+    /**
      * @param array{found: int|null, fixed: int|null, total: int|null, remaining: int|null, severity_summary: string|null} $analysis
      */
     private function buildNpmSummary(string $status, array $analysis): string
@@ -605,14 +742,26 @@ trait ManagesDependencies
     /**
      * @param array<int, string> $files
      */
-    private function refreshFtpManifestFiles(Project $project, string $executionPath, array $files, array &$output, bool $deleteMissing = false): bool
+    private function refreshFtpManifestFiles(Project $project, string $executionPath, array $files, array &$output, bool $deleteMissing = false, bool $clearLocalFirst = false): bool
     {
         if (! $this->shouldUseFtpWorkspace($project)) {
             return true;
         }
 
+        if ($clearLocalFirst) {
+            foreach ($files as $file) {
+                $target = $executionPath.DIRECTORY_SEPARATOR.$file;
+                if (is_file($target) && @unlink($target)) {
+                    $output[] = 'FTP manifest sync: cleared local '.$file.' before remote refresh.';
+                }
+            }
+        }
+
         $remoteFiles = app(\App\Services\FtpService::class)->fetchRemoteFiles($project, $files, $output);
         if ($remoteFiles === []) {
+            if ($clearLocalFirst) {
+                $output[] = 'FTP manifest sync: remote refresh returned no files; stale local manifests remain cleared.';
+            }
             return false;
         }
 
@@ -666,7 +815,7 @@ trait ManagesDependencies
                 'npm-shrinkwrap.json',
                 'pnpm-lock.yaml',
                 'yarn.lock',
-            ], $output, true);
+            ], $output, true, true);
         } catch (\Throwable $exception) {
             // Individual audit actions will surface connection or filesystem errors.
         }
