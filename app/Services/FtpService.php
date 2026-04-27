@@ -846,7 +846,7 @@ class FtpService
 
             $this->ensureRemoteDirectory($connection, dirname($remotePath));
 
-            if (! @ftp_put($connection, $remotePath, $item->getPathname(), FTP_BINARY)) {
+            if (! $this->uploadRemoteFile($connection, $remotePath, $item->getPathname())) {
                 if (! $this->retryUpload($connection, $remotePath, $item->getPathname(), $relative, $output)) {
                     throw new \RuntimeException('Failed to upload '.$relative.' to '.$remotePath.'. Check FTP write permissions or exclude this path.');
                 }
@@ -868,7 +868,7 @@ class FtpService
 
         $this->attemptRemotePermissionFix($connection, dirname($remotePath), $remotePath);
 
-        if (@ftp_put($connection, $remotePath, $localPath, FTP_BINARY)) {
+        if ($this->uploadRemoteFile($connection, $remotePath, $localPath)) {
             return true;
         }
 
@@ -881,7 +881,7 @@ class FtpService
         $this->ensureRemoteDirectory($connection, dirname($remotePath));
         $this->attemptRemotePermissionFix($connection, dirname($remotePath), $remotePath);
 
-        if (@ftp_put($connection, $remotePath, $localPath, FTP_BINARY)) {
+        if ($this->uploadRemoteFile($connection, $remotePath, $localPath)) {
             return true;
         }
 
@@ -919,7 +919,7 @@ class FtpService
         }
 
         @file_put_contents($temp, 'gwm');
-        $success = @ftp_put($connection, $remote, $temp, FTP_BINARY);
+        $success = $this->uploadRemoteFile($connection, $remote, $temp);
         @unlink($temp);
 
         if (! $success) {
@@ -928,6 +928,44 @@ class FtpService
         }
 
         @ftp_delete($connection, $remote);
+    }
+
+    /**
+     * @param resource|\FTP\Connection $connection
+     */
+    private function uploadRemoteFile($connection, string $remotePath, string $localPath): bool
+    {
+        foreach ($this->remotePathCandidates($remotePath) as $candidate) {
+            if (@ftp_put($connection, $candidate, $localPath, FTP_BINARY)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function remotePathCandidates(string $remotePath): array
+    {
+        $remotePath = $this->normalizeRemotePath($remotePath);
+        if ($remotePath === '') {
+            return [];
+        }
+
+        $candidates = [$remotePath];
+        if (! str_starts_with($remotePath, './') && ! str_starts_with($remotePath, '/')) {
+            $candidates[] = './'.$remotePath;
+        }
+
+        $rootPath = $this->syncContext['rootPath'] ?? '';
+        $rootPath = is_string($rootPath) ? $this->normalizeRemotePath($rootPath) : '';
+        if ($rootPath !== '' && $rootPath !== '.' && ! str_starts_with($remotePath, '/')) {
+            $candidates[] = $this->joinRemotePath($rootPath, $remotePath);
+        }
+
+        return array_values(array_unique($candidates));
     }
 
     /**
