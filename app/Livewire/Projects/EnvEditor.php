@@ -200,8 +200,8 @@ class EnvEditor extends Component
 
         app(DeploymentQueueService::class)->cancelQueuedGroup($this->project, 'deploy');
         if ((bool) config('gitmanager.deploy_queue.enabled', true)) {
-            app(DeploymentQueueService::class)->enqueue($this->project, 'deploy', ['reason' => 'env_saved'], Auth::user());
-            $this->dispatch('notify', message: '.env saved. Deployment queued.');
+            $result = app(DeploymentQueueService::class)->enqueueForImmediateProcessing($this->project, 'deploy', ['reason' => 'env_saved'], Auth::user());
+            $this->dispatch('notify', message: $result['started'] ? '.env saved. Deployment started.' : '.env saved. Deployment queued.');
 
             return;
         }

@@ -325,19 +325,17 @@ class DependencyActions extends Component
             return false;
         }
 
-        $item = app(DeploymentQueueService::class)->enqueue($this->project, $action, $payload + [
+        $result = app(DeploymentQueueService::class)->enqueueForImmediateProcessing($this->project, $action, $payload + [
             'reason' => 'manual_dependency_action',
         ], Auth::user());
 
-        $this->dispatch('notify', message: $item->wasRecentlyCreated
-            ? $this->queuedMessage($action)
-            : $this->queuedMessage($action, true));
+        $this->dispatch('notify', message: $this->queuedMessage($action, $result['existing'], $result['started']));
         $this->dispatch('reload-page', delay: 300);
 
         return true;
     }
 
-    private function queuedMessage(string $action, bool $existing = false): string
+    private function queuedMessage(string $action, bool $existing = false, bool $started = false): string
     {
         $label = match ($action) {
             'dependency_update' => 'Dependency update',
@@ -355,7 +353,11 @@ class DependencyActions extends Component
             default => ucfirst(str_replace('_', ' ', $action)),
         };
 
-        return $existing ? "{$label} is already queued." : "{$label} queued.";
+        if ($existing) {
+            return "{$label} is already queued.";
+        }
+
+        return $started ? "{$label} started." : "{$label} queued.";
     }
 
     private function blockIfPermissionsLocked(string $context = 'deployments'): bool

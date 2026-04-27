@@ -121,15 +121,15 @@ class SecurityAlerts extends Component
         }
 
         if ((bool) config('gitmanager.deploy_queue.enabled', true)) {
-            $item = app(DeploymentQueueService::class)->enqueue($this->project, 'audit_project', [
+            $result = app(DeploymentQueueService::class)->enqueueForImmediateProcessing($this->project, 'audit_project', [
                 'auto_fix' => true,
                 'send_email' => true,
                 'source' => 'manual_project_audit',
             ], auth()->user());
 
-            $this->dispatch('notify', message: $item->wasRecentlyCreated
-                ? 'Project audit queued.'
-                : 'Project audit is already queued.');
+            $this->dispatch('notify', message: $result['existing']
+                ? 'Project audit is already queued.'
+                : ($result['started'] ? 'Project audit started.' : 'Project audit queued.'));
 
             return;
         }
@@ -203,7 +203,7 @@ class SecurityAlerts extends Component
             return false;
         }
 
-        $item = app(DeploymentQueueService::class)->enqueue($this->project, $action, [
+        $result = app(DeploymentQueueService::class)->enqueueForImmediateProcessing($this->project, $action, [
             'reason' => 'manual_security_action',
         ], auth()->user());
 
@@ -214,9 +214,9 @@ class SecurityAlerts extends Component
             default => ucfirst(str_replace('_', ' ', $action)),
         };
 
-        $this->dispatch('notify', message: $item->wasRecentlyCreated
-            ? "{$label} queued."
-            : "{$label} is already queued.");
+        $this->dispatch('notify', message: $result['existing']
+            ? "{$label} is already queued."
+            : ($result['started'] ? "{$label} started." : "{$label} queued."));
 
         return true;
     }

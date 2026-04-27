@@ -156,8 +156,8 @@ class Show extends Component
 
         app(DeploymentQueueService::class)->cancelQueuedGroup($this->project, 'deploy');
         if ($this->queueEnabled()) {
-            app(DeploymentQueueService::class)->enqueue($this->project, 'deploy', ['reason' => 'manual_deploy'], Auth::user());
-            $this->dispatch('notify', message: 'Deployment queued.');
+            $result = app(DeploymentQueueService::class)->enqueueForImmediateProcessing($this->project, 'deploy', ['reason' => 'manual_deploy'], Auth::user());
+            $this->dispatch('notify', message: $result['started'] ? 'Deployment started.' : 'Deployment queued.');
             $this->dispatch('reload-page', delay: 300);
 
             return;
@@ -184,8 +184,8 @@ class Show extends Component
 
         app(DeploymentQueueService::class)->cancelQueuedGroup($this->project, 'force_deploy');
         if ($this->queueEnabled()) {
-            app(DeploymentQueueService::class)->enqueue($this->project, 'force_deploy', ['reason' => 'manual_force_deploy'], Auth::user());
-            $this->dispatch('notify', message: 'Force deployment queued.');
+            $result = app(DeploymentQueueService::class)->enqueueForImmediateProcessing($this->project, 'force_deploy', ['reason' => 'manual_force_deploy'], Auth::user());
+            $this->dispatch('notify', message: $result['started'] ? 'Force deployment started.' : 'Force deployment queued.');
             $this->dispatch('reload-page', delay: 300);
 
             return;
@@ -208,8 +208,8 @@ class Show extends Component
 
         app(DeploymentQueueService::class)->cancelQueuedGroup($this->project, 'deploy');
         if ($this->queueEnabled()) {
-            app(DeploymentQueueService::class)->enqueue($this->project, 'deploy', ['reason' => 'manual_staged_deploy', 'ignore_permissions_lock' => true], Auth::user());
-            $this->dispatch('notify', message: 'Deployment queued with staged install.');
+            $result = app(DeploymentQueueService::class)->enqueueForImmediateProcessing($this->project, 'deploy', ['reason' => 'manual_staged_deploy', 'ignore_permissions_lock' => true], Auth::user());
+            $this->dispatch('notify', message: $result['started'] ? 'Deployment started with staged install.' : 'Deployment queued with staged install.');
             $this->dispatch('reload-page', delay: 300);
 
             return;
@@ -236,8 +236,8 @@ class Show extends Component
 
         app(DeploymentQueueService::class)->cancelQueuedGroup($this->project, 'rollback');
         if ($this->queueEnabled()) {
-            app(DeploymentQueueService::class)->enqueue($this->project, 'rollback', ['reason' => 'manual_rollback'], Auth::user());
-            $this->dispatch('notify', message: 'Rollback queued.');
+            $result = app(DeploymentQueueService::class)->enqueueForImmediateProcessing($this->project, 'rollback', ['reason' => 'manual_rollback'], Auth::user());
+            $this->dispatch('notify', message: $result['started'] ? 'Rollback started.' : 'Rollback queued.');
             $this->dispatch('reload-page', delay: 300);
 
             return;
@@ -549,8 +549,8 @@ class Show extends Component
         }
         $this->project->refresh();
         if ($hasUpdates && $this->queueEnabled()) {
-            app(DeploymentQueueService::class)->enqueue($this->project, 'deploy', ['reason' => 'manual_update_check'], Auth::user());
-            $this->dispatch('notify', message: 'Updates available. Deployment queued.');
+            $result = app(DeploymentQueueService::class)->enqueueForImmediateProcessing($this->project, 'deploy', ['reason' => 'manual_update_check'], Auth::user());
+            $this->dispatch('notify', message: $result['started'] ? 'Updates available. Deployment started.' : 'Updates available. Deployment queued.');
             return;
         }
 
@@ -572,15 +572,15 @@ class Show extends Component
         }
 
         if ($this->queueEnabled()) {
-            $item = app(DeploymentQueueService::class)->enqueue($this->project, 'audit_project', [
+            $result = app(DeploymentQueueService::class)->enqueueForImmediateProcessing($this->project, 'audit_project', [
                 'auto_fix' => true,
                 'send_email' => true,
                 'source' => 'manual_project_audit',
             ], Auth::user());
 
-            $this->dispatch('notify', message: $item->wasRecentlyCreated
-                ? 'Project audit queued.'
-                : 'Project audit is already queued.');
+            $this->dispatch('notify', message: $result['existing']
+                ? 'Project audit is already queued.'
+                : ($result['started'] ? 'Project audit started.' : 'Project audit queued.'));
 
             return;
         }

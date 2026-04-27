@@ -329,11 +329,8 @@ class Create extends Component
         $envReady = $envWarning === null;
         if ($project->auto_deploy && $repoReady && $envReady) {
             if ($this->queueEnabled()) {
-                app(\App\Services\DeploymentQueueService::class)->enqueue($project, 'deploy', ['reason' => 'project_created'], Auth::user());
-                $message .= ' Initial deployment queued.';
-                app()->terminating(function () {
-                    app(\App\Services\DeploymentQueueService::class)->processNext(1);
-                });
+                $result = app(\App\Services\DeploymentQueueService::class)->enqueueForImmediateProcessing($project, 'deploy', ['reason' => 'project_created'], Auth::user());
+                $message .= $result['started'] ? ' Initial deployment started.' : ' Initial deployment queued.';
             } else {
                 $deployment = app(\App\Services\DeploymentService::class)->deploy($project, Auth::user());
                 $message .= $deployment->status === 'success'

@@ -28,15 +28,16 @@ class Queue extends Component
 
     public function processNow(DeploymentQueueService $queue, SchedulerService $scheduler): void
     {
-        $processed = $queue->processNext((int) config('gitmanager.deploy_queue.batch_size', 0));
+        $limit = (int) config('gitmanager.deploy_queue.batch_size', 0);
+        $started = $queue->startBackgroundProcessor($limit > 0 ? $limit : 1);
         $scheduler->recordManualRun();
 
-        if ($processed === 0) {
-            $this->dispatch('notify', message: 'No queued items to process.');
+        if (! $started) {
+            $this->dispatch('notify', message: 'Unable to start queue processor.');
             return;
         }
 
-        $this->dispatch('notify', message: "Processed {$processed} queued item(s).");
+        $this->dispatch('notify', message: 'Queue processor started.');
     }
 
     public function processItem(int $id, DeploymentQueueService $queue, SchedulerService $scheduler): void
@@ -44,15 +45,21 @@ class Queue extends Component
         $item = DeploymentQueueItem::findOrFail($id);
         $this->authorize('update', $item);
 
-        $processed = $queue->processItem($item);
+        if ($item->status === 'queued') {
+            $item->position = 0;
+            $item->save();
+            $queue->normalizeQueuedPositions();
+        }
+
+        $started = $queue->startBackgroundProcessor(1);
         $scheduler->recordManualRun();
 
-        if (! $processed) {
-            $this->dispatch('notify', message: 'Queue item could not be processed.');
+        if (! $started) {
+            $this->dispatch('notify', message: 'Queue item could not be started.');
             return;
         }
 
-        $this->dispatch('notify', message: 'Queue item processed.');
+        $this->dispatch('notify', message: 'Queue item started.');
         $this->resetPage();
     }
 

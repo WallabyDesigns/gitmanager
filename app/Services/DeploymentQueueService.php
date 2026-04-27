@@ -61,6 +61,27 @@ class DeploymentQueueService
         return $item;
     }
 
+    /**
+     * @return array{item: DeploymentQueueItem, started: bool, existing: bool}
+     */
+    public function enqueueForImmediateProcessing(Project $project, string $action, array $payload = [], ?User $user = null): array
+    {
+        $wasIdle = $this->isIdle();
+        $item = $this->enqueue($project, $action, $payload, $user);
+        $existing = ! $item->wasRecentlyCreated;
+        $started = false;
+
+        if ($wasIdle && ! $existing) {
+            $started = $this->startBackgroundProcessor(1);
+        }
+
+        return [
+            'item' => $item,
+            'started' => $started,
+            'existing' => $existing,
+        ];
+    }
+
     public function processNext(?int $limit = null): int
     {
         $this->normalizeQueuedPositions();
@@ -452,7 +473,7 @@ class DeploymentQueueService
         $this->applyItemRuntimeBudget();
 
         $service = app(DeploymentService::class);
-        $project = $item->project;
+        $project = $item->project?->fresh();
         $user = $item->queuedBy;
         $deployment = null;
         $markFailed = false;

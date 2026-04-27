@@ -485,6 +485,8 @@ class DeploymentService
 
     public function rollback(Project $project, ?User $user = null, ?string $targetHash = null): Deployment
     {
+        $project->refresh();
+
         if ($project->permissions_locked && ! $project->ftp_enabled && ! $project->ssh_enabled) {
             $message = 'Permissions need fixing before rollbacks can run.';
             if ($project->permissions_issue_message) {
@@ -865,6 +867,8 @@ class DeploymentService
         bool $syncFtp = false
     ): Deployment
     {
+        $project->refresh();
+
         $repoPath = $this->resolveRepoPath($project);
         $executionPath = $this->resolveExecutionPath($project, $repoPath);
 
