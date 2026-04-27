@@ -172,6 +172,7 @@ class SelfUpdateService
 
         $update = AppUpdate::create([
             'triggered_by' => $user?->id,
+            'action' => 'rollback',
             'status' => 'running',
             'started_at' => now(),
         ]);
@@ -306,6 +307,96 @@ class SelfUpdateService
         return $this->update($user, true, true);
     }
 
+    public function auditAppDependencies(?User $user = null): AppUpdate
+    {
+        return $this->runAppDependencyAction($user, 'app_dependency_audit', 'App dependency audit', function (array &$output): string {
+            $remaining = 0;
+            $failed = false;
+
+            if (is_file(base_path('composer.json'))) {
+                $output[] = 'Running Composer audit for Git Web Manager.';
+                $process = $this->runProcess(['composer', 'audit', '--locked', '--format=json', '--no-interaction'], $output, base_path(), false);
+                $composerRemaining = $this->countComposerAdvisories($process->getOutput());
+                $remaining += $composerRemaining;
+                $output[] = $composerRemaining > 0
+                    ? "Composer audit reported {$composerRemaining} advisory issue(s)."
+                    : 'Composer audit reported no advisory issues.';
+
+                if (($process->getExitCode() ?? 1) > 1) {
+                    $failed = true;
+                }
+            } else {
+                $output[] = 'Composer audit skipped: composer.json not found.';
+            }
+
+            if (is_file(base_path('package.json'))) {
+                $output[] = 'Running npm audit for Git Web Manager.';
+                $process = $this->runProcess(['npm', 'audit', '--json'], $output, base_path(), false);
+                $npmRemaining = $this->countNpmVulnerabilities($process->getOutput());
+                $remaining += $npmRemaining;
+                $output[] = $npmRemaining > 0
+                    ? "Npm audit reported {$npmRemaining} vulnerability issue(s)."
+                    : 'Npm audit reported no vulnerability issues.';
+
+                if (($process->getExitCode() ?? 1) > 1) {
+                    $failed = true;
+                }
+            } else {
+                $output[] = 'Npm audit skipped: package.json not found.';
+            }
+
+            if ($failed) {
+                return 'failed';
+            }
+
+            return $remaining > 0 ? 'warning' : 'success';
+        });
+    }
+
+    public function updateAppComposerDependencies(?User $user = null): AppUpdate
+    {
+        return $this->runAppDependencyAction($user, 'app_composer_update', 'App Composer update', function (array &$output): string {
+            if (! is_file(base_path('composer.json'))) {
+                throw new \RuntimeException('composer.json not found.');
+            }
+
+            $this->runProcess(['composer', 'update', '--no-interaction'], $output, base_path());
+
+            return 'success';
+        });
+    }
+
+    public function updateAppNpmDependencies(?User $user = null): AppUpdate
+    {
+        return $this->runAppDependencyAction($user, 'app_npm_update', 'App npm update', function (array &$output): string {
+            if (! is_file(base_path('package.json'))) {
+                throw new \RuntimeException('package.json not found.');
+            }
+
+            $this->runProcess(['npm', 'update'], $output, base_path());
+
+            return 'success';
+        });
+    }
+
+    public function fixAppNpmAudit(?User $user = null, bool $force = false): AppUpdate
+    {
+        return $this->runAppDependencyAction($user, $force ? 'app_npm_audit_fix_force' : 'app_npm_audit_fix', $force ? 'App npm audit fix --force' : 'App npm audit fix', function (array &$output) use ($force): string {
+            if (! is_file(base_path('package.json'))) {
+                throw new \RuntimeException('package.json not found.');
+            }
+
+            $command = ['npm', 'audit', 'fix'];
+            if ($force) {
+                $command[] = '--force';
+            }
+
+            $this->runProcess($command, $output, base_path());
+
+            return 'success';
+        });
+    }
+
     public function update(?User $user = null, bool $allowDirty = false, bool $force = false): AppUpdate
     {
         $repoPath = base_path();
@@ -313,6 +404,7 @@ class SelfUpdateService
 
         $update = AppUpdate::create([
             'triggered_by' => $user?->id,
+            'action' => $force ? 'force_update' : 'self_update',
             'status' => 'running',
             'started_at' => now(),
         ]);
@@ -617,6 +709,42 @@ class SelfUpdateService
                 'enterprise_package' => $enterprisePackage,
                 'deployment_guard' => $deploymentGuard,
             ];
+        }
+    }
+
+    private function runAppDependencyAction(?User $user, string $action, string $label, callable $callback): AppUpdate
+    {
+        Cache::forget(self::STATUS_CACHE_KEY);
+
+        $update = AppUpdate::create([
+            'triggered_by' => $user?->id,
+            'action' => $action,
+            'status' => 'running',
+            'started_at' => now(),
+        ]);
+        $this->beginUpdateStream($update);
+
+        $output = [
+            $label.' path: '.base_path(),
+        ];
+
+        try {
+            $status = $callback($output);
+            $update->status = in_array($status, ['success', 'warning', 'failed'], true) ? $status : 'success';
+            $update->output_log = implode("\n", $output);
+            $update->finished_at = now();
+            $update->save();
+            $this->endUpdateStream();
+
+            return $update;
+        } catch (\Throwable $exception) {
+            $update->status = 'failed';
+            $update->output_log = trim(implode("\n", $output)."\n".$exception->getMessage());
+            $update->finished_at = now();
+            $update->save();
+            $this->endUpdateStream();
+
+            return $update;
         }
     }
 
@@ -2668,6 +2796,52 @@ class SelfUpdateService
         $this->lastOutputCount = $count;
         $this->activeUpdate->output_log = implode("\n", $output);
         $this->activeUpdate->save();
+    }
+
+    private function endUpdateStream(): void
+    {
+        $this->activeUpdate = null;
+        $this->lastOutputCount = 0;
+        $this->lastStreamAt = 0.0;
+    }
+
+    private function countComposerAdvisories(string $json): int
+    {
+        $decoded = json_decode($json, true);
+        if (! is_array($decoded)) {
+            return 0;
+        }
+
+        $advisories = $decoded['advisories'] ?? [];
+        if (! is_array($advisories)) {
+            return 0;
+        }
+
+        $count = 0;
+        foreach ($advisories as $packageAdvisories) {
+            if (is_array($packageAdvisories)) {
+                $count += count($packageAdvisories);
+            }
+        }
+
+        return $count;
+    }
+
+    private function countNpmVulnerabilities(string $json): int
+    {
+        $decoded = json_decode($json, true);
+        if (! is_array($decoded)) {
+            return 0;
+        }
+
+        $total = $decoded['metadata']['vulnerabilities']['total'] ?? null;
+        if (is_numeric($total)) {
+            return (int) $total;
+        }
+
+        $vulnerabilities = $decoded['vulnerabilities'] ?? [];
+
+        return is_array($vulnerabilities) ? count($vulnerabilities) : 0;
     }
 
     private function normalizeCommand(array $command): array

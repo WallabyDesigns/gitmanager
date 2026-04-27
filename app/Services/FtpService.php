@@ -204,10 +204,8 @@ class FtpService
             $output[] = 'FTPS write test required passive mode '.($passiveInUse ? 'on' : 'off').' for this session.';
         }
         if ($writeTest['status'] !== 'ok') {
-            $output[] = 'FTPS write test failed: '.$writeTest['message'];
-            $this->safeClose($connection);
-            $this->syncContext = null;
-            throw new \RuntimeException($writeTest['message']);
+            $output[] = 'FTPS write preflight warning: '.$writeTest['message'];
+            $output[] = 'Continuing sync so any real upload failure can report the exact remote file.';
         }
 
         $stats = [
@@ -313,10 +311,8 @@ class FtpService
             $output[] = 'FTPS write test required passive mode '.($passiveInUse ? 'on' : 'off').' for this session.';
         }
         if ($writeTest['status'] !== 'ok') {
-            $output[] = 'FTPS write test failed: '.$writeTest['message'];
-            $this->safeClose($connection);
-            $this->syncContext = null;
-            throw new \RuntimeException($writeTest['message']);
+            $output[] = 'FTPS write preflight warning: '.$writeTest['message'];
+            $output[] = 'Continuing file sync so any real upload failure can report the exact remote file.';
         }
 
         $stats = [

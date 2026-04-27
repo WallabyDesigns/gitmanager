@@ -135,7 +135,8 @@ trait ManagesDependencies
     {
         $syncFtp = $syncFtp ?? $this->shouldUseFtpWorkspace($project);
 
-        return $this->runMaintenanceAction($project, $user, 'composer_install', function (string $path, array &$output): void {
+        return $this->runMaintenanceAction($project, $user, 'composer_install', function (string $path, array &$output) use ($project): void {
+            $this->refreshFtpComposerManifestsOrFail($project, $path, $output);
             $this->runComposerCommandWithFallback(
                 $path,
                 $output,
@@ -149,7 +150,8 @@ trait ManagesDependencies
     {
         $syncFtp = $syncFtp ?? $this->shouldUseFtpWorkspace($project);
 
-        return $this->runMaintenanceAction($project, $user, 'composer_update', function (string $path, array &$output): void {
+        return $this->runMaintenanceAction($project, $user, 'composer_update', function (string $path, array &$output) use ($project): void {
+            $this->refreshFtpComposerManifestsOrFail($project, $path, $output);
             $this->runComposerCommandWithFallback(
                 $path,
                 $output,
@@ -278,7 +280,8 @@ trait ManagesDependencies
     {
         $syncFtp = $syncFtp ?? $this->shouldUseFtpWorkspace($project);
 
-        return $this->runMaintenanceAction($project, $user, 'npm_install', function (string $path, array &$output): void {
+        return $this->runMaintenanceAction($project, $user, 'npm_install', function (string $path, array &$output) use ($project): void {
+            $this->refreshFtpNpmManifestsOrFail($project, $path, $output);
             $this->runNpmInstallWithFallback(
                 $path,
                 $output,
@@ -292,7 +295,8 @@ trait ManagesDependencies
     {
         $syncFtp = $syncFtp ?? $this->shouldUseFtpWorkspace($project);
 
-        return $this->runMaintenanceAction($project, $user, 'npm_update', function (string $path, array &$output): void {
+        return $this->runMaintenanceAction($project, $user, 'npm_update', function (string $path, array &$output) use ($project): void {
+            $this->refreshFtpNpmManifestsOrFail($project, $path, $output);
             $this->runNpmCommandWithFallback(
                 $path,
                 $output,
@@ -794,6 +798,48 @@ trait ManagesDependencies
         }
 
         return true;
+    }
+
+    /**
+     * @param array<int, string> $output
+     */
+    private function refreshFtpComposerManifestsOrFail(Project $project, string $path, array &$output): void
+    {
+        if (! $this->shouldUseFtpWorkspace($project)) {
+            return;
+        }
+
+        if (! $this->refreshFtpManifestFiles($project, $path, ['composer.json', 'composer.lock'], $output, true, true)) {
+            throw new \RuntimeException('Unable to refresh FTP Composer files before dependency action.');
+        }
+
+        if (! is_file($path.DIRECTORY_SEPARATOR.'composer.json')) {
+            throw new \RuntimeException('Remote composer.json was not found. Check the FTP root path/project path before running Composer actions.');
+        }
+    }
+
+    /**
+     * @param array<int, string> $output
+     */
+    private function refreshFtpNpmManifestsOrFail(Project $project, string $path, array &$output): void
+    {
+        if (! $this->shouldUseFtpWorkspace($project)) {
+            return;
+        }
+
+        if (! $this->refreshFtpManifestFiles($project, $path, [
+            'package.json',
+            'package-lock.json',
+            'npm-shrinkwrap.json',
+            'pnpm-lock.yaml',
+            'yarn.lock',
+        ], $output, true, true)) {
+            throw new \RuntimeException('Unable to refresh FTP npm files before dependency action.');
+        }
+
+        if (! is_file($path.DIRECTORY_SEPARATOR.'package.json')) {
+            throw new \RuntimeException('Remote package.json was not found. Check the FTP root path/project path before running npm actions.');
+        }
     }
 
     private function refreshFtpAuditManifestFiles(Project $project): void

@@ -18,6 +18,7 @@ class Index extends Component
     public bool $checkUpdatesEnabled = true;
     public bool $autoUpdateEnabled = true;
     public array $pendingChanges = [];
+    public string $activeTab = 'status';
     public ?int $expandedUpdateId = null;
     public ?string $expandedUpdateLog = null;
     public bool $expandedUpdateLogTruncated = false;
@@ -41,10 +42,11 @@ class Index extends Component
 
     public function render()
     {
-        $recent = $this->updateHistoryQuery()->take(10)->get();
+        $recent = $this->updateHistoryQuery()->take(25)->get();
 
         return view('livewire.app-updates.index', [
             'latest' => $this->latestUpdate(),
+            'latestDependencyLog' => $this->latestDependencyLog(),
             'recent' => $recent,
             'checkUpdatesEnabled' => $this->checkUpdatesEnabled,
             'autoUpdateEnabled' => $this->autoUpdateEnabled,
@@ -54,6 +56,16 @@ class Index extends Component
             'title' => 'System Updates',
             'header' => view('livewire.app-updates.partials.header'),
         ]);
+    }
+
+    public function setTab(string $tab): void
+    {
+        if (! in_array($tab, ['status', 'dependencies', 'logs'], true)) {
+            return;
+        }
+
+        $this->activeTab = $tab;
+        $this->resetExpandedUpdateLog();
     }
 
     public function runUpdate(SelfUpdateService $service): void
@@ -114,8 +126,48 @@ class Index extends Component
         $this->dispatch('notify', message: $message);
     }
 
+    public function auditAppDependencies(SelfUpdateService $service): void
+    {
+        $update = $service->auditAppDependencies(Auth::user());
+        $this->dispatch('notify', message: match ($update->status) {
+            'success' => 'App dependency audit passed.',
+            'warning' => 'App dependency audit found issues. Review the logs.',
+            default => 'App dependency audit failed. Review the logs.',
+        });
+        $this->resetExpandedUpdateLog();
+    }
+
+    public function updateAppComposer(SelfUpdateService $service): void
+    {
+        $update = $service->updateAppComposerDependencies(Auth::user());
+        $this->dispatch('notify', message: $update->status === 'success'
+            ? 'App Composer dependencies updated.'
+            : 'App Composer update failed. Review the logs.');
+        $this->resetExpandedUpdateLog();
+    }
+
+    public function updateAppNpm(SelfUpdateService $service): void
+    {
+        $update = $service->updateAppNpmDependencies(Auth::user());
+        $this->dispatch('notify', message: $update->status === 'success'
+            ? 'App npm dependencies updated.'
+            : 'App npm update failed. Review the logs.');
+        $this->resetExpandedUpdateLog();
+    }
+
+    public function fixAppNpmAudit(SelfUpdateService $service): void
+    {
+        $update = $service->fixAppNpmAudit(Auth::user(), false);
+        $this->dispatch('notify', message: $update->status === 'success'
+            ? 'App npm audit fix completed.'
+            : 'App npm audit fix failed. Review the logs.');
+        $this->resetExpandedUpdateLog();
+    }
+
     public function toggleUpdateLog(int $updateId): void
     {
+        $this->activeTab = 'logs';
+
         if ($this->expandedUpdateId === $updateId) {
             $this->resetExpandedUpdateLog();
 
@@ -153,7 +205,16 @@ class Index extends Component
 
     private function latestUpdate(): ?AppUpdate
     {
-        return $this->updateHistoryQuery(includeOutputTail: true)->first();
+        return $this->updateHistoryQuery(includeOutputTail: true)
+            ->whereIn('action', ['self_update', 'force_update', 'rollback'])
+            ->first();
+    }
+
+    private function latestDependencyLog(): ?AppUpdate
+    {
+        return $this->updateHistoryQuery(includeOutputTail: true)
+            ->whereIn('action', $this->dependencyActions())
+            ->first();
     }
 
     private function resetExpandedUpdateLog(): void
@@ -170,6 +231,7 @@ class Index extends Component
 
         $columns = [
             "{$table}.id",
+            "{$table}.action",
             "{$table}.status",
             "{$table}.from_hash",
             "{$table}.to_hash",
@@ -191,5 +253,19 @@ class Index extends Component
         return AppUpdate::query()
             ->select($columns)
             ->orderByDesc("{$table}.started_at");
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function dependencyActions(): array
+    {
+        return [
+            'app_dependency_audit',
+            'app_composer_update',
+            'app_npm_update',
+            'app_npm_audit_fix',
+            'app_npm_audit_fix_force',
+        ];
     }
 }

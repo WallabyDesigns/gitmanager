@@ -8,6 +8,7 @@ class AppUpdate extends Model
 {
     protected $fillable = [
         'triggered_by',
+        'action',
         'status',
         'from_hash',
         'to_hash',

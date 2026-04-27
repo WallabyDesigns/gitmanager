@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use Throwable;
+
 class DockerService
 {
     private string $binary;
@@ -568,17 +570,27 @@ class DockerService
     {
         $cmd = array_merge([$this->binary], $args);
 
-        $process = proc_open(
-            $cmd,
-            [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
-            $pipes,
-            null,
-            null,
-            ['bypass_shell' => true],
-        );
+        $pipes = [];
+
+        set_error_handler(static fn () => true);
+
+        try {
+            $process = proc_open(
+                $cmd,
+                [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+                $pipes,
+                null,
+                null,
+                ['bypass_shell' => true],
+            );
+        } catch (Throwable) {
+            $process = false;
+        } finally {
+            restore_error_handler();
+        }
 
         if (! is_resource($process)) {
-            return [false, '', 'Docker binary not found or not executable'];
+            return [false, '', "Docker binary [{$this->binary}] was not found or is not executable."];
         }
 
         $stdout = stream_get_contents($pipes[1]);
