@@ -63,6 +63,7 @@ trait ManagesDependencies
 
                 $this->runWithSingleRetry(function () use ($project, $executionPath, &$output): void {
                     if ($project->run_composer_install) {
+                        $this->refreshFtpComposerManifestsOrFail($project, $executionPath, $output);
                         $this->runComposerCommandWithFallback(
                             $executionPath,
                             $output,
@@ -72,6 +73,7 @@ trait ManagesDependencies
                     }
 
                     if ($project->run_npm_install) {
+                        $this->refreshFtpNpmManifestsOrFail($project, $executionPath, $output);
                         $this->runNpmCommandWithFallback(
                             $executionPath,
                             $output,
@@ -94,6 +96,10 @@ trait ManagesDependencies
                 }, $output, 'Dependency update tasks');
 
                 $toHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
+
+                if ($this->shouldUseFtpWorkspace($project)) {
+                    $this->maybeSyncFtp($project, $executionPath, $output);
+                }
 
                 $deployment->status = 'success';
                 $deployment->from_hash = $fromHash;

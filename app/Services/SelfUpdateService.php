@@ -307,6 +307,46 @@ class SelfUpdateService
         return $this->update($user, true, true);
     }
 
+    /**
+     * Start a self-update in a detached artisan process so the browser request
+     * is not responsible for long git/composer/npm work.
+     *
+     * @return array{ok: bool, message: string}
+     */
+    public function startUpdateInBackground(?User $user = null, bool $force = false): array
+    {
+        $this->releaseStaleRunningUpdates();
+
+        $running = AppUpdate::query()
+            ->whereIn('action', ['self_update', 'force_update'])
+            ->where('status', 'running')
+            ->latest('started_at')
+            ->first();
+
+        if ($running) {
+            return [
+                'ok' => false,
+                'message' => 'A self-update is already running. Check the latest update log for progress.',
+            ];
+        }
+
+        try {
+            $this->launchBackgroundSelfUpdate($user, $force);
+
+            return [
+                'ok' => true,
+                'message' => $force
+                    ? 'Force update started in the background. Refresh the update log for progress.'
+                    : 'Update started in the background. Refresh the update log for progress.',
+            ];
+        } catch (\Throwable $exception) {
+            return [
+                'ok' => false,
+                'message' => 'Unable to start the background self-update: '.$exception->getMessage(),
+            ];
+        }
+    }
+
     public function auditAppDependencies(?User $user = null): AppUpdate
     {
         return $this->runAppDependencyAction($user, 'app_dependency_audit', 'App dependency audit', function (array &$output): string {
@@ -2760,6 +2800,91 @@ class SelfUpdateService
         }
 
         return $process;
+    }
+
+    private function releaseStaleRunningUpdates(): void
+    {
+        $timeout = (int) config('gitmanager.self_update.process_timeout', config('gitmanager.process_timeout', 900));
+        $staleSeconds = $timeout > 0 ? $timeout + 300 : 86400;
+        $cutoff = now()->subSeconds($staleSeconds);
+
+        AppUpdate::query()
+            ->whereIn('action', ['self_update', 'force_update'])
+            ->where('status', 'running')
+            ->where('started_at', '<', $cutoff)
+            ->each(function (AppUpdate $update): void {
+                $existing = trim((string) $update->output_log);
+                $update->status = 'failed';
+                $update->finished_at = now();
+                $update->output_log = trim($existing."\nSelf-update was marked failed because it exceeded the expected runtime without completing.");
+                $update->save();
+            });
+    }
+
+    private function launchBackgroundSelfUpdate(?User $user, bool $force): void
+    {
+        $php = $this->phpBinary();
+        $artisan = base_path('artisan');
+        $args = ['gitmanager:self-update'];
+
+        if ($force) {
+            $args[] = '--force';
+        }
+
+        if ($user?->id) {
+            $args[] = '--user-id='.$user->id;
+        }
+
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->launchWindowsBackgroundProcess($php, $artisan, $args);
+            return;
+        }
+
+        $command = 'cd '.escapeshellarg(base_path())
+            .' && nohup '.escapeshellarg($php).' '.escapeshellarg($artisan).' '
+            .implode(' ', array_map('escapeshellarg', $args))
+            .' > /dev/null 2>&1 &';
+
+        $process = Process::fromShellCommandline($command, base_path(), array_merge($this->baseEnv(), $this->gitEnv()));
+        $process->setTimeout(15);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            throw new \RuntimeException(trim($process->getErrorOutput() ?: $process->getOutput()) ?: 'background process launch failed');
+        }
+    }
+
+    /**
+     * @param array<int, string> $args
+     */
+    private function launchWindowsBackgroundProcess(string $php, string $artisan, array $args): void
+    {
+        $argumentList = array_merge([$artisan], $args);
+        $script = 'Start-Process'
+            .' -FilePath '.$this->powershellQuote($php)
+            .' -ArgumentList @('.implode(', ', array_map([$this, 'powershellQuote'], $argumentList)).')'
+            .' -WorkingDirectory '.$this->powershellQuote(base_path())
+            .' -WindowStyle Hidden';
+
+        $process = new Process([
+            'powershell',
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-Command',
+            $script,
+        ], base_path(), array_merge($this->baseEnv(), $this->gitEnv()));
+        $process->setTimeout(15);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            throw new \RuntimeException(trim($process->getErrorOutput() ?: $process->getOutput()) ?: 'background process launch failed');
+        }
+    }
+
+    private function powershellQuote(string $value): string
+    {
+        return "'".str_replace("'", "''", $value)."'";
     }
 
     private function beginUpdateStream(AppUpdate $update): void

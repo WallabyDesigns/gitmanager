@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\User;
 use App\Services\SelfUpdateService;
 use Illuminate\Console\Command;
 
@@ -12,7 +13,9 @@ class GitManagerSelfUpdate extends Command
      *
      * @var string
      */
-    protected $signature = 'gitmanager:self-update {--force : Force reset to the remote branch and discard local changes}';
+    protected $signature = 'gitmanager:self-update
+        {--force : Force reset to the remote branch and discard local changes}
+        {--user-id= : User id that triggered the update from the admin panel}';
 
     /**
      * The console command description.
@@ -31,10 +34,16 @@ class GitManagerSelfUpdate extends Command
             return self::SUCCESS;
         }
 
+        $user = null;
+        $userId = (int) $this->option('user-id');
+        if ($userId > 0) {
+            $user = User::query()->find($userId);
+        }
+
         if ($this->option('force')) {
-            $update = $service->forceUpdate();
+            $update = $service->forceUpdate($user);
         } else {
-            $update = $service->updateSmart();
+            $update = $service->updateSmart($user);
         }
 
         return $update->status === 'failed' ? self::FAILURE : self::SUCCESS;

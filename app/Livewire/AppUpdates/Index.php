@@ -70,38 +70,25 @@ class Index extends Component
 
     public function runUpdate(SelfUpdateService $service): void
     {
-        $update = $service->updateSmart(Auth::user());
-
-        $message = match ($update->status) {
-            'success' => 'Git Web Manager updated successfully.',
-            'skipped' => 'Git Web Manager is already up to date.',
-            'blocked' => 'Update is on hold because the latest GitHub deployment has not reported success.',
-            'warning' => 'Update applied with warnings. Review the logs for details.',
-            default => 'Update failed. Review the logs for details.',
-        };
+        $result = $service->startUpdateInBackground(Auth::user());
+        $message = $result['message'];
 
         $this->updateStatus = $service->getUpdateStatus(true);
         $this->loadPendingChanges($service);
         $this->resetExpandedUpdateLog();
-        $this->dispatch('notify', message: $message);
+        $this->dispatch('notify', message: $message, type: ($result['ok'] ?? false) ? 'success' : 'error');
         $this->redirectRoute('system.updates', navigate: false);
     }
 
     public function runForceUpdate(SelfUpdateService $service): void
     {
-        $update = $service->forceUpdate(Auth::user());
-
-        $message = match ($update->status) {
-            'success' => 'Git Web Manager force-updated successfully.',
-            'skipped' => 'Git Web Manager is already up to date.',
-            'warning' => 'Force update applied with warnings. Review the logs for details.',
-            default => 'Force update failed. Review the logs for details.',
-        };
+        $result = $service->startUpdateInBackground(Auth::user(), true);
+        $message = $result['message'];
 
         $this->updateStatus = $service->getUpdateStatus(true);
         $this->loadPendingChanges($service);
         $this->resetExpandedUpdateLog();
-        $this->dispatch('notify', message: $message);
+        $this->dispatch('notify', message: $message, type: ($result['ok'] ?? false) ? 'success' : 'error');
         $this->redirectRoute('system.updates', navigate: false);
     }
 

@@ -191,22 +191,7 @@ class FtpService
         ];
 
         $connection = $this->openSyncConnection($output);
-
-        $passiveInUse = (bool) $this->syncContext['passive'];
-        $writeTest = $this->verifyWritableConnection(
-            $connection,
-            (string) (@ftp_pwd($connection) ?: '.'),
-            $passiveInUse,
-            true
-        );
-        if ($passiveInUse !== (bool) $this->syncContext['passive']) {
-            $this->syncContext['passive'] = $passiveInUse;
-            $output[] = 'FTPS write test required passive mode '.($passiveInUse ? 'on' : 'off').' for this session.';
-        }
-        if ($writeTest['status'] !== 'ok') {
-            $output[] = 'FTPS write preflight warning: '.$writeTest['message'];
-            $output[] = 'Continuing sync so any real upload failure can report the exact remote file.';
-        }
+        $output[] = 'FTPS sync preflight connected to '.((string) (@ftp_pwd($connection) ?: '.')).'.';
 
         $stats = [
             'files' => 0,
@@ -298,22 +283,7 @@ class FtpService
         ];
 
         $connection = $this->openSyncConnection($output);
-
-        $passiveInUse = (bool) $this->syncContext['passive'];
-        $writeTest = $this->verifyWritableConnection(
-            $connection,
-            (string) (@ftp_pwd($connection) ?: '.'),
-            $passiveInUse,
-            true
-        );
-        if ($passiveInUse !== (bool) $this->syncContext['passive']) {
-            $this->syncContext['passive'] = $passiveInUse;
-            $output[] = 'FTPS write test required passive mode '.($passiveInUse ? 'on' : 'off').' for this session.';
-        }
-        if ($writeTest['status'] !== 'ok') {
-            $output[] = 'FTPS write preflight warning: '.$writeTest['message'];
-            $output[] = 'Continuing file sync so any real upload failure can report the exact remote file.';
-        }
+        $output[] = 'FTPS file sync preflight connected to '.((string) (@ftp_pwd($connection) ?: '.')).'.';
 
         $stats = [
             'files' => 0,

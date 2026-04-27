@@ -51,19 +51,20 @@ class SelfUpdateControllerTest extends TestCase
 
     public function test_update_returns_plain_text_response(): void
     {
-        $update = $this->fakeUpdate('completed');
-
-        $this->mock(SelfUpdateService::class, function ($mock) use ($update) {
-            $mock->shouldReceive('updateSmart')->once()->andReturn($update);
+        $this->mock(SelfUpdateService::class, function ($mock) {
+            $mock->shouldReceive('startUpdateInBackground')
+                ->once()
+                ->with(\Mockery::any())
+                ->andReturn(['ok' => true, 'message' => 'Update started in the background.']);
+            $mock->shouldNotReceive('updateSmart');
         });
 
         $response = $this->actingAs($this->adminUser())->get('/update');
 
         $response->assertOk()
             ->assertHeader('Content-Type', 'text/plain; charset=UTF-8')
-            ->assertSeeText('Update status: completed')
-            ->assertSeeText('abc1234')
-            ->assertSeeText('def5678');
+            ->assertSeeText('Update launch: started')
+            ->assertSeeText('Update started in the background.');
     }
 
     public function test_rollback_requires_authentication(): void

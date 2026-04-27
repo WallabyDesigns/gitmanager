@@ -12,9 +12,14 @@ class SelfUpdateController extends Controller
 {
     public function update(SelfUpdateService $service): Response
     {
-        $update = $service->updateSmart(Auth::user());
+        $result = $service->startUpdateInBackground(Auth::user());
 
-        return $this->plainResponse('Update', $update);
+        return response(implode("\n", [
+            'Update launch: '.(($result['ok'] ?? false) ? 'started' : 'failed'),
+            $result['message'] ?? '',
+            '',
+            'Progress is saved under System > App Updates.',
+        ]), 200)->header('Content-Type', 'text/plain; charset=UTF-8');
     }
 
     public function rollback(SelfUpdateService $service): Response

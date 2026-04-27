@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\AppUpdates\Index as AppUpdatesIndex;
 use App\Models\AppUpdate;
 use App\Models\User;
+use App\Services\SelfUpdateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -71,5 +72,28 @@ class AppUpdatesPageTest extends TestCase
             ->call('toggleUpdateLog', $historical->id)
             ->assertSet('expandedUpdateId', $historical->id)
             ->assertSee('older-log-marker');
+    }
+
+    public function test_run_update_starts_background_process_instead_of_running_inline(): void
+    {
+        $admin = User::factory()->create();
+
+        $this->mock(SelfUpdateService::class, function ($mock) use ($admin): void {
+            $mock->shouldReceive('getUpdateStatus')
+                ->twice()
+                ->andReturn(['status' => 'update-available', 'update_allowed' => true]);
+            $mock->shouldReceive('getPendingChanges')
+                ->twice()
+                ->andReturn([]);
+            $mock->shouldReceive('startUpdateInBackground')
+                ->once()
+                ->with(\Mockery::on(fn ($user) => $user?->is($admin)))
+                ->andReturn(['ok' => true, 'message' => 'Update started in the background.']);
+            $mock->shouldNotReceive('updateSmart');
+        });
+
+        Livewire::actingAs($admin)
+            ->test(AppUpdatesIndex::class)
+            ->call('runUpdate');
     }
 }

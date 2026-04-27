@@ -28,7 +28,7 @@
     };
 @endphp
 
-<div class="py-10">
+<div class="py-10" wire:poll.10s>
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid gap-6 lg:grid-cols-[260px,1fr]">
             @include('livewire.system.partials.tabs')
@@ -121,7 +121,7 @@
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Run Update</h3>
-                                <p class="text-sm text-slate-500 dark:text-slate-400">Pull and apply Git Web Manager application updates.</p>
+                                <p class="text-sm text-slate-500 dark:text-slate-400">Start Git Web Manager updates in the background and monitor progress in the logs.</p>
                             </div>
                             <div class="flex flex-wrap gap-2">
                                 @php($updateAllowed = (bool) ($updateStatus['update_allowed'] ?? true))
