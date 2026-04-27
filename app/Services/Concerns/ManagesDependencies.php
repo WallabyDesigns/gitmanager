@@ -820,7 +820,8 @@ trait ManagesDependencies
         }
 
         if (! is_file($path.DIRECTORY_SEPARATOR.'composer.json')) {
-            throw new \RuntimeException('Remote composer.json was not found. Check the FTP root path/project path before running Composer actions.');
+            $rootPath = app(\App\Services\FtpService::class)->resolvedRootPath($project);
+            throw new \RuntimeException('Remote composer.json was not found in the resolved FTP root ['.($rootPath !== '' ? $rootPath : '(empty)').']. Check the project FTP Root Path and Project Path before running Composer actions.');
         }
     }
 
@@ -844,7 +845,8 @@ trait ManagesDependencies
         }
 
         if (! is_file($path.DIRECTORY_SEPARATOR.'package.json')) {
-            throw new \RuntimeException('Remote package.json was not found. Check the FTP root path/project path before running npm actions.');
+            $rootPath = app(\App\Services\FtpService::class)->resolvedRootPath($project);
+            throw new \RuntimeException('Remote package.json was not found in the resolved FTP root ['.($rootPath !== '' ? $rootPath : '(empty)').']. Check the project FTP Root Path and Project Path before running npm actions.');
         }
     }
 
@@ -1580,4 +1582,5 @@ trait ManagesDependencies
         $output[] = 'FTP-only pipeline: syncing dependency files ('.implode(', ', $paths).').';
         app(\App\Services\FtpService::class)->syncFiles($project, $path, $paths, $output);
     }
+
 }

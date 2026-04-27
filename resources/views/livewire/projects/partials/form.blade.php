@@ -54,7 +54,7 @@
         <div>
             <x-input-label for="local_path" value="Local Path" />
             <x-text-input id="local_path" class="mt-1 block w-full" wire:model.live="form.local_path" placeholder="/home/user/testwebsite" />
-            <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">For standard/SSH deploys, this is the local build path. For FTP-only deploys, this is the remote subdirectory appended to FTP Root Path (<code>{FTP Root Path}/{Local Path}</code>), and builds run in a managed workspace. If FTP Root Path is blank and Local Path starts with <code>/</code>, it is treated as an absolute remote path.</p>
+            <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">For FTP-only deploys, this is the project directory under FTP Root Path (<code>{FTP Root Path}/{Local Path}</code>). Builds run in a managed local workspace and sync to that remote directory.</p>
             @if ($localPathUsageWarning ?? null)
                 <div class="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
                     {{ $localPathUsageWarning }}

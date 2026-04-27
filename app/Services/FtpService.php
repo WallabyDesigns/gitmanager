@@ -391,6 +391,9 @@ class FtpService
                 }
             }
 
+            $effectiveRoot = (string) (@ftp_pwd($connection) ?: $rootPath);
+            $output[] = 'FTP manifest fetch root: '.$effectiveRoot;
+
             $results = [];
             foreach ($paths as $relative) {
                 $relative = ltrim(str_replace('\\', '/', $relative), '/');
@@ -398,28 +401,99 @@ class FtpService
                     continue;
                 }
 
-                $temp = tempnam(sys_get_temp_dir(), 'gwm-ftp');
-                if (! $temp) {
-                    $results[$relative] = null;
-                    continue;
+                $contents = $this->downloadRemoteFile($connection, $relative);
+                $results[$relative] = $contents;
+                if ($contents === null) {
+                    $output[] = 'FTP manifest fetch: '.$relative.' was not found at '.$this->joinRemotePath($effectiveRoot, $relative).'.';
                 }
-
-                $success = @ftp_get($connection, $temp, $relative, FTP_BINARY);
-                if (! $success) {
-                    @unlink($temp);
-                    $results[$relative] = null;
-                    continue;
-                }
-
-                $contents = @file_get_contents($temp);
-                @unlink($temp);
-                $results[$relative] = $contents === false ? null : $contents;
             }
+
+            $this->logManifestLocationHints($connection, $effectiveRoot, $paths, $results, $output);
 
             return $results;
         } finally {
             $this->safeClose($connection);
         }
+    }
+
+    public function resolvedRootPath(Project $project): string
+    {
+        $project->loadMissing('ftpAccount');
+
+        return $this->resolveRootPath($project);
+    }
+
+    /**
+     * @param resource|\FTP\Connection $connection
+     */
+    private function downloadRemoteFile($connection, string $relative): ?string
+    {
+        $relative = ltrim(str_replace('\\', '/', $relative), '/');
+        if ($relative === '') {
+            return null;
+        }
+
+        $temp = tempnam(sys_get_temp_dir(), 'gwm-ftp');
+        if (! $temp) {
+            return null;
+        }
+
+        $success = @ftp_get($connection, $temp, $relative, FTP_BINARY);
+        if (! $success) {
+            @unlink($temp);
+            return null;
+        }
+
+        $contents = @file_get_contents($temp);
+        @unlink($temp);
+
+        return $contents === false ? null : $contents;
+    }
+
+    /**
+     * @param resource|\FTP\Connection $connection
+     * @param array<int, string> $paths
+     * @param array<string, string|null> $results
+     * @param array<int, string> $output
+     */
+    private function logManifestLocationHints($connection, string $effectiveRoot, array $paths, array $results, array &$output): void
+    {
+        $missing = array_values(array_filter(array_map(
+            fn (string $path) => ltrim(str_replace('\\', '/', trim($path)), '/'),
+            $paths
+        ), fn (string $path) => $path !== '' && ($results[$path] ?? null) === null));
+
+        if ($missing === []) {
+            return;
+        }
+
+        $candidateDirs = $this->manifestHintDirectories();
+        foreach ($candidateDirs as $dir) {
+            foreach ($missing as $relative) {
+                $candidate = $dir.'/'.$relative;
+                if ($this->downloadRemoteFile($connection, $candidate) === null) {
+                    continue;
+                }
+
+                $output[] = 'FTP manifest hint: '.$relative.' exists at '.$this->joinRemotePath($effectiveRoot, $candidate).'. Set the project FTP root/path to that directory before running dependency actions.';
+            }
+        }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function manifestHintDirectories(): array
+    {
+        return [
+            'public_html',
+            'www',
+            'htdocs',
+            'httpdocs',
+            'public',
+            'app',
+            'site',
+        ];
     }
 
     private function ftpAvailable(bool $ssl): bool
@@ -643,7 +717,7 @@ class FtpService
         }
         $baseRoot = $this->normalizeRemotePath($baseRoot);
 
-        // For FTP projects, local_path represents the remote subdirectory under
+        // For FTP projects, local_path is the remote project subdirectory under
         // the configured FTP root. Example: {ftp_root_path}/{local_path}.
         $projectPath = trim((string) ($project->local_path ?? ''));
         if ($projectPath !== '' && $this->looksLikeRemotePath($projectPath)) {

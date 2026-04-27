@@ -1259,8 +1259,9 @@ class DeploymentService
         $repoPath = '';
 
         if ($this->shouldUseFtpWorkspace($project)) {
-            // In FTP-only mode, local_path is treated as the remote target path.
-            // Builds and git operations run from the managed FTP workspace.
+            // In FTP-only mode, local_path is the remote project subdirectory
+            // under the configured FTP root. Builds and git operations run
+            // from the managed FTP workspace.
             $repoPath = $this->ensureFtpWorkspace($project);
         } elseif ($localPath !== '' && $this->isPathWritableForGit($localPath)) {
             $this->ensurePath($localPath);

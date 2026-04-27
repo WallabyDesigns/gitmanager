@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Models\FtpAccount;
 use App\Models\Project;
 use App\Services\DeploymentService;
 use App\Services\FtpService;
@@ -24,14 +25,15 @@ class FtpAuditManifestRefreshTest extends TestCase
 
     public function test_ftp_manifest_refresh_removes_stale_local_files_when_remote_file_is_missing(): void
     {
-        $this->workspace = storage_path('framework/testing/ftp-refresh-'.uniqid());
-        File::ensureDirectoryExists($this->workspace);
-        file_put_contents($this->workspace.DIRECTORY_SEPARATOR.'composer.lock', '{"stale":true}');
-
         $project = new Project([
             'ftp_enabled' => true,
             'ssh_enabled' => false,
         ]);
+        $project->id = random_int(10000, 99999);
+        $this->workspace = storage_path('framework/testing/ftp-workspaces'.DIRECTORY_SEPARATOR.$project->id);
+        config(['gitmanager.ftp.workspace_path' => storage_path('framework/testing/ftp-workspaces')]);
+        File::ensureDirectoryExists($this->workspace);
+        file_put_contents($this->workspace.DIRECTORY_SEPARATOR.'composer.lock', '{"stale":true}');
 
         $ftp = Mockery::mock(FtpService::class);
         $ftp->shouldReceive('fetchRemoteFiles')
@@ -52,14 +54,15 @@ class FtpAuditManifestRefreshTest extends TestCase
 
     public function test_ftp_manifest_refresh_clears_local_file_before_downloading_remote_copy(): void
     {
-        $this->workspace = storage_path('framework/testing/ftp-refresh-'.uniqid());
-        File::ensureDirectoryExists($this->workspace);
-        file_put_contents($this->workspace.DIRECTORY_SEPARATOR.'composer.lock', '{"old":true}');
-
         $project = new Project([
             'ftp_enabled' => true,
             'ssh_enabled' => false,
         ]);
+        $project->id = random_int(10000, 99999);
+        $this->workspace = storage_path('framework/testing/ftp-workspaces'.DIRECTORY_SEPARATOR.$project->id);
+        config(['gitmanager.ftp.workspace_path' => storage_path('framework/testing/ftp-workspaces')]);
+        File::ensureDirectoryExists($this->workspace);
+        file_put_contents($this->workspace.DIRECTORY_SEPARATOR.'composer.lock', '{"old":true}');
 
         $ftp = Mockery::mock(FtpService::class);
         $ftp->shouldReceive('fetchRemoteFiles')
@@ -81,14 +84,15 @@ class FtpAuditManifestRefreshTest extends TestCase
 
     public function test_ftp_manifest_refresh_does_not_reuse_local_file_when_remote_refresh_fails(): void
     {
-        $this->workspace = storage_path('framework/testing/ftp-refresh-'.uniqid());
-        File::ensureDirectoryExists($this->workspace);
-        file_put_contents($this->workspace.DIRECTORY_SEPARATOR.'composer.lock', '{"stale":true}');
-
         $project = new Project([
             'ftp_enabled' => true,
             'ssh_enabled' => false,
         ]);
+        $project->id = random_int(10000, 99999);
+        $this->workspace = storage_path('framework/testing/ftp-workspaces'.DIRECTORY_SEPARATOR.$project->id);
+        config(['gitmanager.ftp.workspace_path' => storage_path('framework/testing/ftp-workspaces')]);
+        File::ensureDirectoryExists($this->workspace);
+        file_put_contents($this->workspace.DIRECTORY_SEPARATOR.'composer.lock', '{"stale":true}');
 
         $ftp = Mockery::mock(FtpService::class);
         $ftp->shouldReceive('fetchRemoteFiles')
@@ -106,5 +110,32 @@ class FtpAuditManifestRefreshTest extends TestCase
         $this->assertFalse($result);
         $this->assertFileDoesNotExist($this->workspace.DIRECTORY_SEPARATOR.'composer.lock');
         $this->assertContains('FTP manifest sync: remote refresh returned no files; stale local manifests remain cleared.', $output);
+    }
+
+    public function test_ftp_resolved_root_does_not_duplicate_project_path_when_it_already_contains_base_root(): void
+    {
+        $project = new Project([
+            'ftp_enabled' => true,
+            'ssh_enabled' => false,
+            'local_path' => '/admin.3dfinancial.org',
+            'ftp_root_path' => null,
+        ]);
+        $project->setRelation('ftpAccount', new FtpAccount([
+            'root_path' => '/admin.3dfinancial.org',
+        ]));
+
+        $this->assertSame('/admin.3dfinancial.org', app(FtpService::class)->resolvedRootPath($project));
+    }
+
+    public function test_ftp_resolved_root_combines_base_root_and_relative_project_path(): void
+    {
+        $project = new Project([
+            'ftp_enabled' => true,
+            'ssh_enabled' => false,
+            'local_path' => 'current',
+            'ftp_root_path' => '/domains/example.com',
+        ]);
+
+        $this->assertSame('/domains/example.com/current', app(FtpService::class)->resolvedRootPath($project));
     }
 }
