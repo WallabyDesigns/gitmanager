@@ -401,7 +401,7 @@ class FtpService
                     continue;
                 }
 
-                $contents = $this->downloadRemoteFile($connection, $relative);
+                $contents = $this->downloadRemoteFile($connection, $relative, $effectiveRoot);
                 $results[$relative] = $contents;
                 if ($contents === null) {
                     $output[] = 'FTP manifest fetch: '.$relative.' was not found at '.$this->joinRemotePath($effectiveRoot, $relative).'.';
@@ -426,19 +426,41 @@ class FtpService
     /**
      * @param resource|\FTP\Connection $connection
      */
-    private function downloadRemoteFile($connection, string $relative): ?string
+    private function downloadRemoteFile($connection, string $relative, ?string $effectiveRoot = null): ?string
     {
         $relative = ltrim(str_replace('\\', '/', $relative), '/');
         if ($relative === '') {
             return null;
         }
 
+        $candidates = [$relative, './'.$relative];
+        $effectiveRoot = $effectiveRoot !== null ? $this->normalizeRemotePath($effectiveRoot) : '';
+        if ($effectiveRoot !== '' && $effectiveRoot !== '.') {
+            $candidates[] = $this->joinRemotePath($effectiveRoot, $relative);
+        }
+        $candidates = array_values(array_unique($candidates));
+
+        foreach ($candidates as $candidate) {
+            $contents = $this->downloadRemoteFileCandidate($connection, $candidate);
+            if ($contents !== null) {
+                return $contents;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param resource|\FTP\Connection $connection
+     */
+    private function downloadRemoteFileCandidate($connection, string $remotePath): ?string
+    {
         $temp = tempnam(sys_get_temp_dir(), 'gwm-ftp');
         if (! $temp) {
             return null;
         }
 
-        $success = @ftp_get($connection, $temp, $relative, FTP_BINARY);
+        $success = @ftp_get($connection, $temp, $remotePath, FTP_BINARY);
         if (! $success) {
             @unlink($temp);
             return null;
@@ -471,7 +493,7 @@ class FtpService
         foreach ($candidateDirs as $dir) {
             foreach ($missing as $relative) {
                 $candidate = $dir.'/'.$relative;
-                if ($this->downloadRemoteFile($connection, $candidate) === null) {
+                if ($this->downloadRemoteFile($connection, $candidate, $effectiveRoot) === null) {
                     continue;
                 }
 

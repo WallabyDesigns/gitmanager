@@ -992,7 +992,7 @@ trait ManagesDependencies
             $this->permissionService->ensureWritableDirectory($modulesPath, $output, 'Node modules directory');
             try {
                 $this->logStep($output, $label, $path, implode(' ', $command));
-                $this->runProjectProcess($command, $output, $path);
+                $this->runNpmProjectProcess($command, $output, $path);
 
                 return;
             } catch (ProcessFailedException $exception) {
@@ -1013,7 +1013,7 @@ trait ManagesDependencies
 
         try {
             $this->logStep($output, $label.' (staged)', $tempRoot, implode(' ', $command));
-            $this->runProjectProcess($command, $output, $tempRoot);
+            $this->runNpmProjectProcess($command, $output, $tempRoot);
 
             $tempModules = $tempRoot.DIRECTORY_SEPARATOR.'node_modules';
             if (! is_dir($tempModules)) {
@@ -1097,7 +1097,7 @@ trait ManagesDependencies
         if (! is_dir($modulesPath)) {
             $output[] = 'Starting '.$managerLabel.' clean reinstall (no existing node_modules).';
             $this->logStep($output, $label.' (clean reinstall)', $path, implode(' ', $command));
-            $this->runProjectProcess($command, $output, $path);
+            $this->runNpmProjectProcess($command, $output, $path);
             $this->permissionService->applyOwnershipFromReference($modulesPath, $path, $output, 'Node modules directory');
             $output[] = $managerLabel.' clean reinstall completed.';
 
@@ -1112,7 +1112,7 @@ trait ManagesDependencies
         try {
             $output[] = 'Starting '.$managerLabel.' clean reinstall.';
             $this->logStep($output, $label.' (clean reinstall)', $path, implode(' ', $command));
-            $this->runProjectProcess($command, $output, $path);
+            $this->runNpmProjectProcess($command, $output, $path);
             if (is_dir($backup)) {
                 $this->deleteDirectory($backup);
             }
@@ -1192,6 +1192,58 @@ trait ManagesDependencies
 
         return str_contains($message, 'unable to move existing node modules directory')
             || str_contains($message, 'unable to replace node modules directory');
+    }
+
+    private function runNpmProjectProcess(array $command, array &$output, string $path): void
+    {
+        try {
+            $this->runProjectProcess($command, $output, $path);
+
+            return;
+        } catch (ProcessFailedException $exception) {
+            if (! $this->isNpmProcessLimitFailure($exception)) {
+                throw $exception;
+            }
+
+            $output[] = 'Npm failed because the host refused to create another process/thread. Retrying once with low-concurrency npm/esbuild settings.';
+        }
+
+        try {
+            $this->runProjectProcessWithEnv($command, $output, $path, $this->lowConcurrencyNpmEnv());
+        } catch (ProcessFailedException $exception) {
+            if ($this->isNpmProcessLimitFailure($exception)) {
+                $output[] = 'Npm is still blocked by the host process/thread limit after the low-concurrency retry. Increase the account max user processes/ulimit, use a less restricted Node runtime, disable npm install for this project, or commit/sync prebuilt assets.';
+            }
+
+            throw $exception;
+        }
+    }
+
+    private function lowConcurrencyNpmEnv(): array
+    {
+        return [
+            'CHILD_CONCURRENCY' => '1',
+            'GOMAXPROCS' => '1',
+            'NPM_CONFIG_AUDIT' => 'false',
+            'NPM_CONFIG_FUND' => 'false',
+            'NPM_CONFIG_JOBS' => '1',
+            'npm_config_audit' => 'false',
+            'npm_config_fund' => 'false',
+            'npm_config_jobs' => '1',
+            'UV_THREADPOOL_SIZE' => '1',
+        ];
+    }
+
+    private function isNpmProcessLimitFailure(ProcessFailedException $exception): bool
+    {
+        $process = $exception->getProcess();
+        $text = strtolower($exception->getMessage()."\n".$process->getOutput()."\n".$process->getErrorOutput());
+
+        return str_contains($text, 'failed to create new os thread')
+            || str_contains($text, 'may need to increase max user processes')
+            || str_contains($text, 'fatal error: newosproc')
+            || str_contains($text, 'errno=11')
+            || str_contains($text, 'resource temporarily unavailable');
     }
 
     private function backupDirectory(string $path, array &$output, string $label): ?string
