@@ -885,6 +885,7 @@ class FtpService
             return true;
         }
 
+        $this->logFailedUploadContext($connection, $remotePath, $output);
         $this->testRemoteDirectoryWritable($connection, dirname($remotePath), $output);
 
         return false;
@@ -896,11 +897,26 @@ class FtpService
     private function attemptRemotePermissionFix($connection, string $remoteDir, string $remoteFile): void
     {
         if (function_exists('ftp_chmod')) {
-            @ftp_chmod($connection, 0755, $remoteDir);
+            @ftp_chmod($connection, 0775, $remoteDir);
             @ftp_chmod($connection, 0644, $remoteFile);
         }
 
         @ftp_delete($connection, $remoteFile);
+    }
+
+    /**
+     * @param resource|\FTP\Connection $connection
+     * @param array<int, string> $output
+     */
+    private function logFailedUploadContext($connection, string $remotePath, array &$output): void
+    {
+        $pwd = (string) (@ftp_pwd($connection) ?: '.');
+        $dir = dirname($remotePath);
+        $candidates = implode(', ', $this->remotePathCandidates($remotePath));
+        $directoryListing = @ftp_nlist($connection, $dir);
+        $directoryVisible = is_array($directoryListing) ? 'yes' : 'no';
+
+        $output[] = 'FTPS upload diagnostics: cwd='.$pwd.'; target='.$remotePath.'; tried='.$candidates.'; target directory visible='.$directoryVisible.'.';
     }
 
     /**

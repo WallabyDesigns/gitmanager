@@ -56,6 +56,8 @@ class DeploymentService
 
     public function checkForUpdates(Project $project): bool
     {
+        $project->refresh();
+
         if (! $project->repo_url) {
             $project->last_checked_at = now();
             $project->updates_checked_at = now();
@@ -66,6 +68,7 @@ class DeploymentService
         }
 
         $repoPath = $this->resolveRepoPath($project);
+        $branch = trim((string) ($project->default_branch ?: 'main'));
 
         $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune']);
         $head = $this->tryRevParse($repoPath);
@@ -74,7 +77,7 @@ class DeploymentService
             '-C',
             $repoPath,
             'rev-parse',
-            'origin/'.$project->default_branch,
+            'origin/'.$branch,
         ])->getOutput());
 
         $hasUpdates = $head !== $remote;
@@ -146,6 +149,8 @@ class DeploymentService
 
     public function deploy(Project $project, ?User $user = null, bool $allowDirty = false, bool $ignorePermissionsLock = false): Deployment
     {
+        $project->refresh();
+
         if ($project->permissions_locked && ! $project->ftp_enabled && ! $project->ssh_enabled && ! $ignorePermissionsLock) {
             $message = 'Permissions need fixing before deployments can run.';
             if ($project->permissions_issue_message) {
@@ -203,18 +208,20 @@ class DeploymentService
 
                 $fromHash = $this->tryRevParse($repoPath);
                 $this->runProcess(['git', '-C', $repoPath, 'fetch', '--all', '--prune'], $output);
+                $branch = trim((string) ($project->default_branch ?: 'main'));
+                $output[] = 'Deploy branch: '.$branch.'.';
                 $remoteHash = trim($this->runProcess([
                     'git',
                     '-C',
                     $repoPath,
                     'rev-parse',
-                    'origin/'.$project->default_branch,
+                    'origin/'.$branch,
                 ], $output)->getOutput());
 
                 if ($fromHash && $fromHash === $remoteHash) {
                     if ($this->shouldRunInitialDeployTasks($project)) {
                         $output[] = 'No updates detected. Running initial setup tasks.';
-                        $this->resetToRemote($project, $repoPath, $project->default_branch, $output, $allowDirty);
+                        $this->resetToRemote($project, $repoPath, $branch, $output, $allowDirty);
                         $this->warnIfEnvTracked($repoPath, $output);
                         $this->applyProjectSeeds($project, $executionPath, $output);
                         $this->laravelDeploymentCheckService->run($project, $executionPath, $output);
@@ -322,7 +329,7 @@ class DeploymentService
 
                 $this->runStagingChecks($project, $repoPath, $remoteHash, $output);
 
-                $this->resetToRemote($project, $repoPath, $project->default_branch, $output, $allowDirty);
+                $this->resetToRemote($project, $repoPath, $branch, $output, $allowDirty);
 
                 $toHash = trim($this->runProcess(['git', '-C', $repoPath, 'rev-parse', 'HEAD'], $output)->getOutput());
 
