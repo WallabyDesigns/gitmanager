@@ -524,38 +524,63 @@ class DeploymentQueueService
 
     private function reserveNext(): ?DeploymentQueueItem
     {
-        return DB::transaction(function () {
-            $runningProjects = DeploymentQueueItem::query()
-                ->where('status', 'running')
-                ->pluck('project_id')
-                ->all();
+        $maxAttempts = 5;
 
-            $item = DeploymentQueueItem::query()
-                ->where('status', 'queued')
-                ->whereHas('project', function ($query) {
-                    $query->where(function ($query) {
-                        $query->where('permissions_locked', false)
-                            ->orWhere('ftp_enabled', true)
-                            ->orWhere('ssh_enabled', true);
-                    });
-                })
-                ->when($runningProjects !== [], fn ($query) => $query->whereNotIn('project_id', $runningProjects))
-                ->orderBy('position')
-                ->lockForUpdate()
-                ->first();
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                return DB::transaction(function () {
+                    $runningProjects = DeploymentQueueItem::query()
+                        ->where('status', 'running')
+                        ->pluck('project_id')
+                        ->all();
 
-            if (! $item) {
-                return null;
+                    $item = DeploymentQueueItem::query()
+                        ->where('status', 'queued')
+                        ->whereHas('project', function ($query) {
+                            $query->where(function ($query) {
+                                $query->where('permissions_locked', false)
+                                    ->orWhere('ftp_enabled', true)
+                                    ->orWhere('ssh_enabled', true);
+                            });
+                        })
+                        ->when($runningProjects !== [], fn ($query) => $query->whereNotIn('project_id', $runningProjects))
+                        ->orderBy('position')
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (! $item) {
+                        return null;
+                    }
+
+                    $item->status = 'running';
+                    $item->started_at = now();
+                    $item->save();
+
+                    $this->cancelDuplicateQueuedItems($item);
+
+                    return $item;
+                });
+            } catch (\Illuminate\Database\QueryException $e) {
+                if ($attempt >= $maxAttempts || ! $this->isSqliteLockException($e)) {
+                    throw $e;
+                }
+                usleep(200000 * $attempt); // 200ms, 400ms, 600ms, 800ms
             }
+        }
 
-            $item->status = 'running';
-            $item->started_at = now();
-            $item->save();
+        return null;
+    }
 
-            $this->cancelDuplicateQueuedItems($item);
+    private function isSqliteLockException(\Throwable $e): bool
+    {
+        $message = $e->getMessage();
+        if (str_contains($message, 'database is locked') || str_contains($message, 'SQLITE_BUSY')) {
+            return true;
+        }
 
-            return $item;
-        });
+        $previous = $e->getPrevious();
+        return $previous !== null
+            && (str_contains($previous->getMessage(), 'database is locked') || str_contains($previous->getMessage(), 'SQLITE_BUSY'));
     }
 
     private function runItem(DeploymentQueueItem $item): void
