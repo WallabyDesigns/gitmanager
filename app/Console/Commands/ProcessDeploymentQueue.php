@@ -24,9 +24,11 @@ class ProcessDeploymentQueue extends Command
             : (int) config('gitmanager.deploy_queue.batch_size', 0);
 
         $this->applyRuntimeBudget($limit);
+        $this->appendWorkerLog('Queue processor started with limit '.($limit > 0 ? (string) $limit : 'unlimited').'.');
 
         $processed = $queue->processNext($limit);
         $this->info("Processed {$processed} queued item(s).");
+        $this->appendWorkerLog("Queue processor finished. Processed {$processed} item(s).");
 
         return self::SUCCESS;
     }
@@ -44,5 +46,20 @@ class ProcessDeploymentQueue extends Command
         }
 
         @set_time_limit(($processTimeout + 300) * max(1, $limit));
+    }
+
+    private function appendWorkerLog(string $message): void
+    {
+        try {
+            $path = storage_path('logs/deployment-queue-worker.log');
+            $directory = dirname($path);
+            if (! is_dir($directory)) {
+                mkdir($directory, 0775, true);
+            }
+
+            file_put_contents($path, '['.now()->toDateTimeString().'] '.$message.PHP_EOL, FILE_APPEND);
+        } catch (\Throwable) {
+            // Best-effort diagnostics only.
+        }
     }
 }

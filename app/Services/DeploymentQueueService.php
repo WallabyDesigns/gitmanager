@@ -7,6 +7,7 @@ use App\Models\Deployment;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Symfony\Component\Process\Process;
 
 class DeploymentQueueService
@@ -153,6 +154,8 @@ class DeploymentQueueService
         try {
             $php = $this->phpBinary();
             $artisan = base_path('artisan');
+            $logPath = $this->backgroundProcessorLogPath();
+            $this->ensureBackgroundLogDirectory($logPath);
 
             if (PHP_OS_FAMILY === 'Windows') {
                 $script = 'Start-Process'
@@ -163,6 +166,8 @@ class DeploymentQueueService
                         '--limit='.$limit,
                     ])).')'
                     .' -WorkingDirectory '.$this->powershellQuote(base_path())
+                    .' -RedirectStandardOutput '.$this->powershellQuote($logPath)
+                    .' -RedirectStandardError '.$this->powershellQuote($logPath)
                     .' -WindowStyle Hidden';
 
                 $process = new Process([
@@ -177,7 +182,8 @@ class DeploymentQueueService
                 $command = 'cd '.escapeshellarg(base_path())
                     .' && nohup '.escapeshellarg($php).' '.escapeshellarg($artisan)
                     .' deployments:process-queue --limit='.escapeshellarg((string) $limit)
-                    .' > /dev/null 2>&1 &';
+                    .' >> '.escapeshellarg($logPath).' 2>&1'
+                    .' & echo $!';
 
                 $process = Process::fromShellCommandline($command, base_path());
             }
@@ -185,8 +191,14 @@ class DeploymentQueueService
             $process->setTimeout(15);
             $process->run();
 
-            return $process->isSuccessful();
-        } catch (\Throwable) {
+            if (! $process->isSuccessful()) {
+                $this->appendBackgroundProcessorLog('Failed to launch queue processor: '.trim($process->getErrorOutput() ?: $process->getOutput()));
+                return false;
+            }
+
+            return true;
+        } catch (\Throwable $exception) {
+            $this->appendBackgroundProcessorLog('Failed to launch queue processor: '.$exception->getMessage());
             return false;
         }
     }
@@ -380,12 +392,40 @@ class DeploymentQueueService
         $configured = trim((string) config('gitmanager.php_binary', 'php'));
         $configured = trim($configured, "\"' ");
 
-        return $configured !== '' ? $configured : 'php';
+        if ($configured !== '' && ($configured !== 'php' || PHP_BINARY === '')) {
+            return $configured;
+        }
+
+        return PHP_BINARY !== '' ? PHP_BINARY : ($configured !== '' ? $configured : 'php');
     }
 
     private function powershellQuote(string $value): string
     {
         return "'".str_replace("'", "''", $value)."'";
+    }
+
+    private function backgroundProcessorLogPath(): string
+    {
+        return storage_path('logs/deployment-queue-worker.log');
+    }
+
+    private function ensureBackgroundLogDirectory(string $logPath): void
+    {
+        $directory = dirname($logPath);
+        if (! is_dir($directory)) {
+            File::makeDirectory($directory, 0775, true, true);
+        }
+    }
+
+    private function appendBackgroundProcessorLog(string $message): void
+    {
+        try {
+            $logPath = $this->backgroundProcessorLogPath();
+            $this->ensureBackgroundLogDirectory($logPath);
+            file_put_contents($logPath, '['.now()->toDateTimeString().'] '.$message.PHP_EOL, FILE_APPEND);
+        } catch (\Throwable) {
+            // Best-effort diagnostics only.
+        }
     }
 
     public function moveUp(DeploymentQueueItem $item): void
