@@ -392,11 +392,61 @@ class DeploymentQueueService
         $configured = trim((string) config('gitmanager.php_binary', 'php'));
         $configured = trim($configured, "\"' ");
 
-        if ($configured !== '' && ($configured !== 'php' || PHP_BINARY === '')) {
+        if ($configured !== '' && $configured !== 'php') {
             return $configured;
         }
 
-        return PHP_BINARY !== '' ? PHP_BINARY : ($configured !== '' ? $configured : 'php');
+        foreach ($this->phpCliCandidates($configured) as $candidate) {
+            if ($this->isUsablePhpCliBinary($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return $configured !== '' ? $configured : 'php';
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function phpCliCandidates(string $configured): array
+    {
+        $candidates = [];
+
+        if ($configured !== '') {
+            $candidates[] = $configured;
+        }
+
+        if (PHP_BINARY !== '') {
+            $candidates[] = PHP_BINARY;
+
+            $fpmMapped = str_replace(['/php-fpm83/', '/php-fpm82/', '/php-fpm81/'], ['/php83/', '/php82/', '/php81/'], PHP_BINARY);
+            $fpmMapped = preg_replace('#/sbin/php-fpm(?:[0-9.]*)?$#', '/bin/php', $fpmMapped) ?: $fpmMapped;
+            if ($fpmMapped !== PHP_BINARY) {
+                $candidates[] = $fpmMapped;
+            }
+        }
+
+        $candidates[] = '/opt/alt/php83/usr/bin/php';
+        $candidates[] = '/opt/alt/php82/usr/bin/php';
+        $candidates[] = '/usr/local/bin/php';
+        $candidates[] = '/usr/bin/php';
+        $candidates[] = 'php';
+
+        return array_values(array_unique(array_filter($candidates)));
+    }
+
+    private function isUsablePhpCliBinary(string $binary): bool
+    {
+        $name = strtolower(basename($binary));
+        if (str_contains($name, 'php-fpm') || str_contains($name, 'php-cgi')) {
+            return false;
+        }
+
+        if (str_contains($binary, DIRECTORY_SEPARATOR) && (! is_file($binary) || ! is_executable($binary))) {
+            return false;
+        }
+
+        return true;
     }
 
     private function powershellQuote(string $value): string
