@@ -758,36 +758,36 @@ trait ManagesDependencies
             return true;
         }
 
-        if ($clearLocalFirst) {
-            foreach ($files as $file) {
-                $target = $executionPath.DIRECTORY_SEPARATOR.$file;
-                if (is_file($target) && @unlink($target)) {
-                    $output[] = 'FTP manifest sync: cleared local '.$file.' before remote refresh.';
-                }
-            }
-        }
-
         $remoteFiles = app(\App\Services\FtpService::class)->fetchRemoteFiles($project, $files, $output);
         if ($remoteFiles === []) {
             if ($clearLocalFirst) {
-                $output[] = 'FTP manifest sync: remote refresh returned no files; stale local manifests remain cleared.';
+                $output[] = 'FTP manifest sync: remote fetch returned no files; local manifests preserved.';
             }
             return false;
         }
 
         foreach ($files as $file) {
             $contents = $remoteFiles[$file] ?? null;
+            $target = $executionPath.DIRECTORY_SEPARATOR.$file;
+
             if ($contents === null) {
+                // FTP connected but this file was not found there.
                 if ($deleteMissing) {
-                    $target = $executionPath.DIRECTORY_SEPARATOR.$file;
                     if (is_file($target) && @unlink($target)) {
                         $output[] = 'FTP manifest sync: removed stale '.$file.'.';
                     }
+                } elseif ($clearLocalFirst && is_file($target)) {
+                    // Don't erase the local copy when FTP has no replacement —
+                    // the local file (e.g. from git) is better than nothing.
+                    $output[] = 'FTP manifest sync: '.$file.' not found on FTP; keeping local copy.';
                 }
                 continue;
             }
 
-            $target = $executionPath.DIRECTORY_SEPARATOR.$file;
+            if ($clearLocalFirst && is_file($target)) {
+                @unlink($target);
+            }
+
             $current = is_file($target) ? @file_get_contents($target) : null;
             if ($current === $contents) {
                 continue;

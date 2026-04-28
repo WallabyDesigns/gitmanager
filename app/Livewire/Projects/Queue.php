@@ -162,8 +162,11 @@ class Queue extends Component
                         });
                 });
             })
-            ->orderByDesc(DB::raw('COALESCE(finished_at, started_at, created_at)'))
-            ->orderByDesc('id')
+            ->when(
+                $this->statusFilter === 'queued',
+                fn ($q) => $q->orderBy('position')->orderBy('id'),
+                fn ($q) => $q->orderByDesc(DB::raw('COALESCE(finished_at, started_at, created_at)'))->orderByDesc('id')
+            )
             ->paginate($this->perPage);
 
         $projectIds = $items->getCollection()
@@ -309,20 +312,8 @@ class Queue extends Component
             'manual_project_audit' => 'Manual Audit',
             'bulk_project_audit' => 'Bulk Audit',
             'scheduled_hourly_audit' => 'Scheduled Audit',
-            default => $this->fallbackContextLabel($action, $context),
+            '' => $action === 'audit_project' ? 'Audit' : null,
+            default => ucfirst(str_replace('_', ' ', $context)),
         };
-    }
-
-    private function fallbackContextLabel(string $action, string $context): ?string
-    {
-        if ($action === 'audit_project' && $context === '') {
-            return 'Audit';
-        }
-
-        if ($context === '') {
-            return null;
-        }
-
-        return ucfirst(str_replace('_', ' ', $context));
     }
 }

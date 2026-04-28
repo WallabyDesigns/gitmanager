@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 class NavigationStateService
 {
     private const CACHE_SECONDS = 1800;
+    private const SIDEBAR_CACHE_SECONDS = 60;
 
     /**
      * @var array<string, mixed>
@@ -80,20 +81,36 @@ class NavigationStateService
         $isAdmin = $user?->isAdmin() ?? false;
         $cacheKey = 'projects-sidebar:'.($userId ?? 0).':'.($isAdmin ? 1 : 0);
 
-        return $this->remember($cacheKey, function () use ($userId, $isAdmin): array {
+        $cached = $this->remember($cacheKey, function () use ($userId, $isAdmin): array {
             $isEnterprise = $this->editionService()->current() === EditionService::ENTERPRISE;
             $counts = $this->alertCounts($userId);
-            $queueCount = $this->queueCount($userId);
             $dependencyIssueCount = $this->dependencyIssueCount($userId);
             $updateIssueCount = $isAdmin ? $this->latestUpdateIssueCount() : 0;
 
             return [
                 'isAdmin' => $isAdmin,
                 'isEnterprise' => $isEnterprise,
-                'queueCount' => $queueCount,
                 'actionCenterCount' => $counts['security'] + $counts['audit'] + $dependencyIssueCount + $updateIssueCount,
             ];
-        });
+        }, self::SIDEBAR_CACHE_SECONDS);
+
+        // Queue count bypasses the cache so the badge stays current on every poll.
+        $cached['queueCount'] = $this->queueCount($userId);
+
+        return $cached;
+    }
+
+    public function flushProjectsSidebar(?int $userId): void
+    {
+        if (! $userId) {
+            return;
+        }
+
+        foreach ([0, 1] as $isAdmin) {
+            $key = 'projects-sidebar:'.$userId.':'.$isAdmin;
+            Cache::forget('navigation-state:'.$key);
+            unset(self::$requestCache[$key]);
+        }
     }
 
     /**
@@ -179,12 +196,10 @@ class NavigationStateService
             return 0;
         }
 
-        return $this->remember('queue-count:'.$userId, function () use ($userId): int {
-            return DeploymentQueueItem::query()
-                ->whereIn('status', ['queued', 'running'])
-                ->whereHas('project', fn ($query) => $query->where('user_id', $userId))
-                ->count();
-        });
+        return DeploymentQueueItem::query()
+            ->whereIn('status', ['queued', 'running'])
+            ->whereHas('project', fn ($query) => $query->where('user_id', $userId))
+            ->count();
     }
 
     private function dependencyIssueCount(?int $userId): int
@@ -231,7 +246,7 @@ class NavigationStateService
         });
     }
 
-    private function remember(string $key, callable $callback): mixed
+    private function remember(string $key, callable $callback, int $seconds = self::CACHE_SECONDS): mixed
     {
         if (array_key_exists($key, self::$requestCache)) {
             return self::$requestCache[$key];
@@ -239,7 +254,7 @@ class NavigationStateService
 
         $value = Cache::remember(
             'navigation-state:'.$key,
-            now()->addSeconds(self::CACHE_SECONDS),
+            now()->addSeconds($seconds),
             $callback
         );
 

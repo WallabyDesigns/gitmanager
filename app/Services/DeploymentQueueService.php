@@ -684,6 +684,17 @@ class DeploymentQueueService
 
         $item->finished_at = now();
         $item->save();
+
+        // Flush the sidebar badge cache so counts update immediately.
+        $userId = $item->project?->user_id;
+        if ($userId) {
+            app(\App\Services\NavigationStateService::class)->flushProjectsSidebar($userId);
+        }
+
+        // Auto-advance: if more items are waiting, kick off the next processor.
+        if (DeploymentQueueItem::query()->where('status', 'queued')->exists()) {
+            $this->startBackgroundProcessor(1);
+        }
     }
 
     private function applyItemRuntimeBudget(): void
