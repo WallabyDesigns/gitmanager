@@ -247,8 +247,43 @@ trait RunsProcesses
         }
 
         $resolved = $this->resolveBinaryFromPath($configured);
+        if ($resolved) {
+            return $resolved;
+        }
 
-        return $resolved ?: '';
+        // Web server processes often run with a stripped PATH that omits common
+        // binary directories. Search well-known locations before giving up.
+        foreach ($this->composerFallbackLocations($configured) as $candidate) {
+            if (is_file($candidate) && is_executable($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function composerFallbackLocations(string $binary): array
+    {
+        $dirs = ['/usr/local/bin', '/usr/bin', '/bin'];
+
+        $phpBinary = $this->phpBinary();
+        if ($phpBinary !== '' && (str_contains($phpBinary, '/') || str_contains($phpBinary, DIRECTORY_SEPARATOR))) {
+            array_unshift($dirs, dirname($phpBinary));
+        }
+
+        $names = array_unique([$binary, 'composer']);
+        $paths = [];
+        foreach ($dirs as $dir) {
+            foreach ($names as $name) {
+                $paths[] = $dir.'/'.$name;
+                $paths[] = $dir.'/'.$name.'.phar';
+            }
+        }
+
+        return array_unique($paths);
     }
 
     private function resolveBinaryFromPath(string $binary): ?string
