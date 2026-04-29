@@ -894,6 +894,21 @@ class FtpService
             return true;
         }
 
+        // Try toggling passive mode as a final attempt — data channel failures from
+        // certain network configurations (e.g. same-server PASV loopback) won't be
+        // fixed by permission retries but are resolved by switching passive/active.
+        $passive = is_array($this->syncContext) ? (bool) ($this->syncContext['passive'] ?? true) : true;
+        @ftp_pasv($connection, ! $passive);
+        if ($this->uploadRemoteFile($connection, $remotePath, $localPath)) {
+            if (is_array($this->syncContext)) {
+                $this->syncContext['passive'] = ! $passive;
+            }
+            $output[] = 'FTPS upload succeeded after toggling passive mode '.($passive ? 'off' : 'on').'. Update the passive mode setting in FTP/SSH Access to avoid retries on future deploys.';
+
+            return true;
+        }
+        @ftp_pasv($connection, $passive);
+
         $this->logFailedUploadContext($connection, $remotePath, $output);
         $this->testRemoteDirectoryWritable($connection, dirname($remotePath), $output);
 
@@ -948,8 +963,15 @@ class FtpService
         $pwd = (string) (@ftp_pwd($connection) ?: '.');
         $dir = dirname($remotePath);
         $candidates = implode(', ', $this->remotePathCandidates($remotePath));
+
+        // ftp_nlist uses a data channel and returns false for empty directories on many
+        // Linux FTP servers, making it unreliable for existence checks. Use ftp_chdir instead.
+        $dirExists = @ftp_chdir($connection, $dir);
+        if ($dirExists) {
+            @ftp_chdir($connection, $pwd);
+        }
         $directoryListing = @ftp_nlist($connection, $dir);
-        $directoryVisible = is_array($directoryListing) ? 'yes' : 'no';
+        $directoryVisible = is_array($directoryListing) && $directoryListing !== [] ? 'yes' : ($dirExists ? 'exists-but-empty-or-data-channel-error' : 'no');
 
         $output[] = 'FTPS upload diagnostics: cwd='.$pwd.'; target='.$remotePath.'; tried='.$candidates.'; target directory visible='.$directoryVisible.'.';
     }
@@ -974,7 +996,26 @@ class FtpService
         @unlink($temp);
 
         if (! $success) {
-            $output[] = 'FTPS write test failed in '.($remoteDir === '' ? '(root)' : $remoteDir).'. Check permissions, ownership, or disk quota.';
+            $passive = is_array($this->syncContext) ? (bool) ($this->syncContext['passive'] ?? true) : true;
+            @ftp_pasv($connection, ! $passive);
+            $temp2 = tempnam(sys_get_temp_dir(), 'gwm');
+            $succeededToggled = false;
+            if ($temp2) {
+                @file_put_contents($temp2, 'gwm');
+                $succeededToggled = $this->uploadRemoteFile($connection, $remote, $temp2);
+                @unlink($temp2);
+                if ($succeededToggled) {
+                    @ftp_delete($connection, $remote);
+                }
+            }
+            @ftp_pasv($connection, $passive);
+
+            if ($succeededToggled) {
+                $output[] = 'FTPS write test succeeded after toggling passive mode '.($passive ? 'off' : 'on').'. Toggle the passive mode setting in FTP/SSH Access to fix uploads.';
+            } else {
+                $output[] = 'FTPS write test failed in '.($remoteDir === '' ? '(root)' : $remoteDir).'. Check permissions, ownership, disk quota, or try toggling passive mode in FTP/SSH Access.';
+            }
+
             return;
         }
 
@@ -986,6 +1027,10 @@ class FtpService
      */
     private function uploadRemoteFile($connection, string $remotePath, string $localPath): bool
     {
+        if (is_array($this->syncContext)) {
+            @ftp_pasv($connection, (bool) ($this->syncContext['passive'] ?? true));
+        }
+
         foreach ($this->remotePathCandidates($remotePath) as $candidate) {
             if (@ftp_put($connection, $candidate, $localPath, FTP_BINARY)) {
                 return true;
