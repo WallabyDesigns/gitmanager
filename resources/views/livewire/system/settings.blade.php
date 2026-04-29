@@ -503,10 +503,10 @@
                         </div>
 
                         <div>
-                            <label class="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">License Key</label>
+                            <label class="text-xs uppercase tracking-wide text-slate-500">License Key</label>
                             <input type="text" wire:model.lazy="enterpriseLicenseKey" class="mt-2 w-full rounded-md border border-slate-200/70 bg-white/70 p-2 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" placeholder="Enter new license key to set or rotate" />
                             <x-input-error :messages="$errors->get('enterpriseLicenseKey')" class="mt-2" />
-                            <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">Leave blank to keep the current saved key.</p>
+                            <p class="mt-1 text-xs text-slate-500">Leave blank to keep the current saved key.</p>
                         </div>
 
                         <div class="flex flex-wrap gap-2">

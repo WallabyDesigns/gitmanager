@@ -820,7 +820,7 @@ class SelfUpdateService
         }
 
         $process = $this->runProcess(
-            ['composer', 'show', $packageName, '--latest', '--format=json', '--no-interaction'],
+            [$this->composerBinary(), 'show', $packageName, '--latest', '--format=json', '--no-interaction'],
             $output,
             $repoPath,
             false
@@ -1514,6 +1514,10 @@ class SelfUpdateService
             }
         }
 
+        $enterpriseSync = $this->syncEnterprisePackage($repoPath, $output, true);
+        $this->logEnterprisePackageSyncResult($enterpriseSync, $output);
+        $this->ensureEnterprisePackageSyncResolved($enterpriseSync);
+
         if (is_file(base_path('package.json'))) {
             $this->applyPostUpdatePermissions($repoPath, $output);
             if ($this->canRunNpm($output)) {
@@ -1566,13 +1570,6 @@ class SelfUpdateService
         if (is_file(base_path('artisan'))) {
             $this->runProcess(['php', 'artisan', 'migrate', '--force'], $output, $repoPath);
             $this->maybeRunAppClearCache($repoPath, $output);
-        }
-
-        $enterpriseSync = $this->syncEnterprisePackage($repoPath, $output, true);
-        $enterprisePackage = $enterpriseSync['current'] ?? [];
-        $output[] = $enterprisePackage['message'] ?? 'System package update check completed.';
-        if (($enterprisePackage['status'] ?? '') === 'update-available') {
-            $output[] = 'System package update available: '.($enterprisePackage['current'] ?? 'unknown').' → '.($enterprisePackage['latest'] ?? 'unknown').'.';
         }
 
         $this->applyPostUpdatePermissions($repoPath, $output);
@@ -1683,16 +1680,14 @@ class SelfUpdateService
             $this->runProcess(
                 [$this->composerBinary(), 'require', $packageName, '^1.0', '--no-dev', '--optimize-autoloader', '--no-interaction'],
                 $output,
-                $repoPath,
-                false
+                $repoPath
             );
         } elseif ($status === 'update-available') {
             $output[] = 'Updating system package: '.$packageName.' ('.(string) ($enterprisePackage['current'] ?? '?').' → '.(string) ($enterprisePackage['latest'] ?? '?').').';
             $this->runProcess(
                 [$this->composerBinary(), 'update', $packageName, '--no-dev', '--optimize-autoloader', '--no-interaction'],
                 $output,
-                $repoPath,
-                false
+                $repoPath
             );
         }
     }
@@ -1721,6 +1716,46 @@ class SelfUpdateService
             'current' => $current,
             'performed' => $performed,
         ];
+    }
+
+    /**
+     * @param array{initial?: array<string, mixed>, current?: array<string, mixed>, performed?: bool} $enterpriseSync
+     */
+    private function logEnterprisePackageSyncResult(array $enterpriseSync, array &$output): void
+    {
+        $enterprisePackage = $enterpriseSync['current'] ?? [];
+        $output[] = $enterprisePackage['message'] ?? 'System package update check completed.';
+
+        if (($enterprisePackage['status'] ?? '') === 'update-available') {
+            $output[] = 'System package update available: '.($enterprisePackage['current'] ?? 'unknown').' -> '.($enterprisePackage['latest'] ?? 'unknown').'.';
+        }
+    }
+
+    /**
+     * @param array{initial?: array<string, mixed>, current?: array<string, mixed>, performed?: bool} $enterpriseSync
+     */
+    private function ensureEnterprisePackageSyncResolved(array $enterpriseSync): void
+    {
+        if (($enterpriseSync['performed'] ?? false) !== true) {
+            return;
+        }
+
+        $initialStatus = (string) ($enterpriseSync['initial']['status'] ?? '');
+        $currentStatus = (string) ($enterpriseSync['current']['status'] ?? '');
+
+        if (! in_array($initialStatus, ['not-installed', 'update-available'], true)) {
+            return;
+        }
+
+        if ($currentStatus === 'up-to-date') {
+            return;
+        }
+
+        if ($initialStatus === 'not-installed' && ($enterpriseSync['current']['installed'] ?? false) === true) {
+            return;
+        }
+
+        throw new \RuntimeException('System package update did not complete. Resolve the private package Composer error before continuing the app update.');
     }
 
     private function maybeRunAppClearCache(string $repoPath, array &$output): void
