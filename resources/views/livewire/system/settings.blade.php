@@ -476,16 +476,28 @@
                         </div>
 
                         <div class="space-y-2 text-xs text-slate-500 dark:text-slate-400">
-                            <div>Configured: {{ ! empty($licenseState['configured']) ? 'Yes' : 'No' }}</div>
+                            @if(! empty($licenseState['configured']))
+                                <div>Configured: {{ ! empty($licenseState['configured']) ? 'Yes' : 'No' }}</div>
+                            @endif
                             <div>Licensed Edition: {{ ucfirst((string) ($licenseState['edition'] ?? 'community')) }}</div>
                             <div>Package Version: {{ $systemPackageVersion }}</div>
                             <div>Installation UUID: {{ $licenseState['installation_uuid'] ?? 'Unknown' }}</div>
                             <div>Message: {{ $licenseState['message'] ?? 'No license state available.' }}</div>
-                            <div>Bound IP: {{ $licenseState['bound_ip'] ?? 'Unknown' }}</div>
-                            <div>Detected IP: {{ $licenseState['detected_ip'] ?? 'Unknown' }}</div>
-                            <div>Verified At: {{ \App\Support\DateFormatter::forUser($licenseState['verified_at'] ?? null, 'M j, Y g:i a', 'Never') }}</div>
-                            <div>Expires At: {{ \App\Support\DateFormatter::forUser($licenseState['expires_at'] ?? null, 'M j, Y g:i a', 'Not provided') }}</div>
-                            <div>Grace Ends At: {{ \App\Support\DateFormatter::forUser($licenseState['grace_ends_at'] ?? null, 'M j, Y g:i a', 'Not provided') }}</div>
+                            @if(isset($licenseState['bound_ip']))
+                                <div>Bound IP: {{ $licenseState['bound_ip'] ?? 'Unknown' }}</div>
+                            @endif
+                            @if(isset($licenseState['detected_ip']))
+                                <div>Detected IP: {{ $licenseState['detected_ip'] ?? 'Unknown' }}</div>
+                            @endif
+                            @if(isset($licenseState['verified_at']))
+                                <div>Verified At: {{ \App\Support\DateFormatter::forUser($licenseState['verified_at'] ?? null, 'M j, Y g:i a', 'Never') }}</div>
+                            @endif
+                            @if(isset($licenseState['expires_at']))
+                                <div>Expires At: {{ \App\Support\DateFormatter::forUser($licenseState['expires_at'] ?? null, 'M j, Y g:i a', 'Not provided') }}</div>
+                            @endif
+                            @if(isset($licenseState['grace_ends_at']))
+                                <div>Grace Ends At: {{ \App\Support\DateFormatter::forUser($licenseState['grace_ends_at'] ?? null, 'M j, Y g:i a', 'Not provided') }}</div>
+                            @endif
                         </div>
 
                         <div>
