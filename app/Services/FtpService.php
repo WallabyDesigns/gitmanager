@@ -864,7 +864,9 @@ class FtpService
     {
         $output[] = 'FTPS upload failed for '.$relative.'. Retrying with permission fix.';
 
-        $this->ensureRemoteDirectory($connection, dirname($remotePath));
+        if (! $this->ensureRemoteDirectoryForUploadRetry($connection, dirname($remotePath), $output)) {
+            return false;
+        }
 
         $this->attemptRemotePermissionFix($connection, dirname($remotePath), $remotePath);
 
@@ -878,7 +880,9 @@ class FtpService
             return false;
         }
 
-        $this->ensureRemoteDirectory($connection, dirname($remotePath));
+        if (! $this->ensureRemoteDirectoryForUploadRetry($connection, dirname($remotePath), $output)) {
+            return false;
+        }
         $this->attemptRemotePermissionFix($connection, dirname($remotePath), $remotePath);
 
         if ($this->uploadRemoteFile($connection, $remotePath, $localPath)) {
@@ -889,6 +893,32 @@ class FtpService
         $this->testRemoteDirectoryWritable($connection, dirname($remotePath), $output);
 
         return false;
+    }
+
+    /**
+     * @param resource|\FTP\Connection $connection
+     * @param array<int, string> $output
+     */
+    private function ensureRemoteDirectoryForUploadRetry(&$connection, string $remoteDir, array &$output): bool
+    {
+        try {
+            $this->ensureRemoteDirectory($connection, $remoteDir);
+
+            return true;
+        } catch (\Throwable $exception) {
+            $output[] = 'FTPS retry directory check failed: '.$exception->getMessage();
+        }
+
+        try {
+            $connection = $this->reconnectSyncConnection($output, $connection);
+            $this->ensureRemoteDirectory($connection, $remoteDir);
+
+            return true;
+        } catch (\Throwable $exception) {
+            $output[] = 'FTPS retry directory check failed after reconnect: '.$exception->getMessage();
+
+            return false;
+        }
     }
 
     /**

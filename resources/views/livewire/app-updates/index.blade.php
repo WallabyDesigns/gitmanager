@@ -31,7 +31,7 @@
 <div class="py-10" wire:poll.10s>
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid gap-6 lg:grid-cols-[260px,1fr]">
-            @include('livewire.system.partials.tabs')
+            @include('livewire.system.partials.tabs', ['systemTab' => 'updates'])
 
             <div class="min-w-0 space-y-6">
                 <div>

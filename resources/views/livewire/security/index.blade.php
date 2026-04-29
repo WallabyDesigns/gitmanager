@@ -4,7 +4,7 @@
             @if ($projectShell ?? false)
                 @include('livewire.projects.partials.tabs', ['projectsTab' => 'action-center'])
             @else
-                @include('livewire.system.partials.tabs')
+                @include('livewire.system.partials.tabs', ['systemTab' => 'audits'])
             @endif
             <div class="space-y-6">
                 @php

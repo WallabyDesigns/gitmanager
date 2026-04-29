@@ -1536,13 +1536,48 @@ class DeploymentService
 
         foreach ($iterator as $item) {
             if ($item->isDir()) {
-                rmdir($item->getPathname());
+                $this->removeDirectoryEntry($item->getPathname());
             } else {
-                unlink($item->getPathname());
+                $pathname = $item->getPathname();
+                if (! @unlink($pathname) && (is_dir($pathname) || $this->isDirectoryLink($pathname))) {
+                    $this->removeDirectoryEntry($pathname);
+                }
             }
         }
 
-        rmdir($path);
+        $this->removeDirectoryEntry($path);
+    }
+
+    private function removeDirectoryEntry(string $path): void
+    {
+        $isDirectoryLink = $this->isDirectoryLink($path);
+        if (@rmdir($path) || ! is_dir($path)) {
+            if (! $isDirectoryLink) {
+                return;
+            }
+        }
+
+        if ($isDirectoryLink && ! file_exists($path) && @readlink($path) === false) {
+            return;
+        }
+
+        if (PHP_OS_FAMILY !== 'Windows') {
+            return;
+        }
+
+        $process = new \Symfony\Component\Process\Process([
+            'cmd',
+            '/c',
+            'rmdir',
+            str_replace('/', '\\', $path),
+        ]);
+        $process->setTimeout(30);
+        $process->run();
+    }
+
+    private function isDirectoryLink(string $path): bool
+    {
+        return PHP_OS_FAMILY === 'Windows' && @readlink($path) !== false;
     }
 
     private function copyPath(string $source, string $destination): void

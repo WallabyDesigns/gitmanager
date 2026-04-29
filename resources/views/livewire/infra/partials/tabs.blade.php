@@ -1,8 +1,20 @@
 @php
     $hasContainers = \Illuminate\Support\Facades\Route::has('infra.containers');
     $hasKubernetes = \Illuminate\Support\Facades\Route::has('infra.kubernetes');
-    $isContainersActive = $hasContainers && request()->routeIs('infra.containers*') && ! request()->routeIs('infra.kubernetes*');
-    $isKubernetesActive = $hasKubernetes && request()->routeIs('infra.kubernetes*');
+    $component = $this ?? null;
+    $isContainersComponent = is_object($component) && is_a($component, \App\Livewire\Infra\Containers::class);
+    $isKubernetesComponent = is_object($component) && class_exists(\GitManagerEnterprise\Livewire\Infrastructure\Kubernetes::class)
+        && is_a($component, \GitManagerEnterprise\Livewire\Infrastructure\Kubernetes::class);
+    $isContainersActive = $hasContainers && (
+        ($infraTab ?? null) === 'docker'
+        || $isContainersComponent
+        || (request()->routeIs('infra.containers*') && ! request()->routeIs('infra.kubernetes*'))
+    );
+    $isKubernetesActive = $hasKubernetes && (
+        ($infraTab ?? null) === 'kubernetes'
+        || $isKubernetesComponent
+        || request()->routeIs('infra.kubernetes*')
+    );
     $currentInfraLabel = $isKubernetesActive ? 'Kubernetes' : 'Docker';
     $showMobileDropdown = $hasContainers && $hasKubernetes;
 @endphp
