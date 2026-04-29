@@ -394,7 +394,9 @@ class DeploymentService
                     return ! $this->permissionService->isPermissionError($exception, $output);
                 });
 
-                $ftpChangedFiles = $this->changedFilesForFtpSync($repoPath, $fromHash, $toHash, $output);
+                $ftpChangedFiles = $this->shouldUseDirectFtpSync($project, $executionPath, $ftpPlan)
+                    ? $this->changedFilesForFtpSync($repoPath, $fromHash, $toHash, $output)
+                    : null;
                 $this->maybeSyncFtp($project, $executionPath, $output, $ftpPlan['excludePaths'] ?? [], $ftpChangedFiles);
                 $this->maybeRunSshCommands($project, $output);
 
@@ -598,7 +600,9 @@ class DeploymentService
                     $this->maybeRunLaravelClearCache($project, $output);
                 }, $output, 'Post-rollback tasks');
 
-                $ftpChangedFiles = $this->changedFilesForFtpSync($repoPath, $fromHash, $toHash, $output);
+                $ftpChangedFiles = $this->shouldUseDirectFtpSync($project, $executionPath, $ftpPlan)
+                    ? $this->changedFilesForFtpSync($repoPath, $fromHash, $toHash, $output)
+                    : null;
                 $this->maybeSyncFtp($project, $executionPath, $output, $ftpPlan['excludePaths'] ?? [], $ftpChangedFiles);
                 $this->maybeRunSshCommands($project, $output);
 
@@ -767,6 +771,30 @@ class DeploymentService
         $output[] = 'FTPS direct file sync found '.count($files).' changed tracked file(s).';
 
         return $files;
+    }
+
+    /**
+     * @param array{skipComposerInstall?: bool, skipNpmInstall?: bool} $ftpPlan
+     */
+    private function shouldUseDirectFtpSync(Project $project, string $executionPath, array $ftpPlan): bool
+    {
+        if ($project->run_build_command && trim((string) $project->build_command) !== '') {
+            return false;
+        }
+
+        if ($project->run_composer_install && ! (bool) ($ftpPlan['skipComposerInstall'] ?? false)) {
+            return false;
+        }
+
+        if ($project->run_npm_install && ! (bool) ($ftpPlan['skipNpmInstall'] ?? false)) {
+            return false;
+        }
+
+        if ($project->project_type === 'python' && is_file($executionPath.DIRECTORY_SEPARATOR.'requirements.txt')) {
+            return false;
+        }
+
+        return true;
     }
 
     /**

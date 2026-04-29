@@ -860,6 +860,7 @@ trait ManagesRemoteDeployments
         $paths = [
             '.git',
             '.env',
+            '.npmrc',
             'storage',
             'bootstrap/cache',
         ];
