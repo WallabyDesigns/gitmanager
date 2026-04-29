@@ -4,9 +4,25 @@
     $projectCount = (int) ($node['project_count'] ?? count($projectsInNode));
     $depth = (int) ($depth ?? 0);
     $issueCounts = $node['issue_counts'] ?? [];
+    $folderPath = (string) ($node['path'] ?? $node['name'] ?? 'folder');
+    $folderKey = 'gwm-project-folder:'.md5($folderPath);
 @endphp
 
-<details class="rounded-lg border border-slate-200/70 bg-slate-900/30 dark:border-slate-800 p-3">
+<details
+    wire:key="project-folder-{{ md5($folderPath) }}"
+    class="rounded-lg border border-slate-200/70 bg-slate-900/30 dark:border-slate-800 p-3"
+    x-data="{
+        key: @js($folderKey),
+        open: false,
+        init() {
+            const stored = localStorage.getItem(this.key);
+            this.open = stored === null ? false : stored === 'true';
+            this.$el.open = this.open;
+        },
+    }"
+    x-bind:open="open"
+    @toggle="open = $el.open; localStorage.setItem(key, open ? 'true' : 'false')"
+>
     <summary class="cursor-pointer list-none">
         <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="flex flex-col gap-2">

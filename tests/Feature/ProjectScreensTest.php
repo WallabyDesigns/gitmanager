@@ -22,6 +22,23 @@ class ProjectScreensTest extends TestCase
             ->assertSee('Create Project');
     }
 
+    public function test_project_index_screen_loads_grouped_directories(): void
+    {
+        $user = User::factory()->create();
+        Project::factory()->create([
+            'user_id' => $user->id,
+            'directory_path' => 'Clients/Acme',
+            'name' => 'Acme Site',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('projects.index'));
+
+        $response
+            ->assertOk()
+            ->assertSee('Clients')
+            ->assertSee('Acme');
+    }
+
     public function test_edit_project_screen_loads(): void
     {
         $user = User::factory()->create();
