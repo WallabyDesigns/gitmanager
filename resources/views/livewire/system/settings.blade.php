@@ -455,7 +455,7 @@
                         </div>
                     @endif
 
-                    <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
+                    <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
                         @php
                             $licenseStatus = (string) ($licenseState['status'] ?? 'missing');
                             $licenseBadgeClass = match ($licenseStatus) {

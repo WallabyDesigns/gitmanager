@@ -313,7 +313,7 @@ class Settings extends Component
             $license->setLicenseKey($this->enterpriseLicenseKey);
             $this->enterpriseLicenseKey = '';
         }
-        
+
         $this->edition = $edition->current();
         $this->isEnterprise = $this->edition === EditionService::ENTERPRISE;
         if (! $this->isEnterprise) {

@@ -12,7 +12,6 @@ class Support extends Component
 {
     public bool $isEnterprise = false;
     public bool $licenseConfigured = false;
-    public bool $testingBypass = false;
     public bool $supportEnabled = true;
     public string $supportEndpoint = '';
     public array $tickets = [];
@@ -30,8 +29,7 @@ class Support extends Component
     public function mount(EditionService $edition, LicenseService $license, SupportService $support): void
     {
         $this->isEnterprise = $edition->current() === EditionService::ENTERPRISE;
-        $this->testingBypass = $this->isEnterprise && $edition->canSwapForTesting() && ! $license->keyConfigured();
-        $this->licenseConfigured = $license->keyConfigured() || $this->testingBypass;
+        $this->licenseConfigured = $license->keyConfigured();
         $this->supportEnabled = $support->enabled();
         $this->supportEndpoint = $support->endpoint();
 

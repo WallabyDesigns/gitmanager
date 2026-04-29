@@ -48,31 +48,10 @@ class EditionServiceTest extends TestCase
         $this->assertStringContainsString('Edition', $label);
     }
 
-    public function test_set_testing_edition_to_enterprise_and_back(): void
+    public function test_current_ignores_stored_testing_override(): void
     {
-        $svc = $this->service();
+        app(\App\Services\SettingsService::class)->set('system.testing.edition_override', EditionService::ENTERPRISE);
 
-        if (! $svc->canSwapForTesting()) {
-            $this->markTestSkipped('Enterprise testing toggle not available in this build.');
-        }
-
-        $svc->setTestingEdition(EditionService::ENTERPRISE);
-        $this->assertSame(EditionService::ENTERPRISE, $svc->current());
-
-        $svc->clearTestingEdition();
-        $this->assertSame(EditionService::COMMUNITY, $svc->current());
-    }
-
-    public function test_clear_testing_edition_falls_back_to_license(): void
-    {
-        $svc = $this->service();
-
-        if ($svc->canSwapForTesting()) {
-            $svc->setTestingEdition(EditionService::ENTERPRISE);
-            $svc->clearTestingEdition();
-        }
-
-        // Without a valid license the resolved edition is always community.
-        $this->assertSame(EditionService::COMMUNITY, $svc->current());
+        $this->assertSame(EditionService::COMMUNITY, $this->service()->current());
     }
 }

@@ -2,7 +2,6 @@
 
 namespace Tests\Unit;
 
-use App\Services\EditionService;
 use App\Services\LicenseService;
 use App\Services\SupportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -40,10 +39,6 @@ class SupportServiceTest extends TestCase
                 ->once()
                 ->with('https://gitwebmanager.com/api/v1/support/tickets')
                 ->andReturn(true);
-        });
-
-        $this->mock(EditionService::class, function ($mock) {
-            $mock->shouldIgnoreMissing();
         });
 
         Http::fake([
@@ -100,10 +95,6 @@ class SupportServiceTest extends TestCase
                 ->once()
                 ->with('https://gitwebmanager.com/api/v1/support/tickets')
                 ->andReturn(false);
-        });
-
-        $this->mock(EditionService::class, function ($mock) {
-            $mock->shouldIgnoreMissing();
         });
 
         Http::fake([

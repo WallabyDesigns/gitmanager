@@ -9,7 +9,6 @@ class SupportService
 {
     public function __construct(
         private readonly LicenseService $license,
-        private readonly EditionService $edition,
     ) {}
 
     public function enabled(): bool
@@ -104,12 +103,6 @@ class SupportService
         $context = $this->license->supportAuthContext();
         $licenseKey = trim((string) ($context['license_key'] ?? ''));
         $installationUuid = strtolower(trim((string) ($context['installation_uuid'] ?? '')));
-        $testingBypass = false;
-
-        if ($licenseKey === '' && $this->localTestingBypassEnabled()) {
-            $testingBypass = true;
-            $licenseKey = 'gwm_local_testing_support';
-        }
 
         if ($licenseKey === '' || $installationUuid === '') {
             throw new RuntimeException('A verified enterprise license key is required to contact support.');
@@ -125,12 +118,6 @@ class SupportService
                 'X-GWM-App-Url' => trim((string) ($context['app_url'] ?? '')),
                 'X-GWM-App-Name' => trim((string) ($context['app_name'] ?? '')),
             ]);
-
-        if ($testingBypass) {
-            $request = $request->withHeaders([
-                'X-GWM-Testing-Bypass' => '1',
-            ]);
-        }
 
         $publicIp = trim((string) ($context['public_ip'] ?? ''));
         if ($publicIp !== '') {
@@ -207,19 +194,6 @@ class SupportService
     private function envOverrideAllowed(): bool
     {
         return app()->environment(['local', 'testing']);
-    }
-
-    private function localTestingBypassEnabled(): bool
-    {
-        if (! app()->environment(['local', 'testing'])) {
-            return false;
-        }
-
-        if (! $this->edition->canSwapForTesting()) {
-            return false;
-        }
-
-        return $this->edition->current() === EditionService::ENTERPRISE;
     }
 
     private function isEndpointAllowed(string $endpoint): bool

@@ -31,10 +31,6 @@
                         <div class="rounded-lg border border-rose-400/50 bg-rose-500/10 p-4 text-sm text-rose-700 dark:text-rose-300">
                             Support endpoint not configured. Set <code>GWM_SUPPORT_API_URL</code> or configure <code>GWM_LICENSE_VERIFY_URL</code> so it can be derived automatically.
                         </div>
-                    @elseif ($testingBypass)
-                        <div class="rounded-lg border border-amber-400/50 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
-                            Enterprise testing override is active. Support calls are running in local testing bypass mode.
-                        </div>
                     @endif
                 </div>
 
