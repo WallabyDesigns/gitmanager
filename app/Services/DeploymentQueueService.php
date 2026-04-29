@@ -155,29 +155,18 @@ class DeploymentQueueService
             $php = $this->phpBinary();
             $artisan = base_path('artisan');
             $logPath = $this->backgroundProcessorLogPath();
+            $env = $this->backgroundProcessorEnv();
             $this->ensureBackgroundLogDirectory($logPath);
 
             if (PHP_OS_FAMILY === 'Windows') {
-                $script = 'Start-Process'
-                    .' -FilePath '.$this->powershellQuote($php)
-                    .' -ArgumentList @('.implode(', ', array_map([$this, 'powershellQuote'], [
-                        $artisan,
-                        'deployments:process-queue',
-                        '--limit='.$limit,
-                    ])).')'
-                    .' -WorkingDirectory '.$this->powershellQuote(base_path())
-                    .' -RedirectStandardOutput '.$this->powershellQuote($logPath)
-                    .' -RedirectStandardError '.$this->powershellQuote($logPath)
-                    .' -WindowStyle Hidden';
+                $command = 'start "" /B '
+                    .$this->cmdQuote($php).' '
+                    .$this->cmdQuote($artisan).' '
+                    .'deployments:process-queue '
+                    .'--limit='.$this->cmdQuote((string) $limit).' '
+                    .'>> '.$this->cmdQuote($logPath).' 2>&1';
 
-                $process = new Process([
-                    'powershell',
-                    '-NoProfile',
-                    '-ExecutionPolicy',
-                    'Bypass',
-                    '-Command',
-                    $script,
-                ], base_path());
+                $process = Process::fromShellCommandline($command, base_path(), $env);
             } else {
                 $command = 'cd '.escapeshellarg(base_path())
                     .' && nohup '.escapeshellarg($php).' '.escapeshellarg($artisan)
@@ -185,7 +174,7 @@ class DeploymentQueueService
                     .' >> '.escapeshellarg($logPath).' 2>&1'
                     .' & echo $!';
 
-                $process = Process::fromShellCommandline($command, base_path());
+                $process = Process::fromShellCommandline($command, base_path(), $env);
             }
 
             $process->setTimeout(15);
@@ -449,9 +438,35 @@ class DeploymentQueueService
         return true;
     }
 
-    private function powershellQuote(string $value): string
+    private function cmdQuote(string $value): string
     {
-        return "'".str_replace("'", "''", $value)."'";
+        return '"'.str_replace('"', '""', $value).'"';
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function backgroundProcessorEnv(): array
+    {
+        $env = getenv();
+        $env = is_array($env) ? $env : [];
+
+        $tempPath = $this->backgroundProcessorTempPath();
+        $env['TMP'] = $tempPath;
+        $env['TEMP'] = $tempPath;
+        $env['TMPDIR'] = $tempPath;
+
+        return $env;
+    }
+
+    private function backgroundProcessorTempPath(): string
+    {
+        $path = storage_path('framework/processes');
+        if (! is_dir($path)) {
+            File::makeDirectory($path, 0775, true, true);
+        }
+
+        return $path;
     }
 
     private function backgroundProcessorLogPath(): string

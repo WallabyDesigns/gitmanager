@@ -333,8 +333,18 @@ class LaravelDeploymentCheckService
         }
 
         $output[] = 'Symlink creation failed. Attempting php artisan storage:link.';
-        if ($this->tryArtisanStorageLink($laravelRoot, $output) && $this->storageLinkIsValid($linkPath, $targetPath)) {
-            $output[] = 'Laravel storage link created by artisan.';
+        if ($this->canRunArtisan($laravelRoot)) {
+            if ($this->tryArtisanStorageLink($laravelRoot, $output) && $this->storageLinkIsValid($linkPath, $targetPath)) {
+                $output[] = 'Laravel storage link created by artisan.';
+
+                return;
+            }
+        } else {
+            $output[] = 'Skipping php artisan storage:link because vendor/autoload.php is missing.';
+        }
+
+        if ($this->storageLinkIsValid($linkPath, $targetPath)) {
+            $output[] = 'Laravel storage link exists.';
 
             return;
         }
@@ -361,6 +371,19 @@ class LaravelDeploymentCheckService
 
             $resolved = $this->resolveLinkTarget($linkPath, $linkTarget);
             return $resolved !== null && is_dir($resolved);
+        }
+
+        if (PHP_OS_FAMILY === 'Windows' && file_exists($linkPath)) {
+            $linkTarget = @readlink($linkPath);
+            $targetReal = realpath($targetPath);
+            if ($linkTarget !== false && $targetReal !== false) {
+                $resolved = $this->resolveLinkTarget($linkPath, $linkTarget);
+                $resolvedReal = $resolved !== null ? realpath($resolved) : false;
+
+                if ($resolvedReal !== false && strcasecmp($resolvedReal, $targetReal) === 0) {
+                    return true;
+                }
+            }
         }
 
         if (is_dir($linkPath)) {
@@ -398,9 +421,22 @@ class LaravelDeploymentCheckService
         return $process->isSuccessful();
     }
 
+    private function canRunArtisan(string $laravelRoot): bool
+    {
+        return is_file($laravelRoot.DIRECTORY_SEPARATOR.'artisan')
+            && is_file($laravelRoot.DIRECTORY_SEPARATOR.'vendor'.DIRECTORY_SEPARATOR.'autoload.php');
+    }
+
     private function tryWindowsJunction(string $linkPath, string $targetPath, array &$output): bool
     {
-        $process = new Process(['cmd', '/c', 'mklink', '/J', $linkPath, $targetPath]);
+        $process = new Process([
+            'cmd',
+            '/c',
+            'mklink',
+            '/J',
+            $this->windowsPath($linkPath),
+            $this->windowsPath($targetPath),
+        ]);
         $process->setTimeout(120);
         $process->run();
 
@@ -415,6 +451,11 @@ class LaravelDeploymentCheckService
         }
 
         return $process->isSuccessful();
+    }
+
+    private function windowsPath(string $path): string
+    {
+        return str_replace('/', '\\', $path);
     }
 
     private function resolveLinkTarget(string $linkPath, string $target): ?string

@@ -812,7 +812,7 @@ trait ManagesRemoteDeployments
         return array_values(array_filter($lines, fn (string $line) => $line !== ''));
     }
 
-    private function maybeSyncFtp(Project $project, string $executionPath, array &$output, array $extraExcludePaths = []): void
+    private function maybeSyncFtp(Project $project, string $executionPath, array &$output, array $extraExcludePaths = [], ?array $directFiles = null): void
     {
         if (! $project->ftp_enabled) {
             return;
@@ -834,7 +834,17 @@ trait ManagesRemoteDeployments
         $exclude = $this->ftpExcludePaths($project, $extraExcludePaths);
         $whitelist = $this->ftpWhitelistPaths($project);
         $ftpService = app(\App\Services\FtpService::class);
-        $ftpService->sync($project, $executionPath, $exclude, $output, $whitelist);
+        if ($directFiles !== null) {
+            $directFiles = $this->filterFtpDirectFiles($directFiles, $exclude, $whitelist);
+            if ($directFiles === []) {
+                $output[] = 'FTPS direct file sync skipped: no changed tracked files to upload.';
+            } else {
+                $output[] = 'FTPS direct file sync: uploading changed tracked files only.';
+                $ftpService->syncFiles($project, $executionPath, $directFiles, $output);
+            }
+        } else {
+            $ftpService->sync($project, $executionPath, $exclude, $output, $whitelist);
+        }
 
         $projectType = trim((string) ($project->project_type ?? ''));
         if ($projectType === '' || $projectType === 'laravel') {
@@ -871,6 +881,62 @@ trait ManagesRemoteDeployments
     private function ftpWhitelistPaths(Project $project): array
     {
         return $this->parsePathList((string) ($project->whitelist_paths ?? ''));
+    }
+
+    /**
+     * @param array<int, string> $files
+     * @param array<int, string> $excludePaths
+     * @param array<int, string> $whitelistPaths
+     * @return array<int, string>
+     */
+    private function filterFtpDirectFiles(array $files, array $excludePaths, array $whitelistPaths): array
+    {
+        $filtered = [];
+        foreach ($files as $file) {
+            $file = ltrim(str_replace('\\', '/', trim((string) $file)), '/');
+            if ($file === '') {
+                continue;
+            }
+
+            if ($whitelistPaths !== [] && ! $this->ftpPathMatchesAny($file, $whitelistPaths)) {
+                continue;
+            }
+
+            if ($this->ftpPathMatchesAny($file, $excludePaths)) {
+                continue;
+            }
+
+            $filtered[] = $file;
+        }
+
+        return array_values(array_unique($filtered));
+    }
+
+    /**
+     * @param array<int, string> $patterns
+     */
+    private function ftpPathMatchesAny(string $path, array $patterns): bool
+    {
+        $path = ltrim(str_replace('\\', '/', $path), '/');
+        foreach ($patterns as $pattern) {
+            $pattern = ltrim(str_replace('\\', '/', trim((string) $pattern)), '/');
+            if ($pattern === '') {
+                continue;
+            }
+
+            if (str_contains($pattern, '*')) {
+                if (fnmatch($pattern, $path)) {
+                    return true;
+                }
+                continue;
+            }
+
+            if ($path === $pattern || str_starts_with($path, rtrim($pattern, '/').'/')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

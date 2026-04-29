@@ -994,7 +994,9 @@ class FtpService
             return;
         }
 
-        $original = @ftp_pwd($connection);
+        $syncRoot = $this->restoreSyncRoot($connection);
+        $original = $syncRoot ?: @ftp_pwd($connection);
+        $remotePath = $syncRoot ? $this->relativeToSyncRoot($remotePath) : ltrim($remotePath, '/');
         $segments = array_values(array_filter(explode('/', $remotePath), fn ($segment) => $segment !== ''));
         $cursor = '';
 
@@ -1036,6 +1038,46 @@ class FtpService
         if ($original) {
             @ftp_chdir($connection, $original);
         }
+    }
+
+    /**
+     * @param resource|\FTP\Connection $connection
+     */
+    private function restoreSyncRoot($connection): ?string
+    {
+        $rootPath = $this->syncContext['rootPath'] ?? '';
+        $rootPath = is_string($rootPath) ? $this->normalizeRemotePath($rootPath) : '';
+        if ($rootPath === '' || $rootPath === '.') {
+            return @ftp_pwd($connection) ?: null;
+        }
+
+        if (! @ftp_chdir($connection, $rootPath)) {
+            return null;
+        }
+
+        return @ftp_pwd($connection) ?: null;
+    }
+
+    private function relativeToSyncRoot(string $remotePath): string
+    {
+        $rootPath = $this->syncContext['rootPath'] ?? '';
+        $rootPath = is_string($rootPath) ? $this->normalizeRemotePath($rootPath) : '';
+        if ($rootPath === '' || $rootPath === '.') {
+            return ltrim($remotePath, '/');
+        }
+
+        $relative = ltrim($remotePath, '/');
+        $root = ltrim($rootPath, '/');
+
+        if ($relative === $root) {
+            return '';
+        }
+
+        if (str_starts_with($relative, $root.'/')) {
+            return substr($relative, strlen($root) + 1);
+        }
+
+        return $relative;
     }
 
     /**

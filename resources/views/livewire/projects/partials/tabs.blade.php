@@ -2,7 +2,8 @@
     use App\Services\NavigationStateService;
 
     $showBulkActions = $showBulkActions ?? false;
-    $tab = $projectsTab ?? (request()->routeIs('projects.queue')
+    $explicitProjectsTab = $projectsTab ?? null;
+    $tab = $explicitProjectsTab ?? (request()->routeIs('projects.queue')
         ? 'queue'
         : (request()->routeIs('projects.create')
             ? 'create'
@@ -10,7 +11,9 @@
     $projectNavState = app(NavigationStateService::class)->projectsSidebarState(auth()->user());
     $isAdmin = (bool) ($projectNavState['isAdmin'] ?? false);
     $isEnterprise = (bool) ($projectNavState['isEnterprise'] ?? false);
-    $isFtpRoute = request()->routeIs('ftp-accounts.*');
+    $isFtpRoute = ($isFtpRoute ?? false)
+        || $explicitProjectsTab === 'ftp-accounts'
+        || request()->routeIs('ftp-accounts.*');
     $queueCount = (int) ($projectNavState['queueCount'] ?? 0);
     $actionCenterCount = (int) ($projectNavState['actionCenterCount'] ?? 0);
 
@@ -62,7 +65,7 @@
                 <a
                     href="{{ route('projects.create') }}"
                     
-                    class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'create' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
+                    class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'create' && ! $isFtpRoute ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                 >
                     <svg class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -111,7 +114,7 @@
                         <a
                             href="{{ route('ftp-accounts.index') }}"
                             
-                            class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ request()->routeIs('ftp-accounts.*') ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
+                            class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $isFtpRoute ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                         >
                         <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg>
                         FTP/SSH Access
@@ -193,7 +196,7 @@
                         href="{{ route('projects.create') }}"
                         
                         @click="open = false"
-                        class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'create' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
+                        class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'create' && ! $isFtpRoute ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                     >
                         <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         Create Project
@@ -240,7 +243,7 @@
                             href="{{ route('ftp-accounts.index') }}"
                             
                             @click="open = false"
-                            class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ request()->routeIs('ftp-accounts.*') ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
+                            class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $isFtpRoute ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
                         >
                             <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg>
                             FTP/SSH Access

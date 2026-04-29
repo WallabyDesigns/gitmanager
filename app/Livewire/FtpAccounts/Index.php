@@ -42,8 +42,9 @@ class Index extends Component
 
     public function setTab(string $tab): void
     {
+        error_log('Setting tab to: '.$tab);
         $this->tab = $tab;
-        if ($tab === 'create') {
+        if ($tab === 'ftpcreate') {
             $this->resetForm();
         }
     }
@@ -74,7 +75,7 @@ class Index extends Component
         $this->sshTestSignature = $account->ssh_test_signature;
         $this->ftpTestRan = false;
         $this->sshTestRan = false;
-        $this->tab = 'create';
+        $this->tab = 'ftpcreate';
     }
 
     public function save(): void

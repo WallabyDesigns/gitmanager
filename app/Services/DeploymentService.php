@@ -394,7 +394,8 @@ class DeploymentService
                     return ! $this->permissionService->isPermissionError($exception, $output);
                 });
 
-                $this->maybeSyncFtp($project, $executionPath, $output, $ftpPlan['excludePaths'] ?? []);
+                $ftpChangedFiles = $this->changedFilesForFtpSync($repoPath, $fromHash, $toHash, $output);
+                $this->maybeSyncFtp($project, $executionPath, $output, $ftpPlan['excludePaths'] ?? [], $ftpChangedFiles);
                 $this->maybeRunSshCommands($project, $output);
 
                 if ($stashed) {
@@ -597,7 +598,8 @@ class DeploymentService
                     $this->maybeRunLaravelClearCache($project, $output);
                 }, $output, 'Post-rollback tasks');
 
-                $this->maybeSyncFtp($project, $executionPath, $output, $ftpPlan['excludePaths'] ?? []);
+                $ftpChangedFiles = $this->changedFilesForFtpSync($repoPath, $fromHash, $toHash, $output);
+                $this->maybeSyncFtp($project, $executionPath, $output, $ftpPlan['excludePaths'] ?? [], $ftpChangedFiles);
                 $this->maybeRunSshCommands($project, $output);
 
                 if ($stashed) {
@@ -719,6 +721,52 @@ class DeploymentService
             'dirty' => $status !== '',
             'files' => $this->parseGitStatusFiles($status),
         ];
+    }
+
+    /**
+     * @param array<int, string> $output
+     * @return array<int, string>|null
+     */
+    private function changedFilesForFtpSync(string $repoPath, ?string $fromHash, ?string $toHash, array &$output): ?array
+    {
+        $fromHash = trim((string) $fromHash);
+        $toHash = trim((string) $toHash);
+        if ($fromHash === '' || $toHash === '' || $fromHash === $toHash) {
+            return null;
+        }
+
+        $process = $this->runProcess([
+            'git',
+            '-C',
+            $repoPath,
+            'diff',
+            '--name-only',
+            '--diff-filter=ACMRT',
+            $fromHash.'..'.$toHash,
+            '--',
+        ], $output, null, false);
+
+        if (! $process->isSuccessful()) {
+            $output[] = 'FTPS direct file sync unavailable: unable to determine changed files.';
+            return null;
+        }
+
+        $files = [];
+        foreach (preg_split('/\r?\n/', trim($process->getOutput())) ?: [] as $file) {
+            $file = trim(str_replace('\\', '/', $file));
+            if ($file === '') {
+                continue;
+            }
+
+            if (is_file(rtrim($repoPath, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $file))) {
+                $files[] = $file;
+            }
+        }
+
+        $files = array_values(array_unique($files));
+        $output[] = 'FTPS direct file sync found '.count($files).' changed tracked file(s).';
+
+        return $files;
     }
 
     /**

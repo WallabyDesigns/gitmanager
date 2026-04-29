@@ -138,4 +138,27 @@ class FtpAuditManifestRefreshTest extends TestCase
 
         $this->assertSame('/domains/example.com/current', app(FtpService::class)->resolvedRootPath($project));
     }
+
+    public function test_ftp_sync_directory_paths_are_made_relative_to_sync_root(): void
+    {
+        $service = app(FtpService::class);
+        $context = new \ReflectionProperty($service, 'syncContext');
+        $context->setAccessible(true);
+        $context->setValue($service, [
+            'host' => 'example.com',
+            'port' => 21,
+            'username' => 'user',
+            'password' => 'secret',
+            'ssl' => true,
+            'passive' => true,
+            'timeout' => 30,
+            'rootPath' => '/admin.3dfinancial.org',
+        ]);
+
+        $method = new \ReflectionMethod($service, 'relativeToSyncRoot');
+        $method->setAccessible(true);
+
+        $this->assertSame('app/Livewire/Users', $method->invoke($service, '/admin.3dfinancial.org/app/Livewire/Users'));
+        $this->assertSame('app/Livewire/Users', $method->invoke($service, 'app/Livewire/Users'));
+    }
 }

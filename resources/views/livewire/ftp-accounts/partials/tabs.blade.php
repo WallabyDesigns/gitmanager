@@ -9,7 +9,7 @@
             :aria-expanded="open"
         >
             <span>
-                @if ($tab === 'create') {{ $editingId ? 'Edit Account' : 'Create Account' }}
+                @if ($tab === 'ftpcreate') {{ $editingId ? 'Edit Account' : 'Create Account' }}
                 @else FTP/SSH Access
                 @endif
             </span>
@@ -40,9 +40,9 @@
             </button>
             <button
                 type="button"
-                wire:click="setTab('create')"
+                wire:click="setTab('ftpcreate')"
                 @click="open = false"
-                class="flex w-full items-center px-4 py-3 text-sm transition border-t border-slate-100 dark:border-slate-800 {{ $tab === 'create' ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-medium' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800' }}"
+                class="flex w-full items-center px-4 py-3 text-sm transition border-t border-slate-100 dark:border-slate-800 {{ $tab === 'ftpcreate' ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-medium' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800' }}"
                 role="menuitem"
             >
                 {{ $editingId ? 'Edit Account' : 'Create Account' }}
@@ -58,8 +58,8 @@
             FTP/SSH Access
         </button>
         <button type="button"
-                wire:click="setTab('create')"
-                class="px-3 py-2 text-sm border-b-2 {{ $tab === 'create' ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
+                wire:click="setTab('ftpcreate')"
+                class="px-3 py-2 text-sm border-b-2 {{ $tab === 'ftpcreate' ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
             {{ $editingId ? 'Edit Account' : 'Create Account' }}
         </button>
     </div>

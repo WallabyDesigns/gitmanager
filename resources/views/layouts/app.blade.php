@@ -81,7 +81,7 @@
 
             <!-- Page Heading -->
             @if (isset($header))
-                <header class="relative z-10 bg-white/80 dark:bg-slate-900/80 shadow backdrop-blur border-b border-slate-200/60 dark:border-slate-800">
+                <header class="relative z-10 bg-slate-900/80 shadow backdrop-blur border-b border-slate-800">
                     <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
                         {!! $header !!}
                     </div>
@@ -223,10 +223,10 @@
             window.Alpine = Alpine;
         </script>
         @livewireScripts
-        <script data-navigate-once="true">
+        {{-- <script data-navigate-once="true">
             document.addEventListener('livewire:init', () => {
                 window.Alpine?.navigate?.disableProgressBar?.();
             }, { once: true });
-        </script>
+        </script> --}}
     </body>
 </html>
