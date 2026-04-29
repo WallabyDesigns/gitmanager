@@ -815,7 +815,7 @@ class FtpService
         );
 
         foreach ($iterator as $item) {
-            if ($item->isLink()) {
+            if ($item->isLink() || $this->isDirectoryLink($item->getPathname())) {
                 continue;
             }
 
@@ -835,6 +835,11 @@ class FtpService
             if ($item->isDir()) {
                 $this->ensureRemoteDirectory($connection, $remotePath);
                 $stats['directories']++;
+                continue;
+            }
+
+            if (! $item->isFile()) {
+                $stats['skipped']++;
                 continue;
             }
 
@@ -1281,6 +1286,11 @@ class FtpService
         }
 
         return false;
+    }
+
+    private function isDirectoryLink(string $path): bool
+    {
+        return PHP_OS_FAMILY === 'Windows' && @readlink($path) !== false;
     }
 
     /**

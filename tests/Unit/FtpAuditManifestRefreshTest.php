@@ -161,4 +161,77 @@ class FtpAuditManifestRefreshTest extends TestCase
         $this->assertSame('app/Livewire/Users', $method->invoke($service, '/admin.3dfinancial.org/app/Livewire/Users'));
         $this->assertSame('app/Livewire/Users', $method->invoke($service, 'app/Livewire/Users'));
     }
+
+    public function test_default_ftp_excludes_skip_laravel_public_storage_link(): void
+    {
+        $service = app(DeploymentService::class);
+        $project = new Project();
+
+        $excludeMethod = new \ReflectionMethod($service, 'ftpExcludePaths');
+        $excludeMethod->setAccessible(true);
+        $excludePaths = $excludeMethod->invoke($service, $project);
+
+        $matchesMethod = new \ReflectionMethod($service, 'ftpPathMatchesAny');
+        $matchesMethod->setAccessible(true);
+
+        $this->assertContains('public/storage', $excludePaths);
+        $this->assertTrue($matchesMethod->invoke($service, 'public/storage', $excludePaths));
+        $this->assertTrue($matchesMethod->invoke($service, 'public/storage/file.txt', $excludePaths));
+    }
+
+    public function test_default_ftp_excludes_skip_sqlite_database_files(): void
+    {
+        $service = app(DeploymentService::class);
+        $project = new Project();
+
+        $excludeMethod = new \ReflectionMethod($service, 'ftpExcludePaths');
+        $excludeMethod->setAccessible(true);
+        $excludePaths = $excludeMethod->invoke($service, $project);
+
+        $matchesMethod = new \ReflectionMethod($service, 'ftpPathMatchesAny');
+        $matchesMethod->setAccessible(true);
+
+        $this->assertTrue($matchesMethod->invoke($service, 'database/database.sqlite', $excludePaths));
+        $this->assertTrue($matchesMethod->invoke($service, 'database/database.sqlite-wal', $excludePaths));
+        $this->assertTrue($matchesMethod->invoke($service, 'database/app.db', $excludePaths));
+        $this->assertTrue($matchesMethod->invoke($service, 'database/app.db-shm', $excludePaths));
+    }
+
+    public function test_fresh_sqlite_deploy_can_include_sqlite_database_files(): void
+    {
+        $service = app(DeploymentService::class);
+        $project = new Project();
+
+        $excludeMethod = new \ReflectionMethod($service, 'ftpExcludePaths');
+        $excludeMethod->setAccessible(true);
+        $excludePaths = $excludeMethod->invoke($service, $project, [], true);
+
+        $matchesMethod = new \ReflectionMethod($service, 'ftpPathMatchesAny');
+        $matchesMethod->setAccessible(true);
+
+        $this->assertFalse($matchesMethod->invoke($service, 'database/database.sqlite', $excludePaths));
+        $this->assertFalse($matchesMethod->invoke($service, 'database/app.db', $excludePaths));
+        $this->assertTrue($matchesMethod->invoke($service, 'public/storage/file.txt', $excludePaths));
+    }
+
+    public function test_ftp_only_deployments_skip_local_laravel_migrations_after_initial_deploy(): void
+    {
+        $this->workspace = storage_path('framework/testing/ftp-migrate-skip-'.uniqid());
+        File::ensureDirectoryExists($this->workspace);
+        File::put($this->workspace.DIRECTORY_SEPARATOR.'artisan', '<?php');
+
+        $project = new Project([
+            'ftp_enabled' => true,
+            'ssh_enabled' => false,
+            'local_path' => $this->workspace,
+        ]);
+
+        $output = [];
+        $service = app(DeploymentService::class);
+        $method = new \ReflectionMethod($service, 'maybeRunLaravelMigrations');
+        $method->setAccessible(true);
+        $method->invokeArgs($service, [$project, $this->workspace, &$output]);
+
+        $this->assertContains('Skipping Laravel migrate: FTP-only deployments cannot run migrations on the remote host after initial deployment.', $output);
+    }
 }

@@ -758,10 +758,19 @@ trait ManagesDependencies
             return true;
         }
 
+        if ($clearLocalFirst) {
+            foreach ($files as $file) {
+                $target = $executionPath.DIRECTORY_SEPARATOR.$file;
+                if (is_file($target) && @unlink($target)) {
+                    $output[] = 'FTP manifest sync: cleared local '.$file.' before remote refresh.';
+                }
+            }
+        }
+
         $remoteFiles = app(\App\Services\FtpService::class)->fetchRemoteFiles($project, $files, $output);
         if ($remoteFiles === []) {
             if ($clearLocalFirst) {
-                $output[] = 'FTP manifest sync: remote fetch returned no files; local manifests preserved.';
+                $output[] = 'FTP manifest sync: remote refresh returned no files; stale local manifests remain cleared.';
             }
             return false;
         }
@@ -1420,12 +1429,26 @@ trait ManagesDependencies
         }
     }
 
-    private function maybeRunLaravelMigrations(Project $project, string $executionPath, array &$output): void
+    private function maybeRunLaravelMigrations(Project $project, string $executionPath, array &$output, bool $allowFtpOnlyFreshSqlite = false): void
     {
         $laravelRoot = $this->findLaravelRoot($executionPath)
             ?? $this->findLaravelRoot($project->local_path);
         if (! $laravelRoot) {
             return;
+        }
+
+        if ($project->ftp_enabled && ! $project->ssh_enabled) {
+            if (! $allowFtpOnlyFreshSqlite) {
+                $output[] = 'Skipping Laravel migrate: FTP-only deployments cannot run migrations on the remote host after initial deployment.';
+                return;
+            }
+
+            if (! $this->laravelRootUsesSqliteDatabase($laravelRoot)) {
+                $output[] = 'Skipping Laravel migrate: FTP-only fresh deploys can only run local migrations for SQLite databases.';
+                return;
+            }
+
+            $output[] = 'FTP-only fresh deploy: running local SQLite migrations before first sync.';
         }
 
         if (! $this->artisanCommandExists($laravelRoot, 'migrate', $output)) {
@@ -1471,6 +1494,25 @@ trait ManagesDependencies
         }
 
         return str_contains($text, 'table') && str_contains($text, 'already exists');
+    }
+
+    private function allowsFtpOnlyFreshSqliteMigrations(Project $project, string $executionPath): bool
+    {
+        if (! $project->ftp_enabled || $project->ssh_enabled || ! $this->shouldRunInitialDeployTasks($project)) {
+            return false;
+        }
+
+        $laravelRoot = $this->findLaravelRoot($executionPath)
+            ?? $this->findLaravelRoot($project->local_path);
+
+        return $laravelRoot !== null && $this->laravelRootUsesSqliteDatabase($laravelRoot);
+    }
+
+    private function laravelRootUsesSqliteDatabase(string $laravelRoot): bool
+    {
+        $connection = $this->getLaravelEnvValue($laravelRoot, 'DB_CONNECTION');
+
+        return is_string($connection) && strtolower(trim($connection)) === 'sqlite';
     }
 
     private function laravelDatabaseIsAvailable(string $laravelRoot, array &$output, string $label): bool

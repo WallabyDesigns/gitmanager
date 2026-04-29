@@ -812,7 +812,7 @@ trait ManagesRemoteDeployments
         return array_values(array_filter($lines, fn (string $line) => $line !== ''));
     }
 
-    private function maybeSyncFtp(Project $project, string $executionPath, array &$output, array $extraExcludePaths = [], ?array $directFiles = null): void
+    private function maybeSyncFtp(Project $project, string $executionPath, array &$output, array $extraExcludePaths = [], ?array $directFiles = null, bool $allowSqliteDatabaseSync = false): void
     {
         if (! $project->ftp_enabled) {
             return;
@@ -831,7 +831,7 @@ trait ManagesRemoteDeployments
             return;
         }
 
-        $exclude = $this->ftpExcludePaths($project, $extraExcludePaths);
+        $exclude = $this->ftpExcludePaths($project, $extraExcludePaths, $allowSqliteDatabaseSync);
         $whitelist = $this->ftpWhitelistPaths($project);
         $ftpService = app(\App\Services\FtpService::class);
         if ($directFiles !== null) {
@@ -855,15 +855,23 @@ trait ManagesRemoteDeployments
     /**
      * @return array<int, string>
      */
-    private function ftpExcludePaths(Project $project, array $extraExcludePaths = []): array
+    private function ftpExcludePaths(Project $project, array $extraExcludePaths = [], bool $allowSqliteDatabaseSync = false): array
     {
         $paths = [
             '.git',
             '.env',
             '.npmrc',
             'storage',
+            'public/storage',
             'bootstrap/cache',
         ];
+
+        if (! $allowSqliteDatabaseSync) {
+            $paths[] = 'database/*.sqlite';
+            $paths[] = 'database/*.sqlite-*';
+            $paths[] = 'database/*.db';
+            $paths[] = 'database/*.db-*';
+        }
 
         foreach ($this->parsePathList((string) ($project->exclude_paths ?? '')) as $path) {
             $paths[] = $path;

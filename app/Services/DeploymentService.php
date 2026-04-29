@@ -228,6 +228,7 @@ class DeploymentService
                         $this->ensureProjectHtaccess($project, $executionPath, $output);
 
                         $ftpPlan = $this->planFtpOnlyDependencySync($project, $executionPath, $output);
+                        $allowFtpOnlyFreshSqliteMigrations = $this->allowsFtpOnlyFreshSqliteMigrations($project, $executionPath);
 
                         if (! $permissionsStep && ! $forceStaged && $this->permissionService->needsPermissionFix($project, $executionPath)) {
                             $output[] = 'Permission issues detected. Running Fix Permissions.';
@@ -237,7 +238,7 @@ class DeploymentService
                             $output[] = 'Continuing with staged installs after permissions step.';
                         }
 
-                        $this->runWithSingleRetry(function () use ($project, $executionPath, &$output, &$forceStaged, $ftpPlan): void {
+                        $this->runWithSingleRetry(function () use ($project, $executionPath, &$output, &$forceStaged, $ftpPlan, $allowFtpOnlyFreshSqliteMigrations): void {
                             if ($project->run_composer_install) {
                                 if ($ftpPlan['skipComposerInstall'] ?? false) {
                                     $output[] = 'FTP-only pipeline: skipping composer install (manifests unchanged).';
@@ -277,13 +278,13 @@ class DeploymentService
                                 $this->runTestCommand($project, $project->test_command, $executionPath, $output);
                             }
 
-                            $this->maybeRunLaravelMigrations($project, $executionPath, $output);
+                            $this->maybeRunLaravelMigrations($project, $executionPath, $output, $allowFtpOnlyFreshSqliteMigrations);
                             $this->maybeRunLaravelClearCache($project, $output);
                         }, $output, 'Initial deploy tasks', function (\Throwable $exception) use (&$output): bool {
                             return ! $this->permissionService->isPermissionError($exception, $output);
                         });
 
-                        $this->maybeSyncFtp($project, $executionPath, $output, $ftpPlan['excludePaths'] ?? []);
+                        $this->maybeSyncFtp($project, $executionPath, $output, $ftpPlan['excludePaths'] ?? [], null, $allowFtpOnlyFreshSqliteMigrations);
                         $this->maybeRunSshCommands($project, $output);
 
                         if ($stashed) {
