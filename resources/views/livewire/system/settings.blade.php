@@ -455,30 +455,7 @@
                         </div>
                     @endif
 
-                    <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
-                        <div>
-                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Edition</h3>
-                            <p class="text-sm text-slate-500 dark:text-slate-400">Current mode: {{ $editionLabel }}.</p>
-                        </div>
-                        @if ($canSwapEditions)
-                            <div>
-                                <label class="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">Testing Edition Override</label>
-                                <select wire:model="edition" class="mt-2 w-full rounded-md border border-slate-200/70 bg-white/70 p-2 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
-                                    <option value="community">Community Edition</option>
-                                    <option value="enterprise">Enterprise Edition</option>
-                                </select>
-                                <p class="mt-1 text-xs text-amber-500 dark:text-amber-300">
-                                    Testing override is enabled for this installation via enterprise package APP_KEY binding.
-                                </p>
-                            </div>
-                        @else
-                            <div class="text-xs text-slate-400 dark:text-slate-500">
-                                Edition is assigned by the external licensing service and cannot be changed locally.
-                            </div>
-                        @endif
-                    </div>
-
-                    <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
+                    <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
                         @php
                             $licenseStatus = (string) ($licenseState['status'] ?? 'missing');
                             $licenseBadgeClass = match ($licenseStatus) {

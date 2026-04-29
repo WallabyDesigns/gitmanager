@@ -36,7 +36,6 @@ class Settings extends Component
     public bool $auditAutoCommit = false;
     public bool $mailConfigured = false;
     public string $edition = EditionService::COMMUNITY;
-    public bool $canSwapEditions = false;
     public bool $isEnterprise = false;
     public string $enterpriseLicenseKey = '';
     public array $licenseState = [];
@@ -81,7 +80,6 @@ class Settings extends Component
         $this->auditAutoCommit = (bool) ($settings->get('system.audit_auto_commit', false));
         $this->mailConfigured = $settings->isMailConfigured();
         $this->edition = $edition->current();
-        $this->canSwapEditions = $edition->canSwapForTesting();
         $this->isEnterprise = $this->edition === EditionService::ENTERPRISE;
         if (! $this->isEnterprise) {
             $this->auditEnabled = false;
@@ -287,13 +285,6 @@ class Settings extends Component
             $rules["schedulerTaskIntervals.{$task}.unit"] = ['required', \Illuminate\Validation\Rule::in(array_keys(SchedulerTaskIntervals::unitOptions()))];
         }
 
-        if ($this->canSwapEditions) {
-            $rules['edition'] = ['required', \Illuminate\Validation\Rule::in([
-                EditionService::COMMUNITY,
-                EditionService::ENTERPRISE,
-            ])];
-        }
-
         $this->validate($rules);
 
         foreach (SchedulerTaskIntervals::definitions() as $task => $definition) {
@@ -322,12 +313,7 @@ class Settings extends Component
             $license->setLicenseKey($this->enterpriseLicenseKey);
             $this->enterpriseLicenseKey = '';
         }
-        if ($this->canSwapEditions) {
-            $edition->setTestingEdition($this->edition);
-        } else {
-            $this->edition = $edition->current();
-        }
-
+        
         $this->edition = $edition->current();
         $this->isEnterprise = $this->edition === EditionService::ENTERPRISE;
         if (! $this->isEnterprise) {
