@@ -36,13 +36,15 @@ class NavigationStateService
     public function topNavigationState(?User $user): array
     {
         $shared = $this->sharedState($user);
+        $validateEnterprise = $this->verifyEnterprise($user);
+        $editionService = $this->editionService();
 
         return [
             'openAlerts' => $shared['openAlerts'],
             'updateAvailable' => $shared['updateAvailable'],
             'checkUpdatesEnabled' => $shared['checkUpdatesEnabled'],
-            'editionLabel' => $shared['editionLabel'],
-            'isEnterprise' => $shared['isEnterprise'],
+            'editionLabel' => $editionService->label(),
+            'isEnterprise' => $validateEnterprise,
             'brandName' => $shared['brandName'],
         ];
     }
@@ -58,13 +60,28 @@ class NavigationStateService
     public function systemSidebarState(?User $user): array
     {
         $shared = $this->sharedState($user);
+        $validateEnterprise = $this->verifyEnterprise($user);
 
         return [
             'openAlerts' => $shared['openAlerts'],
             'updateAvailable' => $shared['updateAvailable'],
-            'isEnterprise' => $shared['isEnterprise'],
+            'isEnterprise' => $validateEnterprise,
             'showLocalLicenseBadge' => $shared['showLocalLicenseBadge'],
         ];
+    }
+
+    /**
+        * @return array{
+        *   isEnterprise:bool
+        * }
+     */
+    public function verifyEnterprise(?User $user): bool
+    {
+        $shared = $this->sharedState($user);
+        $isEnterprise = $this->editionService()->current() === EditionService::ENTERPRISE;
+        $shared['isEnterprise'] = $isEnterprise ? $shared['isEnterprise'] : false;
+
+        return $isEnterprise;
     }
 
     /**

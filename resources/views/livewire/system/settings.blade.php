@@ -468,15 +468,17 @@
                         <div class="flex flex-wrap items-center justify-between gap-3">
                             <div>
                                 <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Enterprise License</h3>
-                                <p class="text-sm text-slate-500 dark:text-slate-400">License administration is managed on your external licensing domain. This panel only verifies the license.</p>
+                                <p class="text-sm text-slate-500 dark:text-slate-400">License administration handled by Git Web Manager, this panel only verifies the license. If you have your license key, enter it below.</p>
                             </div>
-                            <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $licenseBadgeClass }}">
-                                {{ $licenseStatus }}
-                            </span>
+                            @if($licenseStatus !== 'missing')
+                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $licenseBadgeClass }}">
+                                    {{ $licenseStatus }}
+                                </span>
+                            @endif
                         </div>
 
                         <div class="space-y-2 text-xs text-slate-500 dark:text-slate-400">
-                            @if(isset($licenseState['configured']))
+                            @if(!empty($licenseState['configured']))
                                 <div>Configured: {{ ! empty($licenseState['configured']) ? 'Yes' : 'No' }}</div>
                             @endif
                             <div>Licensed Edition: {{ ucfirst((string) ($licenseState['edition'] ?? 'community')) }}</div>
@@ -484,7 +486,9 @@
                             @if(isset($licenseState['installation_uuid']))
                                 <div>Installation UUID: {{ $licenseState['installation_uuid'] ?? 'Unknown' }}</div>
                             @endif
-                            <div>Message: {{ $licenseState['message'] ?? 'No license state available.' }}</div>
+                            @if(isset($licenseState['message']) && $licenseState['message'] != "No license key configured.")
+                                <div>Message: {{ $licenseState['message'] ?? 'No license state available.' }}</div>
+                            @endif
                             @if(isset($licenseState['bound_ip']))
                                 <div>Bound IP: {{ $licenseState['bound_ip'] ?? 'Unknown' }}</div>
                             @endif

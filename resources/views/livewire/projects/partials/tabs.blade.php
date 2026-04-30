@@ -11,6 +11,7 @@
     $projectNavState = app(NavigationStateService::class)->projectsSidebarState(auth()->user());
     $isAdmin = (bool) ($projectNavState['isAdmin'] ?? false);
     $isEnterprise = (bool) ($projectNavState['isEnterprise'] ?? false);
+    
     $isFtpRoute = ($isFtpRoute ?? false)
         || $explicitProjectsTab === 'ftp-accounts'
         || request()->routeIs('ftp-accounts.*');
