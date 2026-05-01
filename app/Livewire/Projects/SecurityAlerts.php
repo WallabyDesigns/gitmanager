@@ -2,31 +2,42 @@
 
 namespace App\Livewire\Projects;
 
+use App\Models\AuditIssue;
 use App\Models\Project;
 use App\Models\SecurityAlert;
-use App\Models\AuditIssue;
-use App\Models\Deployment;
 use App\Services\AuditService;
 use App\Services\DeploymentQueueService;
 use App\Services\DeploymentService;
 use App\Services\EditionService;
 use App\Services\SettingsService;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\View\View;
 use Livewire\Component;
 
 class SecurityAlerts extends Component
 {
     public Project $project;
+
     public string $tab = 'current';
+
     public bool $sslVerifyEnabled = true;
+
     public bool $hasComposer = false;
+
     public bool $hasNpm = false;
+
     public bool $showPushModal = false;
+
     public array $pushFiles = [];
+
     public array $pushCommitPaths = [];
+
     public string $pushCommitMessage = '';
+
     public string $pushContext = '';
+
     public string $pushAuditSummary = '';
+
     public bool $pushHasOtherChanges = false;
 
     public function mount(Project $project, SettingsService $settings): void
@@ -39,7 +50,7 @@ class SecurityAlerts extends Component
         $this->pushCommitMessage = $this->commitMessageForContext('audit');
     }
 
-    public function render(EditionService $edition): \Illuminate\View\View
+    public function render(EditionService $edition): View
     {
         $tab = in_array($this->tab, ['current', 'resolved'], true) ? $this->tab : 'current';
 
@@ -113,6 +124,7 @@ class SecurityAlerts extends Component
         if ($edition->current() !== EditionService::ENTERPRISE) {
             $this->dispatch('notify', message: 'Automatic project audits are available in Enterprise Edition.', type: 'warning');
             $this->dispatch('gwm-open-enterprise-modal', feature: 'Automatic Project & Container Audits');
+
             return;
         }
 
@@ -280,6 +292,7 @@ class SecurityAlerts extends Component
         }
 
         $this->dispatch('notify', message: 'Permissions need fixing before running '.$context.'.');
+
         return true;
     }
 
@@ -303,6 +316,7 @@ class SecurityAlerts extends Component
                 ? "{$label}: {$summary}. No dependency changes to push."
                 : "{$label} completed with no dependency file changes.";
             $this->dispatch('notify', message: $message);
+
             return;
         }
 
@@ -316,10 +330,10 @@ class SecurityAlerts extends Component
     }
 
     /**
-     * @param array<string, array<string, mixed>> $results
+     * @param  array<string, array<string, mixed>>  $results
      */
     /**
-     * @param array<string, array<string, mixed>> $results
+     * @param  array<string, array<string, mixed>>  $results
      */
     private function maybePromptPushFromResults(DeploymentService $deployment, array $results): void
     {
@@ -345,7 +359,7 @@ class SecurityAlerts extends Component
     }
 
     /**
-     * @param array<string, array<string, mixed>> $results
+     * @param  array<string, array<string, mixed>>  $results
      */
     private function dispatchAuditToast(array $results): void
     {
@@ -355,11 +369,13 @@ class SecurityAlerts extends Component
         if ($remaining > 0) {
             $label = $remaining === 1 ? '1 vulnerability' : "{$remaining} vulnerabilities";
             $this->dispatch('notify', message: "Vulnerabilities found ({$label} remaining). Open the Security tab to resolve them.", type: 'error');
+
             return;
         }
 
         if ($summary['failed'] > 0) {
             $this->dispatch('notify', message: 'Audit completed with errors. Check the logs for details.', type: 'warning');
+
             return;
         }
 
@@ -367,7 +383,7 @@ class SecurityAlerts extends Component
     }
 
     /**
-     * @param array<string, array<string, mixed>> $results
+     * @param  array<string, array<string, mixed>>  $results
      * @return array{remaining: int, failed: int}
      */
     private function summarizeAuditResults(array $results): array
@@ -485,7 +501,7 @@ class SecurityAlerts extends Component
     }
 
     /**
-     * @param array<int, string> $files
+     * @param  array<int, string>  $files
      * @return array<int, string>
      */
     private function filterDependencyFiles(array $files, string $context): array
@@ -538,7 +554,7 @@ class SecurityAlerts extends Component
     }
 
     /**
-     * @param array<string, array<string, mixed>> $results
+     * @param  array<string, array<string, mixed>>  $results
      */
     private function summarizeAuditResultsText(array $results): string
     {
@@ -609,5 +625,4 @@ class SecurityAlerts extends Component
             'npm_audit_fix_force',
         ];
     }
-
 }

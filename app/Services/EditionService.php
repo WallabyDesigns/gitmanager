@@ -5,7 +5,9 @@ namespace App\Services;
 class EditionService
 {
     public const COMMUNITY = 'community';
+
     public const ENTERPRISE = 'enterprise';
+
     private ?string $resolvedEdition = null;
 
     public function __construct(

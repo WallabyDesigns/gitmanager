@@ -28,7 +28,6 @@ class clearCache extends Command
      * php artisan optimize:clear
      * php artisan optimize
      * composer dump-autoload -o
-     *
      */
     public function handle()
     {
@@ -36,13 +35,13 @@ class clearCache extends Command
         Artisan::call('clear-compiled --quiet');
         Artisan::call('optimize:clear --quiet');
 
-        error_log("  [2/5] Optimizing Cache...");
+        error_log('  [2/5] Optimizing Cache...');
         Artisan::call('optimize --quiet');
 
-        error_log("  [3/5] Building NPM Packages...");
+        error_log('  [3/5] Building NPM Packages...');
         exec('npm run build');
 
-        error_log("  [4/5] Dumping Autoload...");
+        error_log('  [4/5] Dumping Autoload...');
         exec('composer dump-autoload -o --quiet');
 
         error_log("  [5/5] Complete!\n");

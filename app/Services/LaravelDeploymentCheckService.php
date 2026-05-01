@@ -12,7 +12,7 @@ class LaravelDeploymentCheckService
     ) {}
 
     /**
-     * @param array<int, string> $output
+     * @param  array<int, string>  $output
      */
     public function run(Project $project, string $path, array &$output, bool $requireEnv = true): void
     {
@@ -40,7 +40,7 @@ class LaravelDeploymentCheckService
     }
 
     /**
-     * @param array<int, string> $output
+     * @param  array<int, string>  $output
      */
     private function ensureLaravelCacheDirectories(string $laravelRoot, array &$output): void
     {
@@ -65,7 +65,7 @@ class LaravelDeploymentCheckService
     }
 
     /**
-     * @param array<int, string> $output
+     * @param  array<int, string>  $output
      */
     private function ensureLaravelEnvFile(string $laravelRoot, array &$output): void
     {
@@ -89,7 +89,7 @@ class LaravelDeploymentCheckService
     }
 
     /**
-     * @param array<int, string> $output
+     * @param  array<int, string>  $output
      */
     private function ensureLaravelHtaccessFiles(string $laravelRoot, array &$output): void
     {
@@ -116,7 +116,7 @@ class LaravelDeploymentCheckService
     }
 
     /**
-     * @param array<int, string> $output
+     * @param  array<int, string>  $output
      */
     private function ensureLaravelPublicIndexPriority(string $laravelRoot, array &$output): void
     {
@@ -167,7 +167,7 @@ class LaravelDeploymentCheckService
     }
 
     /**
-     * @param array<int, string> $output
+     * @param  array<int, string>  $output
      */
     private function ensureHtaccessFile(string $path, ?string $template, array &$output, string $label): void
     {
@@ -192,7 +192,7 @@ class LaravelDeploymentCheckService
     }
 
     /**
-     * @param array<int, string> $output
+     * @param  array<int, string>  $output
      */
     private function writeHtaccessFile(string $path, ?string $template, array &$output, string $label): void
     {
@@ -301,7 +301,7 @@ class LaravelDeploymentCheckService
     }
 
     /**
-     * @param array<int, string> $output
+     * @param  array<int, string>  $output
      */
     private function ensureLaravelStorageLink(string $laravelRoot, array &$output): void
     {
@@ -370,6 +370,7 @@ class LaravelDeploymentCheckService
             }
 
             $resolved = $this->resolveLinkTarget($linkPath, $linkTarget);
+
             return $resolved !== null && is_dir($resolved);
         }
 

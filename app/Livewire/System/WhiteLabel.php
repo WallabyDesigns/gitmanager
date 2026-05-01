@@ -4,13 +4,17 @@ namespace App\Livewire\System;
 
 use App\Services\EditionService;
 use App\Services\SettingsService;
+use Illuminate\View\View;
 use Livewire\Component;
 
 class WhiteLabel extends Component
 {
     public bool $isEnterprise = false;
+
     public string $whiteLabelName = '';
+
     public string $whiteLabelLogoUrl = '';
+
     public string $whiteLabelFaviconUrl = '';
 
     public function mount(EditionService $edition, SettingsService $settings): void
@@ -21,7 +25,7 @@ class WhiteLabel extends Component
         $this->whiteLabelFaviconUrl = (string) ($settings->get('system.white_label.favicon_url', ''));
     }
 
-    public function render(EditionService $edition): \Illuminate\View\View
+    public function render(EditionService $edition): View
     {
         $this->isEnterprise = $edition->current() === EditionService::ENTERPRISE;
 
@@ -40,6 +44,7 @@ class WhiteLabel extends Component
         if ($edition->current() !== EditionService::ENTERPRISE) {
             $this->isEnterprise = false;
             $this->dispatch('gwm-open-enterprise-modal', feature: 'White Label Branding');
+
             return;
         }
 

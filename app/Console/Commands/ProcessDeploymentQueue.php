@@ -15,6 +15,7 @@ class ProcessDeploymentQueue extends Command
     {
         if (! config('gitmanager.deploy_queue.enabled', true)) {
             $this->info('Task queue is disabled.');
+
             return self::SUCCESS;
         }
 
@@ -42,6 +43,7 @@ class ProcessDeploymentQueue extends Command
         $processTimeout = (int) config('gitmanager.deployments.process_timeout', config('gitmanager.process_timeout', 900));
         if ($processTimeout <= 0 || $limit <= 0) {
             @set_time_limit(0);
+
             return;
         }
 

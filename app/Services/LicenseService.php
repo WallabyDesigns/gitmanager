@@ -3,6 +3,9 @@
 namespace App\Services;
 
 use App\Support\InstallContext;
+use GitManagerEnterprise\Support\CommerceRuntimeConfig;
+use GitManagerEnterprise\Support\LicenseRuntimeConfig;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -10,18 +13,31 @@ use Illuminate\Support\Str;
 class LicenseService
 {
     private const EDITION_COMMUNITY = EditionService::COMMUNITY;
+
     private const EDITION_ENTERPRISE = EditionService::ENTERPRISE;
+
     private const SETTING_KEY = 'system.license.key';
+
     private const SETTING_STATUS = 'system.license.status';
+
     private const SETTING_MESSAGE = 'system.license.message';
+
     private const SETTING_EDITION = 'system.license.edition';
+
     private const SETTING_INSTALLATION_UUID = 'system.license.installation_uuid';
+
     private const SETTING_BOUND_IP = 'system.license.bound_ip';
+
     private const SETTING_DETECTED_IP = 'system.license.detected_ip';
+
     private const SETTING_VERIFIED_AT = 'system.license.verified_at';
+
     private const SETTING_EXPIRES_AT = 'system.license.expires_at';
+
     private const SETTING_GRACE_ENDS_AT = 'system.license.grace_ends_at';
+
     private const SETTING_ALLOW_INSECURE_LOCAL_TLS = 'system.license.allow_insecure_local_tls';
+
     private const SETTING_REQUEST_SIGNING_SECRET = 'system.license.request_signing_secret';
 
     public function __construct(
@@ -353,7 +369,7 @@ class LicenseService
     }
 
     /**
-     * @return array{0: \Illuminate\Http\Client\Response|null, 1: \Throwable|null}
+     * @return array{0: Response|null, 1: \Throwable|null}
      */
     private function attemptVerifyRequest(
         string $endpoint,
@@ -530,17 +546,17 @@ class LicenseService
     }
 
     /**
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      */
     private function persistEnterpriseRuntimeConfig(array $payload): void
     {
-        $this->callEnterprisePersistor(\GitManagerEnterprise\Support\LicenseRuntimeConfig::class, $payload);
-        $this->callEnterprisePersistor(\GitManagerEnterprise\Support\CommerceRuntimeConfig::class, $payload);
+        $this->callEnterprisePersistor(LicenseRuntimeConfig::class, $payload);
+        $this->callEnterprisePersistor(CommerceRuntimeConfig::class, $payload);
     }
 
     /**
-     * @param class-string $class
-     * @param array<string, mixed> $payload
+     * @param  class-string  $class
+     * @param  array<string, mixed>  $payload
      */
     private function callEnterprisePersistor(string $class, array $payload): void
     {
@@ -564,7 +580,7 @@ class LicenseService
         return $this->responseSigningSecret() !== '';
     }
 
-    private function verifyResponseSignature(\Illuminate\Http\Client\Response $response, string $body): bool
+    private function verifyResponseSignature(Response $response, string $body): bool
     {
         $secret = $this->responseSigningSecret();
         if ($secret === '') {
@@ -598,7 +614,7 @@ class LicenseService
 
     private function enterpriseConfig(string $method, mixed $fallback): mixed
     {
-        $class = \GitManagerEnterprise\Support\LicenseRuntimeConfig::class;
+        $class = LicenseRuntimeConfig::class;
         if (! class_exists($class) || ! method_exists($class, $method)) {
             return $fallback;
         }
@@ -615,6 +631,7 @@ class LicenseService
         $fallback = $this->envFallbackAllowed()
             ? trim((string) config('gitmanager.license.verify_url', ''))
             : '';
+
         return trim((string) $this->enterpriseConfig('verifyUrl', $fallback));
     }
 
@@ -623,6 +640,7 @@ class LicenseService
         $fallback = $this->envFallbackAllowed()
             ? max(3, (int) config('gitmanager.license.timeout', 10))
             : 10;
+
         return max(3, (int) $this->enterpriseConfig('timeout', $fallback));
     }
 
@@ -631,6 +649,7 @@ class LicenseService
         $fallback = $this->envFallbackAllowed()
             ? max(60, (int) config('gitmanager.license.cache_seconds', 900))
             : 900;
+
         return max(60, (int) $this->enterpriseConfig('cacheSeconds', $fallback));
     }
 
@@ -639,6 +658,7 @@ class LicenseService
         $fallback = $this->envFallbackAllowed()
             ? (bool) config('gitmanager.license.strict_ip', true)
             : true;
+
         return (bool) $this->enterpriseConfig('strictIp', $fallback);
     }
 
@@ -647,6 +667,7 @@ class LicenseService
         $fallback = $this->envFallbackAllowed()
             ? trim((string) config('gitmanager.license.public_ip', ''))
             : '';
+
         return trim((string) $this->enterpriseConfig('publicIp', $fallback));
     }
 
@@ -655,6 +676,7 @@ class LicenseService
         $fallback = $this->envFallbackAllowed()
             ? (bool) config('gitmanager.license.verify_signature', true)
             : true;
+
         return (bool) $this->enterpriseConfig('verifySignature', $fallback);
     }
 
@@ -663,6 +685,7 @@ class LicenseService
         $fallback = $this->envFallbackAllowed()
             ? trim((string) config('gitmanager.license.response_signing_secret', ''))
             : '';
+
         return trim((string) $this->enterpriseConfig('responseSigningSecret', $fallback));
     }
 
@@ -678,6 +701,7 @@ class LicenseService
         $fallback = $this->envFallbackAllowed()
             ? trim((string) config('gitmanager.license.request_signing_secret', ''))
             : '';
+
         return trim((string) $this->enterpriseConfig('requestSigningSecret', $fallback));
     }
 
@@ -686,7 +710,7 @@ class LicenseService
      * encrypted in the settings table. The server may nest it under runtime_config or
      * send it at the top level under several plausible key names.
      *
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      */
     private function extractAndStoreRequestSigningSecret(array $payload): void
     {
@@ -703,6 +727,7 @@ class LicenseService
             $value = trim((string) ($candidate ?? ''));
             if ($value !== '') {
                 $this->settings->setEncrypted(self::SETTING_REQUEST_SIGNING_SECRET, $value);
+
                 return;
             }
         }

@@ -165,7 +165,7 @@ class FtpAuditManifestRefreshTest extends TestCase
     public function test_default_ftp_excludes_skip_laravel_public_storage_link(): void
     {
         $service = app(DeploymentService::class);
-        $project = new Project();
+        $project = new Project;
 
         $excludeMethod = new \ReflectionMethod($service, 'ftpExcludePaths');
         $excludeMethod->setAccessible(true);
@@ -182,7 +182,7 @@ class FtpAuditManifestRefreshTest extends TestCase
     public function test_default_ftp_excludes_skip_sqlite_database_files(): void
     {
         $service = app(DeploymentService::class);
-        $project = new Project();
+        $project = new Project;
 
         $excludeMethod = new \ReflectionMethod($service, 'ftpExcludePaths');
         $excludeMethod->setAccessible(true);
@@ -200,7 +200,7 @@ class FtpAuditManifestRefreshTest extends TestCase
     public function test_fresh_sqlite_deploy_can_include_sqlite_database_files(): void
     {
         $service = app(DeploymentService::class);
-        $project = new Project();
+        $project = new Project;
 
         $excludeMethod = new \ReflectionMethod($service, 'ftpExcludePaths');
         $excludeMethod->setAccessible(true);

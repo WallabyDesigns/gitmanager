@@ -123,7 +123,7 @@ class DependencyAuditIssueResolutionTest extends TestCase
     }
 
     /**
-     * @param array<int, string> $output
+     * @param  array<int, string>  $output
      */
     private function invokeResolver(Project $project, string $action, array &$output): void
     {

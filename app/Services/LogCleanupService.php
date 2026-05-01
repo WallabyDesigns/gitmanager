@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 class LogCleanupService
 {
     public const DEFAULT_RETENTION_DAYS = 30;
+
     public const MAX_RETENTION_DAYS = 3650;
 
     public static function normalizeRetentionDays(mixed $days, int $default = self::DEFAULT_RETENTION_DAYS): int

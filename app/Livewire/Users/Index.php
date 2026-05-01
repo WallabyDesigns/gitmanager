@@ -19,7 +19,9 @@ class Index extends Component
         'password' => '',
         'require_password_change' => true,
     ];
+
     public ?string $generatedPassword = null;
+
     public ?int $generatedUserId = null;
 
     public function render()

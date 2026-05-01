@@ -2,15 +2,15 @@
 
 namespace App\Livewire\Projects;
 
-use App\Models\DeploymentQueueItem;
 use App\Models\Deployment;
+use App\Models\DeploymentQueueItem;
 use App\Services\DeploymentQueueService;
 use App\Services\SchedulerService;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Livewire\WithPagination;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class Queue extends Component
 {
@@ -20,10 +20,15 @@ class Queue extends Component
     private const STATUS_FILTERS = ['queued', 'running', 'failed', 'completed', 'cancelled', 'all'];
 
     public string $projectsTab = 'queue';
+
     public int $perPage = 25;
+
     public string $statusFilter = 'queued';
+
     public string $actionFilter = 'all';
+
     public string $search = '';
+
     protected string $paginationTheme = 'tailwind';
 
     public function processNow(DeploymentQueueService $queue, SchedulerService $scheduler): void
@@ -34,6 +39,7 @@ class Queue extends Component
 
         if (! $started) {
             $this->dispatch('notify', message: 'Unable to start queue processor.');
+
             return;
         }
 
@@ -56,6 +62,7 @@ class Queue extends Component
 
         if (! $started) {
             $this->dispatch('notify', message: 'Queue item could not be started.');
+
             return;
         }
 
@@ -73,6 +80,7 @@ class Queue extends Component
         $cancelled = $queue->purgeDuplicatesForUser($user);
         if ($cancelled === 0) {
             $this->dispatch('notify', message: 'No duplicate queued items found.');
+
             return;
         }
 
@@ -91,6 +99,7 @@ class Queue extends Component
         $deleted = $result['deleted'] ?? 0;
         if ($cancelled === 0 && $deleted === 0) {
             $this->dispatch('notify', message: 'Queue already empty.');
+
             return;
         }
 

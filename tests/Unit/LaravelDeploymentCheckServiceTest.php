@@ -33,7 +33,7 @@ class LaravelDeploymentCheckServiceTest extends TestCase
         $root = $this->workspace;
         File::put($root.DIRECTORY_SEPARATOR.'artisan', '<?php');
 
-        $service = new LaravelDeploymentCheckService(new PermissionService());
+        $service = new LaravelDeploymentCheckService(new PermissionService);
         $method = new \ReflectionMethod($service, 'canRunArtisan');
         $method->setAccessible(true);
 
@@ -47,7 +47,7 @@ class LaravelDeploymentCheckServiceTest extends TestCase
 
     public function test_windows_junction_paths_are_normalized(): void
     {
-        $service = new LaravelDeploymentCheckService(new PermissionService());
+        $service = new LaravelDeploymentCheckService(new PermissionService);
         $method = new \ReflectionMethod($service, 'windowsPath');
         $method->setAccessible(true);
 
@@ -69,7 +69,7 @@ class LaravelDeploymentCheckServiceTest extends TestCase
             $this->markTestSkipped('The filesystem does not allow creating symlinks here.');
         }
 
-        $service = new LaravelDeploymentCheckService(new PermissionService());
+        $service = new LaravelDeploymentCheckService(new PermissionService);
         $method = new \ReflectionMethod($service, 'storageLinkIsValid');
         $method->setAccessible(true);
 

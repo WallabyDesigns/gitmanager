@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Services\EditionService;
 use App\Services\LicenseService;
+use App\Services\SettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -50,7 +51,7 @@ class EditionServiceTest extends TestCase
 
     public function test_current_ignores_stored_testing_override(): void
     {
-        app(\App\Services\SettingsService::class)->set('system.testing.edition_override', EditionService::ENTERPRISE);
+        app(SettingsService::class)->set('system.testing.edition_override', EditionService::ENTERPRISE);
 
         $this->assertSame(EditionService::COMMUNITY, $this->service()->current());
     }

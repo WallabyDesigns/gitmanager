@@ -29,6 +29,7 @@ class DependabotAutoMerge extends Command
     {
         if (! config('services.github.token')) {
             $this->warn('GITHUB_TOKEN is not configured. Skipping auto-merge.');
+
             return self::SUCCESS;
         }
 

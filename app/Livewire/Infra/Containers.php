@@ -6,92 +6,128 @@ namespace App\Livewire\Infra;
 
 use App\Services\DockerService;
 use App\Services\EditionService;
+use Illuminate\View\View;
 use Livewire\Component;
 
 class Containers extends Component
 {
     public string $initialSection = 'overview';
+
     public bool $isEnterprise = false;
 
     // Data
-    public array $containers  = [];
-    public array $images      = [];
-    public array $volumes     = [];
-    public array $networks    = [];
-    public array $swarmInfo   = ['active' => false];
-    public array $swarmNodes  = [];
+    public array $containers = [];
+
+    public array $images = [];
+
+    public array $volumes = [];
+
+    public array $networks = [];
+
+    public array $swarmInfo = ['active' => false];
+
+    public array $swarmNodes = [];
+
     public array $swarmServices = [];
+
     public array $containerStats = [];
-    public bool  $dockerAvailable = false;
+
+    public bool $dockerAvailable = false;
 
     // Flash
     public ?string $flashMessage = null;
-    public string  $flashType    = 'success';
+
+    public string $flashType = 'success';
 
     // Inspect / Logs modal
-    public bool  $showInspect  = false;
-    public array $inspectData  = [];
-    public bool  $showLogs     = false;
-    public string $logsData    = '';
-    public string $logsTarget  = '';
+    public bool $showInspect = false;
+
+    public array $inspectData = [];
+
+    public bool $showLogs = false;
+
+    public string $logsData = '';
+
+    public string $logsTarget = '';
 
     // Create container modal
-    public bool   $showCreate   = false;
-    public bool   $cliPasteMode = false;
-    public string $cliCommand   = '';
-    public array  $createForm   = [
-        'image'    => '',
-        'name'     => '',
-        'ports'    => [''],
-        'env'      => [''],
-        'volumes'  => [''],
-        'network'  => '',
-        'restart'  => 'unless-stopped',
-        'memory'   => '',
-        'cpus'     => '',
+    public bool $showCreate = false;
+
+    public bool $cliPasteMode = false;
+
+    public string $cliCommand = '';
+
+    public array $createForm = [
+        'image' => '',
+        'name' => '',
+        'ports' => [''],
+        'env' => [''],
+        'volumes' => [''],
+        'network' => '',
+        'restart' => 'unless-stopped',
+        'memory' => '',
+        'cpus' => '',
         'hostname' => '',
-        'command'  => '',
+        'command' => '',
     ];
 
     // Edit container modal
-    public bool   $showEdit      = false;
-    public string $editTarget    = '';
-    public array  $editForm      = [
+    public bool $showEdit = false;
+
+    public string $editTarget = '';
+
+    public array $editForm = [
         'restart' => '',
-        'memory'  => '',
-        'cpus'    => '',
+        'memory' => '',
+        'cpus' => '',
     ];
 
     // Pull image modal
-    public bool   $showPull    = false;
-    public string $pullInput   = '';
-    public bool   $pulling     = false;
-    public bool   $showRetagImage = false;
+    public bool $showPull = false;
+
+    public string $pullInput = '';
+
+    public bool $pulling = false;
+
+    public bool $showRetagImage = false;
+
     public string $retagSourceImage = '';
+
     public string $retagTargetImage = '';
 
     // Create volume modal
-    public bool   $showCreateVolume = false;
-    public string $newVolumeName    = '';
-    public string $newVolumeDriver  = 'local';
+    public bool $showCreateVolume = false;
+
+    public string $newVolumeName = '';
+
+    public string $newVolumeDriver = 'local';
 
     // Create network modal
-    public bool   $showCreateNetwork = false;
-    public string $newNetworkName    = '';
-    public string $newNetworkDriver  = 'bridge';
-    public bool   $showCloneNetwork  = false;
+    public bool $showCreateNetwork = false;
+
+    public string $newNetworkName = '';
+
+    public string $newNetworkDriver = 'bridge';
+
+    public bool $showCloneNetwork = false;
+
     public string $cloneSourceNetwork = '';
-    public string $cloneNetworkName   = '';
+
+    public string $cloneNetworkName = '';
+
     public string $cloneNetworkDriver = 'bridge';
 
     // Swarm scale modal
-    public bool   $showScale      = false;
-    public string $scaleService   = '';
-    public int    $scaleReplicas  = 1;
+    public bool $showScale = false;
+
+    public string $scaleService = '';
+
+    public int $scaleReplicas = 1;
 
     // Swarm init modal
-    public bool   $showSwarmInit   = false;
-    public string $swarmAdvertise  = '';
+    public bool $showSwarmInit = false;
+
+    public string $swarmAdvertise = '';
 
     // Template deploy
     public string $deployingTemplate = '';
@@ -128,30 +164,30 @@ class Containers extends Component
         }
 
         match ($this->initialSection) {
-            'overview'   => $this->loadOverview($docker),
+            'overview' => $this->loadOverview($docker),
             'containers' => $this->loadContainers($docker),
-            'images'     => $this->loadImages($docker),
-            'volumes'    => $this->loadVolumes($docker),
-            'networks'   => $this->loadNetworks($docker),
-            'swarm'      => $this->canUseSwarm() ? $this->loadSwarm($docker) : null,
-            'databases'  => $this->loadDatabases($docker),
-            default      => null,
+            'images' => $this->loadImages($docker),
+            'volumes' => $this->loadVolumes($docker),
+            'networks' => $this->loadNetworks($docker),
+            'swarm' => $this->canUseSwarm() ? $this->loadSwarm($docker) : null,
+            'databases' => $this->loadDatabases($docker),
+            default => null,
         };
     }
 
     private function loadOverview(DockerService $docker): void
     {
-        $this->containers     = $docker->listContainers(true);
-        $this->images         = $docker->listImages();
-        $this->volumes        = $docker->listVolumes();
+        $this->containers = $docker->listContainers(true);
+        $this->images = $docker->listImages();
+        $this->volumes = $docker->listVolumes();
         $this->containerStats = $docker->getAllContainerStats();
     }
 
     private function loadContainers(DockerService $docker): void
     {
         $this->containers = $docker->listContainers(true);
-        $this->networks   = $docker->listNetworks();
-        $this->volumes    = $docker->listVolumes();
+        $this->networks = $docker->listNetworks();
+        $this->volumes = $docker->listVolumes();
     }
 
     private function loadImages(DockerService $docker): void
@@ -171,8 +207,8 @@ class Containers extends Component
 
     private function loadSwarm(DockerService $docker): void
     {
-        $this->swarmInfo     = $docker->getSwarmInfo();
-        $this->swarmNodes    = $docker->listSwarmNodes();
+        $this->swarmInfo = $docker->getSwarmInfo();
+        $this->swarmNodes = $docker->listSwarmNodes();
         $this->swarmServices = $docker->listSwarmServices();
     }
 
@@ -218,8 +254,8 @@ class Containers extends Component
     public function viewLogs(string $id): void
     {
         $this->logsTarget = $id;
-        $this->logsData   = app(DockerService::class)->getContainerLogs($id);
-        $this->showLogs   = true;
+        $this->logsData = app(DockerService::class)->getContainerLogs($id);
+        $this->showLogs = true;
     }
 
     public function inspectContainer(string $id): void
@@ -232,10 +268,10 @@ class Containers extends Component
     {
         $data = app(DockerService::class)->inspectContainer($id);
         $this->editTarget = $id;
-        $this->editForm   = [
+        $this->editForm = [
             'restart' => $data['HostConfig']['RestartPolicy']['Name'] ?? '',
-            'memory'  => $data['HostConfig']['Memory'] > 0 ? (string) ($data['HostConfig']['Memory'] / 1024 / 1024) . 'm' : '',
-            'cpus'    => (string) ($data['HostConfig']['NanoCpus'] / 1e9 ?: ''),
+            'memory' => $data['HostConfig']['Memory'] > 0 ? (string) ($data['HostConfig']['Memory'] / 1024 / 1024).'m' : '',
+            'cpus' => (string) ($data['HostConfig']['NanoCpus'] / 1e9 ?: ''),
         ];
         $this->showEdit = true;
     }
@@ -257,17 +293,17 @@ class Containers extends Component
         $parsed = app(DockerService::class)->parseRunCommand($this->cliCommand);
 
         $this->createForm = [
-            'image'    => $parsed['image'],
-            'name'     => $parsed['name'],
-            'ports'    => array_values(array_filter($parsed['ports'])) ?: [''],
-            'env'      => array_values(array_filter($parsed['env'])) ?: [''],
-            'volumes'  => array_values(array_filter($parsed['volumes'])) ?: [''],
-            'network'  => $parsed['network'],
-            'restart'  => $parsed['restart'] ?: 'unless-stopped',
-            'memory'   => $parsed['memory'],
-            'cpus'     => $parsed['cpus'],
+            'image' => $parsed['image'],
+            'name' => $parsed['name'],
+            'ports' => array_values(array_filter($parsed['ports'])) ?: [''],
+            'env' => array_values(array_filter($parsed['env'])) ?: [''],
+            'volumes' => array_values(array_filter($parsed['volumes'])) ?: [''],
+            'network' => $parsed['network'],
+            'restart' => $parsed['restart'] ?: 'unless-stopped',
+            'memory' => $parsed['memory'],
+            'cpus' => $parsed['cpus'],
             'hostname' => $parsed['hostname'],
-            'command'  => $parsed['command'],
+            'command' => $parsed['command'],
         ];
 
         $this->cliPasteMode = false;
@@ -307,19 +343,19 @@ class Containers extends Component
     private function resetCreateForm(): void
     {
         $this->createForm = [
-            'image'    => '',
-            'name'     => '',
-            'ports'    => [''],
-            'env'      => [''],
-            'volumes'  => [''],
-            'network'  => '',
-            'restart'  => 'unless-stopped',
-            'memory'   => '',
-            'cpus'     => '',
+            'image' => '',
+            'name' => '',
+            'ports' => [''],
+            'env' => [''],
+            'volumes' => [''],
+            'network' => '',
+            'restart' => 'unless-stopped',
+            'memory' => '',
+            'cpus' => '',
             'hostname' => '',
-            'command'  => '',
+            'command' => '',
         ];
-        $this->cliCommand   = '';
+        $this->cliCommand = '';
         $this->cliPasteMode = false;
     }
 
@@ -333,7 +369,7 @@ class Containers extends Component
 
         $this->pulling = true;
         $result = app(DockerService::class)->pullImage(trim($this->pullInput));
-        $this->pulling  = false;
+        $this->pulling = false;
         $this->showPull = false;
         $this->pullInput = '';
 
@@ -395,7 +431,7 @@ class Containers extends Component
         $result = app(DockerService::class)->createVolume($this->newVolumeName, $this->newVolumeDriver);
         $this->flash($result['success'] ? 'Volume created.' : $result['error'], $result['success'] ? 'success' : 'error');
         $this->showCreateVolume = false;
-        $this->newVolumeName    = '';
+        $this->newVolumeName = '';
         $this->loadVolumes(app(DockerService::class));
     }
 
@@ -421,7 +457,7 @@ class Containers extends Component
         $result = app(DockerService::class)->createNetwork($this->newNetworkName, $this->newNetworkDriver);
         $this->flash($result['success'] ? 'Network created.' : $result['error'], $result['success'] ? 'success' : 'error');
         $this->showCreateNetwork = false;
-        $this->newNetworkName    = '';
+        $this->newNetworkName = '';
         $this->loadNetworks(app(DockerService::class));
     }
 
@@ -496,9 +532,9 @@ class Containers extends Component
             return;
         }
 
-        $this->scaleService  = $service;
+        $this->scaleService = $service;
         $this->scaleReplicas = $current;
-        $this->showScale     = true;
+        $this->showScale = true;
     }
 
     public function scaleService(): void
@@ -540,17 +576,17 @@ class Containers extends Component
         }
 
         $this->createForm = [
-            'image'    => $template['image'],
-            'name'     => $template['name_default'] ?? '',
-            'ports'    => $template['ports'] ?? [''],
-            'env'      => $template['env'] ?? [''],
-            'volumes'  => $template['volumes'] ?? [''],
-            'network'  => $template['network'] ?? '',
-            'restart'  => $template['restart'] ?? 'unless-stopped',
-            'memory'   => $template['memory'] ?? '',
-            'cpus'     => $template['cpus'] ?? '',
+            'image' => $template['image'],
+            'name' => $template['name_default'] ?? '',
+            'ports' => $template['ports'] ?? [''],
+            'env' => $template['env'] ?? [''],
+            'volumes' => $template['volumes'] ?? [''],
+            'network' => $template['network'] ?? '',
+            'restart' => $template['restart'] ?? 'unless-stopped',
+            'memory' => $template['memory'] ?? '',
+            'cpus' => $template['cpus'] ?? '',
             'hostname' => '',
-            'command'  => $template['command'] ?? '',
+            'command' => $template['command'] ?? '',
         ];
 
         $this->showCreate = true;
@@ -560,14 +596,14 @@ class Containers extends Component
 
     public function launchAdminer(string $dbContainerName, string $dbType): void
     {
-        $adminerName = 'adminer-' . $dbContainerName;
+        $adminerName = 'adminer-'.$dbContainerName;
 
         $result = app(DockerService::class)->createContainer([
-            'image'   => 'adminer:latest',
-            'name'    => $adminerName,
-            'ports'   => ['8080:8080'],
+            'image' => 'adminer:latest',
+            'name' => $adminerName,
+            'ports' => ['8080:8080'],
             'restart' => 'unless-stopped',
-            'env'     => ["ADMINER_DEFAULT_SERVER={$dbContainerName}"],
+            'env' => ["ADMINER_DEFAULT_SERVER={$dbContainerName}"],
             'volumes' => [],
             'network' => 'bridge',
         ]);
@@ -585,7 +621,7 @@ class Containers extends Component
     private function flash(string $message, string $type = 'success'): void
     {
         $this->flashMessage = $message;
-        $this->flashType    = $type;
+        $this->flashType = $type;
     }
 
     private function canUseSwarm(): bool
@@ -623,253 +659,253 @@ class Containers extends Component
     {
         return [
             'nginx' => [
-                'name'         => 'Nginx',
+                'name' => 'Nginx',
                 'name_default' => 'nginx',
-                'description'  => 'High-performance web server & reverse proxy.',
-                'image'        => 'nginx:alpine',
-                'ports'        => ['80:80', '443:443'],
-                'env'          => [''],
-                'volumes'      => [''],
-                'restart'      => 'unless-stopped',
-                'category'     => 'Web',
-                'color'        => 'emerald',
+                'description' => 'High-performance web server & reverse proxy.',
+                'image' => 'nginx:alpine',
+                'ports' => ['80:80', '443:443'],
+                'env' => [''],
+                'volumes' => [''],
+                'restart' => 'unless-stopped',
+                'category' => 'Web',
+                'color' => 'emerald',
             ],
             'mysql' => [
-                'name'         => 'MySQL 8',
+                'name' => 'MySQL 8',
                 'name_default' => 'mysql',
-                'description'  => 'Popular relational database server.',
-                'image'        => 'mysql:8',
-                'ports'        => ['3306:3306'],
-                'env'          => ['MYSQL_ROOT_PASSWORD=', 'MYSQL_DATABASE=app'],
-                'volumes'      => ['mysql_data:/var/lib/mysql'],
-                'restart'      => 'unless-stopped',
-                'category'     => 'Database',
-                'color'        => 'blue',
+                'description' => 'Popular relational database server.',
+                'image' => 'mysql:8',
+                'ports' => ['3306:3306'],
+                'env' => ['MYSQL_ROOT_PASSWORD=', 'MYSQL_DATABASE=app'],
+                'volumes' => ['mysql_data:/var/lib/mysql'],
+                'restart' => 'unless-stopped',
+                'category' => 'Database',
+                'color' => 'blue',
             ],
             'mariadb' => [
-                'name'         => 'MariaDB',
+                'name' => 'MariaDB',
                 'name_default' => 'mariadb',
-                'description'  => 'Community-developed fork of MySQL.',
-                'image'        => 'mariadb:11',
-                'ports'        => ['3306:3306'],
-                'env'          => ['MARIADB_ROOT_PASSWORD=', 'MARIADB_DATABASE=app'],
-                'volumes'      => ['mariadb_data:/var/lib/mysql'],
-                'restart'      => 'unless-stopped',
-                'category'     => 'Database',
-                'color'        => 'blue',
+                'description' => 'Community-developed fork of MySQL.',
+                'image' => 'mariadb:11',
+                'ports' => ['3306:3306'],
+                'env' => ['MARIADB_ROOT_PASSWORD=', 'MARIADB_DATABASE=app'],
+                'volumes' => ['mariadb_data:/var/lib/mysql'],
+                'restart' => 'unless-stopped',
+                'category' => 'Database',
+                'color' => 'blue',
             ],
             'postgres' => [
-                'name'         => 'PostgreSQL 16',
+                'name' => 'PostgreSQL 16',
                 'name_default' => 'postgres',
-                'description'  => 'Advanced open-source relational database.',
-                'image'        => 'postgres:16-alpine',
-                'ports'        => ['5432:5432'],
-                'env'          => ['POSTGRES_PASSWORD=', 'POSTGRES_DB=app'],
-                'volumes'      => ['postgres_data:/var/lib/postgresql/data'],
-                'restart'      => 'unless-stopped',
-                'category'     => 'Database',
-                'color'        => 'indigo',
+                'description' => 'Advanced open-source relational database.',
+                'image' => 'postgres:16-alpine',
+                'ports' => ['5432:5432'],
+                'env' => ['POSTGRES_PASSWORD=', 'POSTGRES_DB=app'],
+                'volumes' => ['postgres_data:/var/lib/postgresql/data'],
+                'restart' => 'unless-stopped',
+                'category' => 'Database',
+                'color' => 'indigo',
             ],
             'redis' => [
-                'name'         => 'Redis',
+                'name' => 'Redis',
                 'name_default' => 'redis',
-                'description'  => 'In-memory data structure store & cache.',
-                'image'        => 'redis:7-alpine',
-                'ports'        => ['6379:6379'],
-                'env'          => [''],
-                'volumes'      => ['redis_data:/data'],
-                'restart'      => 'unless-stopped',
-                'category'     => 'Cache',
-                'color'        => 'rose',
+                'description' => 'In-memory data structure store & cache.',
+                'image' => 'redis:7-alpine',
+                'ports' => ['6379:6379'],
+                'env' => [''],
+                'volumes' => ['redis_data:/data'],
+                'restart' => 'unless-stopped',
+                'category' => 'Cache',
+                'color' => 'rose',
             ],
             'mongodb' => [
-                'name'         => 'MongoDB',
+                'name' => 'MongoDB',
                 'name_default' => 'mongodb',
-                'description'  => 'Document-oriented NoSQL database.',
-                'image'        => 'mongo:7',
-                'ports'        => ['27017:27017'],
-                'env'          => ['MONGO_INITDB_ROOT_USERNAME=admin', 'MONGO_INITDB_ROOT_PASSWORD='],
-                'volumes'      => ['mongo_data:/data/db'],
-                'restart'      => 'unless-stopped',
-                'category'     => 'Database',
-                'color'        => 'green',
+                'description' => 'Document-oriented NoSQL database.',
+                'image' => 'mongo:7',
+                'ports' => ['27017:27017'],
+                'env' => ['MONGO_INITDB_ROOT_USERNAME=admin', 'MONGO_INITDB_ROOT_PASSWORD='],
+                'volumes' => ['mongo_data:/data/db'],
+                'restart' => 'unless-stopped',
+                'category' => 'Database',
+                'color' => 'green',
             ],
             'adminer' => [
-                'name'         => 'Adminer',
+                'name' => 'Adminer',
                 'name_default' => 'adminer',
-                'description'  => 'Lightweight database management web UI.',
-                'image'        => 'adminer:latest',
-                'ports'        => ['8080:8080'],
-                'env'          => [''],
-                'volumes'      => [''],
-                'restart'      => 'unless-stopped',
-                'category'     => 'Tools',
-                'color'        => 'amber',
+                'description' => 'Lightweight database management web UI.',
+                'image' => 'adminer:latest',
+                'ports' => ['8080:8080'],
+                'env' => [''],
+                'volumes' => [''],
+                'restart' => 'unless-stopped',
+                'category' => 'Tools',
+                'color' => 'amber',
             ],
             'phpmyadmin' => [
-                'name'         => 'phpMyAdmin',
+                'name' => 'phpMyAdmin',
                 'name_default' => 'phpmyadmin',
-                'description'  => 'Web-based MySQL/MariaDB administration tool.',
-                'image'        => 'phpmyadmin:latest',
-                'ports'        => ['8081:80'],
-                'env'          => ['PMA_ARBITRARY=1'],
-                'volumes'      => [''],
-                'restart'      => 'unless-stopped',
-                'category'     => 'Tools',
-                'color'        => 'amber',
+                'description' => 'Web-based MySQL/MariaDB administration tool.',
+                'image' => 'phpmyadmin:latest',
+                'ports' => ['8081:80'],
+                'env' => ['PMA_ARBITRARY=1'],
+                'volumes' => [''],
+                'restart' => 'unless-stopped',
+                'category' => 'Tools',
+                'color' => 'amber',
             ],
             'wordpress' => [
-                'name'         => 'WordPress',
+                'name' => 'WordPress',
                 'name_default' => 'wordpress',
-                'description'  => 'Popular CMS platform.',
-                'image'        => 'wordpress:latest',
-                'ports'        => ['8090:80'],
-                'env'          => ['WORDPRESS_DB_HOST=mysql', 'WORDPRESS_DB_USER=root', 'WORDPRESS_DB_PASSWORD=', 'WORDPRESS_DB_NAME=wordpress'],
-                'volumes'      => ['wordpress_data:/var/www/html'],
-                'restart'      => 'unless-stopped',
-                'category'     => 'CMS',
-                'color'        => 'sky',
+                'description' => 'Popular CMS platform.',
+                'image' => 'wordpress:latest',
+                'ports' => ['8090:80'],
+                'env' => ['WORDPRESS_DB_HOST=mysql', 'WORDPRESS_DB_USER=root', 'WORDPRESS_DB_PASSWORD=', 'WORDPRESS_DB_NAME=wordpress'],
+                'volumes' => ['wordpress_data:/var/www/html'],
+                'restart' => 'unless-stopped',
+                'category' => 'CMS',
+                'color' => 'sky',
             ],
             'mailpit' => [
-                'name'         => 'Mailpit',
+                'name' => 'Mailpit',
                 'name_default' => 'mailpit',
-                'description'  => 'Email testing tool with web inbox (SMTP + UI).',
-                'image'        => 'axllent/mailpit:latest',
-                'ports'        => ['8025:8025', '1025:1025'],
-                'env'          => [''],
-                'volumes'      => [''],
-                'restart'      => 'unless-stopped',
-                'category'     => 'Tools',
-                'color'        => 'violet',
+                'description' => 'Email testing tool with web inbox (SMTP + UI).',
+                'image' => 'axllent/mailpit:latest',
+                'ports' => ['8025:8025', '1025:1025'],
+                'env' => [''],
+                'volumes' => [''],
+                'restart' => 'unless-stopped',
+                'category' => 'Tools',
+                'color' => 'violet',
             ],
             'minio' => [
-                'name'         => 'MinIO',
+                'name' => 'MinIO',
                 'name_default' => 'minio',
-                'description'  => 'S3-compatible object storage server.',
-                'image'        => 'minio/minio:latest',
-                'ports'        => ['9000:9000', '9001:9001'],
-                'env'          => ['MINIO_ROOT_USER=admin', 'MINIO_ROOT_PASSWORD='],
-                'volumes'      => ['minio_data:/data'],
-                'restart'      => 'unless-stopped',
-                'command'      => 'server /data --console-address ":9001"',
-                'category'     => 'Storage',
-                'color'        => 'orange',
+                'description' => 'S3-compatible object storage server.',
+                'image' => 'minio/minio:latest',
+                'ports' => ['9000:9000', '9001:9001'],
+                'env' => ['MINIO_ROOT_USER=admin', 'MINIO_ROOT_PASSWORD='],
+                'volumes' => ['minio_data:/data'],
+                'restart' => 'unless-stopped',
+                'command' => 'server /data --console-address ":9001"',
+                'category' => 'Storage',
+                'color' => 'orange',
             ],
             'rabbitmq' => [
-                'name'         => 'RabbitMQ',
+                'name' => 'RabbitMQ',
                 'name_default' => 'rabbitmq',
-                'description'  => 'Open-source message broker.',
-                'image'        => 'rabbitmq:3-management-alpine',
-                'ports'        => ['5672:5672', '15672:15672'],
-                'env'          => ['RABBITMQ_DEFAULT_USER=admin', 'RABBITMQ_DEFAULT_PASS=secret'],
-                'volumes'      => ['rabbitmq_data:/var/lib/rabbitmq'],
-                'restart'      => 'unless-stopped',
-                'category'     => 'Messaging',
-                'color'        => 'orange',
+                'description' => 'Open-source message broker.',
+                'image' => 'rabbitmq:3-management-alpine',
+                'ports' => ['5672:5672', '15672:15672'],
+                'env' => ['RABBITMQ_DEFAULT_USER=admin', 'RABBITMQ_DEFAULT_PASS=secret'],
+                'volumes' => ['rabbitmq_data:/var/lib/rabbitmq'],
+                'restart' => 'unless-stopped',
+                'category' => 'Messaging',
+                'color' => 'orange',
             ],
             'grafana' => [
-                'name'         => 'Grafana',
+                'name' => 'Grafana',
                 'name_default' => 'grafana',
-                'description'  => 'Analytics & monitoring dashboards.',
-                'image'        => 'grafana/grafana:latest',
-                'ports'        => ['3000:3000'],
-                'env'          => ['GF_SECURITY_ADMIN_PASSWORD='],
-                'volumes'      => ['grafana_data:/var/lib/grafana'],
-                'restart'      => 'unless-stopped',
-                'category'     => 'Monitoring',
-                'color'        => 'orange',
+                'description' => 'Analytics & monitoring dashboards.',
+                'image' => 'grafana/grafana:latest',
+                'ports' => ['3000:3000'],
+                'env' => ['GF_SECURITY_ADMIN_PASSWORD='],
+                'volumes' => ['grafana_data:/var/lib/grafana'],
+                'restart' => 'unless-stopped',
+                'category' => 'Monitoring',
+                'color' => 'orange',
             ],
             'prometheus' => [
-                'name'         => 'Prometheus',
+                'name' => 'Prometheus',
                 'name_default' => 'prometheus',
-                'description'  => 'Metrics collection and alerting toolkit.',
-                'image'        => 'prom/prometheus:latest',
-                'ports'        => ['9090:9090'],
-                'env'          => [''],
-                'volumes'      => ['prometheus_data:/prometheus'],
-                'restart'      => 'unless-stopped',
-                'category'     => 'Monitoring',
-                'color'        => 'orange',
+                'description' => 'Metrics collection and alerting toolkit.',
+                'image' => 'prom/prometheus:latest',
+                'ports' => ['9090:9090'],
+                'env' => [''],
+                'volumes' => ['prometheus_data:/prometheus'],
+                'restart' => 'unless-stopped',
+                'category' => 'Monitoring',
+                'color' => 'orange',
             ],
             'portainer' => [
-                'name'         => 'Portainer CE',
+                'name' => 'Portainer CE',
                 'name_default' => 'portainer',
-                'description'  => 'Container management UI for Docker.',
-                'image'        => 'portainer/portainer-ce:latest',
-                'ports'        => ['9443:9443', '8000:8000'],
-                'env'          => [''],
-                'volumes'      => ['/var/run/docker.sock:/var/run/docker.sock', 'portainer_data:/data'],
-                'restart'      => 'unless-stopped',
-                'category'     => 'Tools',
-                'color'        => 'teal',
+                'description' => 'Container management UI for Docker.',
+                'image' => 'portainer/portainer-ce:latest',
+                'ports' => ['9443:9443', '8000:8000'],
+                'env' => [''],
+                'volumes' => ['/var/run/docker.sock:/var/run/docker.sock', 'portainer_data:/data'],
+                'restart' => 'unless-stopped',
+                'category' => 'Tools',
+                'color' => 'teal',
             ],
             'node' => [
-                'name'         => 'Node.js',
+                'name' => 'Node.js',
                 'name_default' => 'nodejs-app',
-                'description'  => 'Node.js runtime environment.',
-                'image'        => 'node:20-alpine',
-                'ports'        => ['3000:3000'],
-                'env'          => ['NODE_ENV=production'],
-                'volumes'      => [''],
-                'restart'      => 'unless-stopped',
-                'command'      => 'node index.js',
-                'category'     => 'Runtime',
-                'color'        => 'lime',
+                'description' => 'Node.js runtime environment.',
+                'image' => 'node:20-alpine',
+                'ports' => ['3000:3000'],
+                'env' => ['NODE_ENV=production'],
+                'volumes' => [''],
+                'restart' => 'unless-stopped',
+                'command' => 'node index.js',
+                'category' => 'Runtime',
+                'color' => 'lime',
             ],
             'php' => [
-                'name'         => 'PHP-FPM',
+                'name' => 'PHP-FPM',
                 'name_default' => 'php-fpm',
-                'description'  => 'PHP FastCGI Process Manager.',
-                'image'        => 'php:8.3-fpm-alpine',
-                'ports'        => ['9000:9000'],
-                'env'          => [''],
-                'volumes'      => [''],
-                'restart'      => 'unless-stopped',
-                'category'     => 'Runtime',
-                'color'        => 'indigo',
+                'description' => 'PHP FastCGI Process Manager.',
+                'image' => 'php:8.3-fpm-alpine',
+                'ports' => ['9000:9000'],
+                'env' => [''],
+                'volumes' => [''],
+                'restart' => 'unless-stopped',
+                'category' => 'Runtime',
+                'color' => 'indigo',
             ],
             'n8n' => [
-                'name'         => 'n8n',
+                'name' => 'n8n',
                 'name_default' => 'n8n',
-                'description'  => 'Workflow automation tool.',
-                'image'        => 'n8nio/n8n:latest',
-                'ports'        => ['5678:5678'],
-                'env'          => [''],
-                'volumes'      => ['n8n_data:/home/node/.n8n'],
-                'restart'      => 'unless-stopped',
-                'category'     => 'Automation',
-                'color'        => 'pink',
+                'description' => 'Workflow automation tool.',
+                'image' => 'n8nio/n8n:latest',
+                'ports' => ['5678:5678'],
+                'env' => [''],
+                'volumes' => ['n8n_data:/home/node/.n8n'],
+                'restart' => 'unless-stopped',
+                'category' => 'Automation',
+                'color' => 'pink',
             ],
             'netdata' => [
-                'name'         => 'Netdata',
+                'name' => 'Netdata',
                 'name_default' => 'netdata',
-                'description'  => 'Real-time server and container monitoring.',
-                'image'        => 'netdata/netdata:latest',
-                'ports'        => ['19999:19999'],
-                'env'          => [''],
-                'volumes'      => ['/etc/passwd:/host/etc/passwd:ro', '/etc/group:/host/etc/group:ro', '/proc:/host/proc:ro', '/sys:/host/sys:ro', '/etc/os-release:/host/etc/os-release:ro'],
-                'restart'      => 'unless-stopped',
-                'category'     => 'Monitoring',
-                'color'        => 'teal',
+                'description' => 'Real-time server and container monitoring.',
+                'image' => 'netdata/netdata:latest',
+                'ports' => ['19999:19999'],
+                'env' => [''],
+                'volumes' => ['/etc/passwd:/host/etc/passwd:ro', '/etc/group:/host/etc/group:ro', '/proc:/host/proc:ro', '/sys:/host/sys:ro', '/etc/os-release:/host/etc/os-release:ro'],
+                'restart' => 'unless-stopped',
+                'category' => 'Monitoring',
+                'color' => 'teal',
             ],
         ];
     }
 
     // ─── Render ───────────────────────────────────────────────────────────────
 
-    public function render(EditionService $edition): \Illuminate\View\View
+    public function render(EditionService $edition): View
     {
         $enterpriseInstalled = class_exists(\GitManagerEnterprise\Livewire\Infrastructure\Containers::class);
         $this->isEnterprise = $edition->current() === EditionService::ENTERPRISE;
 
         return view('livewire.infra.containers', [
             'enterpriseInstalled' => $enterpriseInstalled,
-            'isEnterprise'        => $this->isEnterprise,
-            'templates'           => $this->getTemplates(),
+            'isEnterprise' => $this->isEnterprise,
+            'templates' => $this->getTemplates(),
         ])->layout('layouts.app', [
-            'title'  => 'Docker',
+            'title' => 'Docker',
             'header' => view('livewire.infra.partials.header', [
-                'title'    => 'Docker',
+                'title' => 'Docker',
                 'subtitle' => 'Manage Docker containers, images, volumes, networks, and swarm services.',
             ]),
         ]);

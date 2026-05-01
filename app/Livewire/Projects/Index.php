@@ -4,19 +4,23 @@ namespace App\Livewire\Projects;
 
 use App\Models\Deployment;
 use App\Models\DeploymentQueueItem;
-use App\Services\EditionService;
-use App\Services\DeploymentService;
-use App\Services\DeploymentQueueService;
+use App\Models\Project;
 use App\Services\AuditService;
-use Illuminate\Support\Facades\Auth;
+use App\Services\DeploymentQueueService;
+use App\Services\DeploymentService;
+use App\Services\EditionService;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Livewire\Component;
 
 class Index extends Component
 {
     public string $projectsTab = 'list';
+
     public string $search = '';
+
     public string $filter = 'all';
 
     protected $queryString = [
@@ -51,6 +55,7 @@ class Index extends Component
         if (! $this->isEnterpriseEdition()) {
             $this->dispatch('notify', message: 'Automatic project audits are available in Enterprise Edition.', type: 'warning');
             $this->dispatch('gwm-open-enterprise-modal', feature: 'Automatic Project & Container Audits');
+
             return;
         }
 
@@ -66,6 +71,7 @@ class Index extends Component
             foreach ($projects as $project) {
                 if ($project->permissions_locked && ! $project->ftp_enabled && ! $project->ssh_enabled) {
                     $skipped++;
+
                     continue;
                 }
 
@@ -239,14 +245,14 @@ class Index extends Component
     }
 
     /**
-     * @param \Illuminate\Support\Collection<int, \App\Models\Project> $projects
+     * @param  Collection<int, Project>  $projects
      * @return array{
      *     name: string,
      *     path: string,
      *     project_count: int,
      *     issue_counts: array<string, int>,
      *     directories: array<string, array<string, mixed>>,
-     *     projects: array<int, \App\Models\Project>
+     *     projects: array<int, Project>
      * }
      */
     private function buildProjectTree($projects): array
@@ -278,24 +284,26 @@ class Index extends Component
      *     project_count: int,
      *     issue_counts: array<string, int>,
      *     directories: array<string, array<string, mixed>>,
-     *     projects: array<int, \App\Models\Project>
+     *     projects: array<int, Project>
      * } $node
-     * @param array<int, string> $segments
-     * @param array<string, int> $issueFlags
+     * @param  array<int, string>  $segments
+     * @param  array<string, int>  $issueFlags
      */
-    private function insertProjectIntoTree(array &$node, array $segments, \App\Models\Project $project, array $issueFlags): void
+    private function insertProjectIntoTree(array &$node, array $segments, Project $project, array $issueFlags): void
     {
         $node['project_count'] = (int) ($node['project_count'] ?? 0) + 1;
         $this->applyIssueCounts($node, $issueFlags);
 
         if ($segments === []) {
             $node['projects'][] = $project;
+
             return;
         }
 
         $segment = array_shift($segments);
         if (! is_string($segment) || trim($segment) === '') {
             $node['projects'][] = $project;
+
             return;
         }
 
@@ -344,7 +352,7 @@ class Index extends Component
      *     project_count: int,
      *     issue_counts: array<string, int>,
      *     directories: array<string, array<string, mixed>>,
-     *     projects: array<int, \App\Models\Project>
+     *     projects: array<int, Project>
      * } $node
      */
     private function sortTreeNode(array &$node): void
@@ -353,7 +361,7 @@ class Index extends Component
             return strnatcasecmp((string) ($left['name'] ?? ''), (string) ($right['name'] ?? ''));
         });
 
-        usort($node['projects'], static function (\App\Models\Project $left, \App\Models\Project $right): int {
+        usort($node['projects'], static function (Project $left, Project $right): int {
             return strnatcasecmp((string) $left->name, (string) $right->name);
         });
 
@@ -382,7 +390,7 @@ class Index extends Component
     /**
      * @return array<string, int>
      */
-    private function projectIssueFlags(\App\Models\Project $project): array
+    private function projectIssueFlags(Project $project): array
     {
         $ftpNeedsTest = $project->ftp_enabled
             && $project->ftpAccount
@@ -424,9 +432,9 @@ class Index extends Component
      *     project_count: int,
      *     issue_counts: array<string, int>,
      *     directories: array<string, array<string, mixed>>,
-     *     projects: array<int, \App\Models\Project>
+     *     projects: array<int, Project>
      * } $node
-     * @param array<string, int> $issueFlags
+     * @param  array<string, int>  $issueFlags
      */
     private function applyIssueCounts(array &$node, array $issueFlags): void
     {
@@ -449,19 +457,20 @@ class Index extends Component
         return app(EditionService::class)->current() === EditionService::ENTERPRISE;
     }
 
-    private function shouldAutoCheckHealth(\App\Models\Project $project): bool
+    private function shouldAutoCheckHealth(Project $project): bool
     {
         return $project->hasSuccessfulDeployment();
     }
 
     /**
-     * @param \Illuminate\Support\Collection<int, \App\Models\Project> $projects
+     * @param  Collection<int, Project>  $projects
      */
     private function runHealthChecks(DeploymentService $service, $projects, bool $force = false): void
     {
         foreach ($projects as $project) {
             if ($force) {
                 $service->checkHealth($project);
+
                 continue;
             }
 
@@ -475,7 +484,7 @@ class Index extends Component
     }
 
     /**
-     * @param \Illuminate\Support\Collection<int, \App\Models\Project> $projects
+     * @param  Collection<int, Project>  $projects
      */
     private function runUpdateChecks(DeploymentService $service, $projects, bool $autoNotify): void
     {
@@ -491,6 +500,7 @@ class Index extends Component
                     $hasUpdates = $service->checkForUpdates($project);
                 } catch (\Throwable $exception) {
                     $this->markUpdateCheckAttempt($project);
+
                     continue;
                 }
 
@@ -511,7 +521,7 @@ class Index extends Component
         $service->flushHealthNotifications();
     }
 
-    private function markUpdateCheckAttempt(\App\Models\Project $project): void
+    private function markUpdateCheckAttempt(Project $project): void
     {
         $project->last_checked_at = now();
         $project->updates_checked_at = now();
@@ -532,7 +542,7 @@ class Index extends Component
     }
 
     /**
-     * @param array<int, array<string, array<string, mixed>>> $results
+     * @param  array<int, array<string, array<string, mixed>>>  $results
      */
     private function dispatchAuditToast(array $results): void
     {
@@ -544,11 +554,13 @@ class Index extends Component
                 ? '1 project'
                 : "{$summary['projects_with_issues']} projects";
             $this->dispatch('notify', message: "Vulnerabilities found in {$projects} ({$label} total). Open the Security tab to resolve them.", type: 'error');
+
             return;
         }
 
         if ($summary['failed'] > 0) {
             $this->dispatch('notify', message: 'Audit checks completed with errors. Check the logs for details.', type: 'warning');
+
             return;
         }
 
@@ -556,7 +568,7 @@ class Index extends Component
     }
 
     /**
-     * @param array<int, array<string, array<string, mixed>>> $results
+     * @param  array<int, array<string, array<string, mixed>>>  $results
      * @return array{remaining: int, failed: int, projects_with_issues: int}
      */
     private function summarizeProjectAuditResults(array $results): array
@@ -598,5 +610,4 @@ class Index extends Component
             'projects_with_issues' => $projectsWithIssues,
         ];
     }
-
 }

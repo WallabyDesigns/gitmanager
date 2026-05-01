@@ -17,10 +17,12 @@ class SchedulerRun extends Command
 
         if (! $result['success']) {
             $this->error($result['message']);
+
             return self::FAILURE;
         }
 
         $this->info($result['message']);
+
         return self::SUCCESS;
     }
 }

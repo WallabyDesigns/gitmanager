@@ -5,8 +5,8 @@ namespace App\Livewire\FtpAccounts;
 use App\Models\FtpAccount;
 use App\Models\Project;
 use App\Services\FtpService;
+use App\Services\SshService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Validation\Rule;
 use Livewire\Component;
 
 class Index extends Component
@@ -14,15 +14,25 @@ class Index extends Component
     use AuthorizesRequests;
 
     public string $tab = 'list';
+
     public array $form = [];
+
     public ?int $editingId = null;
+
     public ?string $testStatus = null;
+
     public ?string $testMessage = null;
+
     public ?string $sshTestStatus = null;
+
     public ?string $sshTestMessage = null;
+
     public ?string $ftpTestSignature = null;
+
     public ?string $sshTestSignature = null;
+
     public bool $ftpTestRan = false;
+
     public bool $sshTestRan = false;
 
     public function mount(): void
@@ -115,6 +125,7 @@ class Index extends Component
 
         if ($inUse) {
             $this->dispatch('notify', message: 'This FTP/SSH access record is in use by one or more projects.');
+
             return;
         }
 
@@ -143,6 +154,7 @@ class Index extends Component
         if ($password === '') {
             $this->testStatus = 'error';
             $this->testMessage = 'Password is required to test FTP.';
+
             return;
         }
 
@@ -279,11 +291,12 @@ class Index extends Component
         if ($password === '' && $keyPath === '') {
             $this->sshTestStatus = 'error';
             $this->sshTestMessage = 'Provide an SSH password or key path to test the connection.';
+
             return;
         }
 
         try {
-            $lines = app(\App\Services\SshService::class)->runCommand(
+            $lines = app(SshService::class)->runCommand(
                 $host,
                 $port,
                 $username,
@@ -390,7 +403,7 @@ class Index extends Component
             $output = [];
 
             try {
-                $lines = app(\App\Services\SshService::class)->runCommand(
+                $lines = app(SshService::class)->runCommand(
                     (string) ($data['host'] ?? ''),
                     $port,
                     (string) ($data['username'] ?? ''),

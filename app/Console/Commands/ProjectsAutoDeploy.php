@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Deployment;
+use App\Models\DeploymentQueueItem;
 use App\Models\Project;
 use App\Services\DeploymentQueueService;
 use App\Services\DeploymentService;
@@ -39,8 +41,7 @@ class ProjectsAutoDeploy extends Command
         SettingsService $settings,
         EditionService $edition,
         LicenseService $license
-    ): int
-    {
+    ): int {
         $scheduler->recordHeartbeat('schedule');
         $auditEnabled = (bool) $settings->get('system.audit_enabled', false)
             && $edition->current() === EditionService::ENTERPRISE
@@ -133,7 +134,7 @@ class ProjectsAutoDeploy extends Command
     {
         $projectId = $project->id;
 
-        $runningDeployment = \App\Models\Deployment::query()
+        $runningDeployment = Deployment::query()
             ->where('project_id', $projectId)
             ->where('status', 'running')
             ->exists();
@@ -142,7 +143,7 @@ class ProjectsAutoDeploy extends Command
             return true;
         }
 
-        return \App\Models\DeploymentQueueItem::query()
+        return DeploymentQueueItem::query()
             ->where('project_id', $projectId)
             ->where('status', 'running')
             ->exists();
@@ -235,11 +236,13 @@ class ProjectsAutoDeploy extends Command
 
             if ($managed === 0) {
                 $this->line('Infrastructure audit: no managed containers found.');
+
                 return;
             }
 
             if ($issues > 0) {
                 $this->warn("Infrastructure audit: {$issues} managed container(s) are not running.");
+
                 return;
             }
 

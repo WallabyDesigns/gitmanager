@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Support\InstallContext;
 use App\Models\AppUpdate;
 use App\Models\AuditIssue;
 use App\Models\Deployment;
@@ -10,12 +9,14 @@ use App\Models\DeploymentQueueItem;
 use App\Models\Project;
 use App\Models\SecurityAlert;
 use App\Models\User;
+use App\Support\InstallContext;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class NavigationStateService
 {
     private const CACHE_SECONDS = 1800;
+
     private const SIDEBAR_CACHE_SECONDS = 60;
 
     /**
@@ -71,9 +72,9 @@ class NavigationStateService
     }
 
     /**
-        * @return array{
-        *   isEnterprise:bool
-        * }
+     * @return array{
+     *   isEnterprise:bool
+     * }
      */
     public function verifyEnterprise(?User $user): bool
     {

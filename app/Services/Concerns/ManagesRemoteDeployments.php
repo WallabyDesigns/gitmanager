@@ -5,6 +5,7 @@ namespace App\Services\Concerns;
 use App\Models\Deployment;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\FtpService;
 
 trait ManagesRemoteDeployments
 {
@@ -327,6 +328,7 @@ trait ManagesRemoteDeployments
             } catch (\Throwable $exception) {
                 if ($attempts < 2) {
                     $output[] = 'Rollback failed. Retrying once.';
+
                     continue;
                 }
 
@@ -412,7 +414,7 @@ trait ManagesRemoteDeployments
     }
 
     /**
-     * @param array<int, string> $commands
+     * @param  array<int, string>  $commands
      */
     private function runSshCommands(array $connection, array $commands, array &$output): void
     {
@@ -454,7 +456,7 @@ trait ManagesRemoteDeployments
     }
 
     /**
-     * @param array<int, string> $lines
+     * @param  array<int, string>  $lines
      */
     private function parseSshHash(array $lines): ?string
     {
@@ -749,6 +751,7 @@ trait ManagesRemoteDeployments
             if ($project->ignore_migration_table_exists && $isTableExists) {
                 $output[] = 'Warning: migration failed because tables already exist. Skipping migrations.';
                 $this->maybeStreamOutput($output, true);
+
                 return;
             }
 
@@ -833,7 +836,7 @@ trait ManagesRemoteDeployments
 
         $exclude = $this->ftpExcludePaths($project, $extraExcludePaths, $allowSqliteDatabaseSync);
         $whitelist = $this->ftpWhitelistPaths($project);
-        $ftpService = app(\App\Services\FtpService::class);
+        $ftpService = app(FtpService::class);
         if ($directFiles !== null) {
             $directFiles = $this->filterFtpDirectFiles($directFiles, $exclude, $whitelist);
             if ($directFiles === []) {
@@ -893,9 +896,9 @@ trait ManagesRemoteDeployments
     }
 
     /**
-     * @param array<int, string> $files
-     * @param array<int, string> $excludePaths
-     * @param array<int, string> $whitelistPaths
+     * @param  array<int, string>  $files
+     * @param  array<int, string>  $excludePaths
+     * @param  array<int, string>  $whitelistPaths
      * @return array<int, string>
      */
     private function filterFtpDirectFiles(array $files, array $excludePaths, array $whitelistPaths): array
@@ -922,7 +925,7 @@ trait ManagesRemoteDeployments
     }
 
     /**
-     * @param array<int, string> $patterns
+     * @param  array<int, string>  $patterns
      */
     private function ftpPathMatchesAny(string $path, array $patterns): bool
     {
@@ -937,6 +940,7 @@ trait ManagesRemoteDeployments
                 if (fnmatch($pattern, $path)) {
                     return true;
                 }
+
                 continue;
             }
 
@@ -1022,7 +1026,7 @@ trait ManagesRemoteDeployments
                 $output[] = 'Npm: no lockfile found; using package.json.';
             }
         }
-        $remoteFiles = app(\App\Services\FtpService::class)->fetchRemoteFiles($project, array_merge($composerFiles, $npmFiles), $output);
+        $remoteFiles = app(FtpService::class)->fetchRemoteFiles($project, array_merge($composerFiles, $npmFiles), $output);
 
         $composerChanged = $this->manifestSetChanged('Composer', $composerFiles, $remoteFiles, $executionPath, $output);
         $npmChanged = $this->manifestSetChanged('Npm', $npmFiles, $remoteFiles, $executionPath, $output);
@@ -1063,7 +1067,7 @@ trait ManagesRemoteDeployments
     }
 
     /**
-     * @param array<int, string> $candidates
+     * @param  array<int, string>  $candidates
      * @return array<int, string>
      */
     private function collectManifestFiles(string $executionPath, array $candidates): array
@@ -1080,8 +1084,8 @@ trait ManagesRemoteDeployments
     }
 
     /**
-     * @param array<int, string> $files
-     * @param array<string, string|null> $remoteFiles
+     * @param  array<int, string>  $files
+     * @param  array<string, string|null>  $remoteFiles
      */
     private function manifestSetChanged(string $label, array $files, array $remoteFiles, string $executionPath, array &$output): bool
     {
@@ -1101,6 +1105,7 @@ trait ManagesRemoteDeployments
             if ($remoteContents === null) {
                 $output[] = $label.': remote '.$file.' missing or unreadable.';
                 $changed = true;
+
                 continue;
             }
 

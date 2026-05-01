@@ -42,6 +42,7 @@ class DeployProjectFromWebhook implements ShouldQueue
 
         if (config('gitmanager.deploy_queue.enabled', true)) {
             $queue->enqueue($project, 'deploy');
+
             return;
         }
 

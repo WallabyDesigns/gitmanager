@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Services\SettingsService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 use Symfony\Component\Process\Process;
 
 class AppSelfAudit extends Command
@@ -205,7 +206,7 @@ class AppSelfAudit extends Command
         ];
     }
 
-    private function storeAuditState(SettingsService $settings, \Illuminate\Support\Carbon $startedAt, array $composer, array $npm, array $summary): void
+    private function storeAuditState(SettingsService $settings, Carbon $startedAt, array $composer, array $npm, array $summary): void
     {
         try {
             $settings->set('system.self_audit_last_run_at', $startedAt->toIso8601String());
@@ -234,7 +235,7 @@ class AppSelfAudit extends Command
     }
 
     /**
-     * @param array<int, string> $command
+     * @param  array<int, string>  $command
      * @return array{ran: bool, message: string, output: string, exit_code: int|null}
      */
     private function runProcess(array $command, int $timeout): array

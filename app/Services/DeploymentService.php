@@ -11,6 +11,7 @@ use App\Services\Concerns\ManagesGitWorkingTree;
 use App\Services\Concerns\ManagesPreviewBuilds;
 use App\Services\Concerns\ManagesRemoteDeployments;
 use App\Services\Concerns\RunsProcesses;
+use Symfony\Component\Process\Process;
 
 class DeploymentService
 {
@@ -21,8 +22,11 @@ class DeploymentService
     use RunsProcesses;
 
     private ?Deployment $activeDeployment = null;
+
     private int $lastOutputCount = 0;
+
     private float $lastStreamAt = 0.0;
+
     private int $processCounter = 0;
 
     public function __construct(
@@ -439,6 +443,7 @@ class DeploymentService
                     $permissionsStep = true;
                     $forceStaged = true;
                     $output[] = 'Retrying deployment using staged installs.';
+
                     continue;
                 }
 
@@ -638,6 +643,7 @@ class DeploymentService
 
                 if ($attempts < 2) {
                     $output[] = 'Rollback failed. Retrying once.';
+
                     continue;
                 }
 
@@ -729,7 +735,7 @@ class DeploymentService
     }
 
     /**
-     * @param array<int, string> $output
+     * @param  array<int, string>  $output
      * @return array<int, string>|null
      */
     private function changedFilesForFtpSync(string $repoPath, ?string $fromHash, ?string $toHash, array &$output): ?array
@@ -753,6 +759,7 @@ class DeploymentService
 
         if (! $process->isSuccessful()) {
             $output[] = 'FTPS direct file sync unavailable: unable to determine changed files.';
+
             return null;
         }
 
@@ -775,7 +782,7 @@ class DeploymentService
     }
 
     /**
-     * @param array{skipComposerInstall?: bool, skipNpmInstall?: bool} $ftpPlan
+     * @param  array{skipComposerInstall?: bool, skipNpmInstall?: bool}  $ftpPlan
      */
     private function shouldUseDirectFtpSync(Project $project, string $executionPath, array $ftpPlan): bool
     {
@@ -799,7 +806,7 @@ class DeploymentService
     }
 
     /**
-     * @param array<int, string>|null $paths
+     * @param  array<int, string>|null  $paths
      * @return array{status: string, branch?: string|null, output?: array<int, string>}
      */
     public function commitAndPush(Project $project, string $message, ?array $paths = null): array
@@ -942,8 +949,7 @@ class DeploymentService
         callable $callback,
         bool $runClearCache = false,
         bool $syncFtp = false
-    ): Deployment
-    {
+    ): Deployment {
         $project->refresh();
 
         $repoPath = $this->resolveRepoPath($project);
@@ -994,7 +1000,7 @@ class DeploymentService
     }
 
     /**
-     * @param array<int, string> $output
+     * @param  array<int, string>  $output
      */
     private function resolveDependencyAuditIssuesForAction(Project $project, string $action, array &$output): void
     {
@@ -1141,7 +1147,7 @@ class DeploymentService
     }
 
     /**
-     * @param array<int, string> $output
+     * @param  array<int, string>  $output
      */
     private function ensureProjectHtaccess(Project $project, string $executionPath, array &$output): void
     {
@@ -1161,6 +1167,7 @@ class DeploymentService
             $contents = @file_get_contents($path);
             if ($contents !== false && trim($contents) !== '') {
                 $output[] = $label.' exists.';
+
                 return;
             }
 
@@ -1174,6 +1181,7 @@ class DeploymentService
         $template = $this->basicHtaccessTemplate($projectType);
         if (trim($template) === '') {
             $output[] = 'No .htaccess template available. Skipping.';
+
             return;
         }
 
@@ -1192,7 +1200,7 @@ class DeploymentService
     }
 
     /**
-     * @param array<int, string> $output
+     * @param  array<int, string>  $output
      */
     private function maybeRunPythonRequirements(Project $project, string $executionPath, array &$output): void
     {
@@ -1203,11 +1211,13 @@ class DeploymentService
         $requirementsPath = $executionPath.DIRECTORY_SEPARATOR.'requirements.txt';
         if (! is_file($requirementsPath)) {
             $output[] = 'Python requirements.txt not found. Skipping Python dependency install.';
+
             return;
         }
 
         if ($project->ftp_enabled && ! $project->ssh_enabled) {
             $output[] = 'Python dependency install skipped for FTP-only deployment. Enable SSH deployment to install requirements on the target host.';
+
             return;
         }
 
@@ -1231,6 +1241,7 @@ class DeploymentService
         if ($venvPython !== null) {
             $this->runProjectProcess([$venvPython, '-m', 'pip', 'install', '--upgrade', 'pip'], $output, $executionPath);
             $this->runProjectProcess([$venvPython, '-m', 'pip', 'install', '-r', 'requirements.txt'], $output, $executionPath);
+
             return;
         }
 
@@ -1258,8 +1269,8 @@ class DeploymentService
     }
 
     /**
-     * @param array<int, string> $output
-     * @param array<int, array<int, string>> $commands
+     * @param  array<int, string>  $output
+     * @param  array<int, array<int, string>>  $commands
      */
     private function runPythonCommandWithFallback(string $workingPath, array &$output, string $label, array $commands): void
     {
@@ -1268,6 +1279,7 @@ class DeploymentService
         foreach ($commands as $command) {
             try {
                 $this->runProjectProcess($command, $output, $workingPath);
+
                 return;
             } catch (\Throwable $exception) {
                 $lastMessage = $exception->getMessage();
@@ -1566,7 +1578,7 @@ class DeploymentService
             return;
         }
 
-        $process = new \Symfony\Component\Process\Process([
+        $process = new Process([
             'cmd',
             '/c',
             'rmdir',
@@ -1610,6 +1622,7 @@ class DeploymentService
                     if (! is_dir($target)) {
                         mkdir($target, 0775, true);
                     }
+
                     continue;
                 }
 
@@ -1631,7 +1644,7 @@ class DeploymentService
     }
 
     /**
-     * @param array<int, string> $output
+     * @param  array<int, string>  $output
      */
     private function applyProjectSeeds(Project $project, string $executionPath, array &$output): void
     {
@@ -1640,14 +1653,14 @@ class DeploymentService
             return;
         }
 
-        $seedService = app(\App\Services\ProjectSeedService::class);
+        $seedService = app(ProjectSeedService::class);
         $seedService->applyIfMissing($project, '.env', $root, $output);
         $seedService->applyIfMissing($project, '.htaccess', $root, $output);
         $this->applyRemoteFtpSeedsIfMissing($project, $root, $output);
     }
 
     /**
-     * @param array<int, string> $output
+     * @param  array<int, string>  $output
      */
     private function applyRemoteFtpSeedsIfMissing(Project $project, string $root, array &$output): void
     {
@@ -1667,9 +1680,10 @@ class DeploymentService
         }
 
         try {
-            $remoteFiles = app(\App\Services\FtpService::class)->fetchRemoteFiles($project, $missing, $output);
+            $remoteFiles = app(FtpService::class)->fetchRemoteFiles($project, $missing, $output);
         } catch (\Throwable $exception) {
             $output[] = 'FTP seed import skipped: '.$exception->getMessage();
+
             return;
         }
 
@@ -1683,11 +1697,13 @@ class DeploymentService
             $directory = dirname($target);
             if (! is_dir($directory) && ! @mkdir($directory, 0775, true) && ! is_dir($directory)) {
                 $output[] = 'Unable to import remote '.$file.': target directory is not writable.';
+
                 continue;
             }
 
             if (@file_put_contents($target, $contents) === false) {
                 $output[] = 'Unable to import remote '.$file.' into FTP workspace.';
+
                 continue;
             }
 
@@ -1697,7 +1713,7 @@ class DeploymentService
     }
 
     /**
-     * @param array<int, string> $output
+     * @param  array<int, string>  $output
      */
     private function warnIfEnvTracked(string $repoPath, array &$output): void
     {

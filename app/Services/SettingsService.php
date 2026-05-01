@@ -31,7 +31,7 @@ class SettingsService
     }
 
     /**
-     * @param array<int, string> $keys
+     * @param  array<int, string>  $keys
      * @return array<string, mixed>
      */
     public function getMany(array $keys): array
@@ -145,6 +145,7 @@ class SettingsService
                     }
 
                     $decoded = json_decode($value, true);
+
                     return [$setting->key => json_last_error() === JSON_ERROR_NONE ? $decoded : $value];
                 })
                 ->toArray();

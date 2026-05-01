@@ -42,5 +42,4 @@ return [
         'verify_ssl' => env('GITHUB_SSL_VERIFY', true),
     ],
 
-
 ];

@@ -26,16 +26,19 @@ class ProjectDirectoryPath implements ValidationRule
 
             if ($segment === '') {
                 $fail('Directory paths cannot include empty folder names.');
+
                 return;
             }
 
             if ($segment === '.' || $segment === '..') {
                 $fail('Directory paths cannot use "." or "..".');
+
                 return;
             }
 
             if (! preg_match('/^[A-Za-z0-9 _.\-]+$/', $segment)) {
                 $fail('Directory paths may only contain letters, numbers, spaces, dashes, underscores, periods, and slashes.');
+
                 return;
             }
         }

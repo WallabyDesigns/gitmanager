@@ -13,9 +13,7 @@ use Illuminate\Support\Str;
 
 class WorkflowService
 {
-    public function __construct(private SettingsService $settings)
-    {
-    }
+    public function __construct(private SettingsService $settings) {}
 
     /**
      * @return array<int, string>
@@ -80,6 +78,7 @@ class WorkflowService
 
             if ($type === 'email') {
                 $messages = array_merge($messages, $this->sendWorkflowEmail($workflow, $delivery, $deployment, $project));
+
                 continue;
             }
 

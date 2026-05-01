@@ -3,12 +3,14 @@
 namespace App\Livewire\Projects;
 
 use App\Livewire\Projects\Concerns\InteractsWithProjectTypes;
+use App\Models\FtpAccount;
 use App\Models\Project;
 use App\Rules\ProjectDirectoryPath;
 use App\Services\EditionService;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
+use App\Services\FtpService;
+use App\Services\ProjectSeedService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 
 class Edit extends Component
@@ -19,14 +21,23 @@ class Edit extends Component
     public string $projectsTab = 'list';
 
     public Project $project;
+
     public array $form = [];
+
     public ?string $localPathUsageWarning = null;
+
     public ?string $ftpTestStatus = null;
+
     public ?string $ftpTestMessage = null;
+
     public bool $isEnterprise = false;
+
     public array $projectTypes = [];
+
     public string $lastAllowedProjectType = 'custom';
+
     public int $containerProjectLimit = 3;
+
     public int $containerProjectCount = 0;
 
     public function mount(Project $project): void
@@ -75,11 +86,11 @@ class Edit extends Component
     public function render()
     {
         return view('livewire.projects.edit', [
-            'ftpAccounts' => \App\Models\FtpAccount::query()->orderBy('name')->get(),
+            'ftpAccounts' => FtpAccount::query()->orderBy('name')->get(),
             'projectTypes' => $this->projectTypes,
         ])
             ->layout('layouts.app', [
-                'title' => 'Edit ' . $this->project->name,
+                'title' => 'Edit '.$this->project->name,
                 'header' => view('livewire.projects.partials.edit-header', [
                     'project' => $this->project,
                 ]),
@@ -105,6 +116,7 @@ class Edit extends Component
         if (! $value) {
             $this->ftpTestStatus = null;
             $this->ftpTestMessage = null;
+
             return;
         }
 
@@ -132,6 +144,7 @@ class Edit extends Component
             $this->form['project_type'] = $this->lastAllowedProjectType !== ''
                 ? $this->lastAllowedProjectType
                 : 'custom';
+
             return;
         }
 
@@ -140,6 +153,7 @@ class Edit extends Component
             $this->form['project_type'] = $this->lastAllowedProjectType !== ''
                 ? $this->lastAllowedProjectType
                 : 'custom';
+
             return;
         }
 
@@ -152,12 +166,14 @@ class Edit extends Component
         if ($projectType === 'container' && ! $this->canUseContainerProjectType()) {
             $this->addError('form.project_type', $this->containerLimitMessage());
             $this->dispatch('gwm-open-enterprise-modal', feature: 'Unlimited Container Projects');
+
             return;
         }
 
         if ($this->isPremiumProjectType($projectType) && ! $this->isEnterprise) {
             $this->addError('form.project_type', $this->projectTypeLabel($projectType).' is available in Enterprise Edition.');
             $this->dispatch('gwm-open-enterprise-modal', feature: $this->projectTypeLabel($projectType).' Project Type');
+
             return;
         }
 
@@ -187,18 +203,20 @@ class Edit extends Component
         if (! $accountId) {
             $this->ftpTestStatus = 'error';
             $this->ftpTestMessage = 'Select an FTP/SSH access record to test.';
+
             return;
         }
 
-        $account = \App\Models\FtpAccount::query()->find($accountId);
+        $account = FtpAccount::query()->find($accountId);
         if (! $account) {
             $this->ftpTestStatus = 'error';
             $this->ftpTestMessage = 'FTP/SSH access record not found.';
+
             return;
         }
 
         $rootPath = $this->resolveFtpRemotePathForTest($account);
-        $result = app(\App\Services\FtpService::class)->testAccount($account, $rootPath !== '' ? $rootPath : null);
+        $result = app(FtpService::class)->testAccount($account, $rootPath !== '' ? $rootPath : null);
 
         $this->ftpTestStatus = $result['status'] ?? 'error';
         $this->ftpTestMessage = $result['message'] ?? 'Unable to test FTP connection.';
@@ -208,7 +226,7 @@ class Edit extends Component
     {
         return [
             'form.name' => ['required', 'string', 'max:255'],
-            'form.directory_path' => ['nullable', 'string', 'max:255', new ProjectDirectoryPath()],
+            'form.directory_path' => ['nullable', 'string', 'max:255', new ProjectDirectoryPath],
             'form.project_type' => ['required', 'string', Rule::in($this->projectTypeValues())],
             'form.repo_url' => ['nullable', 'string', 'max:255'],
             'form.site_url' => ['nullable', 'url', 'max:255'],
@@ -273,7 +291,7 @@ class Edit extends Component
         return $value !== '' ? $value : null;
     }
 
-    private function resolveFtpRemotePathForTest(\App\Models\FtpAccount $account): string
+    private function resolveFtpRemotePathForTest(FtpAccount $account): string
     {
         $baseRoot = trim((string) ($this->form['ftp_root_path'] ?? ''));
         if ($baseRoot === '') {
@@ -317,12 +335,13 @@ class Edit extends Component
 
     private function seedContent(Project $project, string $filename): string
     {
-        $path = app(\App\Services\ProjectSeedService::class)->seedPath($project, $filename);
+        $path = app(ProjectSeedService::class)->seedPath($project, $filename);
         if (! is_file($path)) {
             return '';
         }
 
         $contents = @file_get_contents($path);
+
         return $contents === false ? '' : $contents;
     }
 
@@ -336,7 +355,7 @@ class Edit extends Component
             return [];
         }
 
-        $seeded = app(\App\Services\ProjectSeedService::class)->store($project, '.env', rtrim($content)."\n");
+        $seeded = app(ProjectSeedService::class)->store($project, '.env', rtrim($content)."\n");
 
         $path = trim((string) $project->local_path);
         if ($path === '' || ! is_dir($path)) {
@@ -357,7 +376,8 @@ class Edit extends Component
         }
 
         if (! is_writable($root)) {
-            $seeded = app(\App\Services\ProjectSeedService::class)->store($project, '.env', rtrim($content)."\n");
+            $seeded = app(ProjectSeedService::class)->store($project, '.env', rtrim($content)."\n");
+
             return [$seeded
                 ? '.env saved for the next deployment (project root not writable).'
                 : '.env content provided, but the project root is not writable.'];
@@ -383,7 +403,7 @@ class Edit extends Component
             return [];
         }
 
-        $seeded = app(\App\Services\ProjectSeedService::class)->store($project, '.htaccess', rtrim($content)."\n");
+        $seeded = app(ProjectSeedService::class)->store($project, '.htaccess', rtrim($content)."\n");
 
         $path = trim((string) $project->local_path);
         if ($path === '' || ! is_dir($path)) {
@@ -404,7 +424,8 @@ class Edit extends Component
         }
 
         if (! is_writable($targetRoot)) {
-            $seeded = app(\App\Services\ProjectSeedService::class)->store($project, '.htaccess', rtrim($content)."\n");
+            $seeded = app(ProjectSeedService::class)->store($project, '.htaccess', rtrim($content)."\n");
+
             return [$seeded
                 ? '.htaccess saved for the next deployment (project root not writable).'
                 : '.htaccess content provided, but the project root is not writable.'];
@@ -474,6 +495,7 @@ class Edit extends Component
         $path = trim((string) ($this->form['local_path'] ?? ''));
         if ($path === '') {
             $this->localPathUsageWarning = null;
+
             return;
         }
 
@@ -486,6 +508,7 @@ class Edit extends Component
 
         if ($projectNames === []) {
             $this->localPathUsageWarning = null;
+
             return;
         }
 

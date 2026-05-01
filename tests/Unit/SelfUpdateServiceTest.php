@@ -462,8 +462,8 @@ class SelfUpdateServiceTest extends TestCase
     }
 
     /**
-     * @param array<string, mixed> $composer
-     * @param array<string, mixed>|null $lock
+     * @param  array<string, mixed>  $composer
+     * @param  array<string, mixed>|null  $lock
      */
     private function makeComposerProject(array $composer, ?array $lock = null): string
     {

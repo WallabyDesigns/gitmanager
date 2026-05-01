@@ -13,6 +13,7 @@ use App\Services\DeploymentService;
 use App\Services\EditionService;
 use App\Services\SettingsService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Url;
@@ -24,7 +25,9 @@ class Index extends Component
 
     #[Url]
     public string $tab = 'current';
+
     public bool $projectShell = false;
+
     public bool $sslVerifyEnabled = true;
 
     public function mount(SettingsService $settings): void
@@ -133,6 +136,7 @@ class Index extends Component
 
             if ($result['skipped']) {
                 $summary['skipped']++;
+
                 continue;
             }
 
@@ -181,6 +185,7 @@ class Index extends Component
 
             if ($result['skipped']) {
                 $summary['skipped']++;
+
                 continue;
             }
 
@@ -413,7 +418,7 @@ class Index extends Component
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, \App\Models\Project>
+     * @return Collection<int, Project>
      */
     private function dependencyIssueProjects()
     {
@@ -658,7 +663,7 @@ class Index extends Component
     }
 
     /**
-     * @param array{projects:int, actions:int, skipped:int} $summary
+     * @param  array{projects:int, actions:int, skipped:int}  $summary
      */
     private function dispatchResolutionSummary(array $summary, bool $queueEnabled, bool $forced = false): void
     {

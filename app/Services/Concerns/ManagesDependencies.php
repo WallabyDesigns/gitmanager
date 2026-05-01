@@ -5,6 +5,7 @@ namespace App\Services\Concerns;
 use App\Models\Deployment;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\FtpService;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 
 trait ManagesDependencies
@@ -120,6 +121,7 @@ trait ManagesDependencies
 
                 if ($attempts < 2) {
                     $output[] = 'Dependency update failed. Retrying once.';
+
                     continue;
                 }
 
@@ -726,7 +728,7 @@ trait ManagesDependencies
     }
 
     /**
-     * @param array{found: int|null, fixed: int|null, total: int|null, remaining: int|null, severity_summary: string|null} $analysis
+     * @param  array{found: int|null, fixed: int|null, total: int|null, remaining: int|null, severity_summary: string|null}  $analysis
      */
     private function buildNpmSummary(string $status, array $analysis): string
     {
@@ -750,7 +752,7 @@ trait ManagesDependencies
     }
 
     /**
-     * @param array<int, string> $files
+     * @param  array<int, string>  $files
      */
     private function refreshFtpManifestFiles(Project $project, string $executionPath, array $files, array &$output, bool $deleteMissing = false, bool $clearLocalFirst = false): bool
     {
@@ -767,11 +769,12 @@ trait ManagesDependencies
             }
         }
 
-        $remoteFiles = app(\App\Services\FtpService::class)->fetchRemoteFiles($project, $files, $output);
+        $remoteFiles = app(FtpService::class)->fetchRemoteFiles($project, $files, $output);
         if ($remoteFiles === []) {
             if ($clearLocalFirst) {
                 $output[] = 'FTP manifest sync: remote refresh returned no files; stale local manifests remain cleared.';
             }
+
             return false;
         }
 
@@ -790,6 +793,7 @@ trait ManagesDependencies
                     // the local file (e.g. from git) is better than nothing.
                     $output[] = 'FTP manifest sync: '.$file.' not found on FTP; keeping local copy.';
                 }
+
                 continue;
             }
 
@@ -816,7 +820,7 @@ trait ManagesDependencies
     }
 
     /**
-     * @param array<int, string> $output
+     * @param  array<int, string>  $output
      */
     private function refreshFtpComposerManifestsOrFail(Project $project, string $path, array &$output): void
     {
@@ -829,13 +833,13 @@ trait ManagesDependencies
         }
 
         if (! is_file($path.DIRECTORY_SEPARATOR.'composer.json')) {
-            $rootPath = app(\App\Services\FtpService::class)->resolvedRootPath($project);
+            $rootPath = app(FtpService::class)->resolvedRootPath($project);
             throw new \RuntimeException('Remote composer.json was not found in the resolved FTP root ['.($rootPath !== '' ? $rootPath : '(empty)').']. Check the project FTP Root Path and Project Path before running Composer actions.');
         }
     }
 
     /**
-     * @param array<int, string> $output
+     * @param  array<int, string>  $output
      */
     private function refreshFtpNpmManifestsOrFail(Project $project, string $path, array &$output): void
     {
@@ -854,7 +858,7 @@ trait ManagesDependencies
         }
 
         if (! is_file($path.DIRECTORY_SEPARATOR.'package.json')) {
-            $rootPath = app(\App\Services\FtpService::class)->resolvedRootPath($project);
+            $rootPath = app(FtpService::class)->resolvedRootPath($project);
             throw new \RuntimeException('Remote package.json was not found in the resolved FTP root ['.($rootPath !== '' ? $rootPath : '(empty)').']. Check the project FTP Root Path and Project Path before running npm actions.');
         }
     }
@@ -1440,11 +1444,13 @@ trait ManagesDependencies
         if ($project->ftp_enabled && ! $project->ssh_enabled) {
             if (! $allowFtpOnlyFreshSqlite) {
                 $output[] = 'Skipping Laravel migrate: FTP-only deployments cannot run migrations on the remote host after initial deployment.';
+
                 return;
             }
 
             if (! $this->laravelRootUsesSqliteDatabase($laravelRoot)) {
                 $output[] = 'Skipping Laravel migrate: FTP-only fresh deploys can only run local migrations for SQLite databases.';
+
                 return;
             }
 
@@ -1465,6 +1471,7 @@ trait ManagesDependencies
         } catch (ProcessFailedException $exception) {
             if ($project->ignore_migration_table_exists && $this->isMigrationAlreadyAppliedError($exception)) {
                 $output[] = 'Warning: migration failed because tables already exist. Skipping migrations.';
+
                 return;
             }
 
@@ -1549,6 +1556,7 @@ trait ManagesDependencies
                     $this->permissionService->ensureWritableDirectory($directory, $output, 'SQLite database directory');
                     if (is_dir($directory) && is_writable($directory) && @touch($resolved)) {
                         $output[] = 'Created sqlite database file at '.$resolved.'.';
+
                         return true;
                     }
 
@@ -1642,7 +1650,7 @@ trait ManagesDependencies
     }
 
     /**
-     * @param array<int, string> $output
+     * @param  array<int, string>  $output
      * @return array{no_advisories: bool, advisory_count: int|null}
      */
     private function analyzeComposerAuditOutput(array $output): array
@@ -1662,8 +1670,8 @@ trait ManagesDependencies
     }
 
     /**
-     * @param array<int, string> $files
-     * @param array<int, string> $output
+     * @param  array<int, string>  $files
+     * @param  array<int, string>  $output
      */
     private function syncFtpManifestFiles(Project $project, string $path, array $files, array &$output): void
     {
@@ -1684,7 +1692,6 @@ trait ManagesDependencies
         }
 
         $output[] = 'FTP-only pipeline: syncing dependency files ('.implode(', ', $paths).').';
-        app(\App\Services\FtpService::class)->syncFiles($project, $path, $paths, $output);
+        app(FtpService::class)->syncFiles($project, $path, $paths, $output);
     }
-
 }

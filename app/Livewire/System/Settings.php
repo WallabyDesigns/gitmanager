@@ -15,50 +15,81 @@ use App\Services\SettingsService;
 use App\Support\InstallContext;
 use App\Support\SchedulerTaskIntervals;
 use Composer\InstalledVersions;
+use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 use Livewire\Component;
 
 class Settings extends Component
 {
     public const SECTION_SCHEDULER = 'scheduler';
+
     public const SECTION_APPLICATION = 'application';
+
     public const SECTION_AUDITS = 'audits';
+
     public const SECTION_LICENSING = 'licensing';
+
     public const SECTION_ENVIRONMENT = 'environment';
+
     // Legacy alias retained so older links continue to work.
     public const SECTION_REGIONAL = 'regional';
 
     public bool $checkUpdates = true;
+
     public bool $autoUpdate = true;
+
     public bool $githubSslVerify = true;
+
     public bool $healthEmailEnabled = true;
+
     public bool $auditEnabled = false;
+
     public bool $auditEmailEnabled = false;
+
     public bool $auditAutoCommit = false;
+
     public bool $mailConfigured = false;
+
     public string $edition = EditionService::COMMUNITY;
+
     public bool $isEnterprise = false;
+
     public string $enterpriseLicenseKey = '';
+
     public array $licenseState = [];
+
     public string $timezone = '';
+
     public array $timezones = [];
+
     public string $settingsSection = self::SECTION_SCHEDULER;
+
     public bool $isLocalInstall = false;
+
     public bool $localLicenseTlsBypassEnabled = false;
+
     public string $systemPackageVersion = 'Unknown';
+
     /** @var array<string, array{value: int, unit: string}> */
     public array $schedulerTaskIntervals = [];
+
     public bool $logCleanupEnabled = false;
+
     public int $logRetentionDays = LogCleanupService::DEFAULT_RETENTION_DAYS;
 
     public bool $loaded = false;
 
     /** @var array<string, array{key: string, value: string, description: string}> */
     public array $gwmKeys = [];
+
     /** @var array<string, string> */
     public array $gwmEdits = [];
+
     /** @var array<int, array{filename: string, created_at: string, size: int, label: string}> */
     public array $envBackups = [];
+
     public string $envBackupLabel = '';
+
     public bool $envSaveSuccess = false;
 
     public function mount(): void
@@ -115,7 +146,7 @@ class Settings extends Component
         $this->loaded = true;
     }
 
-    public function render(EditionService $edition, SchedulerService $scheduler): \Illuminate\View\View
+    public function render(EditionService $edition, SchedulerService $scheduler): View
     {
         $schedulerGraceSeconds = max(600, (int) config('gitmanager.scheduler.stale_seconds', 600));
 
@@ -149,7 +180,7 @@ class Settings extends Component
         $this->dispatch('$refresh');
     }
 
-    public function selectSettingsSection(string $section, EnvManagerService $envManager = null, EnvBackupService $backupService = null): void
+    public function selectSettingsSection(string $section, ?EnvManagerService $envManager = null, ?EnvBackupService $backupService = null): void
     {
         $this->settingsSection = $this->normalizeSection($section);
 
@@ -175,6 +206,7 @@ class Settings extends Component
         if ($processed === 0) {
             $this->dispatch('notify', message: 'No queued items to process.');
             $this->dispatch('$refresh');
+
             return;
         }
 
@@ -242,6 +274,7 @@ class Settings extends Component
     {
         if (! $this->detectLocalInstall()) {
             $this->dispatch('notify', message: 'Best-effort local repair is only available for local/testing installs.');
+
             return;
         }
 
@@ -260,6 +293,7 @@ class Settings extends Component
         if (($this->licenseState['status'] ?? '') === 'valid') {
             $this->dispatch('notify', message: 'SSL repair complete — license verified successfully.');
             $this->dispatch('$refresh');
+
             return;
         }
 
@@ -273,7 +307,7 @@ class Settings extends Component
     public function save(EditionService $edition, SettingsService $settings, LicenseService $license): void
     {
         $rules = [
-            'timezone' => ['required', \Illuminate\Validation\Rule::in($this->timezones)],
+            'timezone' => ['required', Rule::in($this->timezones)],
             'enterpriseLicenseKey' => ['nullable', 'string', 'max:255'],
             'schedulerTaskIntervals' => ['required', 'array'],
             'logCleanupEnabled' => ['boolean'],
@@ -282,7 +316,7 @@ class Settings extends Component
 
         foreach (SchedulerTaskIntervals::definitions() as $task => $definition) {
             $rules["schedulerTaskIntervals.{$task}.value"] = ['required', 'integer', 'min:1', 'max:59'];
-            $rules["schedulerTaskIntervals.{$task}.unit"] = ['required', \Illuminate\Validation\Rule::in(array_keys(SchedulerTaskIntervals::unitOptions()))];
+            $rules["schedulerTaskIntervals.{$task}.unit"] = ['required', Rule::in(array_keys(SchedulerTaskIntervals::unitOptions()))];
         }
 
         $this->validate($rules);

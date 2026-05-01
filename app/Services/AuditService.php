@@ -18,7 +18,7 @@ class AuditService
     ) {}
 
     /**
-     * @param iterable<Project> $projects
+     * @param  iterable<Project>  $projects
      * @return array<int, array<string, array<string, mixed>>>
      */
     public function auditProjects(iterable $projects, ?User $user = null, bool $autoFix = true, bool $sendEmail = true): array
@@ -82,7 +82,7 @@ class AuditService
     }
 
     /**
-     * @param array<string, mixed> $result
+     * @param  array<string, mixed>  $result
      * @return array{opened: bool, resolved: bool, notification?: array<string, mixed>|null}
      */
     private function recordAuditIssue(Project $project, string $tool, array $result): array
@@ -180,8 +180,8 @@ class AuditService
     }
 
     /**
-     * @param array<int, array<string, mixed>> $entries
-     * @param array<string, array<string, mixed>> $grouped
+     * @param  array<int, array<string, mixed>>  $entries
+     * @param  array<string, array<string, mixed>>  $grouped
      */
     private function collectNotifications(array $entries, array &$grouped): void
     {
@@ -215,7 +215,7 @@ class AuditService
     }
 
     /**
-     * @param array<string, array{recipients: array<int, string>, resolved: array<int, array<string, mixed>>, current: array<int, array<string, mixed>>}> $notifications
+     * @param  array<string, array{recipients: array<int, string>, resolved: array<int, array<string, mixed>>, current: array<int, array<string, mixed>>}>  $notifications
      */
     private function sendNotifications(array $notifications): void
     {
@@ -263,8 +263,8 @@ class AuditService
     }
 
     /**
-     * @param array<int, array<string, mixed>> $resolved
-     * @param array<int, array<string, mixed>> $current
+     * @param  array<int, array<string, mixed>>  $resolved
+     * @param  array<int, array<string, mixed>>  $current
      */
     private function buildEmailSubject(array $resolved, array $current): string
     {
@@ -280,8 +280,8 @@ class AuditService
     }
 
     /**
-     * @param array<int, array<string, mixed>> $resolved
-     * @param array<int, array<string, mixed>> $current
+     * @param  array<int, array<string, mixed>>  $resolved
+     * @param  array<int, array<string, mixed>>  $current
      */
     private function buildEmailBody(array $resolved, array $current): string
     {
@@ -355,7 +355,7 @@ class AuditService
     }
 
     /**
-     * @param array<string, array<string, mixed>> $results
+     * @param  array<string, array<string, mixed>>  $results
      */
     private function maybeAutoCommitFixes(Project $project, array $results): void
     {
@@ -412,7 +412,7 @@ class AuditService
     }
 
     /**
-     * @param array<int, string> $files
+     * @param  array<int, string>  $files
      * @return array<int, string>
      */
     private function filterDependencyFiles(array $files): array
@@ -444,7 +444,7 @@ class AuditService
     }
 
     /**
-     * @param array<int, string> $summaries
+     * @param  array<int, string>  $summaries
      */
     private function buildAuditCommitMessage(array $summaries): string
     {

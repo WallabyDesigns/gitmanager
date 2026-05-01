@@ -6,24 +6,38 @@ use App\Services\EditionService;
 use App\Services\LicenseService;
 use App\Services\SupportService;
 use Illuminate\Support\Str;
+use Illuminate\View\View;
 use Livewire\Component;
 
 class Support extends Component
 {
     public bool $isEnterprise = false;
+
     public bool $licenseConfigured = false;
+
     public bool $supportEnabled = true;
+
     public string $supportEndpoint = '';
+
     public array $tickets = [];
+
     /** @var array<int, array{id: int, ticket_number: string, subject: string, status: string}> */
     public array $openTicketTabs = [];
+
     public string $activePane = 'tickets';
+
     public bool $showComposer = false;
+
     public ?int $selectedTicketId = null;
+
     public ?array $selectedTicket = null;
+
     public string $subject = '';
+
     public string $message = '';
+
     public string $priority = 'normal';
+
     public string $replyMessage = '';
 
     public function mount(EditionService $edition, LicenseService $license, SupportService $support): void
@@ -38,7 +52,7 @@ class Support extends Component
         }
     }
 
-    public function render(): \Illuminate\View\View
+    public function render(): View
     {
         return view('livewire.system.support')
             ->layout('layouts.app', [
@@ -68,11 +82,13 @@ class Support extends Component
     {
         if (! $this->isEnterprise) {
             $this->dispatch('gwm-open-enterprise-modal', feature: 'Enterprise Support');
+
             return;
         }
 
         if (! $this->isEnterpriseReady()) {
             $this->dispatch('notify', message: 'Configure and verify your enterprise license before opening support tickets.');
+
             return;
         }
 
@@ -132,11 +148,13 @@ class Support extends Component
     {
         if (! $this->isEnterprise) {
             $this->dispatch('gwm-open-enterprise-modal', feature: 'Enterprise Support');
+
             return;
         }
 
         if (! $this->isEnterpriseReady()) {
             $this->dispatch('notify', message: 'Configure and verify your enterprise license before opening support tickets.');
+
             return;
         }
 
@@ -176,6 +194,7 @@ class Support extends Component
         $ticketId = (int) ($this->selectedTicketId ?? 0);
         if ($ticketId <= 0) {
             $this->dispatch('notify', message: 'Select a support ticket first.');
+
             return;
         }
 
@@ -220,7 +239,7 @@ class Support extends Component
     }
 
     /**
-     * @param array<string, mixed> $ticket
+     * @param  array<string, mixed>  $ticket
      */
     private function rememberOpenTicketTab(array $ticket): void
     {
@@ -236,6 +255,7 @@ class Support extends Component
             if ((int) ($existing['id'] ?? 0) === $tab['id']) {
                 $tabs[] = $tab;
                 $replaced = true;
+
                 continue;
             }
 
@@ -277,7 +297,7 @@ class Support extends Component
     }
 
     /**
-     * @param array<string, mixed> $ticket
+     * @param  array<string, mixed>  $ticket
      * @return array{id: int, ticket_number: string, subject: string, status: string}|null
      */
     private function ticketTabSummary(array $ticket): ?array

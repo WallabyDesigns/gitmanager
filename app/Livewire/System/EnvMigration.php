@@ -7,6 +7,7 @@ namespace App\Livewire\System;
 use App\Services\EnvBackupService;
 use App\Services\EnvManagerService;
 use App\Services\LicenseService;
+use Illuminate\View\View;
 use Livewire\Component;
 
 class EnvMigration extends Component
@@ -32,7 +33,7 @@ class EnvMigration extends Component
         }
     }
 
-    public function render(): \Illuminate\View\View
+    public function render(): View
     {
         return view('livewire.system.env-migration')
             ->layout('layouts.app', [

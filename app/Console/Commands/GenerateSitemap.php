@@ -2,10 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Blogs;
-use App\Models\Promo;
-use Spatie\Sitemap\Sitemap;
-use Spatie\Sitemap\Tags\Url;
 use Illuminate\Console\Command;
 use Psr\Http\Message\UriInterface;
 use Spatie\Sitemap\SitemapGenerator;
@@ -18,12 +14,14 @@ class GenerateSitemap extends Command
      * @var string
      */
     protected $signature = 'sitemap:generate';
+
     /**
      * The console command description.
      *
      * @var string
      */
     protected $description = 'Automatically Generate an XML Sitemap';
+
     /**
      * Execute the console command.
      *

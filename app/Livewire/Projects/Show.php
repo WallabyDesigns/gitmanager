@@ -2,19 +2,21 @@
 
 namespace App\Livewire\Projects;
 
-use App\Models\Project;
+use App\Models\AuditIssue;
 use App\Models\Deployment;
 use App\Models\DeploymentQueueItem;
+use App\Models\Project;
 use App\Models\SecurityAlert;
-use App\Models\AuditIssue;
-use App\Services\EditionService;
 use App\Services\AuditService;
-use App\Services\DeploymentService;
 use App\Services\DeploymentQueueService;
+use App\Services\DeploymentService;
+use App\Services\EditionService;
+use App\Services\ProjectSeedService;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Carbon;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\File;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -26,6 +28,7 @@ class Show extends Component
     public string $projectsTab = 'list';
 
     public Project $project;
+
     public string $previewCommit = '';
 
     public function mount(Project $project): void
@@ -81,7 +84,7 @@ class Show extends Component
         $securityOpenCount += $auditOpenCount;
         $runningTask = $this->currentRunningTask();
         $deploymentRunning = $runningTask !== null;
-        $seedService = app(\App\Services\ProjectSeedService::class);
+        $seedService = app(ProjectSeedService::class);
         $envSeedPending = $seedService->hasSeed($this->project, '.env');
         $htaccessSeedPending = $seedService->hasSeed($this->project, '.htaccess');
 
@@ -133,6 +136,7 @@ class Show extends Component
                 $hasUpdates = $service->checkForUpdates($this->project);
             } catch (\Throwable $exception) {
                 $this->markUpdateCheckAttempt();
+
                 return;
             }
             $this->project->refresh();
@@ -151,6 +155,7 @@ class Show extends Component
 
         if ($this->deploymentInProgress()) {
             $this->dispatch('notify', message: 'A deployment is already running for this project.');
+
             return;
         }
 
@@ -179,6 +184,7 @@ class Show extends Component
 
         if ($this->deploymentInProgress()) {
             $this->dispatch('notify', message: 'A deployment is already running for this project.');
+
             return;
         }
 
@@ -203,6 +209,7 @@ class Show extends Component
     {
         if ($this->deploymentInProgress()) {
             $this->dispatch('notify', message: 'A deployment is already running for this project.');
+
             return;
         }
 
@@ -218,7 +225,7 @@ class Show extends Component
         $deployment = $service->deploy($this->project, Auth::user(), false, true);
         $this->project->refresh();
         $this->dispatch('notify', message: $deployment->status === 'success'
-            ? 'Deployment completed (staged install).' 
+            ? 'Deployment completed (staged install).'
             : 'Deployment failed. Check logs below.');
         $this->dispatch('reload-page', delay: 800);
     }
@@ -231,6 +238,7 @@ class Show extends Component
 
         if ($this->deploymentInProgress()) {
             $this->dispatch('notify', message: 'A deployment is already running for this project.');
+
             return;
         }
 
@@ -411,6 +419,7 @@ class Show extends Component
         }
 
         $this->dispatch('notify', message: 'Permissions need fixing before running '.$context.'.');
+
         return true;
     }
 
@@ -461,7 +470,7 @@ class Show extends Component
     }
 
     /**
-     * @param array<string, array<string, mixed>> $results
+     * @param  array<string, array<string, mixed>>  $results
      */
     private function dispatchAuditToast(array $results): void
     {
@@ -471,11 +480,13 @@ class Show extends Component
         if ($remaining > 0) {
             $label = $remaining === 1 ? '1 vulnerability' : "{$remaining} vulnerabilities";
             $this->dispatch('notify', message: "Vulnerabilities found ({$label} remaining). Open the Security tab to resolve them.", type: 'error');
+
             return;
         }
 
         if ($summary['failed'] > 0) {
             $this->dispatch('notify', message: 'Audit completed with errors. Check the logs for details.', type: 'warning');
+
             return;
         }
 
@@ -483,7 +494,7 @@ class Show extends Component
     }
 
     /**
-     * @param array<string, array<string, mixed>> $results
+     * @param  array<string, array<string, mixed>>  $results
      * @return array{remaining: int, failed: int}
      */
     private function summarizeAuditResults(array $results): array
@@ -545,12 +556,14 @@ class Show extends Component
         } catch (\Throwable $exception) {
             $this->markUpdateCheckAttempt();
             $this->dispatch('notify', message: 'Update check failed: '.$exception->getMessage());
+
             return;
         }
         $this->project->refresh();
         if ($hasUpdates && $this->queueEnabled()) {
             $result = app(DeploymentQueueService::class)->enqueueForImmediateProcessing($this->project, 'deploy', ['reason' => 'manual_update_check'], Auth::user());
             $this->dispatch('notify', message: $result['started'] ? 'Updates available. Deployment started.' : 'Updates available. Deployment queued.');
+
             return;
         }
 
@@ -564,6 +577,7 @@ class Show extends Component
         if (! $this->isEnterpriseEdition()) {
             $this->dispatch('notify', message: 'Automatic project audits are available in Enterprise Edition.', type: 'warning');
             $this->dispatch('gwm-open-enterprise-modal', feature: 'Automatic Project & Container Audits');
+
             return;
         }
 
@@ -659,20 +673,23 @@ class Show extends Component
             $project->delete();
             $this->dispatch('notify', message: 'Project deleted.');
             $this->redirectRoute('projects.index', navigate: false);
+
             return;
         }
 
         if ($appPath && $path === $appPath) {
             $this->dispatch('notify', message: 'Refusing to delete the Git Web Manager directory.');
+
             return;
         }
 
         if ($path === dirname($path)) {
             $this->dispatch('notify', message: 'Refusing to delete a root directory.');
+
             return;
         }
 
-        \Illuminate\Support\Facades\File::deleteDirectory($path);
+        File::deleteDirectory($path);
 
         $project->delete();
         $this->dispatch('notify', message: 'Project and files deleted.');
@@ -683,5 +700,4 @@ class Show extends Component
     {
         return app(EditionService::class)->current() === EditionService::ENTERPRISE;
     }
-
 }

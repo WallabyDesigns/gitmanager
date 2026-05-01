@@ -16,7 +16,7 @@ return new class extends Migration
             Schema::table('projects', function (Blueprint $table): void {
                 $table->dropUnique('projects_local_path_unique');
             });
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // Index may already be dropped on some environments.
         }
     }
@@ -40,9 +40,8 @@ return new class extends Migration
             Schema::table('projects', function (Blueprint $table): void {
                 $table->unique('local_path');
             });
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // Ignore if the index already exists.
         }
     }
 };
-

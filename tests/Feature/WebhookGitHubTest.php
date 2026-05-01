@@ -7,6 +7,7 @@ use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 class WebhookGitHubTest extends TestCase
@@ -27,7 +28,7 @@ class WebhookGitHubTest extends TestCase
     }
 
     /** @param array<string, string> $extraServer */
-    private function webhook(string $payload, string $event, array $extraServer = []): \Illuminate\Testing\TestResponse
+    private function webhook(string $payload, string $event, array $extraServer = []): TestResponse
     {
         return $this->call('POST', '/webhooks/github', [], [], [], array_merge([
             'HTTP_X_HUB_SIGNATURE_256' => $this->sign($payload),

@@ -11,7 +11,9 @@ use Symfony\Component\Process\Process;
 class SchedulerService
 {
     private const HEARTBEAT_KEY = 'gwm_scheduler_last_heartbeat';
+
     private const MANUAL_KEY = 'gwm_scheduler_last_manual';
+
     private const SOURCE_KEY = 'gwm_scheduler_last_source';
 
     public function recordHeartbeat(string $source = 'schedule'): void
@@ -38,12 +40,14 @@ class SchedulerService
         }
 
         $file = $this->readHeartbeatFile();
+
         return $file['timestamp'] ?? null;
     }
 
     public function lastManualRun(): ?Carbon
     {
         $value = Cache::get(self::MANUAL_KEY);
+
         return $value ? Carbon::parse($value) : null;
     }
 
@@ -55,6 +59,7 @@ class SchedulerService
         }
 
         $file = $this->readHeartbeatFile();
+
         return $file['source'] ?? null;
     }
 
@@ -76,6 +81,7 @@ class SchedulerService
 
         $base = base_path();
         $baseArg = escapeshellarg($base);
+
         return '* * * * * cd '.$baseArg.' && '.$php.' artisan scheduler:run >/dev/null 2>&1';
     }
 
@@ -106,6 +112,7 @@ class SchedulerService
             $trimmed = trim($line);
             if ($trimmed === '') {
                 $normalizedLines[] = $line;
+
                 continue;
             }
 
@@ -114,6 +121,7 @@ class SchedulerService
                     $normalizedLines[] = $command;
                     $updated = true;
                 }
+
                 continue;
             }
 

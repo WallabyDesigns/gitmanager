@@ -177,7 +177,7 @@ class LicenseServiceTest extends TestCase
         // button) must win so the button actually works on local installs.
         Http::fake(['*' => Http::response(['valid' => false, 'message' => 'Signature required.'], 401)]);
 
-        $settings = app(\App\Services\SettingsService::class);
+        $settings = app(SettingsService::class);
         $settings->set('system.license.allow_insecure_local_tls', true);
 
         $svc = $this->service();

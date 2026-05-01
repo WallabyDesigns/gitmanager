@@ -5,9 +5,9 @@ namespace App\Console\Commands;
 use App\Models\Project;
 use App\Models\SecurityAlert;
 use App\Services\GitHubService;
-use Illuminate\Support\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Carbon;
 
 class SecuritySync extends Command
 {
@@ -32,6 +32,7 @@ class SecuritySync extends Command
     {
         if (! config('services.github.token')) {
             $this->warn('GITHUB_TOKEN is not configured. Skipping security sync.');
+
             return self::SUCCESS;
         }
 
@@ -44,9 +45,11 @@ class SecuritySync extends Command
                 $alerts = $github->getDependabotAlerts($project);
             } catch (ConnectionException $exception) {
                 $this->warn('Dependabot sync failed for '.$project->name.': '.$exception->getMessage());
+
                 continue;
             } catch (\Throwable $exception) {
                 $this->warn('Dependabot sync failed for '.$project->name.': '.$exception->getMessage());
+
                 continue;
             }
             $now = now();
@@ -86,6 +89,7 @@ class SecuritySync extends Command
         }
 
         $this->info('Security alerts synced.');
+
         return self::SUCCESS;
     }
 

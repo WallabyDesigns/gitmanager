@@ -528,6 +528,7 @@ trait RunsProcesses
 
             if ($value === '') {
                 $values[$key] = '';
+
                 continue;
             }
 

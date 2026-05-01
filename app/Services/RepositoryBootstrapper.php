@@ -122,6 +122,7 @@ class RepositoryBootstrapper
         }
 
         $scheme = $scheme ?: 'https';
+
         return $scheme.'://'.$host.'/'.$owner.'/'.$repo.'.git';
     }
 

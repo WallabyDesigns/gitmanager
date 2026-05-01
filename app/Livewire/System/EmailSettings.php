@@ -9,13 +9,21 @@ use Livewire\Component;
 class EmailSettings extends Component
 {
     public string $mailer = 'smtp';
+
     public string $host = '';
+
     public string $port = '';
+
     public string $username = '';
+
     public string $password = '';
+
     public string $encryption = '';
+
     public string $fromAddress = '';
+
     public string $fromName = '';
+
     public string $testRecipient = '';
 
     public function mount(SettingsService $settings): void

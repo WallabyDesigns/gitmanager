@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AppUpdate;
 use App\Models\User;
+use GitManagerEnterprise\EnterpriseServiceProvider;
 use Illuminate\Support\Facades\Cache;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
@@ -11,12 +12,17 @@ use Symfony\Component\Process\Process;
 class SelfUpdateService
 {
     private const REPO_URL = 'https://github.com/wallabydesigns/gitmanager.git';
+
     private const DEFAULT_BRANCH = 'main';
+
     private const STATUS_CACHE_KEY = 'gwm_self_update_status';
+
     private const DEFAULT_ENTERPRISE_PACKAGE = 'wallabydesigns/gitmanager-enterprise';
 
     private ?AppUpdate $activeUpdate = null;
+
     private int $lastOutputCount = 0;
+
     private float $lastStreamAt = 0.0;
 
     /**
@@ -642,6 +648,7 @@ class SelfUpdateService
 
                 if ($attempt < 2) {
                     $output[] = 'Update failed. Retrying once.';
+
                     continue;
                 }
 
@@ -811,7 +818,7 @@ class SelfUpdateService
         }
 
         $required = $this->composerRequiresPackage($repoPath, $packageName);
-        if (! $required && ! class_exists(\GitManagerEnterprise\EnterpriseServiceProvider::class)) {
+        if (! $required && ! class_exists(EnterpriseServiceProvider::class)) {
             return $this->defaultEnterprisePackageStatus('not-installed', 'System package is not installed on this panel.', $packageName, false, false);
         }
 
@@ -1103,6 +1110,7 @@ class SelfUpdateService
             $output[] = 'Rollback target requested: '.$targetHash;
             if (! $this->isValidRollbackTarget($repoPath, $targetHash)) {
                 $output[] = 'Rollback target not found in repository.';
+
                 return null;
             }
 
@@ -1121,6 +1129,7 @@ class SelfUpdateService
 
         if (! $latest) {
             $output[] = 'No previous update found for rollback. Use /update to apply the latest release.';
+
             return null;
         }
 
@@ -1129,6 +1138,7 @@ class SelfUpdateService
 
         if (! $this->isValidRollbackTarget($repoPath, $target)) {
             $output[] = 'Rollback target not found in repository.';
+
             return null;
         }
 
@@ -1227,7 +1237,7 @@ class SelfUpdateService
     }
 
     /**
-     * @param array<int, string> $blocked
+     * @param  array<int, string>  $blocked
      */
     private function attemptGitPermissionFix(string $gitDir, array $blocked, array &$output): void
     {
@@ -1325,7 +1335,7 @@ class SelfUpdateService
     }
 
     /**
-     * @param array<int, string> $excludePaths
+     * @param  array<int, string>  $excludePaths
      */
     private function runGitClean(string $repoPath, array $excludePaths, array &$output): void
     {
@@ -1343,7 +1353,7 @@ class SelfUpdateService
     }
 
     /**
-     * @param array<int, string> $relatives
+     * @param  array<int, string>  $relatives
      * @return array<int, array{relative: string, content: string, mode: int}>
      */
     private function snapshotFiles(string $repoPath, array $relatives): array
@@ -1372,7 +1382,7 @@ class SelfUpdateService
     }
 
     /**
-     * @param array<int, array{relative: string, content: string, mode: int}> $snapshots
+     * @param  array<int, array{relative: string, content: string, mode: int}>  $snapshots
      */
     private function restoreSnapshots(string $repoPath, array $snapshots, array &$output): void
     {
@@ -1386,6 +1396,7 @@ class SelfUpdateService
             $written = @file_put_contents($target, $snapshot['content']);
             if ($written === false) {
                 $output[] = 'Warning: unable to restore '.$snapshot['relative'].'.';
+
                 continue;
             }
 
@@ -1669,6 +1680,7 @@ class SelfUpdateService
     {
         if (! $this->binaryAvailable($this->composerBinary())) {
             $output[] = 'System package: composer binary not available, skipping.';
+
             return;
         }
 
@@ -1719,7 +1731,7 @@ class SelfUpdateService
     }
 
     /**
-     * @param array{initial?: array<string, mixed>, current?: array<string, mixed>, performed?: bool} $enterpriseSync
+     * @param  array{initial?: array<string, mixed>, current?: array<string, mixed>, performed?: bool}  $enterpriseSync
      */
     private function logEnterprisePackageSyncResult(array $enterpriseSync, array &$output): void
     {
@@ -1732,7 +1744,7 @@ class SelfUpdateService
     }
 
     /**
-     * @param array{initial?: array<string, mixed>, current?: array<string, mixed>, performed?: bool} $enterpriseSync
+     * @param  array{initial?: array<string, mixed>, current?: array<string, mixed>, performed?: bool}  $enterpriseSync
      */
     private function ensureEnterprisePackageSyncResolved(array $enterpriseSync): void
     {
@@ -1768,6 +1780,7 @@ class SelfUpdateService
         try {
             if (! $this->artisanCommandExists($repoPath, 'app:clear-cache', $output)) {
                 $output[] = 'Skipping app:clear-cache (command not found).';
+
                 return;
             }
 
@@ -1813,6 +1826,7 @@ class SelfUpdateService
         $process = $this->runProcess(['git', '-C', $repoPath, 'remote', 'get-url', 'origin'], $output, null, false);
         if (! $process->isSuccessful()) {
             $this->runProcess(['git', '-C', $repoPath, 'remote', 'add', 'origin', self::REPO_URL], $output);
+
             return;
         }
 
@@ -1830,6 +1844,7 @@ class SelfUpdateService
         }
 
         $branch = trim($process->getOutput());
+
         return $branch !== '' && $branch !== 'HEAD' ? $branch : self::DEFAULT_BRANCH;
     }
 
@@ -1850,6 +1865,7 @@ class SelfUpdateService
 
         if (! $this->tryRevParse($repoPath)) {
             $output[] = 'Local changes detected, but no initial commit exists. Skipping git stash.';
+
             return false;
         }
 
@@ -2032,7 +2048,7 @@ class SelfUpdateService
     }
 
     /**
-     * @param array<int, string> $paths
+     * @param  array<int, string>  $paths
      */
     private function backupUntrackedFiles(string $repoPath, array $paths, array &$output): ?string
     {
@@ -2065,7 +2081,7 @@ class SelfUpdateService
     }
 
     /**
-     * @param array<int, string> $paths
+     * @param  array<int, string>  $paths
      */
     private function removeUntrackedFiles(string $repoPath, array $paths, array &$output): void
     {
@@ -2077,6 +2093,7 @@ class SelfUpdateService
             $path = $repoPath.DIRECTORY_SEPARATOR.$relative;
             if (is_dir($path)) {
                 $this->deleteDirectory($path);
+
                 continue;
             }
             if (is_file($path)) {
@@ -2107,6 +2124,7 @@ class SelfUpdateService
                 if (! is_dir($target)) {
                     mkdir($target, 0775, true);
                 }
+
                 continue;
             }
 
@@ -2135,6 +2153,7 @@ class SelfUpdateService
     {
         try {
             $this->runProcess(['git', '-C', $repoPath, 'merge', '--ff-only', $targetRef], $output);
+
             return;
         } catch (ProcessFailedException $exception) {
             $paths = $this->extractMergeUntrackedPaths($exception);
@@ -2147,6 +2166,7 @@ class SelfUpdateService
                         $this->runProcess(['git', '-C', $repoPath, 'merge', '--abort'], $output, null, false);
                         throw new ProcessFailedException($merge);
                     }
+
                     return;
                 }
 
@@ -2203,6 +2223,7 @@ class SelfUpdateService
         foreach ($lines as $line) {
             if (! $collect && str_contains($line, 'would be overwritten by merge')) {
                 $collect = true;
+
                 continue;
             }
 
@@ -2242,7 +2263,7 @@ class SelfUpdateService
             return null;
         }
 
-        $path = ltrim($path, "./");
+        $path = ltrim($path, './');
         $path = str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path);
         if ($path === '' || $path === '.' || $path === '..') {
             return null;
@@ -2272,6 +2293,7 @@ class SelfUpdateService
         }
 
         $hash = trim($process->getOutput());
+
         return $hash !== '' ? $hash : null;
     }
 
@@ -2301,6 +2323,7 @@ class SelfUpdateService
         }
 
         $scripts = $payload['scripts'] ?? [];
+
         return array_key_exists($script, $scripts);
     }
 
@@ -2310,12 +2333,14 @@ class SelfUpdateService
         if (! $this->binaryAvailable($npm)) {
             $output[] = 'npm binary not found: '.$npm;
             $this->logNpmDiagnostics($output);
+
             return false;
         }
 
         if (! $this->binaryAvailable('node')) {
             $output[] = 'node binary not found in PATH.';
             $this->logNpmDiagnostics($output);
+
             return false;
         }
 
@@ -2357,6 +2382,7 @@ class SelfUpdateService
         $nodeModules = $repoPath.DIRECTORY_SEPARATOR.'node_modules';
         if (! is_dir($nodeModules)) {
             $output[] = 'npm install required: node_modules is missing.';
+
             return true;
         }
 
@@ -2379,7 +2405,7 @@ class SelfUpdateService
     }
 
     /**
-     * @param array<int, string> $paths
+     * @param  array<int, string>  $paths
      */
     private function gitPathsChanged(string $repoPath, ?string $fromHash, ?string $toHash, array $paths): bool
     {
@@ -2412,6 +2438,7 @@ class SelfUpdateService
             if (@mkdir($buildPath, 0775, true)) {
                 $output[] = 'Created build directory at '.$buildPath;
             }
+
             return;
         }
 
@@ -2442,6 +2469,7 @@ class SelfUpdateService
         $backupPath = $backupDir.DIRECTORY_SEPARATOR.'manifest-'.now()->format('Ymd_His').'.json';
         if (@copy($manifest, $backupPath)) {
             $output[] = 'Backed up build manifest.';
+
             return $backupPath;
         }
 
@@ -2473,6 +2501,7 @@ class SelfUpdateService
         }
 
         $message = strtolower($message);
+
         return str_contains($message, 'permission denied')
             || str_contains($message, 'eacces')
             || str_contains($message, 'public/build')
@@ -2483,6 +2512,7 @@ class SelfUpdateService
     {
         if (! is_dir($path)) {
             @chmod($path, $mode);
+
             return;
         }
 
@@ -2549,6 +2579,7 @@ class SelfUpdateService
                     if (! is_dir($target)) {
                         mkdir($target, 0775, true);
                     }
+
                     continue;
                 }
 
@@ -2580,6 +2611,7 @@ class SelfUpdateService
         }
 
         $lines = array_filter(array_map('trim', explode("\n", $process->getOutput())));
+
         return $lines[0] ?? null;
     }
 
@@ -2656,6 +2688,7 @@ class SelfUpdateService
                 if (! is_dir($destination)) {
                     mkdir($destination, 0775, true);
                 }
+
                 continue;
             }
 
@@ -2763,6 +2796,7 @@ class SelfUpdateService
             if (is_dir($target)) {
                 $this->deleteDirectory($target);
                 $output[] = 'Excluded path removed: '.$path;
+
                 continue;
             }
 
@@ -2872,6 +2906,7 @@ class SelfUpdateService
 
         if (PHP_OS_FAMILY === 'Windows') {
             $this->launchWindowsBackgroundProcess($php, $artisan, $args);
+
             return;
         }
 
@@ -2890,7 +2925,7 @@ class SelfUpdateService
     }
 
     /**
-     * @param array<int, string> $args
+     * @param  array<int, string>  $args
      */
     private function launchWindowsBackgroundProcess(string $php, string $artisan, array $args): void
     {
@@ -3124,6 +3159,7 @@ class SelfUpdateService
 
             if ($value === '') {
                 $values[$key] = '';
+
                 continue;
             }
 

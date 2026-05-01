@@ -80,6 +80,7 @@ class RecoveryController extends Controller
         if (! is_file($root.DIRECTORY_SEPARATOR.'package.json')) {
             $message = 'package.json not found. Skipping npm rebuild.';
             $this->appendLog($logPath, $message);
+
             return ['message' => $message, 'status' => 'failed'];
         }
 
@@ -101,7 +102,7 @@ class RecoveryController extends Controller
             $npm = 'npm';
         }
 
-        $installCommand = [ $npm, is_file($root.DIRECTORY_SEPARATOR.'package-lock.json') ? 'ci' : 'install' ];
+        $installCommand = [$npm, is_file($root.DIRECTORY_SEPARATOR.'package-lock.json') ? 'ci' : 'install'];
         $env = $this->buildProcessEnv($npm);
 
         $commands = [
@@ -126,17 +127,20 @@ class RecoveryController extends Controller
                 if (! $process->isSuccessful()) {
                     $message = 'Rebuild failed. Check the recovery log for details.';
                     $this->appendLog($logPath, $message);
+
                     return ['message' => $message, 'status' => 'failed'];
                 }
             }
         } catch (\Throwable $exception) {
             $message = 'Rebuild failed: '.$exception->getMessage();
             $this->appendLog($logPath, $message);
+
             return ['message' => $message, 'status' => 'failed'];
         }
 
         $message = 'Rebuild complete. Assets have been reinstalled.';
         $this->appendLog($logPath, $message);
+
         return ['message' => $message, 'status' => 'success'];
     }
 

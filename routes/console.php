@@ -16,7 +16,7 @@ try {
     $schedulerTaskIntervals = SchedulerTaskIntervals::normalize(
         app(SettingsService::class)->get(SchedulerTaskIntervals::SETTINGS_KEY, [])
     );
-} catch (\Throwable $exception) {
+} catch (Throwable $exception) {
     // Ignore settings lookup failures during early installs.
 }
 
@@ -54,7 +54,7 @@ $autoUpdates = (bool) config('gitmanager.self_update.enabled');
 try {
     $autoUpdates = $autoUpdates
         && (bool) app(SettingsService::class)->get('system.auto_update', $autoUpdates);
-} catch (\Throwable $exception) {
+} catch (Throwable $exception) {
     // Ignore settings lookup failures during early installs.
 }
 
@@ -69,7 +69,7 @@ try {
     $logRetentionDays = LogCleanupService::normalizeRetentionDays(
         app(SettingsService::class)->get('system.logs.retention_days', LogCleanupService::DEFAULT_RETENTION_DAYS)
     );
-} catch (\Throwable $exception) {
+} catch (Throwable $exception) {
     // Ignore settings lookup failures during early installs.
 }
 

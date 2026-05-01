@@ -95,6 +95,7 @@ trait InteractsWithProjectTypes
         $userId = (int) Auth::id();
         if ($userId <= 0) {
             $this->projectCount = 0;
+
             return;
         }
 
@@ -108,6 +109,7 @@ trait InteractsWithProjectTypes
         $userId = (int) Auth::id();
         if ($userId <= 0) {
             $this->containerProjectCount = 0;
+
             return;
         }
 

@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Project;
-use App\Services\SettingsService;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 

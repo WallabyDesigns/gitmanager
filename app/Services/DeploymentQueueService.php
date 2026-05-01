@@ -2,10 +2,11 @@
 
 namespace App\Services;
 
-use App\Models\DeploymentQueueItem;
 use App\Models\Deployment;
+use App\Models\DeploymentQueueItem;
 use App\Models\Project;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\Process\Process;
@@ -182,12 +183,14 @@ class DeploymentQueueService
 
             if (! $process->isSuccessful()) {
                 $this->appendBackgroundProcessorLog('Failed to launch queue processor: '.trim($process->getErrorOutput() ?: $process->getOutput()));
+
                 return false;
             }
 
             return true;
         } catch (\Throwable $exception) {
             $this->appendBackgroundProcessorLog('Failed to launch queue processor: '.$exception->getMessage());
+
             return false;
         }
     }
@@ -235,6 +238,7 @@ class DeploymentQueueService
 
             if (! isset($seen[$key])) {
                 $seen[$key] = true;
+
                 continue;
             }
 
@@ -348,6 +352,7 @@ class DeploymentQueueService
                 $item->finished_at = $item->deployment->finished_at ?? now();
                 $item->save();
                 $released++;
+
                 continue;
             }
 
@@ -575,7 +580,7 @@ class DeploymentQueueService
 
                     return $item;
                 });
-            } catch (\Illuminate\Database\QueryException $e) {
+            } catch (QueryException $e) {
                 if ($attempt >= $maxAttempts || ! $this->isSqliteLockException($e)) {
                     throw $e;
                 }
@@ -594,6 +599,7 @@ class DeploymentQueueService
         }
 
         $previous = $e->getPrevious();
+
         return $previous !== null
             && (str_contains($previous->getMessage(), 'database is locked') || str_contains($previous->getMessage(), 'SQLITE_BUSY'));
     }
@@ -703,7 +709,7 @@ class DeploymentQueueService
         // Flush the sidebar badge cache so counts update immediately.
         $userId = $item->project?->user_id;
         if ($userId) {
-            app(\App\Services\NavigationStateService::class)->flushProjectsSidebar($userId);
+            app(NavigationStateService::class)->flushProjectsSidebar($userId);
         }
 
         // Auto-advance: if more items are waiting, kick off the next processor.
@@ -721,6 +727,7 @@ class DeploymentQueueService
         $processTimeout = (int) config('gitmanager.deployments.process_timeout', config('gitmanager.process_timeout', 900));
         if ($processTimeout <= 0) {
             @set_time_limit(0);
+
             return;
         }
 
@@ -728,7 +735,7 @@ class DeploymentQueueService
     }
 
     /**
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      * @return array{deployment: ?Deployment, failed: bool}
      */
     private function runAuditItem(Project $project, ?User $user, array $payload): array

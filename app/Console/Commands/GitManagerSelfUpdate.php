@@ -31,6 +31,7 @@ class GitManagerSelfUpdate extends Command
     {
         if (! config('gitmanager.self_update.enabled')) {
             $this->info('Self-update is disabled.');
+
             return self::SUCCESS;
         }
 

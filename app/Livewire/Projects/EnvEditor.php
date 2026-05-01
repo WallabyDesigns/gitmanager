@@ -7,6 +7,7 @@ use App\Models\DeploymentQueueItem;
 use App\Models\Project;
 use App\Services\DeploymentQueueService;
 use App\Services\DeploymentService;
+use App\Services\ProjectSeedService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
@@ -16,11 +17,17 @@ class EnvEditor extends Component
     use AuthorizesRequests;
 
     public Project $project;
+
     public string $envContent = '';
+
     public bool $envExists = false;
+
     public bool $envExampleExists = false;
+
     public ?string $envExampleLabel = null;
+
     public ?string $envPath = null;
+
     public ?string $envStatus = null;
 
     public function mount(Project $project): void
@@ -47,6 +54,7 @@ class EnvEditor extends Component
         [$root, $error] = $this->resolveProjectRoot();
         if ($error) {
             $this->dispatch('notify', message: $error);
+
             return;
         }
 
@@ -54,23 +62,26 @@ class EnvEditor extends Component
         $envPath = $root.DIRECTORY_SEPARATOR.'.env';
         if (! $example || ! is_file($example)) {
             $this->dispatch('notify', message: 'No .env.example or .env.sample found.');
+
             return;
         }
 
         if (is_file($envPath)) {
             $this->dispatch('notify', message: '.env already exists.');
             $this->loadEnv();
+
             return;
         }
 
         if (! @copy($example, $envPath)) {
             $this->dispatch('notify', message: 'Unable to create .env from .env.example.');
+
             return;
         }
 
         $contents = @file_get_contents($envPath);
         if ($contents !== false) {
-            app(\App\Services\ProjectSeedService::class)->store($this->project, '.env', rtrim($contents)."\n");
+            app(ProjectSeedService::class)->store($this->project, '.env', rtrim($contents)."\n");
         }
 
         $this->loadEnv();
@@ -85,26 +96,30 @@ class EnvEditor extends Component
         [$root, $error] = $this->resolveProjectRoot();
         if ($error) {
             $this->dispatch('notify', message: $error);
+
             return;
         }
 
         $envPath = $root.DIRECTORY_SEPARATOR.'.env';
         if (is_file($envPath) && ! is_writable($envPath)) {
             $this->dispatch('notify', message: '.env is not writable.');
+
             return;
         }
 
         if (! is_file($envPath) && ! is_writable($root)) {
             $this->dispatch('notify', message: 'Project directory is not writable.');
+
             return;
         }
 
         if (@file_put_contents($envPath, $this->envContent) === false) {
             $this->dispatch('notify', message: 'Failed to save .env.');
+
             return;
         }
 
-        app(\App\Services\ProjectSeedService::class)->store($this->project, '.env', rtrim($this->envContent)."\n");
+        app(ProjectSeedService::class)->store($this->project, '.env', rtrim($this->envContent)."\n");
 
         $this->loadEnv();
         $this->dispatch('notify', message: '.env saved.');
@@ -122,6 +137,7 @@ class EnvEditor extends Component
             $this->envExampleExists = false;
             $this->envExampleLabel = null;
             $this->envPath = null;
+
             return;
         }
 
@@ -190,11 +206,13 @@ class EnvEditor extends Component
 
         if ($this->project->permissions_locked && ! $this->project->ftp_enabled && ! $this->project->ssh_enabled) {
             $this->dispatch('notify', message: '.env saved, but permissions are locked. Fix permissions before deploying.');
+
             return;
         }
 
         if ($this->deploymentInProgress()) {
             $this->dispatch('notify', message: '.env saved, but a deployment is already running.');
+
             return;
         }
 

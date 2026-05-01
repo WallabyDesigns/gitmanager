@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Artisan;
 class EnvManagerService
 {
     private string $envPath;
+
     private string $examplePath;
 
     public function __construct()
@@ -96,12 +97,14 @@ class EnvManagerService
 
             if ($trimmed === '') {
                 $pendingComment = '';
+
                 continue;
             }
 
             if (str_starts_with($trimmed, '#')) {
                 $comment = ltrim(substr($trimmed, 1));
                 $pendingComment = $pendingComment !== '' ? $pendingComment.' '.$comment : $comment;
+
                 continue;
             }
 
@@ -109,6 +112,7 @@ class EnvManagerService
 
             if ($eqPos === false) {
                 $pendingComment = '';
+
                 continue;
             }
 
@@ -198,7 +202,7 @@ class EnvManagerService
      * Set multiple key-value pairs in the .env file atomically.
      * Existing keys are updated in-place; new keys are appended.
      *
-     * @param array<string, string> $values
+     * @param  array<string, string>  $values
      */
     public function setMany(array $values): void
     {

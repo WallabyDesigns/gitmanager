@@ -4,12 +4,15 @@ namespace App\Services;
 
 use App\Models\FtpAccount;
 use App\Models\Project;
+use FTP\Connection;
+
 class FtpService
 {
     /**
      * @var array{host: string, port: int, username: string, password: string, ssl: bool, passive: bool, timeout: int, rootPath: string}|null
      */
     private ?array $syncContext = null;
+
     /**
      * @return array{status: string, message: string}
      */
@@ -56,6 +59,7 @@ class FtpService
 
         if (! @ftp_login($connection, $username, $password)) {
             $this->safeClose($connection);
+
             return ['status' => 'error', 'message' => 'FTP login failed. Check username/password.'];
         }
 
@@ -64,6 +68,7 @@ class FtpService
         $configuredRootPath = $this->normalizeRemotePath($rootPath ?: '');
         if (! $this->enterRemotePath($connection, $configuredRootPath)) {
             $this->safeClose($connection);
+
             return ['status' => 'error', 'message' => 'Unable to access the remote root path: '.$configuredRootPath];
         }
 
@@ -82,7 +87,7 @@ class FtpService
      * Called after sync for Laravel projects, since storage/ and bootstrap/cache are
      * excluded from the sync and symlinks (public/storage) are skipped entirely.
      *
-     * @param array<int, string> $output
+     * @param  array<int, string>  $output
      */
     public function ensureRemoteLaravelDirectories(Project $project, array &$output): void
     {
@@ -111,12 +116,14 @@ class FtpService
 
         if (! $connection) {
             $output[] = 'Warning: unable to connect to FTP to create Laravel directory structure.';
+
             return;
         }
 
         try {
             if (! @ftp_login($connection, $account->username, $account->getDecryptedPassword())) {
                 $output[] = 'Warning: FTP login failed while creating Laravel directory structure.';
+
                 return;
             }
 
@@ -126,6 +133,7 @@ class FtpService
             if ($normalizedRoot !== '' && $normalizedRoot !== '.') {
                 if (! @ftp_chdir($connection, $normalizedRoot)) {
                     $output[] = 'Warning: unable to access FTP root path for Laravel directory setup: '.$normalizedRoot;
+
                     return;
                 }
             }
@@ -159,7 +167,7 @@ class FtpService
     }
 
     /**
-     * @param array<int, string> $excludePaths
+     * @param  array<int, string>  $excludePaths
      */
     public function sync(Project $project, string $localPath, array $excludePaths, array &$output, array $whitelistPaths = []): void
     {
@@ -221,8 +229,8 @@ class FtpService
     }
 
     /**
-     * @param array<int, string> $files
-     * @param array<int, string> $output
+     * @param  array<int, string>  $files
+     * @param  array<int, string>  $output
      */
     public function syncFiles(Project $project, string $localRoot, array $files, array &$output): void
     {
@@ -245,6 +253,7 @@ class FtpService
         $files = array_values(array_unique(array_filter(array_map('trim', $files), fn (string $file) => $file !== '')));
         if ($files === []) {
             $output[] = 'FTPS file sync skipped: no files to upload.';
+
             return;
         }
 
@@ -268,6 +277,7 @@ class FtpService
 
         if ($files === []) {
             $output[] = 'FTPS file sync skipped: all candidate files were filtered by whitelist/excluded paths.';
+
             return;
         }
 
@@ -304,6 +314,7 @@ class FtpService
                 $localPath = rtrim($localRoot, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $relative);
                 if (! is_file($localPath)) {
                     $stats['skipped']++;
+
                     continue;
                 }
 
@@ -335,7 +346,7 @@ class FtpService
     }
 
     /**
-     * @param array<int, string> $paths
+     * @param  array<int, string>  $paths
      * @return array<string, string|null>
      */
     public function fetchRemoteFiles(Project $project, array $paths, array &$output): array
@@ -345,11 +356,13 @@ class FtpService
         $account = $project->ftpAccount;
         if (! $account) {
             $output[] = 'FTP-only pipeline skipped: no FTP/SSH access record configured.';
+
             return [];
         }
 
         if (! $this->ftpAvailable((bool) $account->ssl)) {
             $output[] = 'FTP-only pipeline skipped: FTP extension not available for this PHP installation.';
+
             return [];
         }
 
@@ -367,12 +380,14 @@ class FtpService
 
         if (! $connection) {
             $output[] = 'FTP-only pipeline skipped: unable to connect to the FTP server.';
+
             return [];
         }
 
         try {
             if (! @ftp_login($connection, $account->username, $account->getDecryptedPassword())) {
                 $output[] = 'FTP-only pipeline skipped: FTP login failed.';
+
                 return [];
             }
 
@@ -381,12 +396,14 @@ class FtpService
             $rootPath = $this->resolveRootPath($project);
             if ($rootPath === '') {
                 $output[] = 'FTP-only pipeline skipped: Remote Root Path is not configured.';
+
                 return [];
             }
             $rootPath = $this->normalizeRemotePath($rootPath);
             if ($rootPath !== '' && $rootPath !== '.') {
                 if (! @ftp_chdir($connection, $rootPath)) {
                     $output[] = 'FTP-only pipeline skipped: unable to access the remote root path: '.$rootPath;
+
                     return [];
                 }
             }
@@ -424,7 +441,7 @@ class FtpService
     }
 
     /**
-     * @param resource|\FTP\Connection $connection
+     * @param  resource|Connection  $connection
      */
     private function downloadRemoteFile($connection, string $relative, ?string $effectiveRoot = null): ?string
     {
@@ -451,7 +468,7 @@ class FtpService
     }
 
     /**
-     * @param resource|\FTP\Connection $connection
+     * @param  resource|Connection  $connection
      */
     private function downloadRemoteFileCandidate($connection, string $remotePath): ?string
     {
@@ -463,6 +480,7 @@ class FtpService
         $success = @ftp_get($connection, $temp, $remotePath, FTP_BINARY);
         if (! $success) {
             @unlink($temp);
+
             return null;
         }
 
@@ -473,10 +491,10 @@ class FtpService
     }
 
     /**
-     * @param resource|\FTP\Connection $connection
-     * @param array<int, string> $paths
-     * @param array<string, string|null> $results
-     * @param array<int, string> $output
+     * @param  resource|Connection  $connection
+     * @param  array<int, string>  $paths
+     * @param  array<string, string|null>  $results
+     * @param  array<int, string>  $output
      */
     private function logManifestLocationHints($connection, string $effectiveRoot, array $paths, array $results, array &$output): void
     {
@@ -534,6 +552,7 @@ class FtpService
             if ($connection && function_exists('ftp_set_option')) {
                 @ftp_set_option($connection, FTP_TIMEOUT_SEC, $timeout);
             }
+
             return $connection;
         }
 
@@ -542,6 +561,7 @@ class FtpService
             if ($connection && function_exists('ftp_set_option')) {
                 @ftp_set_option($connection, FTP_TIMEOUT_SEC, $timeout);
             }
+
             return $connection;
         }
 
@@ -549,8 +569,8 @@ class FtpService
     }
 
     /**
-     * @param array<int, string> $output
-     * @return resource|\FTP\Connection
+     * @param  array<int, string>  $output
+     * @return resource|Connection
      */
     private function openSyncConnection(array &$output)
     {
@@ -592,9 +612,9 @@ class FtpService
     }
 
     /**
-     * @param array<int, string> $output
-     * @param resource|\FTP\Connection|null $connection
-     * @return resource|\FTP\Connection
+     * @param  array<int, string>  $output
+     * @param  resource|Connection|null  $connection
+     * @return resource|Connection
      */
     private function reconnectSyncConnection(array &$output, $connection = null)
     {
@@ -610,7 +630,7 @@ class FtpService
     }
 
     /**
-     * @param resource|\FTP\Connection $connection
+     * @param  resource|Connection  $connection
      */
     private function enterRemotePath($connection, string $rootPath): bool
     {
@@ -633,8 +653,7 @@ class FtpService
     }
 
     /**
-     * @param resource|\FTP\Connection $connection
-     * @param bool $passive
+     * @param  resource|Connection  $connection
      * @return array{status: string, message: string}
      */
     private function verifyWritableConnection($connection, string $displayPath, bool &$passive, bool $allowPassiveToggle = true): array
@@ -655,6 +674,7 @@ class FtpService
         if ($retry['status'] === 'ok') {
             $passive = $toggled;
             $retry['message'] .= ' Connection succeeded after switching passive mode '.($toggled ? 'on' : 'off').'.';
+
             return $retry;
         }
 
@@ -665,7 +685,7 @@ class FtpService
     }
 
     /**
-     * @param resource|\FTP\Connection $connection
+     * @param  resource|Connection  $connection
      * @return array{status: string, message: string}
      */
     private function testWriteWithPathFallback($connection, string $displayPath): array
@@ -691,7 +711,7 @@ class FtpService
      * timeouts behind proxies/load balancers. Actual file upload checks still
      * run during FTP sync.
      *
-     * @param resource|\FTP\Connection $connection
+     * @param  resource|Connection  $connection
      * @return array{status: string, message: string}
      */
     private function testDirectoryWrite($connection, string $displayPath): array
@@ -800,10 +820,10 @@ class FtpService
     }
 
     /**
-     * @param resource|\FTP\Connection $connection
-     * @param array<int, string> $excludePaths
-     * @param array<int, string> $whitelistPaths
-     * @param array{files: int, uploaded: int, skipped: int, directories: int} $stats
+     * @param  resource|Connection  $connection
+     * @param  array<int, string>  $excludePaths
+     * @param  array<int, string>  $whitelistPaths
+     * @param  array{files: int, uploaded: int, skipped: int, directories: int}  $stats
      */
     private function syncDirectory(&$connection, string $localPath, string $remoteRoot, array $excludePaths, array $whitelistPaths, array &$stats, array &$output): void
     {
@@ -835,17 +855,20 @@ class FtpService
             if ($item->isDir()) {
                 $this->ensureRemoteDirectory($connection, $remotePath);
                 $stats['directories']++;
+
                 continue;
             }
 
             if (! $item->isFile()) {
                 $stats['skipped']++;
+
                 continue;
             }
 
             $stats['files']++;
             if (! $this->shouldUpload($connection, $remotePath, $item->getPathname())) {
                 $stats['skipped']++;
+
                 continue;
             }
 
@@ -862,8 +885,8 @@ class FtpService
     }
 
     /**
-     * @param resource|\FTP\Connection $connection
-     * @param array<int, string> $output
+     * @param  resource|Connection  $connection
+     * @param  array<int, string>  $output
      */
     private function retryUpload(&$connection, string $remotePath, string $localPath, string $relative, array &$output): bool
     {
@@ -916,8 +939,8 @@ class FtpService
     }
 
     /**
-     * @param resource|\FTP\Connection $connection
-     * @param array<int, string> $output
+     * @param  resource|Connection  $connection
+     * @param  array<int, string>  $output
      */
     private function ensureRemoteDirectoryForUploadRetry(&$connection, string $remoteDir, array &$output): bool
     {
@@ -942,7 +965,7 @@ class FtpService
     }
 
     /**
-     * @param resource|\FTP\Connection $connection
+     * @param  resource|Connection  $connection
      */
     private function attemptRemotePermissionFix($connection, string $remoteDir, string $remoteFile): void
     {
@@ -955,8 +978,8 @@ class FtpService
     }
 
     /**
-     * @param resource|\FTP\Connection $connection
-     * @param array<int, string> $output
+     * @param  resource|Connection  $connection
+     * @param  array<int, string>  $output
      */
     private function logFailedUploadContext($connection, string $remotePath, array &$output): void
     {
@@ -977,8 +1000,8 @@ class FtpService
     }
 
     /**
-     * @param resource|\FTP\Connection $connection
-     * @param array<int, string> $output
+     * @param  resource|Connection  $connection
+     * @param  array<int, string>  $output
      */
     private function testRemoteDirectoryWritable($connection, string $remoteDir, array &$output): void
     {
@@ -1023,7 +1046,7 @@ class FtpService
     }
 
     /**
-     * @param resource|\FTP\Connection $connection
+     * @param  resource|Connection  $connection
      */
     private function uploadRemoteFile($connection, string $remotePath, string $localPath): bool
     {
@@ -1065,7 +1088,7 @@ class FtpService
     }
 
     /**
-     * @param resource|\FTP\Connection $connection
+     * @param  resource|Connection  $connection
      */
     private function ensureRemoteDirectory($connection, string $remotePath): void
     {
@@ -1087,6 +1110,7 @@ class FtpService
                 if ($original) {
                     @ftp_chdir($connection, $original);
                 }
+
                 continue;
             }
 
@@ -1121,7 +1145,7 @@ class FtpService
     }
 
     /**
-     * @param resource|\FTP\Connection $connection
+     * @param  resource|Connection  $connection
      */
     private function restoreSyncRoot($connection): ?string
     {
@@ -1161,7 +1185,7 @@ class FtpService
     }
 
     /**
-     * @param resource|\FTP\Connection $connection
+     * @param  resource|Connection  $connection
      */
     private function attemptRemoteDirectoryPermissions($connection, string $remoteDir): void
     {
@@ -1198,7 +1222,7 @@ class FtpService
     }
 
     /**
-     * @param array<int, string> $patterns
+     * @param  array<int, string>  $patterns
      * @return array<int, string>
      */
     private function normalizePathPatterns(array $patterns): array
@@ -1246,7 +1270,7 @@ class FtpService
     }
 
     /**
-     * @param resource|\FTP\Connection $connection
+     * @param  resource|Connection  $connection
      */
     private function shouldUpload($connection, string $remotePath, string $localPath): bool
     {
@@ -1272,7 +1296,7 @@ class FtpService
     }
 
     /**
-     * @param array<int, string> $excludePaths
+     * @param  array<int, string>  $excludePaths
      */
     private function shouldExclude(string $relative, array $excludePaths): bool
     {
@@ -1289,6 +1313,7 @@ class FtpService
                 if (fnmatch($pattern, $relative)) {
                     return true;
                 }
+
                 continue;
             }
 
@@ -1301,7 +1326,7 @@ class FtpService
     }
 
     /**
-     * @param array<int, string> $whitelistPaths
+     * @param  array<int, string>  $whitelistPaths
      */
     private function shouldInclude(string $relative, array $whitelistPaths): bool
     {
@@ -1322,6 +1347,7 @@ class FtpService
                 if (fnmatch($pattern, $relative)) {
                     return true;
                 }
+
                 continue;
             }
 
@@ -1339,7 +1365,7 @@ class FtpService
     }
 
     /**
-     * @param resource|\FTP\Connection $connection
+     * @param  resource|Connection  $connection
      * @return array{status: string, message: string}
      */
     private function testWrite($connection, string $rootPath, ?string $displayPath = null): array
@@ -1372,7 +1398,7 @@ class FtpService
     }
 
     /**
-     * @param resource|\FTP\Connection $connection
+     * @param  resource|Connection  $connection
      */
     private function safeClose($connection): void
     {

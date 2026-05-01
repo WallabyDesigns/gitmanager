@@ -3,24 +3,35 @@
 namespace App\Livewire\Projects;
 
 use App\Models\Project;
-use App\Services\DeploymentService;
 use App\Services\DeploymentQueueService;
+use App\Services\DeploymentService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
 class DependencyActions extends Component
 {
     public Project $project;
+
     public string $customCommand = '';
+
     public bool $hasComposer = false;
+
     public bool $hasNpm = false;
+
     public bool $hasLaravel = false;
+
     public bool $showPushModal = false;
+
     public array $pushFiles = [];
+
     public array $pushCommitPaths = [];
+
     public string $pushCommitMessage = '';
+
     public string $pushContext = '';
+
     public string $pushAuditSummary = '';
+
     public bool $pushHasOtherChanges = false;
 
     protected $listeners = [
@@ -367,6 +378,7 @@ class DependencyActions extends Component
         }
 
         $this->dispatch('notify', message: 'Permissions need fixing before running '.$context.'.');
+
         return true;
     }
 
@@ -408,6 +420,7 @@ class DependencyActions extends Component
                 ? "{$label}: {$summary}. No dependency changes to push."
                 : "{$label} completed with no dependency file changes.";
             $this->dispatch('notify', message: $message);
+
             return;
         }
 
@@ -509,7 +522,7 @@ class DependencyActions extends Component
     }
 
     /**
-     * @param array<int, string> $files
+     * @param  array<int, string>  $files
      * @return array<int, string>
      */
     private function filterDependencyFiles(array $files, string $context): array

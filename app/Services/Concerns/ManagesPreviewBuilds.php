@@ -93,6 +93,7 @@ trait ManagesPreviewBuilds
                 } catch (\Throwable $exception) {
                     if ($attempts < 2) {
                         $output[] = 'Preview build failed. Retrying once.';
+
                         continue;
                     }
 

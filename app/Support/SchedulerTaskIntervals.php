@@ -123,7 +123,7 @@ class SchedulerTaskIntervals
     }
 
     /**
-     * @param array{value?: mixed, unit?: mixed} $interval
+     * @param  array{value?: mixed, unit?: mixed}  $interval
      */
     public static function cronExpression(array $interval, string $anchor = '00:00'): string
     {

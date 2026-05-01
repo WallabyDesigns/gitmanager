@@ -27,6 +27,7 @@ class AuditCleanup extends Command
         $issues = $query->orderBy('project_id')->orderBy('tool')->get();
         if ($issues->isEmpty()) {
             $this->info('No open audit issues found.');
+
             return self::SUCCESS;
         }
 
@@ -49,6 +50,7 @@ class AuditCleanup extends Command
             $resolved++;
             if ($dryRun) {
                 $this->line("Would resolve audit issue #{$issue->id} for project {$issue->project_id} ({$tool}).");
+
                 continue;
             }
 

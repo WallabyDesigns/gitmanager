@@ -13,7 +13,9 @@ use Livewire\Component;
 class Index extends Component
 {
     public ?int $editingId = null;
+
     public string $name = '';
+
     public bool $enabled = true;
 
     /**
@@ -32,6 +34,7 @@ class Index extends Component
     public array $deliveries = [];
 
     public string $testWebhookUrl = '';
+
     public string $testEmail = '';
 
     public array $actionOptions = [
@@ -116,7 +119,7 @@ class Index extends Component
 
         $workflow = $this->editingId
             ? Workflow::findOrFail($this->editingId)
-            : new Workflow();
+            : new Workflow;
 
         $deliveries = $this->prepareDeliveriesForSave($workflow);
         if ($deliveries === []) {

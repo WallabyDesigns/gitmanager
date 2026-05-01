@@ -18,6 +18,7 @@ class DockerService
     public function isAvailable(): bool
     {
         [$success] = $this->run(['info', '--format', '{{.ServerVersion}}']);
+
         return $success;
     }
 
@@ -46,24 +47,28 @@ class DockerService
         }
 
         $data = json_decode($output, true);
+
         return $data[0] ?? [];
     }
 
     public function startContainer(string $id): array
     {
         [$success, , $error] = $this->run(['start', $id]);
+
         return ['success' => $success, 'error' => $error];
     }
 
     public function stopContainer(string $id): array
     {
         [$success, , $error] = $this->run(['stop', $id]);
+
         return ['success' => $success, 'error' => $error];
     }
 
     public function restartContainer(string $id): array
     {
         [$success, , $error] = $this->run(['restart', $id]);
+
         return ['success' => $success, 'error' => $error];
     }
 
@@ -76,6 +81,7 @@ class DockerService
         $args[] = $id;
 
         [$success, , $error] = $this->run($args);
+
         return ['success' => $success, 'error' => $error];
     }
 
@@ -143,6 +149,7 @@ class DockerService
         }
 
         [$success, $output, $error] = $this->run($args);
+
         return ['success' => $success, 'id' => trim($output), 'error' => $error];
     }
 
@@ -168,12 +175,14 @@ class DockerService
         $args[] = $id;
 
         [$success, , $error] = $this->run($args);
+
         return ['success' => $success, 'error' => $error];
     }
 
     public function getContainerLogs(string $id, int $tail = 150): string
     {
         [$success, $output, $error] = $this->run(['logs', '--tail', (string) $tail, '--timestamps', $id]);
+
         return $success ? $output : $error;
     }
 
@@ -195,6 +204,7 @@ class DockerService
         }
 
         $lines = $this->parseJsonLines($output);
+
         return $lines[0] ?? [];
     }
 
@@ -213,6 +223,7 @@ class DockerService
     public function pullImage(string $image): array
     {
         [$success, $output, $error] = $this->run(['pull', $image]);
+
         return ['success' => $success, 'output' => $output, 'error' => $error];
     }
 
@@ -225,6 +236,7 @@ class DockerService
         $args[] = $id;
 
         [$success, , $error] = $this->run($args);
+
         return ['success' => $success, 'error' => $error];
     }
 
@@ -236,6 +248,7 @@ class DockerService
         }
 
         $data = json_decode($output, true);
+
         return $data[0] ?? [];
     }
 
@@ -249,6 +262,7 @@ class DockerService
         }
 
         [$success, , $error] = $this->run(['tag', $source, $target]);
+
         return ['success' => $success, 'error' => $error];
     }
 
@@ -267,6 +281,7 @@ class DockerService
     public function createVolume(string $name, string $driver = 'local'): array
     {
         [$success, , $error] = $this->run(['volume', 'create', '--driver', $driver, $name]);
+
         return ['success' => $success, 'error' => $error];
     }
 
@@ -279,6 +294,7 @@ class DockerService
         $args[] = $name;
 
         [$success, , $error] = $this->run($args);
+
         return ['success' => $success, 'error' => $error];
     }
 
@@ -290,6 +306,7 @@ class DockerService
         }
 
         $data = json_decode($output, true);
+
         return $data[0] ?? [];
     }
 
@@ -308,12 +325,14 @@ class DockerService
     public function createNetwork(string $name, string $driver = 'bridge'): array
     {
         [$success, , $error] = $this->run(['network', 'create', '--driver', $driver, $name]);
+
         return ['success' => $success, 'error' => $error];
     }
 
     public function removeNetwork(string $name): array
     {
         [$success, , $error] = $this->run(['network', 'rm', $name]);
+
         return ['success' => $success, 'error' => $error];
     }
 
@@ -325,6 +344,7 @@ class DockerService
         }
 
         $data = json_decode($output, true);
+
         return $data[0] ?? [];
     }
 
@@ -364,6 +384,7 @@ class DockerService
         $args[] = $targetName;
 
         [$success, , $error] = $this->run($args);
+
         return ['success' => $success, 'error' => $error];
     }
 
@@ -393,6 +414,7 @@ class DockerService
         }
 
         [$success, $output, $error] = $this->run($args);
+
         return ['success' => $success, 'output' => $output, 'error' => $error];
     }
 
@@ -419,6 +441,7 @@ class DockerService
     public function scaleService(string $service, int $replicas): array
     {
         [$success, , $error] = $this->run(['service', 'scale', "{$service}={$replicas}"]);
+
         return ['success' => $success, 'error' => $error];
     }
 
@@ -439,15 +462,15 @@ class DockerService
         $command = preg_replace('/^docker\s+run\s+/i', '', trim($command));
 
         $result = [
-            'image'   => '',
-            'name'    => '',
-            'ports'   => [],
-            'env'     => [],
+            'image' => '',
+            'name' => '',
+            'ports' => [],
+            'env' => [],
             'volumes' => [],
             'network' => '',
             'restart' => '',
-            'memory'  => '',
-            'cpus'    => '',
+            'memory' => '',
+            'cpus' => '',
             'command' => '',
             'hostname' => '',
         ];
@@ -502,7 +525,7 @@ class DockerService
                 $result['image'] = $token;
                 $imageFound = true;
             } elseif ($imageFound) {
-                $result['command'] .= ($result['command'] !== '' ? ' ' : '') . $token;
+                $result['command'] .= ($result['command'] !== '' ? ' ' : '').$token;
             }
 
             $i++;

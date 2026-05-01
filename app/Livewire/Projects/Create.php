@@ -3,10 +3,17 @@
 namespace App\Livewire\Projects;
 
 use App\Livewire\Projects\Concerns\InteractsWithProjectTypes;
+use App\Models\FtpAccount;
 use App\Models\Project;
 use App\Rules\ProjectDirectoryPath;
+use App\Services\DeploymentQueueService;
+use App\Services\DeploymentService;
 use App\Services\EditionService;
+use App\Services\FtpService;
+use App\Services\HtaccessTemplateService;
+use App\Services\ProjectSeedService;
 use App\Services\RepositoryBootstrapper;
+use App\Services\RepositoryFileService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -18,31 +25,53 @@ class Create extends Component
     public string $projectsTab = 'create';
 
     public array $form = [];
+
     public int $step = 1;
+
     public bool $checkPermissions = false;
+
     public ?string $permissionStatus = null;
+
     public ?string $permissionMessage = null;
+
     public ?string $permissionParent = null;
+
     public ?string $localPathUsageWarning = null;
+
     public ?string $ftpTestStatus = null;
+
     public ?string $ftpTestMessage = null;
+
     public bool $envTouched = false;
+
     public bool $htaccessTouched = false;
+
     public bool $envUseExampleTouched = false;
+
     public bool $envExampleAvailable = false;
+
     public bool $envExampleFetchFailed = false;
+
     public ?string $envExampleFetchKey = null;
+
     public ?string $envExampleSource = null;
+
     public ?string $envExampleMessage = null;
+
     public ?string $envExampleFilename = null;
+
     public bool $isEnterprise = false;
+
     public string $lastAllowedProjectType = 'laravel';
+
     private bool $settingDefaults = false;
 
     public int $communityProjectLimit = 5;
+
     public int $projectCount = 0;
 
     public int $containerProjectLimit = 3;
+
     public int $containerProjectCount = 0;
 
     /**
@@ -98,7 +127,7 @@ class Create extends Component
     public function render()
     {
         return view('livewire.projects.create', [
-            'ftpAccounts' => \App\Models\FtpAccount::query()->orderBy('name')->get(),
+            'ftpAccounts' => FtpAccount::query()->orderBy('name')->get(),
         ])
             ->layout('layouts.app', [
                 'title' => 'Create Project',
@@ -114,6 +143,7 @@ class Create extends Component
             $this->form['project_type'] = $this->lastAllowedProjectType !== ''
                 ? $this->lastAllowedProjectType
                 : 'custom';
+
             return;
         }
 
@@ -122,6 +152,7 @@ class Create extends Component
             $this->form['project_type'] = $this->lastAllowedProjectType !== ''
                 ? $this->lastAllowedProjectType
                 : 'custom';
+
             return;
         }
 
@@ -134,6 +165,7 @@ class Create extends Component
     {
         if (! $value) {
             $this->clearPermissionCheck();
+
             return;
         }
 
@@ -146,6 +178,7 @@ class Create extends Component
 
         if (! $this->checkPermissions) {
             $this->prefillConfigurationDefaults();
+
             return;
         }
 
@@ -190,6 +223,7 @@ class Create extends Component
                 $this->settingDefaults = false;
                 $this->envTouched = false;
             }
+
             return;
         }
 
@@ -226,6 +260,7 @@ class Create extends Component
         if (! $value) {
             $this->ftpTestStatus = null;
             $this->ftpTestMessage = null;
+
             return;
         }
 
@@ -254,6 +289,7 @@ class Create extends Component
             if (! $this->canCreateProject()) {
                 $this->addError('form.name', $this->projectLimitMessage());
                 $this->dispatch('gwm-open-enterprise-modal', feature: 'Unlimited Projects');
+
                 return;
             }
         }
@@ -275,6 +311,7 @@ class Create extends Component
         if (! $this->canCreateProject()) {
             $this->addError('form.name', $this->projectLimitMessage());
             $this->dispatch('gwm-open-enterprise-modal', feature: 'Unlimited Projects');
+
             return;
         }
 
@@ -282,12 +319,14 @@ class Create extends Component
         if ($projectType === 'container' && ! $this->canUseContainerProjectType()) {
             $this->addError('form.project_type', $this->containerLimitMessage());
             $this->dispatch('gwm-open-enterprise-modal', feature: 'Unlimited Container Projects');
+
             return;
         }
 
         if ($this->isPremiumProjectType($projectType) && ! $this->isEnterprise) {
             $this->addError('form.project_type', $this->projectTypeLabel($projectType).' is available in Enterprise Edition.');
             $this->dispatch('gwm-open-enterprise-modal', feature: $this->projectTypeLabel($projectType).' Project Type');
+
             return;
         }
 
@@ -329,10 +368,10 @@ class Create extends Component
         $envReady = $envWarning === null;
         if ($project->auto_deploy && $repoReady && $envReady) {
             if ($this->queueEnabled()) {
-                $result = app(\App\Services\DeploymentQueueService::class)->enqueueForImmediateProcessing($project, 'deploy', ['reason' => 'project_created'], Auth::user());
+                $result = app(DeploymentQueueService::class)->enqueueForImmediateProcessing($project, 'deploy', ['reason' => 'project_created'], Auth::user());
                 $message .= $result['started'] ? ' Initial deployment started.' : ' Initial deployment queued.';
             } else {
-                $deployment = app(\App\Services\DeploymentService::class)->deploy($project, Auth::user());
+                $deployment = app(DeploymentService::class)->deploy($project, Auth::user());
                 $message .= $deployment->status === 'success'
                     ? ' Initial deployment completed.'
                     : ' Initial deployment failed. Check logs for details.';
@@ -351,7 +390,7 @@ class Create extends Component
     public function checkPathPermissions(): void
     {
         $path = (string) ($this->form['local_path'] ?? '');
-        $result = app(\App\Services\DeploymentService::class)->checkPathPermissions($path);
+        $result = app(DeploymentService::class)->checkPathPermissions($path);
 
         $this->permissionStatus = $result['status'] ?? null;
         $this->permissionMessage = $result['message'] ?? null;
@@ -364,18 +403,20 @@ class Create extends Component
         if (! $accountId) {
             $this->ftpTestStatus = 'error';
             $this->ftpTestMessage = 'Select an FTP/SSH access record to test.';
+
             return;
         }
 
-        $account = \App\Models\FtpAccount::query()->find($accountId);
+        $account = FtpAccount::query()->find($accountId);
         if (! $account) {
             $this->ftpTestStatus = 'error';
             $this->ftpTestMessage = 'FTP/SSH access record not found.';
+
             return;
         }
 
         $rootPath = $this->resolveFtpRemotePathForTest($account);
-        $result = app(\App\Services\FtpService::class)->testAccount($account, $rootPath !== '' ? $rootPath : null);
+        $result = app(FtpService::class)->testAccount($account, $rootPath !== '' ? $rootPath : null);
 
         $this->ftpTestStatus = $result['status'] ?? 'error';
         $this->ftpTestMessage = $result['message'] ?? 'Unable to test FTP connection.';
@@ -385,7 +426,7 @@ class Create extends Component
     {
         return [
             'form.name' => ['required', 'string', 'max:255'],
-            'form.directory_path' => ['nullable', 'string', 'max:255', new ProjectDirectoryPath()],
+            'form.directory_path' => ['nullable', 'string', 'max:255', new ProjectDirectoryPath],
             'form.project_type' => ['required', 'string', Rule::in($this->projectTypeValues())],
             'form.repo_url' => ['nullable', 'string', 'max:255'],
             'form.site_url' => ['nullable', 'url', 'max:255'],
@@ -440,7 +481,7 @@ class Create extends Component
         if ($step === 1) {
             return [
                 'form.name' => ['required', 'string', 'max:255'],
-                'form.directory_path' => ['nullable', 'string', 'max:255', new ProjectDirectoryPath()],
+                'form.directory_path' => ['nullable', 'string', 'max:255', new ProjectDirectoryPath],
                 'form.project_type' => ['required', 'string', Rule::in($this->projectTypeValues())],
                 'form.repo_url' => ['nullable', 'string', 'max:255'],
                 'form.site_url' => ['nullable', 'url', 'max:255'],
@@ -588,7 +629,7 @@ class Create extends Component
         $this->envUseExampleTouched = false;
     }
 
-    private function envSetupWarning(\App\Models\Project $project): ?string
+    private function envSetupWarning(Project $project): ?string
     {
         if (($project->project_type ?? '') !== 'laravel') {
             return null;
@@ -628,7 +669,7 @@ class Create extends Component
 
         $htaccessContent = trim((string) ($this->form['htaccess_content'] ?? ''));
         if (($force || ! $this->htaccessTouched) && $htaccessContent === '') {
-            $this->form['htaccess_content'] = app(\App\Services\HtaccessTemplateService::class)
+            $this->form['htaccess_content'] = app(HtaccessTemplateService::class)
                 ->forProjectType((string) ($this->form['project_type'] ?? 'custom'));
         }
 
@@ -676,11 +717,12 @@ class Create extends Component
         $fetchKey = sha1($repoUrl.'|'.$branch);
         if ($this->envExampleFetchKey === $fetchKey && $this->envExampleFetchFailed) {
             $this->envExampleMessage = 'Unable to fetch environment example from the repository yet.';
+
             return null;
         }
 
         $this->envExampleFetchKey = $fetchKey;
-        $service = app(\App\Services\RepositoryFileService::class);
+        $service = app(RepositoryFileService::class);
         $candidates = ['.env.example', '.env.sample'];
 
         foreach ($candidates as $candidate) {
@@ -722,14 +764,14 @@ class Create extends Component
     /**
      * @return array<int, string>
      */
-    private function applyEnvContent(\App\Models\Project $project, string $content): array
+    private function applyEnvContent(Project $project, string $content): array
     {
         $content = trim($content);
         if ($content === '') {
             return [];
         }
 
-        $seeded = app(\App\Services\ProjectSeedService::class)->store($project, '.env', rtrim($content)."\n");
+        $seeded = app(ProjectSeedService::class)->store($project, '.env', rtrim($content)."\n");
 
         $path = trim((string) $project->local_path);
         if ($path === '' || ! is_dir($path)) {
@@ -750,7 +792,8 @@ class Create extends Component
         }
 
         if (! is_writable($root)) {
-            $seeded = app(\App\Services\ProjectSeedService::class)->store($project, '.env', rtrim($content)."\n");
+            $seeded = app(ProjectSeedService::class)->store($project, '.env', rtrim($content)."\n");
+
             return [$seeded
                 ? '.env saved for the next deployment (project root not writable).'
                 : '.env content provided, but the project root is not writable.'];
@@ -769,14 +812,14 @@ class Create extends Component
     /**
      * @return array<int, string>
      */
-    private function applyHtaccessContent(\App\Models\Project $project, string $content): array
+    private function applyHtaccessContent(Project $project, string $content): array
     {
         $content = trim($content);
         if ($content === '') {
             return [];
         }
 
-        $seeded = app(\App\Services\ProjectSeedService::class)->store($project, '.htaccess', rtrim($content)."\n");
+        $seeded = app(ProjectSeedService::class)->store($project, '.htaccess', rtrim($content)."\n");
 
         $path = trim((string) $project->local_path);
         if ($path === '' || ! is_dir($path)) {
@@ -797,7 +840,8 @@ class Create extends Component
         }
 
         if (! is_writable($targetRoot)) {
-            $seeded = app(\App\Services\ProjectSeedService::class)->store($project, '.htaccess', rtrim($content)."\n");
+            $seeded = app(ProjectSeedService::class)->store($project, '.htaccess', rtrim($content)."\n");
+
             return [$seeded
                 ? '.htaccess saved for the next deployment (project root not writable).'
                 : '.htaccess content provided, but the project root is not writable.'];
@@ -813,7 +857,7 @@ class Create extends Component
         return ['.htaccess created from pasted content.'];
     }
 
-    private function projectRepoReady(\App\Models\Project $project): bool
+    private function projectRepoReady(Project $project): bool
     {
         $path = trim((string) ($project->local_path ?? ''));
         if ($path !== '' && is_dir($path.DIRECTORY_SEPARATOR.'.git')) {
@@ -865,7 +909,7 @@ class Create extends Component
         return $value !== '' ? $value : null;
     }
 
-    private function resolveFtpRemotePathForTest(\App\Models\FtpAccount $account): string
+    private function resolveFtpRemotePathForTest(FtpAccount $account): string
     {
         $baseRoot = trim((string) ($this->form['ftp_root_path'] ?? ''));
         if ($baseRoot === '') {
@@ -941,6 +985,7 @@ class Create extends Component
         $path = trim((string) ($this->form['local_path'] ?? ''));
         if ($path === '') {
             $this->localPathUsageWarning = null;
+
             return;
         }
 
@@ -952,6 +997,7 @@ class Create extends Component
 
         if ($projectNames === []) {
             $this->localPathUsageWarning = null;
+
             return;
         }
 

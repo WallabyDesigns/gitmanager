@@ -15,12 +15,19 @@ class Index extends Component
     private const OUTPUT_LOG_TAIL_CHARS = 60000;
 
     public array $updateStatus = [];
+
     public bool $checkUpdatesEnabled = true;
+
     public bool $autoUpdateEnabled = true;
+
     public array $pendingChanges = [];
+
     public string $activeTab = 'status';
+
     public ?int $expandedUpdateId = null;
+
     public ?string $expandedUpdateLog = null;
+
     public bool $expandedUpdateLogTruncated = false;
 
     public function mount(SelfUpdateService $service, SettingsService $settings): void
@@ -96,6 +103,7 @@ class Index extends Component
     {
         if (! $this->checkUpdatesEnabled) {
             $this->dispatch('notify', message: 'Update checks are disabled in System Settings.');
+
             return;
         }
 
@@ -182,6 +190,7 @@ class Index extends Component
             $this->pendingChanges = method_exists($service, 'getPendingChanges')
                 ? $service->getPendingChanges($this->updateStatus['current'] ?? null, $this->updateStatus['latest'] ?? null)
                 : [];
+
             return;
         }
 
@@ -230,7 +239,7 @@ class Index extends Component
         if ($includeOutputTail) {
             $tailChars = self::OUTPUT_LOG_TAIL_CHARS;
             $columns[] = DB::raw(
-                "CASE ".
+                'CASE '.
                 "WHEN {$outputLengthSql} = 0 THEN NULL ".
                 "ELSE SUBSTR({$table}.output_log, CASE WHEN {$outputLengthSql} > {$tailChars} THEN {$outputLengthSql} - {$tailChars} + 1 ELSE 1 END) ".
                 'END as output_log_tail'

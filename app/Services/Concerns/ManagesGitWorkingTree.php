@@ -248,6 +248,7 @@ trait ManagesGitWorkingTree
                 if (! is_dir($target)) {
                     mkdir($target, 0775, true);
                 }
+
                 continue;
             }
 
@@ -282,6 +283,7 @@ trait ManagesGitWorkingTree
         foreach ($lines as $line) {
             if (! $collect && str_contains($line, 'would be overwritten')) {
                 $collect = true;
+
                 continue;
             }
 
@@ -343,7 +345,7 @@ trait ManagesGitWorkingTree
     }
 
     /**
-     * @param array<int, string> $paths
+     * @param  array<int, string>  $paths
      */
     private function backupUntrackedPaths(Project $project, string $repoPath, array $paths, array &$output): ?string
     {
@@ -379,7 +381,7 @@ trait ManagesGitWorkingTree
     }
 
     /**
-     * @param array<int, string> $paths
+     * @param  array<int, string>  $paths
      */
     private function removeUntrackedPaths(string $repoPath, array $paths, array &$output): void
     {
@@ -392,6 +394,7 @@ trait ManagesGitWorkingTree
             $path = $repoPath.DIRECTORY_SEPARATOR.$relative;
             if (is_dir($path)) {
                 $this->deleteDirectory($path);
+
                 continue;
             }
             if (is_file($path)) {
@@ -423,6 +426,7 @@ trait ManagesGitWorkingTree
 
             if (file_exists($target)) {
                 $skipped++;
+
                 continue;
             }
 
@@ -430,6 +434,7 @@ trait ManagesGitWorkingTree
                 if (! is_dir($target)) {
                     mkdir($target, 0775, true);
                 }
+
                 continue;
             }
 
@@ -465,7 +470,7 @@ trait ManagesGitWorkingTree
     }
 
     /**
-     * @param array<int, string> $patterns
+     * @param  array<int, string>  $patterns
      * @return array<int, string>
      */
     private function collectPreserveTargets(string $repoPath, array $patterns): array

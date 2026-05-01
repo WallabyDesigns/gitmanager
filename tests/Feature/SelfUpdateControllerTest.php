@@ -33,6 +33,7 @@ class SelfUpdateControllerTest extends TestCase
         ]);
         $update->started_at = now();
         $update->finished_at = now();
+
         return $update;
     }
 

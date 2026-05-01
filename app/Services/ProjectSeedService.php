@@ -35,7 +35,7 @@ class ProjectSeedService
     }
 
     /**
-     * @param array<int, string> $output
+     * @param  array<int, string>  $output
      */
     public function applyIfMissing(Project $project, string $filename, string $targetRoot, array &$output): bool
     {
@@ -60,11 +60,13 @@ class ProjectSeedService
 
         if (! is_writable($targetRoot)) {
             $output[] = 'Unable to apply '.$filename.' seed: target directory is not writable.';
+
             return false;
         }
 
         if (@copy($seedPath, $targetPath) === false) {
             $output[] = 'Unable to apply '.$filename.' seed: failed to copy.';
+
             return false;
         }
 

@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Project;
 use App\Models\Deployment;
+use App\Models\Project;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -219,6 +219,7 @@ class HealthCheckService
 
         if (! $this->settings->isMailConfigured() || ! $this->settings->get('workflows.email.enabled', true)) {
             $this->pendingAlerts = [];
+
             return;
         }
 
@@ -226,6 +227,7 @@ class HealthCheckService
 
         if ($grouped === []) {
             $this->pendingAlerts = [];
+
             return;
         }
 
@@ -233,6 +235,7 @@ class HealthCheckService
             $this->settings->applyMailConfig();
         } catch (\Throwable $exception) {
             $this->pendingAlerts = [];
+
             return;
         }
 
@@ -269,7 +272,7 @@ class HealthCheckService
     }
 
     /**
-     * @param array{recipients: array<int, string>, alerts: list<array{project: Project, previous: string, current: string, issue: string|null, url: string|null, checked_at: string}>} $group
+     * @param  array{recipients: array<int, string>, alerts: list<array{project: Project, previous: string, current: string, issue: string|null, url: string|null, checked_at: string}>}  $group
      */
     private function sendAlertGroup(array $group): void
     {
@@ -318,7 +321,7 @@ class HealthCheckService
     }
 
     /**
-     * @param array<int, array{project: Project, previous: string, current: string, issue: string|null, url: string|null, checked_at: string}> $alerts
+     * @param  array<int, array{project: Project, previous: string, current: string, issue: string|null, url: string|null, checked_at: string}>  $alerts
      */
     private function buildBatchHealthEmailBody(array $alerts): string
     {

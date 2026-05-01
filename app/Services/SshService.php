@@ -8,7 +8,7 @@ use Symfony\Component\Process\Process;
 class SshService
 {
     /**
-     * @param array<int, string> $commands
+     * @param  array<int, string>  $commands
      */
     public function runCommands(
         string $host,
@@ -24,6 +24,7 @@ class SshService
         $commands = array_values(array_filter(array_map('trim', $commands), fn (string $cmd) => $cmd !== ''));
         if ($commands === []) {
             $output[] = 'SSH: no commands to run.';
+
             return;
         }
 
@@ -123,6 +124,7 @@ class SshService
         }
 
         $escapedRoot = escapeshellarg($rootPath);
+
         return 'cd '.$escapedRoot.' && '.$command;
     }
 
@@ -138,6 +140,7 @@ class SshService
     private function sshBinary(): string
     {
         $binary = trim((string) config('gitmanager.ssh.binary', 'ssh'));
+
         return $binary !== '' ? $binary : 'ssh';
     }
 
@@ -154,12 +157,14 @@ class SshService
         if (! is_dir($dir)) {
             @mkdir($dir, 0775, true);
         }
+
         return $path;
     }
 
     private function strictHostKeyChecking(): string
     {
         $value = trim((string) config('gitmanager.ssh.strict_host_key_checking', 'accept-new'));
+
         return $value !== '' ? $value : 'accept-new';
     }
 
@@ -180,8 +185,7 @@ class SshService
         ?string $passBinaryOverride = null,
         ?string $keyPathOverride = null,
         bool $useAskPass = false
-    ): array
-    {
+    ): array {
         $sshBinary = $this->sshBinary();
         $passBinary = $this->resolvePassBinary($passBinaryOverride);
         $knownHosts = $this->knownHostsPath();
@@ -272,6 +276,7 @@ class SshService
     private function baseEnv(): array
     {
         $env = getenv();
+
         return is_array($env) ? $env : [];
     }
 
@@ -279,10 +284,12 @@ class SshService
     {
         if (PHP_OS_FAMILY === 'Windows') {
             $path = $this->writeAskPassScript(sys_get_temp_dir(), 'bat');
+
             return $path !== '' ? $path : null;
         }
 
         $path = $this->writeAskPassScript(sys_get_temp_dir(), 'sh');
+
         return $path !== '' ? $path : null;
     }
 
@@ -303,6 +310,7 @@ class SshService
         if ($extension === 'bat') {
             file_put_contents($path, "@echo off\r\n"
                 ."echo %SSH_PASSWORD%\r\n");
+
             return $path;
         }
 

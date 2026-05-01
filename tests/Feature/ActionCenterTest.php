@@ -9,7 +9,6 @@ use App\Models\DeploymentQueueItem;
 use App\Models\Project;
 use App\Models\SecurityAlert;
 use App\Models\User;
-use App\Services\AuditService;
 use App\Services\DeploymentService;
 use App\Services\EditionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -125,7 +124,7 @@ class ActionCenterTest extends TestCase
 
         $this->mockEnterpriseEdition();
 
-        $this->mock(DeploymentService::class, function ($mock) use ($project, $user): void {
+        $this->mock(DeploymentService::class, function ($mock) use ($project): void {
             $mock->shouldReceive('hasComposer')
                 ->once()
                 ->withArgs(fn (Project $candidate): bool => $candidate->is($project))
@@ -226,7 +225,7 @@ class ActionCenterTest extends TestCase
 
         $this->mockEnterpriseEdition();
 
-        $this->mock(DeploymentService::class, function ($mock) use ($project, $user): void {
+        $this->mock(DeploymentService::class, function ($mock): void {
             $mock->shouldReceive('releaseStaleRunningDeployments')
                 ->once()
                 ->andReturnNull();

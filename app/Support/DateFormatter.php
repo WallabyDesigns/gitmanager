@@ -11,7 +11,9 @@ use Illuminate\Support\Facades\Auth;
 class DateFormatter
 {
     private static ?array $validTimezones = null;
+
     private static bool $adminTimezoneResolved = false;
+
     private static ?string $adminTimezone = null;
 
     public static function forUser(DateTimeInterface|string|null $value, string $format, string $fallback = '—'): string

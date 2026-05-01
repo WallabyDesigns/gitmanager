@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Project;
+use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 
 class PermissionService
@@ -98,6 +99,7 @@ class PermissionService
             $this->ensureWritableDirectory($targetPath, $output, $target['label']);
             if (! is_writable($targetPath)) {
                 $failures[] = $target['label'].': '.$targetPath;
+
                 continue;
             }
 
@@ -146,7 +148,7 @@ class PermissionService
     public function isPermissionError(\Throwable $exception, array $output): bool
     {
         $message = $exception->getMessage();
-        if ($exception instanceof \Symfony\Component\Process\Exception\ProcessFailedException) {
+        if ($exception instanceof ProcessFailedException) {
             $process = $exception->getProcess();
             $message .= "\n".$process->getErrorOutput()."\n".$process->getOutput();
         }
