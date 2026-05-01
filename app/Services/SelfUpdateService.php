@@ -3192,15 +3192,26 @@ class SelfUpdateService
         ];
 
         $token = trim((string) config('services.github.token', env('GITHUB_TOKEN')));
-        if ($token === '') {
-            return $env;
+        if ($token !== '') {
+            $askPass = $this->ensureAskPassScript();
+            if ($askPass) {
+                $env['GIT_ASKPASS'] = $askPass;
+                $env['GIT_USERNAME'] = 'x-access-token';
+                $env['GIT_PASSWORD'] = $token;
+            }
         }
 
-        $askPass = $this->ensureAskPassScript();
-        if ($askPass) {
-            $env['GIT_ASKPASS'] = $askPass;
-            $env['GIT_USERNAME'] = 'x-access-token';
-            $env['GIT_PASSWORD'] = $token;
+        $licenseKey = trim((string) app(SettingsService::class)->getDecrypted('system.license.key', ''));
+        $installationUuid = trim((string) app(SettingsService::class)->get('system.license.installation_uuid', ''));
+        if ($licenseKey !== '' && $installationUuid !== '') {
+            $env['COMPOSER_AUTH'] = json_encode([
+                'http-basic' => [
+                    'gitwebmanager.com' => [
+                        'username' => $licenseKey,
+                        'password' => $installationUuid,
+                    ],
+                ],
+            ]);
         }
 
         return $env;
