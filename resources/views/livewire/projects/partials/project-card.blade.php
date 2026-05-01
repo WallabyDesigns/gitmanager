@@ -8,6 +8,7 @@
                 <x-loading-spinner target="checkAllUpdates" size="w-3 h-3" />
             </div>
             @php
+                $hasHealthMonitoring = $project->hasHealthMonitoring();
                 $healthStatus = $project->health_status ?? 'na';
                 $healthLabel = $healthStatus === 'ok' ? 'Health: OK' : 'Health: N/A';
                 $healthClass = $healthStatus === 'ok'
@@ -34,9 +35,11 @@
                 $npmIssue = in_array($project->last_npm_status ?? null, ['failed', 'warning'], true);
             @endphp
             <div class="mt-2 flex flex-wrap items-center gap-2">
+                @if ($hasHealthMonitoring)
                 <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $healthClass }}">
                     {{ $healthLabel }}
                 </span>
+                @endif
                 @if ($permissionsIssue)
                     <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
                         Permissions
@@ -121,9 +124,11 @@
                 Last deployed: {{ \App\Support\DateFormatter::forUser($lastDeploy, 'M j, Y g:i a', 'Never') }}.
                 Last checked: {{ \App\Support\DateFormatter::forUser($lastChecked, 'M j, Y g:i a', 'Never') }}
             </div>
+            @if ($hasHealthMonitoring)
             <div class="mt-1 text-xs text-slate-400 dark:text-slate-500">
                 Last health check: {{ \App\Support\DateFormatter::forUser($project->health_checked_at, 'M j, Y g:i a', 'Never') }}
             </div>
+            @endif
         </div>
             <div class="text-xs text-slate-400 dark:text-slate-500 hidden sm:block">
                 <svg width="32px" height="32px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M6 12H18M18 12L13 7M18 12L13 17" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--darkreader-inline-stroke: var(--darkreader-text-ffffff, #e8e6e3);" data-darkreader-inline-stroke=""></path> </g></svg>

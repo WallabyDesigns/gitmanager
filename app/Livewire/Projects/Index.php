@@ -155,10 +155,7 @@ class Index extends Component
         }
 
         if ($this->filter === 'health') {
-            $baseQuery->where(function ($query) {
-                $query->whereNull('health_status')
-                    ->orWhere('health_status', '!=', 'ok');
-            });
+            $baseQuery->withHealthMonitoring()->where('health_status', 'na');
         } elseif ($this->filter === 'permissions') {
             $baseQuery->where('permissions_locked', true)
                 ->where('ftp_enabled', false)
@@ -225,10 +222,8 @@ class Index extends Component
                 'all' => Auth::user()->projects()->count(),
                 'health' => Auth::user()
                     ->projects()
-                    ->where(function ($query) {
-                        $query->whereNull('health_status')
-                            ->orWhere('health_status', '!=', 'ok');
-                    })
+                    ->withHealthMonitoring()
+                    ->where('health_status', 'na')
                     ->count(),
                 'permissions' => Auth::user()
                     ->projects()

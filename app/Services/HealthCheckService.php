@@ -49,15 +49,7 @@ class HealthCheckService
         }
 
         if (! $healthUrl) {
-            $healthLog[] = 'Health check URL not configured.';
-            $status = 'na';
-            $issueMessage = null;
-            $logText = $this->formatHealthLog($healthLog);
-            $this->saveHealthStatus($project, $status, $issueMessage, $logText);
-            $this->maybeNotifyHealthChange($project, $previousStatus, $status, $issueMessage, $notifyOnFailure);
-            $this->maybeLogHealthCheck($project, $status, $issueMessage, $logText, $log, $previousStatus, $previousIssue);
-
-            return $status;
+            return 'na';
         }
 
         try {

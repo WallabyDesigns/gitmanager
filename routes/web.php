@@ -4,6 +4,7 @@ use App\Http\Controllers\RecoveryController;
 use App\Http\Controllers\SelfUpdateController;
 use App\Http\Controllers\Webhooks\GitHubWebhookController;
 use App\Livewire\AppUpdates\Index as AppUpdatesIndex;
+use App\Livewire\Dashboard\Index as DashboardIndex;
 use App\Livewire\System\EnvMigration;
 use App\Livewire\Projects\Create as ProjectsCreate;
 use App\Livewire\Projects\Edit as ProjectsEdit;
@@ -31,7 +32,7 @@ Route::get('/', function () {
     }
 
     if (Auth::check()) {
-        return redirect()->route('projects.index');
+        return redirect()->route('dashboard');
     }
 
     return redirect()->route('login');
@@ -42,6 +43,7 @@ Route::post('/webhooks/github', GitHubWebhookController::class)
     ->name('webhooks.github');
 
 Route::middleware(['auth', 'verified', EnsurePasswordChanged::class])->group(function () {
+    Route::get('/dashboard', DashboardIndex::class)->name('dashboard');
     Route::get('/projects', ProjectsIndex::class)->name('projects.index');
     Route::get('/projects/queue', ProjectsQueue::class)->name('projects.queue');
     Route::get('/projects/action-center', SecurityIndex::class)->name('projects.action-center');

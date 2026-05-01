@@ -110,4 +110,24 @@ class Project extends Model
     {
         return (bool) ($this->last_deployed_at || $this->last_deployed_hash);
     }
+
+    public function hasHealthMonitoring(): bool
+    {
+        return trim((string) $this->health_url) !== '' || trim((string) $this->site_url) !== '';
+    }
+
+    /**
+     * @param \Illuminate\Database\Eloquent\Builder<static> $query
+     * @return \Illuminate\Database\Eloquent\Builder<static>
+     */
+    public function scopeWithHealthMonitoring($query)
+    {
+        return $query->where(function ($q) {
+            $q->where(function ($q2) {
+                $q2->whereNotNull('health_url')->where('health_url', '!=', '');
+            })->orWhere(function ($q2) {
+                $q2->whereNotNull('site_url')->where('site_url', '!=', '');
+            });
+        });
+    }
 }

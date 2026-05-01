@@ -6,12 +6,8 @@
 /.htaccess
 .phpactor.json
 .phpunit.result.cache
-/.fleet
-/.idea
-/.nova
-/.phpunit.cache
-/.vscode
-/.zed
+# Consolidate local dot folders like .vscode etc.
+/.*/
 /auth.json
 /node_modules
 /public/build
