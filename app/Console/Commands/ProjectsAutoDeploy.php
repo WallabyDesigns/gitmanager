@@ -103,6 +103,22 @@ class ProjectsAutoDeploy extends Command
             }
         }
 
+        $checkedIds = $projects->pluck('id')->all();
+        $monitoredOnly = Project::query()
+            ->withHealthMonitoring()
+            ->when($checkedIds !== [], fn ($q) => $q->whereNotIn('id', $checkedIds))
+            ->get();
+
+        foreach ($monitoredOnly as $project) {
+            try {
+                if ($project->hasSuccessfulDeployment()) {
+                    $service->checkHealth($project, false, true);
+                }
+            } catch (\Throwable $exception) {
+                $this->error("Health check failed for {$project->name}: {$exception->getMessage()}");
+            }
+        }
+
         if ($auditEnabled && $this->shouldRunInfrastructureAudit($settings)) {
             $this->runInfrastructureAudit();
             $settings->set('system.audit.last_infra_audit_at', now()->toIso8601String());

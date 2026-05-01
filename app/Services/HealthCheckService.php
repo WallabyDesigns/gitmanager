@@ -56,13 +56,20 @@ class HealthCheckService
             $response = Http::timeout(10)->get($healthUrl);
             if ($response->successful()) {
                 $healthLog[] = 'HTTP health check OK ('.$response->status().').';
+                Cache::forget($this->consecutiveFailKey($project));
                 $status = 'ok';
             } else {
                 $healthLog[] = 'HTTP health check failed ('.$response->status().').';
+                Cache::forget($this->consecutiveFailKey($project));
                 $status = 'na';
             }
         } catch (\Throwable $exception) {
-            $healthLog[] = 'HTTP health check failed: '.$exception->getMessage();
+            $healthLog[] = 'HTTP health check exception: '.$exception->getMessage();
+            $failCount = (int) Cache::get($this->consecutiveFailKey($project), 0) + 1;
+            Cache::put($this->consecutiveFailKey($project), $failCount, now()->addHours(2));
+            if ($failCount < 2) {
+                return $previousStatus ?? 'na';
+            }
             $status = 'na';
         }
 
@@ -151,7 +158,9 @@ class HealthCheckService
         ?string $previousStatus,
         ?string $previousIssue
     ): void {
-        if (! $this->shouldLogHealthCheck($forceLog, $status, $issueMessage, $previousStatus, $previousIssue)) {
+        $statusChanged = $previousStatus !== $status;
+        $issueChanged = ($previousIssue ?? '') !== ($issueMessage ?? '');
+        if (! $forceLog && ! $statusChanged && ! $issueChanged) {
             return;
         }
 
@@ -166,24 +175,6 @@ class HealthCheckService
             'started_at' => now(),
             'finished_at' => now(),
         ]);
-    }
-
-    private function shouldLogHealthCheck(
-        bool $forceLog,
-        string $status,
-        ?string $issueMessage,
-        ?string $previousStatus,
-        ?string $previousIssue
-    ): bool {
-        if ($forceLog) {
-            return true;
-        }
-
-        if ($previousStatus !== $status) {
-            return true;
-        }
-
-        return ($previousIssue ?? '') !== ($issueMessage ?? '');
     }
 
     private function maybeNotifyHealthChange(
@@ -226,35 +217,12 @@ class HealthCheckService
             return;
         }
 
-        if (! $this->settings->isMailConfigured()) {
+        if (! $this->settings->isMailConfigured() || ! $this->settings->get('workflows.email.enabled', true)) {
             $this->pendingAlerts = [];
             return;
         }
 
-        if (! $this->settings->get('workflows.email.enabled', true)) {
-            $this->pendingAlerts = [];
-            return;
-        }
-
-        $grouped = [];
-
-        foreach ($this->pendingAlerts as $alert) {
-            $recipients = $this->resolveRecipients($alert['project']);
-            if ($recipients === []) {
-                continue;
-            }
-
-            sort($recipients);
-            $key = implode('|', $recipients);
-            if (! isset($grouped[$key])) {
-                $grouped[$key] = [
-                    'recipients' => $recipients,
-                    'alerts' => [],
-                ];
-            }
-
-            $grouped[$key]['alerts'][] = $alert;
-        }
+        $grouped = $this->groupAlertsByRecipients();
 
         if ($grouped === []) {
             $this->pendingAlerts = [];
@@ -269,31 +237,64 @@ class HealthCheckService
         }
 
         foreach ($grouped as $group) {
-            $alerts = $group['alerts'];
-            if ($alerts === []) {
-                continue;
-            }
-
-            $subject = count($alerts) === 1
-                ? sprintf('Health check failed: %s', $alerts[0]['project']->name)
-                : sprintf('Health checks failed for %d projects', count($alerts));
-
-            $body = $this->buildBatchHealthEmailBody($alerts);
-
-            try {
-                Mail::raw($body, function ($message) use ($group, $subject) {
-                    $message->to($group['recipients'])->subject($subject);
-                });
-
-                foreach ($alerts as $alert) {
-                    $this->markEmailCooldown($alert['project']);
-                }
-            } catch (\Throwable $exception) {
-                // Swallow mail errors to avoid breaking health checks.
-            }
+            $this->sendAlertGroup($group);
         }
 
         $this->pendingAlerts = [];
+    }
+
+    /**
+     * @return array<string, array{recipients: array<int, string>, alerts: list<array{project: Project, previous: string, current: string, issue: string|null, url: string|null, checked_at: string}>}>
+     */
+    private function groupAlertsByRecipients(): array
+    {
+        $grouped = [];
+
+        foreach ($this->pendingAlerts as $alert) {
+            $recipients = $this->resolveRecipients($alert['project']);
+            if ($recipients === []) {
+                continue;
+            }
+
+            sort($recipients);
+            $key = implode('|', $recipients);
+            if (! isset($grouped[$key])) {
+                $grouped[$key] = ['recipients' => $recipients, 'alerts' => []];
+            }
+
+            $grouped[$key]['alerts'][] = $alert;
+        }
+
+        return $grouped;
+    }
+
+    /**
+     * @param array{recipients: array<int, string>, alerts: list<array{project: Project, previous: string, current: string, issue: string|null, url: string|null, checked_at: string}>} $group
+     */
+    private function sendAlertGroup(array $group): void
+    {
+        $alerts = $group['alerts'];
+        if ($alerts === []) {
+            return;
+        }
+
+        $subject = count($alerts) === 1
+            ? sprintf('Health check failed: %s', $alerts[0]['project']->name)
+            : sprintf('Health checks failed for %d projects', count($alerts));
+
+        $body = $this->buildBatchHealthEmailBody($alerts);
+
+        try {
+            Mail::raw($body, function ($message) use ($group, $subject) {
+                $message->to($group['recipients'])->subject($subject);
+            });
+
+            foreach ($alerts as $alert) {
+                $this->markEmailCooldown($alert['project']);
+            }
+        } catch (\Throwable $exception) {
+            // Swallow mail errors to avoid breaking health checks.
+        }
     }
 
     /**
@@ -314,25 +315,6 @@ class HealthCheckService
         }
 
         return array_values(array_unique(array_filter($recipients)));
-    }
-
-    private function buildHealthEmailBody(
-        Project $project,
-        string $previousStatus,
-        string $currentStatus,
-        ?string $issueMessage
-    ): string {
-        $healthUrl = $this->resolveHealthUrl($project);
-
-        return implode("\n", array_filter([
-            'Health check changed',
-            'Project: '.$project->name,
-            'Previous: '.strtoupper($previousStatus),
-            'Current: '.strtoupper($currentStatus),
-            $healthUrl ? 'Health URL: '.$healthUrl : null,
-            'Checked: '.now()->toDateTimeString(),
-            $issueMessage ? 'Issue: '.$issueMessage : null,
-        ]));
     }
 
     /**
@@ -370,7 +352,7 @@ class HealthCheckService
         string $currentStatus,
         ?string $issueMessage
     ): void {
-        if ($this->isEmailCooldownActive($project)) {
+        if (Cache::has($this->emailCooldownKey($project))) {
             return;
         }
 
@@ -388,11 +370,6 @@ class HealthCheckService
         ];
     }
 
-    private function isEmailCooldownActive(Project $project): bool
-    {
-        return Cache::has($this->emailCooldownKey($project));
-    }
-
     private function markEmailCooldown(Project $project): void
     {
         Cache::put($this->emailCooldownKey($project), true, now()->addMinutes(self::EMAIL_COOLDOWN_MINUTES));
@@ -401,6 +378,11 @@ class HealthCheckService
     private function emailCooldownKey(Project $project): string
     {
         return 'gwm_health_alert_cooldown_'.$project->id;
+    }
+
+    private function consecutiveFailKey(Project $project): string
+    {
+        return 'gwm_health_consecutive_fail_'.$project->id;
     }
 
     private function resolveHealthUrl(Project $project): ?string
