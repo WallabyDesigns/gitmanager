@@ -10,12 +10,20 @@ class CleanWorkspaces extends Command
 {
     protected $signature = 'workspaces:clean {--dry-run : List orphaned directories without deleting}';
 
-    protected $description = 'Remove FTP workspace and deploy-staging directories for deleted projects.';
+    protected $description = 'Remove FTP workspace and deploy-staging directories for deleted or non-FTP projects.';
 
     public function handle(): int
     {
         $dryRun = (bool) $this->option('dry-run');
-        $activeIds = Project::query()->pluck('id')->flip()->all();
+
+        // Only preserve workspaces for projects that still use FTP-only mode.
+        // Workspaces for deleted projects or projects that have switched to SSH are cleaned.
+        $activeIds = Project::query()
+            ->where('ftp_enabled', true)
+            ->where('ssh_enabled', false)
+            ->pluck('id')
+            ->flip()
+            ->all();
         $cleaned = 0;
 
         $directories = [

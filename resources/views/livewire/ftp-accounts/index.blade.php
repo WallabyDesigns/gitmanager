@@ -174,6 +174,19 @@
                             </div>
                         @endforelse
                     </div>
+
+                    <div class="pt-4 border-t border-slate-200/70 dark:border-slate-800 flex justify-end">
+                        <button type="button" wire:click="cleanBuildEnvironments"
+                            onclick="return confirm('Remove local build environments for deleted and non-FTP projects? This cannot be undone.') || event.stopImmediatePropagation()"
+                            class="px-4 py-2 rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 inline-flex items-center gap-2 text-sm">
+                            <x-loading-spinner target="cleanBuildEnvironments" />
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 4 9 15" />
+                                <path d="M8.5 14.5C5.9 14.5 3 17 3 20.5h11.5C14.5 17 11.1 14.5 8.5 14.5Z" />
+                            </svg>
+                            Clean Build Environments
+                        </button>
+                    </div>
                 @endif
             </div>
         </div>

@@ -266,6 +266,30 @@ class DockerService
         return ['success' => $success, 'error' => $error];
     }
 
+    public function buildImage(string $contextPath, string $dockerfilePath, string $imageName, string $tag = 'latest'): array
+    {
+        $contextPath = trim($contextPath);
+        $dockerfilePath = trim($dockerfilePath);
+        $imageName = trim($imageName);
+        $tag = trim($tag);
+
+        $inputError = match (true) {
+            $contextPath === '' || ! is_dir($contextPath) => 'Build context path does not exist.',
+            $dockerfilePath === '' || ! is_file($dockerfilePath) => 'Dockerfile not found at the specified path.',
+            $imageName === '' => 'Image name is required.',
+            default => '',
+        };
+
+        if ($inputError !== '') {
+            return ['success' => false, 'error' => $inputError];
+        }
+
+        $reference = $tag !== '' ? $imageName.':'.$tag : $imageName;
+        [$success, $output, $error] = $this->run(['build', '-t', $reference, '-f', $dockerfilePath, $contextPath]);
+
+        return ['success' => $success, 'output' => $output, 'error' => $error];
+    }
+
     // ─── Volumes ──────────────────────────────────────────────────────────────
 
     public function listVolumes(): array

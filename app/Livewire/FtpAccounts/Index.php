@@ -7,6 +7,7 @@ use App\Models\Project;
 use App\Services\FtpService;
 use App\Services\SshService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Artisan;
 use Livewire\Component;
 
 class Index extends Component
@@ -372,62 +373,74 @@ class Index extends Component
         $this->sshTestRan = false;
 
         if ($password !== '') {
-            $result = app(FtpService::class)->testConnection(
-                $data['host'],
-                (int) ($data['port'] ?? 21),
-                $data['username'],
-                $password,
-                (bool) ($data['ssl'] ?? false),
-                (bool) ($data['passive'] ?? true),
-                (int) ($data['timeout'] ?? 30),
-                $data['root_path'] ?? null
-            );
-
-            $this->testStatus = $result['status'] ?? 'error';
-            $this->testMessage = $result['message'] ?? 'Unable to test FTP connection.';
-            $this->ftpTestSignature = $this->computeFtpSignature($data, $password);
-            $this->ftpTestRan = true;
+            $this->autoTestFtp($data, $password);
         }
 
         $keyPath = trim((string) ($data['ssh_key_path'] ?? ''));
         if ($password !== '' || $keyPath !== '') {
-            $port = (int) ($data['ssh_port'] ?? 22);
-            if ($port <= 0) {
-                $port = 22;
-            }
-
-            $passBinary = trim((string) ($data['ssh_pass_binary'] ?? ''));
-            $rootPath = trim((string) ($data['root_path'] ?? ''));
-            $rootPath = $rootPath !== '' ? $rootPath : null;
-
-            $output = [];
-
-            try {
-                $lines = app(SshService::class)->runCommand(
-                    (string) ($data['host'] ?? ''),
-                    $port,
-                    (string) ($data['username'] ?? ''),
-                    $password !== '' ? $password : null,
-                    $rootPath,
-                    'pwd',
-                    $output,
-                    $passBinary !== '' ? $passBinary : null,
-                    $keyPath !== '' ? $keyPath : null
-                );
-
-                $path = $lines[0] ?? null;
-                $this->sshTestStatus = 'ok';
-                $this->sshTestMessage = $path
-                    ? 'SSH connected. Remote path: '.$path
-                    : 'SSH connection verified.';
-            } catch (\Throwable $exception) {
-                $this->sshTestStatus = 'error';
-                $this->sshTestMessage = $exception->getMessage();
-            }
-
-            $this->sshTestSignature = $this->computeSshSignature($data, $password);
-            $this->sshTestRan = true;
+            $this->autoTestSsh($data, $password, $keyPath);
         }
+    }
+
+    private function autoTestFtp(array $data, string $password): void
+    {
+        $result = app(FtpService::class)->testConnection(
+            $data['host'],
+            (int) ($data['port'] ?? 21),
+            $data['username'],
+            $password,
+            (bool) ($data['ssl'] ?? false),
+            (bool) ($data['passive'] ?? true),
+            (int) ($data['timeout'] ?? 30),
+            $data['root_path'] ?? null
+        );
+
+        $this->testStatus = $result['status'] ?? 'error';
+        $this->testMessage = $result['message'] ?? 'Unable to test FTP connection.';
+        $this->ftpTestSignature = $this->computeFtpSignature($data, $password);
+        $this->ftpTestRan = true;
+    }
+
+    private function autoTestSsh(array $data, string $password, string $keyPath): void
+    {
+        $port = (int) ($data['ssh_port'] ?? 22);
+        if ($port <= 0) {
+            $port = 22;
+        }
+
+        $passBinary = trim((string) ($data['ssh_pass_binary'] ?? ''));
+        $rootPath = trim((string) ($data['root_path'] ?? '')) ?: null;
+        $output = [];
+
+        try {
+            $lines = app(SshService::class)->runCommand(
+                (string) ($data['host'] ?? ''),
+                $port,
+                (string) ($data['username'] ?? ''),
+                $password !== '' ? $password : null,
+                $rootPath,
+                'pwd',
+                $output,
+                $passBinary !== '' ? $passBinary : null,
+                $keyPath !== '' ? $keyPath : null
+            );
+
+            $path = $lines[0] ?? null;
+            $this->sshTestStatus = 'ok';
+            $this->sshTestMessage = $path ? 'SSH connected. Remote path: '.$path : 'SSH connection verified.';
+        } catch (\Throwable $exception) {
+            $this->sshTestStatus = 'error';
+            $this->sshTestMessage = $exception->getMessage();
+        }
+
+        $this->sshTestSignature = $this->computeSshSignature($data, $password);
+        $this->sshTestRan = true;
+    }
+
+    public function cleanBuildEnvironments(): void
+    {
+        Artisan::call('workspaces:clean');
+        $this->dispatch('notify', message: 'Build environments cleaned.', type: 'success');
     }
 
     private function computeFtpSignature(array $data, string $password): string
