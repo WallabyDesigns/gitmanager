@@ -228,6 +228,7 @@ class LicenseService
     {
         $key = $this->licenseKey();
         if ($key === '') {
+            $this->bootstrapCommunityConfig();
             $this->clearLicense();
 
             return $this->state();
@@ -271,14 +272,15 @@ class LicenseService
             return $this->state();
         }
 
-        // Bootstrap: when no signing secret exists yet, try to extract it from any
-        // response body (even a rejection). The server includes the secret on first
-        // contact so the app can store it and immediately retry signed.
-        if (! $hadSigningSecret) {
-            $bootstrapJson = json_decode((string) $response->body(), true);
-            if (is_array($bootstrapJson)) {
-                $this->persistEnterpriseRuntimeConfig($bootstrapJson);
-                $this->extractAndStoreRequestSigningSecret($bootstrapJson);
+        // Bootstrap: when no signing secret exists yet, OR when the server sends back
+        // a bootstrap response (stale-secret re-sync), extract the new secret and retry.
+        $initialBody = (string) $response->body();
+        $initialJson = json_decode($initialBody, true);
+
+        if ($this->shouldBootstrapOrResync($hadSigningSecret, $initialJson)) {
+            if (is_array($initialJson)) {
+                $this->persistEnterpriseRuntimeConfig($initialJson);
+                $this->extractAndStoreRequestSigningSecret($initialJson);
             }
             if ($this->requestSigningSecret() !== '') {
                 [$retryResponse, $retryException] = $this->attemptVerifyRequest($endpoint, $installationUuid, $key, $detectedIp, $timeout);
@@ -703,6 +705,46 @@ class LicenseService
             : '';
 
         return trim((string) $this->enterpriseConfig('requestSigningSecret', $fallback));
+    }
+
+    private function shouldBootstrapOrResync(bool $hadSigningSecret, mixed $initialJson): bool
+    {
+        if (! $hadSigningSecret) {
+            return true;
+        }
+
+        return is_array($initialJson)
+            && str_contains((string) ($initialJson['message'] ?? ''), 'Bootstrap:');
+    }
+
+    private function bootstrapCommunityConfig(): void
+    {
+        $endpoint = $this->verifyUrl();
+        if ($endpoint === '' || ! $this->isEndpointAllowed($endpoint)) {
+            return;
+        }
+
+        try {
+            $request = Http::timeout($this->timeoutSeconds())->acceptJson()->asJson();
+            if ($this->allowInsecureLocalTlsForEndpoint($endpoint)) {
+                $request = $request->withOptions(['verify' => false]);
+            }
+
+            $response = $request->post($endpoint, [
+                'license_key' => '',
+                'installation_uuid' => $this->installationUuid(),
+                'app_url' => (string) config('app.url'),
+                'app_name' => (string) config('app.name'),
+            ]);
+
+            $json = json_decode((string) $response->body(), true);
+            if (is_array($json)) {
+                $this->persistEnterpriseRuntimeConfig($json);
+                $this->extractAndStoreRequestSigningSecret($json);
+            }
+        } catch (\Throwable $e) {
+            // Non-fatal: community bootstrap should never block normal operation.
+        }
     }
 
     /**
