@@ -6,6 +6,7 @@ use App\Models\Project;
 use App\Services\DeploymentService;
 use App\Services\SchedulerService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 
 class ProjectsHealthCheck extends Command
 {
@@ -17,27 +18,38 @@ class ProjectsHealthCheck extends Command
     {
         $scheduler->recordHeartbeat('schedule');
 
-        $checked = 0;
-        $failed = 0;
+        $lock = Cache::lock('gwm_projects_health_check', 300);
+        if (! $lock->get()) {
+            $this->line('Health check already running.');
 
-        Project::query()
-            ->withHealthMonitoring()
-            ->chunkById(50, function ($projects) use ($service, &$checked, &$failed): void {
-                foreach ($projects as $project) {
-                    try {
-                        $service->checkHealth($project, true, true);
-                        $checked++;
-                    } catch (\Throwable $exception) {
-                        $failed++;
-                        $this->error("Health check failed for {$project->name}: {$exception->getMessage()}");
+            return self::SUCCESS;
+        }
+
+        try {
+            $checked = 0;
+            $failed = 0;
+
+            Project::query()
+                ->withHealthMonitoring()
+                ->chunkById(50, function ($projects) use ($service, &$checked, &$failed): void {
+                    foreach ($projects as $project) {
+                        try {
+                            $service->checkHealth($project, true, true);
+                            $checked++;
+                        } catch (\Throwable $exception) {
+                            $failed++;
+                            $this->error("Health check failed for {$project->name}: {$exception->getMessage()}");
+                        }
                     }
-                }
-            });
+                });
 
-        $service->flushHealthNotifications();
+            $service->flushHealthNotifications();
 
-        $this->info("Checked {$checked} monitored project(s).");
+            $this->info("Checked {$checked} monitored project(s).");
 
-        return $failed > 0 ? self::FAILURE : self::SUCCESS;
+            return $failed > 0 ? self::FAILURE : self::SUCCESS;
+        } finally {
+            $lock->release();
+        }
     }
 }

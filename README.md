@@ -188,9 +188,12 @@ Ensure the scheduler runs (crontab entry):
 * * * * * cd /path/to/app && /path/to/php artisan scheduler:run >/dev/null 2>&1
 ```
 
+The `scheduler:run` wrapper records the System Scheduler heartbeat first, then runs Laravel's scheduled tasks. Existing installations that already use this cron line do not need to change it.
+
 Scheduled commands include:
 - `app:self-audit` (every 10 minutes)
 - `projects:auto-deploy` (every 5 minutes)
+- `projects:health-check` (every 5 minutes)
 - `deployments:process-queue` (every minute)
 - `security:sync` (hourly)
 - `dependabot:auto-merge` (hourly)

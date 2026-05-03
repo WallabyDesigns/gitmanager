@@ -36,20 +36,20 @@ $schedulerTaskCron = static function (string $task) use ($schedulerTaskIntervals
     return SchedulerTaskIntervals::cronExpression($interval, (string) ($definition['anchor'] ?? '00:00'));
 };
 
-Schedule::command('scheduler:heartbeat')->everyMinute()->withoutOverlapping();
-Schedule::command('license:verify')->everyTenMinutes()->withoutOverlapping();
+Schedule::command('scheduler:heartbeat')->everyMinute();
+Schedule::command('license:verify')->everyTenMinutes()->withoutOverlapping(10);
 Schedule::command('sitemap:generate')->daily();
-Schedule::command('app:self-audit')->cron($schedulerTaskCron('self_audit'))->withoutOverlapping();
-Schedule::command('projects:auto-deploy')->cron($schedulerTaskCron('project_health_checks'))->withoutOverlapping();
-Schedule::command('projects:health-check')->cron($schedulerTaskCron('project_health_checks'))->withoutOverlapping();
+Schedule::command('app:self-audit')->cron($schedulerTaskCron('self_audit'))->withoutOverlapping(30);
+Schedule::command('projects:auto-deploy')->cron($schedulerTaskCron('project_health_checks'))->withoutOverlapping(120);
+Schedule::command('projects:health-check')->cron($schedulerTaskCron('project_health_checks'));
 
 if (config('gitmanager.deploy_queue.enabled', true)) {
-    Schedule::command('deployments:process-queue')->cron($schedulerTaskCron('queue_processing'))->withoutOverlapping();
+    Schedule::command('deployments:process-queue')->cron($schedulerTaskCron('queue_processing'))->withoutOverlapping(60);
 }
 
-Schedule::command('security:sync')->hourly()->withoutOverlapping();
-Schedule::command('dependabot:auto-merge')->hourly()->withoutOverlapping();
-Schedule::command('workspaces:clean')->weekly()->withoutOverlapping();
+Schedule::command('security:sync')->hourly()->withoutOverlapping(30);
+Schedule::command('dependabot:auto-merge')->hourly()->withoutOverlapping(30);
+Schedule::command('workspaces:clean')->weekly()->withoutOverlapping(120);
 
 $autoUpdates = (bool) config('gitmanager.self_update.enabled');
 try {
@@ -60,7 +60,7 @@ try {
 }
 
 if ($autoUpdates) {
-    Schedule::command('gitmanager:self-update')->cron($schedulerTaskCron('self_update'))->withoutOverlapping();
+    Schedule::command('gitmanager:self-update')->cron($schedulerTaskCron('self_update'))->withoutOverlapping(120);
 }
 
 $logCleanupEnabled = false;
@@ -75,5 +75,5 @@ try {
 }
 
 if ($logCleanupEnabled) {
-    Schedule::command('logs:cleanup', ['--days' => $logRetentionDays])->dailyAt('03:45')->withoutOverlapping();
+    Schedule::command('logs:cleanup', ['--days' => $logRetentionDays])->dailyAt('03:45')->withoutOverlapping(30);
 }
