@@ -876,7 +876,7 @@ class FtpService
 
             if (! $this->uploadRemoteFile($connection, $remotePath, $item->getPathname())) {
                 if (! $this->retryUpload($connection, $remotePath, $item->getPathname(), $relative, $output)) {
-                    throw new \RuntimeException('Failed to upload '.$relative.' to '.$remotePath.'. Check FTP write permissions or exclude this path.');
+                    throw new \RuntimeException('FTP upload failed for '.$relative.'. This is likely an FTP/FTPS issue: the remote directory exists but the data channel cannot access it. Try toggling Passive Mode in FTP/SSH Access settings, or check if the remote directory has correct permissions/ownership.');
                 }
             }
 
@@ -1034,9 +1034,9 @@ class FtpService
             @ftp_pasv($connection, $passive);
 
             if ($succeededToggled) {
-                $output[] = 'FTPS write test succeeded after toggling passive mode '.($passive ? 'off' : 'on').'. Toggle the passive mode setting in FTP/SSH Access to fix uploads.';
+                $output[] = 'FTP write test succeeded after toggling passive mode '.($passive ? 'off' : 'on').'. Update the passive mode setting in FTP/SSH Access to fix uploads.';
             } else {
-                $output[] = 'FTPS write test failed in '.($remoteDir === '' ? '(root)' : $remoteDir).'. Check permissions, ownership, disk quota, or try toggling passive mode in FTP/SSH Access.';
+                $output[] = 'FTP data channel failed in '.($remoteDir === '' ? '(root)' : $remoteDir).'. The command channel works but file uploads fail - this is an FTP configuration issue. Try toggling Passive Mode in FTP/SSH Access, or check firewall/iptptables settings on the server.';
             }
 
             return;
