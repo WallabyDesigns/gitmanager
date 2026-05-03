@@ -1,10 +1,18 @@
 <?php
 
+$defaultPhpBinary = PHP_BINARY ?: 'php';
+if (PHP_SAPI !== 'cli' && defined('PHP_BINDIR')) {
+    $cliCandidate = rtrim(PHP_BINDIR, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.'php';
+    if (is_file($cliCandidate) && is_executable($cliCandidate)) {
+        $defaultPhpBinary = $cliCandidate;
+    }
+}
+
 return [
     'git_binary' => env('GWM_GIT_BINARY', env('GPM_GIT_BINARY', 'git')),
     'composer_binary' => env('GWM_COMPOSER_BINARY', env('GPM_COMPOSER_BINARY', 'composer')),
     'npm_binary' => env('GWM_NPM_BINARY', env('GPM_NPM_BINARY', 'npm')),
-    'php_binary' => env('GWM_PHP_BINARY', env('GWM_PHP_PATH', env('GPM_PHP_BINARY', env('GPM_PHP_PATH', 'php')))),
+    'php_binary' => env('GWM_PHP_BINARY', env('GWM_PHP_PATH', env('GPM_PHP_BINARY', env('GPM_PHP_PATH', $defaultPhpBinary)))),
     'process_path' => env('GWM_PROCESS_PATH', env('GPM_PROCESS_PATH', '')),
     'process_timeout' => env('GWM_PROCESS_TIMEOUT', 900),
     'askpass_dir' => env('GWM_ASKPASS_DIR', env('GPM_ASKPASS_DIR', '')),
