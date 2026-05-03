@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AppUpdate;
 use App\Models\User;
+use App\Support\ConsoleOutput;
 use GitManagerEnterprise\EnterpriseServiceProvider;
 use Illuminate\Support\Facades\Cache;
 use Symfony\Component\Process\Exception\ProcessFailedException;
@@ -2900,7 +2901,10 @@ class SelfUpdateService
             }
         }
         $process->run(function ($type, $buffer) use (&$output) {
-            $output[] = trim($buffer);
+            $line = ConsoleOutput::withoutPhpWarnings(trim($buffer));
+            if ($line !== null && $line !== '') {
+                $output[] = $line;
+            }
             $this->maybeStreamUpdate($output);
         });
         $this->maybeStreamUpdate($output, true);

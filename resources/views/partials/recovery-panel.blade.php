@@ -8,7 +8,7 @@
 @php
     $hiddenClass = $forceVisible ? '' : 'hidden';
     $wrapperStyle = $overlay
-        ? 'position: fixed; inset: 0; z-index: 9999; padding: 2rem; background: rgba(15, 23, 42, 0.95); overflow: auto;'
+        ? 'position: fixed; inset: 0; z-index: 9999; padding: 2rem; background: rgba(15, 23, 42, 0.95); overflow: auto; opacity: 1 !important;'
         : 'position: relative; z-index: 20; padding: 2rem;';
     $panelStyle = 'max-width: 720px; width: 100%; margin: '.($overlay ? '10vh auto 0' : '0 auto').'; background: #0f172a; border: 1px solid #334155; border-radius: 16px; padding: 1.5rem; color: #e2e8f0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; box-sizing: border-box;';
     $buttonStyle = 'display: inline-flex; align-items: center; justify-content: center; padding: 0.6rem 1rem; border-radius: 10px; border: 1px solid #475569; background: #1f2937; color: #e2e8f0; text-decoration: none; font-weight: 600; cursor: pointer;';

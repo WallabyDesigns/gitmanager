@@ -52,11 +52,17 @@ class SelfUpdateControllerTest extends TestCase
 
     public function test_update_returns_plain_text_response(): void
     {
+        AppUpdate::query()->create([
+            'status' => 'running',
+            'action' => 'self_update',
+            'from_hash' => 'abc1234',
+            'to_hash' => null,
+            'output_log' => "PHP Warning: noisy\nUpdate log output.",
+            'started_at' => now(),
+        ]);
+
         $this->mock(SelfUpdateService::class, function ($mock) {
-            $mock->shouldReceive('startUpdateInBackground')
-                ->once()
-                ->with(\Mockery::any())
-                ->andReturn(['ok' => true, 'message' => 'Update started in the background.']);
+            $mock->shouldNotReceive('startUpdateInBackground');
             $mock->shouldNotReceive('updateSmart');
         });
 
@@ -64,8 +70,31 @@ class SelfUpdateControllerTest extends TestCase
 
         $response->assertOk()
             ->assertHeader('Content-Type', 'text/plain; charset=UTF-8')
+            ->assertHeader('Refresh', '2')
             ->assertSeeText('Update launch: started')
-            ->assertSeeText('Update started in the background.');
+            ->assertSeeText('A self-update is already running.')
+            ->assertSeeText('Update status: running')
+            ->assertSeeText('Update log output.')
+            ->assertDontSeeText('PHP Warning: noisy');
+    }
+
+    public function test_update_starts_background_process_when_no_update_is_running(): void
+    {
+        $this->mock(SelfUpdateService::class, function ($mock) {
+            $mock->shouldReceive('startUpdateInBackground')
+                ->once()
+                ->with(\Mockery::any())
+                ->andReturn(['ok' => true, 'message' => 'Update started in the background.']);
+        });
+
+        $response = $this->actingAs($this->adminUser())->get('/update');
+
+        $response->assertOk()
+            ->assertHeader('Refresh', '2')
+            ->assertSeeText('Update launch: started')
+            ->assertSeeText('Update started in the background.')
+            ->assertSeeText('Update status: starting')
+            ->assertSeeText('Waiting for the background updater to create its log entry...');
     }
 
     public function test_rollback_requires_authentication(): void

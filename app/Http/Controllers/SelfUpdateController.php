@@ -12,14 +12,47 @@ class SelfUpdateController extends Controller
 {
     public function update(SelfUpdateService $service): Response
     {
-        $result = $service->startUpdateInBackground(Auth::user());
+        $running = $this->runningManualUpdate();
+        $result = $running
+            ? ['ok' => true, 'message' => 'A self-update is already running.']
+            : $service->startUpdateInBackground(Auth::user());
+        $update = $running ?: $this->latestManualUpdate();
 
-        return response(implode("\n", [
+        $lines = [
             'Update launch: '.(($result['ok'] ?? false) ? 'started' : 'failed'),
             $result['message'] ?? '',
-            '',
-            'Progress is saved under System > App Updates.',
-        ]), 200)->header('Content-Type', 'text/plain; charset=UTF-8');
+        ];
+
+        if ($update) {
+            $lines = array_merge($lines, [
+                '',
+                'Update status: '.$update->status,
+                'Started: '.($update->started_at?->toDateTimeString() ?? 'pending'),
+                'Finished: '.($update->finished_at?->toDateTimeString() ?? 'running'),
+                'From: '.($update->from_hash ?? 'pending'),
+                'To: '.($update->to_hash ?? 'pending'),
+                '',
+                'Log:',
+                $update->output_log ?: 'Waiting for update output...',
+            ]);
+        } else {
+            $lines = array_merge($lines, [
+                '',
+                'Update status: starting',
+                '',
+                'Log:',
+                'Waiting for the background updater to create its log entry...',
+            ]);
+        }
+
+        $response = response(implode("\n", $lines), 200)
+            ->header('Content-Type', 'text/plain; charset=UTF-8');
+
+        if (! $update || $update->status === 'running') {
+            $response->header('Refresh', '2');
+        }
+
+        return $response;
     }
 
     public function rollback(SelfUpdateService $service): Response
@@ -45,5 +78,24 @@ class SelfUpdateController extends Controller
 
         return response(implode("\n", $lines), 200)
             ->header('Content-Type', 'text/plain; charset=UTF-8');
+    }
+
+    private function latestManualUpdate(): ?AppUpdate
+    {
+        return AppUpdate::query()
+            ->whereIn('action', ['self_update', 'force_update'])
+            ->latest('started_at')
+            ->latest('id')
+            ->first();
+    }
+
+    private function runningManualUpdate(): ?AppUpdate
+    {
+        return AppUpdate::query()
+            ->whereIn('action', ['self_update', 'force_update'])
+            ->where('status', 'running')
+            ->latest('started_at')
+            ->latest('id')
+            ->first();
     }
 }

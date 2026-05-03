@@ -5,6 +5,7 @@ namespace App\Livewire\AppUpdates;
 use App\Models\AppUpdate;
 use App\Services\SelfUpdateService;
 use App\Services\SettingsService;
+use App\Support\ConsoleOutput;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -180,7 +181,7 @@ class Index extends Component
         }
 
         $this->expandedUpdateId = (int) $update->id;
-        $this->expandedUpdateLog = $update->output_log_tail;
+        $this->expandedUpdateLog = ConsoleOutput::withoutPhpWarnings($update->output_log_tail);
         $this->expandedUpdateLogTruncated = (int) ($update->output_log_length ?? 0) > self::OUTPUT_LOG_TAIL_CHARS;
     }
 

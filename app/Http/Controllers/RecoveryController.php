@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\EnvBackupService;
+use App\Support\ConsoleOutput;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\Process\Process;
@@ -116,7 +117,7 @@ class RecoveryController extends Controller
                 $process = new Process($command, $root, $env);
                 $process->setTimeout(1200);
                 $process->run(function ($type, $buffer) use (&$output, $logPath) {
-                    $line = rtrim($buffer);
+                    $line = ConsoleOutput::withoutPhpWarnings(rtrim($buffer));
                     if ($line === '') {
                         return;
                     }
@@ -200,6 +201,6 @@ class RecoveryController extends Controller
 
         $slice = array_slice($lines, -$maxLines);
 
-        return implode("\n", $slice);
+        return ConsoleOutput::withoutPhpWarnings(implode("\n", $slice)) ?? '';
     }
 }

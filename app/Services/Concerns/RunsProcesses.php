@@ -2,6 +2,7 @@
 
 namespace App\Services\Concerns;
 
+use App\Support\ConsoleOutput;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 
@@ -14,7 +15,10 @@ trait RunsProcesses
         $process = new Process($command, $workingDir, array_merge($this->baseEnv(), $this->gitEnv()));
         $this->applyProcessTimeout($process);
         $process->run(function ($type, $buffer) use (&$output) {
-            $output[] = trim($buffer);
+            $line = ConsoleOutput::withoutPhpWarnings(trim($buffer));
+            if ($line !== null && $line !== '') {
+                $output[] = $line;
+            }
             $this->maybeStreamOutput($output);
         });
         $this->logProcessEnd($processId, $process, $output);
@@ -33,7 +37,10 @@ trait RunsProcesses
         $process = new Process($command, $workingDir, $this->projectEnvForPath($workingDir));
         $this->applyProcessTimeout($process);
         $process->run(function ($type, $buffer) use (&$output) {
-            $output[] = trim($buffer);
+            $line = ConsoleOutput::withoutPhpWarnings(trim($buffer));
+            if ($line !== null && $line !== '') {
+                $output[] = $line;
+            }
             $this->maybeStreamOutput($output);
         });
         $this->logProcessEnd($processId, $process, $output);
@@ -53,7 +60,10 @@ trait RunsProcesses
         $process = new Process($command, $workingDir, $env);
         $this->applyProcessTimeout($process);
         $process->run(function ($type, $buffer) use (&$output) {
-            $output[] = trim($buffer);
+            $line = ConsoleOutput::withoutPhpWarnings(trim($buffer));
+            if ($line !== null && $line !== '') {
+                $output[] = $line;
+            }
             $this->maybeStreamOutput($output);
         });
         $this->logProcessEnd($processId, $process, $output);
@@ -76,7 +86,10 @@ trait RunsProcesses
         $process = Process::fromShellCommandline($command, $workingDir, $this->projectEnvForPath($workingDir));
         $this->applyProcessTimeout($process);
         $process->run(function ($type, $buffer) use (&$output) {
-            $output[] = trim($buffer);
+            $line = ConsoleOutput::withoutPhpWarnings(trim($buffer));
+            if ($line !== null && $line !== '') {
+                $output[] = $line;
+            }
             $this->maybeStreamOutput($output);
         });
         $this->logProcessEnd($processId, $process, $output);
@@ -99,7 +112,10 @@ trait RunsProcesses
         $process = Process::fromShellCommandline($command, $workingDir, array_merge($this->baseEnv(), $this->gitEnv()));
         $this->applyProcessTimeout($process);
         $process->run(function ($type, $buffer) use (&$output) {
-            $output[] = trim($buffer);
+            $line = ConsoleOutput::withoutPhpWarnings(trim($buffer));
+            if ($line !== null && $line !== '') {
+                $output[] = $line;
+            }
             $this->maybeStreamOutput($output);
         });
         $this->logProcessEnd($processId, $process, $output);

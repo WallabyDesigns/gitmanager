@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\ConsoleOutput;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
@@ -509,7 +510,7 @@ class SchedulerService
 
     private function trimOutput(string $output): string
     {
-        $output = trim($output);
+        $output = ConsoleOutput::withoutPhpWarnings($output) ?? '';
         if (mb_strlen($output) <= 2000) {
             return $output;
         }

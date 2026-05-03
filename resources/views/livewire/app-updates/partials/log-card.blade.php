@@ -42,7 +42,7 @@
         @php($logLength = (int) ($update->output_log_length ?? 0))
         @if ($showOutput)
             <div class="mt-3 max-h-80 overflow-auto rounded-lg border border-slate-200/70 bg-slate-950/70 dark:border-slate-800">
-                <pre class="inline-block min-w-full p-4 text-xs text-slate-200 whitespace-pre font-mono leading-relaxed">{{ $update->output_log_tail ?? 'No output captured.' }}</pre>
+                <pre class="inline-block min-w-full p-4 text-xs text-slate-200 whitespace-pre font-mono leading-relaxed">{{ \App\Support\ConsoleOutput::withoutPhpWarnings($update->output_log_tail ?? null) ?: 'No output captured.' }}</pre>
             </div>
         @elseif ($logLength > 0)
             <div class="mt-3">
