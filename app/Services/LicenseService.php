@@ -228,10 +228,19 @@ class LicenseService
     {
         $key = $this->licenseKey();
         if ($key === '') {
-            $this->bootstrapCommunityConfig();
-            $this->clearLicense();
+            $bootstrapResponse = $this->bootstrapCommunityConfig();
+            if ($bootstrapResponse !== null) {
+                $newKey = $bootstrapResponse['license_key'] ?? $bootstrapResponse['key'] ?? '';
+                if ($newKey !== '') {
+                    $this->setLicenseKey($newKey);
+                    $key = $newKey;
+                }
+            }
+            if ($key === '') {
+                $this->clearLicense();
 
-            return $this->state();
+                return $this->state();
+            }
         }
 
         $endpoint = $this->verifyUrl();
@@ -717,11 +726,11 @@ class LicenseService
             && str_contains((string) ($initialJson['message'] ?? ''), 'Bootstrap:');
     }
 
-    private function bootstrapCommunityConfig(): void
+    private function bootstrapCommunityConfig(): ?array
     {
         $endpoint = $this->verifyUrl();
         if ($endpoint === '' || ! $this->isEndpointAllowed($endpoint)) {
-            return;
+            return null;
         }
 
         try {
@@ -741,10 +750,14 @@ class LicenseService
             if (is_array($json)) {
                 $this->persistEnterpriseRuntimeConfig($json);
                 $this->extractAndStoreRequestSigningSecret($json);
+
+                return $json;
             }
         } catch (\Throwable $e) {
             // Non-fatal: community bootstrap should never block normal operation.
         }
+
+        return null;
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Livewire\Dashboard;
 
 use App\Models\Deployment;
+use App\Models\Project;
 use App\Services\DeploymentService;
 use App\Services\DockerService;
 use App\Services\EditionService;
@@ -24,7 +25,7 @@ class Index extends Component
 
     public function refreshHealth(DeploymentService $service): void
     {
-        $projects = Auth::user()->projects()->withHealthMonitoring()->get();
+        $projects = Project::query()->withHealthMonitoring()->get();
 
         foreach ($projects as $project) {
             if (! $project->health_checked_at || $project->health_checked_at->lt(now()->subMinute())) {
@@ -37,7 +38,7 @@ class Index extends Component
     {
         $user = Auth::user();
 
-        $allProjects = $user->projects()
+        $allProjects = Project::query()
             ->withCount([
                 'auditIssues as audit_open_count' => fn ($q) => $q->where('status', 'open'),
             ])
@@ -46,10 +47,14 @@ class Index extends Component
         $monitoredProjects = $allProjects->filter(fn ($p) => $p->hasHealthMonitoring())->values();
         $healthyCount = $monitoredProjects->where('health_status', 'ok')->count();
         $healthIssues = $monitoredProjects->where('health_status', 'na')->values();
-        $updatesAvailable = $allProjects->where('updates_available', true)->values();
-        $vulnerableProjects = $allProjects->filter(fn ($p) => ($p->audit_open_count ?? 0) > 0)->values();
+        $updatesAvailable = $user->projects()->where('updates_available', true)->get();
+        $vulnerableProjects = $user->projects()
+            ->withCount(['auditIssues as audit_open_count' => fn ($q) => $q->where('status', 'open')])
+            ->get()
+            ->filter(fn ($p) => ($p->audit_open_count ?? 0) > 0)
+            ->values();
 
-        $projectIds = $allProjects->pluck('id')->all();
+        $projectIds = $user->projects()->pluck('id')->all();
 
         $recentDeployments = $projectIds === [] ? collect() : Deployment::query()
             ->whereIn('project_id', $projectIds)
