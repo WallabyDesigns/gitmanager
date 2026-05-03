@@ -1581,10 +1581,51 @@ class SelfUpdateService
         if (is_file(base_path('artisan'))) {
             $this->runProcess(['php', 'artisan', 'migrate', '--force'], $output, $repoPath);
             $this->maybeRunAppClearCache($repoPath, $output);
+            $this->refreshSchedulerCronAfterUpdate($repoPath, $output);
         }
 
         $this->applyPostUpdatePermissions($repoPath, $output);
         $this->validateUpdatedApplication($repoPath, $output);
+    }
+
+    protected function refreshSchedulerCronAfterUpdate(string $repoPath, array &$output): void
+    {
+        if ($this->isWindowsHost()) {
+            $output[] = 'Skipping scheduler cron refresh: Windows hosts must use Task Scheduler.';
+
+            return;
+        }
+
+        if (! is_file($repoPath.DIRECTORY_SEPARATOR.'artisan')) {
+            return;
+        }
+
+        try {
+            $result = $this->schedulerService()->installCron(false);
+        } catch (\Throwable $exception) {
+            $output[] = 'Warning: scheduler cron refresh failed: '.$exception->getMessage();
+
+            return;
+        }
+
+        $message = trim((string) ($result['message'] ?? ''));
+        if (($result['success'] ?? false) === true) {
+            $output[] = 'Scheduler cron refreshed after update'.($message !== '' ? ': '.$message : '.');
+
+            return;
+        }
+
+        $output[] = 'Warning: scheduler cron refresh skipped'.($message !== '' ? ': '.$message : '.');
+    }
+
+    protected function schedulerService(): SchedulerService
+    {
+        return app(SchedulerService::class);
+    }
+
+    protected function isWindowsHost(): bool
+    {
+        return PHP_OS_FAMILY === 'Windows';
     }
 
     protected function validateUpdatedApplication(string $repoPath, array &$output): void

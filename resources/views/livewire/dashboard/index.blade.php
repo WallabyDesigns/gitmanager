@@ -1,4 +1,4 @@
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6" wire:poll.60s="refreshHealth">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
     {{-- Stat cards --}}
     <div class="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">

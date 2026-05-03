@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\AppUpdate;
 use App\Services\GitHubService;
+use App\Services\SchedulerService;
 use App\Services\SelfUpdateService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\File;
@@ -459,6 +460,51 @@ class SelfUpdateServiceTest extends TestCase
 
         $output = [];
         $service->inspectValidateUpdatedApplication($projectPath, $output);
+    }
+
+    public function test_post_update_scheduler_cron_refresh_normalizes_without_running_scheduler(): void
+    {
+        $projectPath = $this->makeFakeArtisanProject();
+        $scheduler = new class extends SchedulerService
+        {
+            public ?bool $runAfterInstall = null;
+
+            public function installCron(bool $runAfterInstall = true): array
+            {
+                $this->runAfterInstall = $runAfterInstall;
+
+                return [
+                    'success' => true,
+                    'message' => 'Cron entry installed successfully.',
+                ];
+            }
+        };
+
+        $service = new class($scheduler) extends SelfUpdateService
+        {
+            public function __construct(private readonly SchedulerService $fakeScheduler) {}
+
+            public function inspectRefreshSchedulerCronAfterUpdate(string $repoPath, array &$output): void
+            {
+                $this->refreshSchedulerCronAfterUpdate($repoPath, $output);
+            }
+
+            protected function schedulerService(): SchedulerService
+            {
+                return $this->fakeScheduler;
+            }
+
+            protected function isWindowsHost(): bool
+            {
+                return false;
+            }
+        };
+
+        $output = [];
+        $service->inspectRefreshSchedulerCronAfterUpdate($projectPath, $output);
+
+        $this->assertFalse($scheduler->runAfterInstall);
+        $this->assertStringContainsString('Scheduler cron refreshed after update', implode("\n", $output));
     }
 
     /**

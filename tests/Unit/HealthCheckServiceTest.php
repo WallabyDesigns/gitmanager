@@ -38,4 +38,34 @@ class HealthCheckServiceTest extends TestCase
             ->where('status', 'success')
             ->count());
     }
+
+    public function test_first_http_exception_still_records_health_check_attempt(): void
+    {
+        Http::fake([
+            'https://example.test/up' => fn () => throw new \RuntimeException('Connection timed out'),
+        ]);
+
+        $project = Project::factory()->create([
+            'user_id' => User::factory(),
+            'project_type' => 'static',
+            'health_url' => 'https://example.test/up',
+            'health_status' => 'ok',
+            'health_checked_at' => null,
+        ]);
+
+        $service = app(HealthCheckService::class);
+
+        $this->assertSame('ok', $service->checkHealth($project, true));
+
+        $project->refresh();
+        $this->assertSame('ok', $project->health_status);
+        $this->assertNotNull($project->health_checked_at);
+        $this->assertStringContainsString('Connection timed out', (string) $project->health_log);
+
+        $this->assertDatabaseHas('deployments', [
+            'project_id' => $project->id,
+            'action' => 'health_check',
+            'status' => 'failed',
+        ]);
+    }
 }

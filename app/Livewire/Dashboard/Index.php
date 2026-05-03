@@ -4,7 +4,6 @@ namespace App\Livewire\Dashboard;
 
 use App\Models\Deployment;
 use App\Models\Project;
-use App\Services\DeploymentService;
 use App\Services\DockerService;
 use App\Services\EditionService;
 use Illuminate\Support\Facades\Auth;
@@ -21,17 +20,6 @@ class Index extends Component
     public function setTab(string $tab): void
     {
         $this->tab = $tab;
-    }
-
-    public function refreshHealth(DeploymentService $service): void
-    {
-        $projects = Project::query()->withHealthMonitoring()->get();
-
-        foreach ($projects as $project) {
-            if (! $project->health_checked_at || $project->health_checked_at->lt(now()->subMinute())) {
-                $service->checkHealth($project);
-            }
-        }
     }
 
     public function render()

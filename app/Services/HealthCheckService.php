@@ -68,6 +68,10 @@ class HealthCheckService
             $failCount = (int) Cache::get($this->consecutiveFailKey($project), 0) + 1;
             Cache::put($this->consecutiveFailKey($project), $failCount, now()->addHours(2));
             if ($failCount < 2) {
+                $logText = $this->formatHealthLog($healthLog);
+                $this->saveHealthStatus($project, $previousStatus ?? 'na', $previousIssue, $logText);
+                $this->maybeLogHealthCheck($project, 'na', $exception->getMessage(), $logText, $log, $previousStatus, $previousIssue);
+
                 return $previousStatus ?? 'na';
             }
             $status = 'na';

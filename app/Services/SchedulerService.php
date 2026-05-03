@@ -85,7 +85,7 @@ class SchedulerService
         return '* * * * * cd '.$baseArg.' && '.$php.' artisan scheduler:run >/dev/null 2>&1';
     }
 
-    public function installCron(): array
+    public function installCron(bool $runAfterInstall = true): array
     {
         if (PHP_OS_FAMILY === 'Windows') {
             return [
@@ -153,17 +153,21 @@ class SchedulerService
             ];
         }
 
-        $run = $this->runSchedulerOnce('cron-install');
-        if (! $run['success']) {
-            return [
-                'success' => true,
-                'message' => 'Cron entry installed, but the scheduler run failed. Check the Scheduler Error Log.',
-            ];
+        if ($runAfterInstall) {
+            $run = $this->runSchedulerOnce('cron-install');
+            if (! $run['success']) {
+                return [
+                    'success' => true,
+                    'message' => 'Cron entry installed, but the scheduler run failed. Check the Scheduler Error Log.',
+                ];
+            }
         }
 
         return [
             'success' => true,
-            'message' => 'Cron entry installed successfully and scheduler executed.',
+            'message' => $runAfterInstall
+                ? 'Cron entry installed successfully and scheduler executed.'
+                : 'Cron entry installed successfully.',
         ];
     }
 
