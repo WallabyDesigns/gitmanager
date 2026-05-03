@@ -55,6 +55,7 @@ class LogCleanup extends Command
 
         $appUpdates = $result['app_updates'];
         $deployments = $result['deployments'];
+        $schedulerErrors = $result['scheduler_errors'];
 
         $this->line(($dryRun ? 'Would clear' : 'Cleared').' '.$scope.'.');
         $this->line(sprintf(
@@ -66,6 +67,11 @@ class LogCleanup extends Command
             'Deployments: %d record(s), %s',
             $deployments['records'],
             $this->formatBytes((int) $deployments['bytes'])
+        ));
+        $this->line(sprintf(
+            'Scheduler errors: %d file(s), %s',
+            $schedulerErrors['records'],
+            $this->formatBytes((int) $schedulerErrors['bytes'])
         ));
         $this->line(sprintf(
             'Total: %d record(s), %s',

@@ -156,6 +156,7 @@ class Settings extends Component
             'lastManualRun' => $scheduler->lastManualRun(),
             'lastSource' => $scheduler->lastSource(),
             'schedulerLog' => $scheduler->schedulerLogEntries(),
+            'schedulerRuntime' => $scheduler->phpRuntimeStatus(),
             'queueEnabled' => config('gitmanager.deploy_queue.enabled', true),
             'queueCount' => DeploymentQueueItem::query()
                 ->where('status', 'queued')

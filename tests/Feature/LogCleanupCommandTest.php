@@ -7,6 +7,7 @@ use App\Models\Deployment;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 class LogCleanupCommandTest extends TestCase
@@ -83,13 +84,20 @@ class LogCleanupCommandTest extends TestCase
             'started_at' => now(),
             'finished_at' => now(),
         ]);
+        File::put(storage_path('app/scheduler-errors.json'), json_encode([
+            'entries' => [
+                ['message' => 'Call to undefined function Illuminate\Support\mb_split()'],
+            ],
+        ]));
 
         $this->artisan('logs:cleanup --all')
             ->expectsOutputToContain('Cleared all stored logs.')
+            ->expectsOutputToContain('Scheduler errors: 1 file(s)')
             ->assertSuccessful();
 
         $this->assertNull($update->fresh()->output_log);
         $this->assertNull($deployment->fresh()->output_log);
+        $this->assertFileDoesNotExist(storage_path('app/scheduler-errors.json'));
     }
 
     public function test_logs_cleanup_dry_run_does_not_modify_records(): void
@@ -113,6 +121,11 @@ class LogCleanupCommandTest extends TestCase
             'started_at' => now()->subDays(45),
             'finished_at' => now()->subDays(45),
         ]);
+        File::put(storage_path('app/scheduler-errors.json'), json_encode([
+            'entries' => [
+                ['message' => 'Scheduler error'],
+            ],
+        ]));
 
         $this->artisan('logs:cleanup --days=30 --dry-run')
             ->expectsOutputToContain('Would clear logs older than 30 day(s).')
@@ -120,5 +133,6 @@ class LogCleanupCommandTest extends TestCase
 
         $this->assertSame('update log', $update->fresh()->output_log);
         $this->assertSame('deployment log', $deployment->fresh()->output_log);
+        $this->assertFileExists(storage_path('app/scheduler-errors.json'));
     }
 }

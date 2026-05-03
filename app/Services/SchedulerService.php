@@ -73,16 +73,95 @@ class SchedulerService
 
     public function cronCommand(): string
     {
-        $php = trim((string) config('gitmanager.php_binary', 'php'));
-        $php = trim($php, "\"' ");
-        if ($php === '') {
-            $php = 'php';
-        }
+        $php = $this->phpBinary();
 
         $base = base_path();
         $baseArg = escapeshellarg($base);
 
         return '* * * * * cd '.$baseArg.' && '.$php.' artisan scheduler:run >/dev/null 2>&1';
+    }
+
+    /**
+     * @return array{
+     *     ok: bool,
+     *     php_binary: string,
+     *     resolved_binary?: string|null,
+     *     version?: string|null,
+     *     sapi?: string|null,
+     *     missing_extensions: array<int, string>,
+     *     message: string
+     * }
+     */
+    public function phpRuntimeStatus(): array
+    {
+        $required = ['mbstring'];
+        $php = $this->phpBinary();
+        $code = '$required = '.var_export($required, true).';'
+            .'$loaded = [];'
+            .'foreach ($required as $extension) { $loaded[$extension] = extension_loaded($extension); }'
+            .'echo json_encode(["binary" => PHP_BINARY, "version" => PHP_VERSION, "sapi" => PHP_SAPI, "loaded" => $loaded]);';
+
+        try {
+            $process = new Process([$php, '-r', $code], base_path(), $this->baseEnv());
+            $process->setTimeout(10);
+            $process->run();
+        } catch (\Throwable $exception) {
+            return [
+                'ok' => false,
+                'php_binary' => $php,
+                'resolved_binary' => null,
+                'version' => null,
+                'sapi' => null,
+                'missing_extensions' => $required,
+                'message' => 'Unable to execute the configured PHP binary: '.$exception->getMessage(),
+            ];
+        }
+
+        if (! $process->isSuccessful()) {
+            $output = trim($process->getErrorOutput()) ?: trim($process->getOutput());
+
+            return [
+                'ok' => false,
+                'php_binary' => $php,
+                'resolved_binary' => null,
+                'version' => null,
+                'sapi' => null,
+                'missing_extensions' => $required,
+                'message' => 'Configured PHP binary failed its scheduler preflight'.($output !== '' ? ': '.$output : '.'),
+            ];
+        }
+
+        $payload = json_decode(trim($process->getOutput()), true);
+        if (! is_array($payload) || ! is_array($payload['loaded'] ?? null)) {
+            return [
+                'ok' => false,
+                'php_binary' => $php,
+                'resolved_binary' => null,
+                'version' => null,
+                'sapi' => null,
+                'missing_extensions' => $required,
+                'message' => 'Configured PHP binary returned an unreadable scheduler preflight response.',
+            ];
+        }
+
+        $missing = [];
+        foreach ($required as $extension) {
+            if (($payload['loaded'][$extension] ?? false) !== true) {
+                $missing[] = $extension;
+            }
+        }
+
+        return [
+            'ok' => $missing === [],
+            'php_binary' => $php,
+            'resolved_binary' => is_string($payload['binary'] ?? null) ? $payload['binary'] : null,
+            'version' => is_string($payload['version'] ?? null) ? $payload['version'] : null,
+            'sapi' => is_string($payload['sapi'] ?? null) ? $payload['sapi'] : null,
+            'missing_extensions' => $missing,
+            'message' => $missing === []
+                ? 'Configured PHP binary has the required scheduler extensions.'
+                : 'Configured PHP binary is missing required extension(s): '.implode(', ', $missing).'.',
+        ];
     }
 
     public function installCron(bool $runAfterInstall = true): array
@@ -284,6 +363,14 @@ class SchedulerService
         }
 
         return $env;
+    }
+
+    private function phpBinary(): string
+    {
+        $php = trim((string) config('gitmanager.php_binary', 'php'));
+        $php = trim($php, "\"' ");
+
+        return $php !== '' ? $php : 'php';
     }
 
     /**

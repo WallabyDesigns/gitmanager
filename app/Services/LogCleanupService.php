@@ -7,6 +7,7 @@ use App\Models\Deployment;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 
 class LogCleanupService
 {
@@ -55,6 +56,7 @@ class LogCleanupService
 
         $appUpdates = $this->summarizeQuery($appUpdateQuery, 'app updates');
         $deployments = $this->summarizeQuery($deploymentQuery, 'deployments');
+        $scheduler = $this->summarizeSchedulerLog($cutoff);
 
         $vacuumed = false;
 
@@ -65,6 +67,10 @@ class LogCleanupService
 
             if ($deployments['records'] > 0) {
                 (clone $deploymentQuery)->update(['output_log' => null]);
+            }
+
+            if ($scheduler['records'] > 0) {
+                File::delete($this->schedulerLogPath());
             }
 
             if ($vacuum && ($appUpdates['records'] > 0 || $deployments['records'] > 0)) {
@@ -78,8 +84,9 @@ class LogCleanupService
             'vacuumed' => $vacuumed,
             'app_updates' => $appUpdates,
             'deployments' => $deployments,
-            'total_records' => $appUpdates['records'] + $deployments['records'],
-            'total_bytes' => $appUpdates['bytes'] + $deployments['bytes'],
+            'scheduler_errors' => $scheduler,
+            'total_records' => $appUpdates['records'] + $deployments['records'] + $scheduler['records'],
+            'total_bytes' => $appUpdates['bytes'] + $deployments['bytes'] + $scheduler['bytes'],
         ];
     }
 
@@ -118,5 +125,38 @@ class LogCleanupService
             'bytes' => (int) ($summary->aggregate_bytes ?? 0),
             'table' => $table,
         ];
+    }
+
+    private function summarizeSchedulerLog(?CarbonInterface $cutoff): array
+    {
+        $path = $this->schedulerLogPath();
+        if (! is_file($path)) {
+            return [
+                'label' => 'scheduler errors',
+                'records' => 0,
+                'bytes' => 0,
+                'path' => $path,
+            ];
+        }
+
+        $bytes = (int) (filesize($path) ?: 0);
+        if ($cutoff === null) {
+            $records = 1;
+        } else {
+            $modifiedAt = File::lastModified($path);
+            $records = $modifiedAt < $cutoff->getTimestamp() ? 1 : 0;
+        }
+
+        return [
+            'label' => 'scheduler errors',
+            'records' => $records,
+            'bytes' => $records > 0 ? $bytes : 0,
+            'path' => $path,
+        ];
+    }
+
+    private function schedulerLogPath(): string
+    {
+        return storage_path('app/scheduler-errors.json');
     }
 }

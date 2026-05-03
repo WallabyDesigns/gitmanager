@@ -159,7 +159,7 @@
                             <button
                                 type="button"
                                 wire:click="clearAllStoredLogs"
-                                onclick="return confirm('This will clear all stored deployment and self-update console logs from the database. Continue?')"
+                                onclick="return confirm('This will clear all stored deployment, self-update, and scheduler error logs. Continue?')"
                                 class="px-3 py-2 text-xs rounded-md border border-rose-300/70 text-rose-700 hover:text-rose-900 dark:border-rose-500/40 dark:text-rose-200 dark:hover:text-white inline-flex items-center"
                             >
                                 <x-loading-spinner target="clearAllStoredLogs" />
@@ -167,7 +167,7 @@
                             </button>
                         </div>
                         <div class="text-xs text-slate-400 dark:text-slate-500">
-                            Manual cleanup keeps deployment and update status history, but removes the large console output text. The Clear All action also runs SQLite VACUUM when supported so disk space can be reclaimed.
+                            Manual cleanup keeps deployment and update status history, but removes large console output and scheduler error logs. The Clear All action also runs SQLite VACUUM when supported so disk space can be reclaimed.
                         </div>
                     </div>
 
@@ -181,6 +181,32 @@
                         <div class="rounded-md border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-950/40 p-3 text-xs font-mono text-slate-700 dark:text-slate-200">
                             {{ $cronCommand }}
                         </div>
+                        @if (! ($schedulerRuntime['ok'] ?? true))
+                            <div class="rounded-md border border-rose-300/70 bg-rose-50/80 dark:border-rose-500/40 dark:bg-rose-500/10 p-4 space-y-2">
+                                <div class="text-sm font-semibold text-rose-900 dark:text-rose-200">Scheduler PHP Runtime Issue</div>
+                                <p class="text-xs text-rose-800 dark:text-rose-200">
+                                    {{ $schedulerRuntime['message'] ?? 'The configured PHP binary failed the scheduler preflight.' }}
+                                </p>
+                                <div class="text-xs text-rose-800 dark:text-rose-200">
+                                    Configured PHP: <code class="font-mono">{{ $schedulerRuntime['php_binary'] ?? 'php' }}</code>
+                                    @if (! empty($schedulerRuntime['resolved_binary']))
+                                        <span class="mx-1">&middot;</span>
+                                        Resolved: <code class="font-mono">{{ $schedulerRuntime['resolved_binary'] }}</code>
+                                    @endif
+                                    @if (! empty($schedulerRuntime['version']))
+                                        <span class="mx-1">&middot;</span>
+                                        PHP {{ $schedulerRuntime['version'] }}
+                                    @endif
+                                </div>
+                                <p class="text-xs text-rose-700 dark:text-rose-300">
+                                    Install/enable the missing extension for CLI PHP, or set <code class="font-mono">GWM_PHP_BINARY</code> to a PHP binary that includes it.
+                                </p>
+                            </div>
+                        @else
+                            <div class="rounded-md border border-emerald-200/70 bg-emerald-50/60 dark:border-emerald-500/30 dark:bg-emerald-500/10 p-3 text-xs text-emerald-800 dark:text-emerald-200">
+                                Scheduler PHP preflight passed for <code class="font-mono">{{ $schedulerRuntime['php_binary'] ?? 'php' }}</code>.
+                            </div>
+                        @endif
                         <div class="flex flex-wrap gap-2">
                             <button type="button" wire:click="installCron" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white inline-flex items-center">
                                 <x-loading-spinner target="installCron" />
