@@ -9,16 +9,10 @@ class VerifyEnterpriseLicense extends Command
 {
     protected $signature = 'license:verify';
 
-    protected $description = 'Verify the configured enterprise license with the license server.';
+    protected $description = 'Register Community installs and verify configured Enterprise licenses.';
 
     public function handle(LicenseService $license): int
     {
-        if (! $license->keyConfigured()) {
-            $this->line('No enterprise license key configured. Skipping verification.');
-
-            return self::SUCCESS;
-        }
-
         $state = $license->verifyNow();
         $status = (string) ($state['status'] ?? 'invalid');
         $message = (string) ($state['message'] ?? '');
@@ -26,6 +20,18 @@ class VerifyEnterpriseLicense extends Command
 
         if ($status === 'valid' && strtolower($edition) === 'enterprise') {
             $this->info($message !== '' ? $message : 'Enterprise license is valid.');
+
+            return self::SUCCESS;
+        }
+
+        if (! $license->keyConfigured()) {
+            $this->line($message !== '' ? $message : 'Community installation registration checked.');
+
+            return self::SUCCESS;
+        }
+
+        if ($status === 'valid' && strtolower($edition) === 'community') {
+            $this->info($message !== '' ? $message : 'Community installation is registered.');
 
             return self::SUCCESS;
         }

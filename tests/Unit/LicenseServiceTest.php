@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Services\LicenseService;
 use App\Services\SettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -189,5 +190,56 @@ class LicenseServiceTest extends TestCase
 
         Http::assertSent(fn ($request) => true);
         $this->assertSame('invalid', $state['status']);
+    }
+
+    public function test_license_verify_command_registers_community_installation_without_existing_key(): void
+    {
+        config()->set('gitmanager.license.public_ip', '203.0.113.10');
+
+        $installationUuid = $this->service()->installationUuid();
+
+        Http::fakeSequence()
+            ->push([
+                'license_key' => 'gwm_COMMUNITY123',
+                'message' => 'Community installation registered.',
+            ], 200)
+            ->push([
+                'valid' => true,
+                'edition' => 'community',
+                'installation_uuid' => $installationUuid,
+                'message' => 'Community installation registered.',
+            ], 200)
+            ->push([
+                'valid' => true,
+                'edition' => 'community',
+                'installation_uuid' => $installationUuid,
+                'message' => 'Community installation registered.',
+            ], 200);
+
+        $this->assertSame(0, Artisan::call('license:verify'));
+
+        $state = $this->service()->state();
+        $this->assertTrue($this->service()->keyConfigured());
+        $this->assertSame('valid', $state['status']);
+        $this->assertSame('community', $state['edition']);
+
+        Http::assertSentCount(3);
+        Http::assertSent(function ($request): bool {
+            $payload = $request->data();
+
+            return ($payload['license_key'] ?? null) === ''
+                && ($payload['edition'] ?? null) === 'community'
+                && ($payload['installed_edition'] ?? null) === 'community'
+                && ($payload['app_url'] ?? null) === (string) config('app.url')
+                && array_key_exists('app_version', $payload)
+                && array_key_exists('php_version', $payload);
+        });
+        Http::assertSent(function ($request): bool {
+            $payload = $request->data();
+
+            return ($payload['license_key'] ?? null) === 'gwm_COMMUNITY123'
+                && ($payload['installation_uuid'] ?? null) !== ''
+                && ($payload['timestamp'] ?? null) !== '';
+        });
     }
 }

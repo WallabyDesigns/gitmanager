@@ -59,14 +59,11 @@ class ProjectsAutoDeploy extends Command
                     } else {
                         $service->deploy($project);
                         $this->info("Deployed {$project->name}.");
-                        if ($project->hasSuccessfulDeployment()) {
-                            $service->checkHealth($project, false, true);
+                        if ($project->hasHealthMonitoring()) {
+                            $service->checkHealth($project, true, true);
                         }
                     }
                 } else {
-                    if ($project->hasSuccessfulDeployment()) {
-                        $service->checkHealth($project, false, true);
-                    }
                     $this->line("No updates for {$project->name}.");
                 }
                 if ($auditEnabled) {
@@ -101,22 +98,6 @@ class ProjectsAutoDeploy extends Command
                 }
             } catch (\Throwable $exception) {
                 $this->error("Failed for {$project->name}: {$exception->getMessage()}");
-            }
-        }
-
-        $checkedIds = $projects->pluck('id')->all();
-        $monitoredOnly = Project::query()
-            ->withHealthMonitoring()
-            ->when($checkedIds !== [], fn ($q) => $q->whereNotIn('id', $checkedIds))
-            ->get();
-
-        foreach ($monitoredOnly as $project) {
-            try {
-                if ($project->hasSuccessfulDeployment()) {
-                    $service->checkHealth($project, false, true);
-                }
-            } catch (\Throwable $exception) {
-                $this->error("Health check failed for {$project->name}: {$exception->getMessage()}");
             }
         }
 

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Support\InstallContext;
+use Composer\InstalledVersions;
 use GitManagerEnterprise\Support\CommerceRuntimeConfig;
 use GitManagerEnterprise\Support\LicenseRuntimeConfig;
 use Illuminate\Http\Client\Response;
@@ -390,15 +391,12 @@ class LicenseService
         int $timeout,
     ): array {
         $timestamp = now()->toIso8601String();
-        $payload = [
+        $payload = array_merge($this->installationPayload($detectedIp), [
             'license_key' => $key,
             'installation_uuid' => $installationUuid,
             'uuid' => $installationUuid,
-            'app_url' => (string) config('app.url'),
-            'app_name' => (string) config('app.name'),
-            'public_ip' => $detectedIp,
             'timestamp' => $timestamp,
-        ];
+        ]);
         $headers = $this->requestSignatureHeaders($installationUuid, $timestamp, $key);
 
         try {
@@ -740,10 +738,12 @@ class LicenseService
             }
 
             $response = $request->post($endpoint, [
+                ...$this->installationPayload(null),
+                'edition' => self::EDITION_COMMUNITY,
+                'tier' => self::EDITION_COMMUNITY,
                 'license_key' => '',
                 'installation_uuid' => $this->installationUuid(),
-                'app_url' => (string) config('app.url'),
-                'app_name' => (string) config('app.name'),
+                'uuid' => $this->installationUuid(),
             ]);
 
             $json = json_decode((string) $response->body(), true);
@@ -755,6 +755,37 @@ class LicenseService
             }
         } catch (\Throwable $e) {
             // Non-fatal: community bootstrap should never block normal operation.
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function installationPayload(?string $detectedIp): array
+    {
+        return [
+            'installed_edition' => self::EDITION_COMMUNITY,
+            'app_url' => (string) config('app.url'),
+            'app_name' => (string) config('app.name'),
+            'app_version' => $this->installedPackageVersion('wallabydesigns/gitmanager'),
+            'enterprise_package_version' => $this->installedPackageVersion('wallabydesigns/gitmanager-enterprise'),
+            'laravel_version' => app()->version(),
+            'php_version' => PHP_VERSION,
+            'environment' => (string) app()->environment(),
+            'public_ip' => $detectedIp,
+        ];
+    }
+
+    private function installedPackageVersion(string $package): ?string
+    {
+        try {
+            if (InstalledVersions::isInstalled($package)) {
+                return InstalledVersions::getPrettyVersion($package);
+            }
+        } catch (\Throwable $exception) {
+            return null;
         }
 
         return null;
