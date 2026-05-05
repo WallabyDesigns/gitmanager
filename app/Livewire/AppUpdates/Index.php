@@ -59,6 +59,7 @@ class Index extends Component
             'checkUpdatesEnabled' => $this->checkUpdatesEnabled,
             'autoUpdateEnabled' => $this->autoUpdateEnabled,
             'pendingChanges' => $this->pendingChanges,
+            'updateAllowed' => $this->updateAllowed(),
             'outputLogTailChars' => self::OUTPUT_LOG_TAIL_CHARS,
         ])->layout('layouts.app', [
             'title' => 'System Updates',
@@ -198,6 +199,11 @@ class Index extends Component
         $this->pendingChanges = method_exists($service, 'getPendingChangesPreview')
             ? $service->getPendingChangesPreview()
             : [];
+    }
+
+    private function updateAllowed(): bool
+    {
+        return (bool) ($this->updateStatus['update_allowed'] ?? $this->updateStatus['updateAllowed'] ?? true);
     }
 
     private function latestUpdate(): ?AppUpdate

@@ -50,6 +50,8 @@ trait ManagesRemoteDeployments
                     );
 
                     $this->runWithSingleRetry(function () use ($project, $connection, &$output): void {
+                        $this->clearRemoteLaravelBootstrapCache($connection, $output);
+
                         if ($project->run_composer_install) {
                             $this->runSshCommand(
                                 $connection,
@@ -130,6 +132,8 @@ trait ManagesRemoteDeployments
             $toHash = $this->sshRevParse($connection, 'HEAD', $output);
 
             $this->runWithSingleRetry(function () use ($project, $connection, &$output): void {
+                $this->clearRemoteLaravelBootstrapCache($connection, $output);
+
                 if ($project->run_composer_install) {
                     $this->runSshCommand(
                         $connection,
@@ -277,6 +281,8 @@ trait ManagesRemoteDeployments
                 $this->runSshCommand($connection, $this->remoteGitCleanCommand($project, false), $output);
 
                 $this->runWithSingleRetry(function () use ($project, $connection, &$output): void {
+                    $this->clearRemoteLaravelBootstrapCache($connection, $output);
+
                     if ($project->run_composer_install) {
                         $this->runSshCommand(
                             $connection,
@@ -725,6 +731,15 @@ trait ManagesRemoteDeployments
             $output[] = 'Warning: app:clear-cache over SSH failed: '.$exception->getMessage();
             $this->maybeStreamOutput($output, true);
         }
+    }
+
+    private function clearRemoteLaravelBootstrapCache(array $connection, array &$output): void
+    {
+        $this->runSshCommand(
+            $connection,
+            'if [ -d bootstrap/cache ]; then rm -f bootstrap/cache/*.php; fi',
+            $output
+        );
     }
 
     private function maybeRunLaravelMigrationsOverSsh(Project $project, array $connection, array &$output): void

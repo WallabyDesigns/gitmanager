@@ -96,4 +96,30 @@ class AppUpdatesPageTest extends TestCase
             ->test(AppUpdatesIndex::class)
             ->call('runUpdate');
     }
+
+    public function test_update_button_uses_update_allowed_status_flag(): void
+    {
+        $admin = User::factory()->create();
+
+        $this->mock(SelfUpdateService::class, function ($mock): void {
+            $mock->shouldReceive('getUpdateStatus')
+                ->once()
+                ->andReturn([
+                    'status' => 'update-available',
+                    'current' => 'aaa111',
+                    'latest' => 'bbb222',
+                    'update_allowed' => true,
+                ]);
+            $mock->shouldReceive('getPendingChanges')
+                ->once()
+                ->andReturn([
+                    ['hash' => 'bbb222', 'subject' => 'Release update'],
+                ]);
+        });
+
+        Livewire::actingAs($admin)
+            ->test(AppUpdatesIndex::class)
+            ->assertSeeHtml('wire:click="runUpdate"')
+            ->assertDontSeeHtml('wire:click="runUpdate" wire:loading.attr="disabled" disabled');
+    }
 }

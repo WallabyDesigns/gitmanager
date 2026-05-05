@@ -717,6 +717,7 @@ class SelfUpdateService
                     'latest' => $latest !== '' ? $latest : null,
                     'branch' => $branch,
                     'checked_at' => now()->toDateTimeString(),
+                    'update_allowed' => true,
                     'enterprise_update_available' => $enterpriseUpdateAvailable,
                     'enterprise_package' => $enterprisePackage,
                 ];
@@ -1516,9 +1517,24 @@ class SelfUpdateService
         }
     }
 
+    private function clearLaravelBootstrapCacheFiles(string $repoPath, array &$output): void
+    {
+        $cachePath = $repoPath.DIRECTORY_SEPARATOR.'bootstrap'.DIRECTORY_SEPARATOR.'cache';
+        if (! is_dir($cachePath)) {
+            return;
+        }
+
+        foreach (glob($cachePath.DIRECTORY_SEPARATOR.'*.php') ?: [] as $file) {
+            if (is_file($file) && ! @unlink($file)) {
+                $output[] = 'Warning: unable to remove stale bootstrap cache file '.basename($file).'.';
+            }
+        }
+    }
+
     private function runPostUpdateTasks(string $repoPath, ?string $fromHash, ?string $toHash, array &$output): void
     {
         if (is_file(base_path('composer.json'))) {
+            $this->clearLaravelBootstrapCacheFiles($repoPath, $output);
             if ($this->shouldRunComposerInstall($repoPath, $fromHash, $toHash, $output)) {
                 $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $repoPath);
             } else {
@@ -1679,6 +1695,7 @@ class SelfUpdateService
 
         try {
             if (is_file($repoPath.DIRECTORY_SEPARATOR.'composer.json')) {
+                $this->clearLaravelBootstrapCacheFiles($repoPath, $output);
                 if ($this->shouldRunComposerInstall($repoPath, $failedHash, $restoredHash, $output)) {
                     $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $repoPath, false);
                 } else {
