@@ -75,7 +75,7 @@
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" wire:click.self="$set('showInspect', false)">
         <div class="w-full max-w-4xl rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl flex flex-col max-h-[90vh]">
             <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-6 py-4 shrink-0">
-                <h3 class="font-semibold text-slate-900 dark:text-slate-100">Inspect Details</h3>
+                <h3 class="font-semibold text-slate-900 dark:text-slate-100">{{ __('Inspect Details') }}</h3>
                 <button wire:click="$set('showInspect', false)" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
@@ -83,7 +83,7 @@
             <div class="overflow-y-auto flex-1 p-6 space-y-4">
                 @if ($summaryRows !== [])
                     <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 overflow-hidden">
-                        <div class="bg-slate-50 dark:bg-slate-800/50 px-4 py-2 text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Summary</div>
+                        <div class="bg-slate-50 dark:bg-slate-800/50 px-4 py-2 text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Summary') }}</div>
                         <div class="divide-y divide-slate-200/60 dark:divide-slate-800">
                             @foreach ($summaryRows as $row)
                                 <div class="px-4 py-2.5 text-sm grid grid-cols-[180px,1fr] gap-3">
@@ -118,7 +118,7 @@
                 @endforeach
 
                 <details class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-3">
-                    <summary class="cursor-pointer text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Raw JSON</summary>
+                    <summary class="cursor-pointer text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Raw JSON') }}</summary>
                     <pre class="mt-3 text-xs font-mono text-slate-100 bg-slate-900 border border-slate-700 rounded-lg p-3 whitespace-pre-wrap break-all">{{ json_encode($inspect, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
                 </details>
             </div>

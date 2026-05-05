@@ -12,13 +12,12 @@
 
 <div id="env-backups-panel" style="{{ $panelStyle }}">
     <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
-        <strong style="font-size: 1rem;">Environment Backups</strong>
-        <span style="font-size: 0.75rem; color: #94a3b8;">Restore a previous .env configuration</span>
+        <strong style="font-size: 1rem;">{{ __('Environment Backups') }}</strong>
+        <span style="font-size: 0.75rem; color: #94a3b8;">{{ __('Restore a previous .env configuration') }}</span>
     </div>
 
     <p style="margin: 0 0 1rem 0; line-height: 1.5; font-size: 0.85rem; color: #94a3b8;">
-        Restoring a backup overwrites your current <code style="background:#1e293b;padding:1px 4px;border-radius:4px;">.env</code> file.
-        A safety backup of the current file is created automatically before each restore.
+        {{ __('Restoring a backup overwrites your current :env file. A safety backup of the current file is created automatically before each restore.', ['env' => '<code style="background:#1e293b;padding:1px 4px;border-radius:4px;">.env</code>']) }}
     </p>
 
     @if ($status)
@@ -30,22 +29,22 @@
     {{-- Create backup --}}
     <form method="POST" action="{{ route('recovery.env-backup.create') }}" style="display:flex;gap:0.5rem;align-items:center;margin-bottom:1rem;">
         @csrf
-        <input type="text" name="label" placeholder="Label (optional)" style="{{ $inputStyle }}">
-        <button type="submit" style="{{ $primaryStyle }}">Create Backup Now</button>
+        <input type="text" name="label" placeholder="{{ __('Label (optional)') }}" style="{{ $inputStyle }}">
+        <button type="submit" style="{{ $primaryStyle }}">{{ __('Create Backup Now') }}</button>
     </form>
 
     {{-- Backup list --}}
     @if (count($backups) === 0)
-        <p style="font-size: 0.8rem; color: #64748b;">No backups yet.</p>
+        <p style="font-size: 0.8rem; color: #64748b;">{{ __('No backups yet.') }}</p>
     @else
         <div style="overflow: auto; max-height: 320px;">
             <table style="width: 100%; border-collapse: collapse; font-size: 0.78rem;">
                 <thead>
                     <tr style="color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.68rem;">
-                        <th style="text-align:left;padding:0.4rem 0.5rem;border-bottom:1px solid #1e293b;">Filename</th>
-                        <th style="text-align:left;padding:0.4rem 0.5rem;border-bottom:1px solid #1e293b;">Created</th>
-                        <th style="text-align:left;padding:0.4rem 0.5rem;border-bottom:1px solid #1e293b;">Size</th>
-                        <th style="text-align:left;padding:0.4rem 0.5rem;border-bottom:1px solid #1e293b;">Actions</th>
+                        <th style="text-align:left;padding:0.4rem 0.5rem;border-bottom:1px solid #1e293b;">{{ __('Filename') }}</th>
+                        <th style="text-align:left;padding:0.4rem 0.5rem;border-bottom:1px solid #1e293b;">{{ __('Created') }}</th>
+                        <th style="text-align:left;padding:0.4rem 0.5rem;border-bottom:1px solid #1e293b;">{{ __('Size') }}</th>
+                        <th style="text-align:left;padding:0.4rem 0.5rem;border-bottom:1px solid #1e293b;">{{ __('Actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -56,9 +55,9 @@
                             <td style="padding:0.5rem;color:#94a3b8;white-space:nowrap;">{{ number_format($backup['size'] / 1024, 1) }} KB</td>
                             <td style="padding:0.5rem;">
                                 <form method="POST" action="{{ route('recovery.env-backup.restore', ['filename' => $backup['filename']]) }}"
-                                      onsubmit="return confirm('Restore this backup? Your current .env will be saved first.');">
+                                      onsubmit="return confirm('{{ __('Restore this backup? Your current .env will be saved first.') }}');">
                                     @csrf
-                                    <button type="submit" style="{{ $buttonStyle }}">Restore</button>
+                                    <button type="submit" style="{{ $buttonStyle }}">{{ __('Restore') }}</button>
                                 </form>
                             </td>
                         </tr>

@@ -9,25 +9,25 @@
                         <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-3">
                             <div class="flex items-center gap-2">
                                 <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $schedulerHealthy ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' }}">
-                                    {{ $schedulerHealthy ? 'Healthy' : 'Not detected' }}
+                                    {{ $schedulerHealthy ? __('Healthy') : __('Not detected') }}
                                 </span>
-                                <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Scheduler Status</h3>
+                                <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Scheduler Status') }}</h3>
                             </div>
                             <div class="text-sm text-slate-600 dark:text-slate-300 space-y-1">
                                 <div>
-                                    Last heartbeat:
+                                    {{ __('Last heartbeat:') }}
                                     <span class="text-slate-900 dark:text-slate-100">
                                         {{ \App\Support\DateFormatter::forUser($lastHeartbeat, 'M j, Y g:i a', 'Never') }}
                                     </span>
                                 </div>
                                 <div>
-                                    Last source:
+                                    {{ __('Last source:') }}
                                     <span class="text-slate-900 dark:text-slate-100">
-                                        {{ $lastSource ?? 'Unknown' }}
+                                        {{ $lastSource ?? __('Unknown') }}
                                     </span>
                                 </div>
                                 <div>
-                                    Last manual run:
+                                    {{ __('Last manual run:') }}
                                     <span class="text-slate-900 dark:text-slate-100">
                                         {{ \App\Support\DateFormatter::forUser($lastManualRun, 'M j, Y g:i a', 'Never') }}
                                     </span>
@@ -37,28 +37,28 @@
 
                         <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
                             <div>
-                                <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Queue Health</h3>
+                                <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Queue Health') }}</h3>
                                 <p class="text-sm text-slate-600 dark:text-slate-300">
-                                    Queued tasks: <span class="text-slate-900 dark:text-slate-100">{{ $queueCount }}</span>
+                                    {{ __('Queued tasks:') }} <span class="text-slate-900 dark:text-slate-100">{{ $queueCount }}</span>
                                 </p>
                             </div>
                             <div class="flex flex-wrap gap-2">
                                 <button type="button" wire:click="refreshSchedulerStatus" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white inline-flex items-center">
                                     <x-loading-spinner target="refreshSchedulerStatus" />
-                                    Refresh Status
+                                    {{ __('Refresh Status') }}
                                 </button>
                                 <button type="button" wire:click="runScheduler" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white inline-flex items-center">
                                     <x-loading-spinner target="runScheduler" />
-                                    Run Scheduler Now
+                                    {{ __('Run Scheduler Now') }}
                                 </button>
                                 <button type="button" wire:click="processQueue" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white inline-flex items-center">
                                     <x-loading-spinner target="processQueue" />
-                                    Process Queue Now
+                                    {{ __('Process Queue Now') }}
                                 </button>
                             </div>
                             @if (! $queueEnabled)
                                 <div class="text-xs text-amber-700 dark:text-amber-200">
-                                    Task queue is disabled in configuration.
+                                    {{ __('Task queue is disabled in configuration.') }}
                                 </div>
                             @endif
                         </div>
@@ -66,9 +66,9 @@
 
                     <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
                         <div>
-                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Task Frequency</h3>
+                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Task Frequency') }}</h3>
                             <p class="text-sm text-slate-500 dark:text-slate-400">
-                                Keep the cron running every minute. These controls decide how often each recurring task actually executes.
+                                {{ __('Keep the cron running every minute. These controls decide how often each recurring task actually executes.') }}
                             </p>
                         </div>
 
@@ -114,28 +114,28 @@
 
                     <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
                         <div class="flex flex-wrap items-center gap-2">
-                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Stored Log Cleanup</h3>
+                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Stored Log Cleanup') }}</h3>
                             <span class="px-2 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wide {{ $logCleanupEnabled ? 'bg-emerald-500/20 text-emerald-200' : 'bg-slate-500/20 text-slate-200' }}">
-                                {{ $logCleanupEnabled ? 'Enabled' : 'Disabled' }}
+                                {{ $logCleanupEnabled ? __('Enabled') : __('Disabled') }}
                             </span>
                         </div>
                         <p class="text-sm text-slate-500 dark:text-slate-400">
-                            Clears old deployment and system update console logs from the database while keeping the history rows themselves.
+                            {{ __('Clears old deployment and system update console logs from the database while keeping the history rows themselves.') }}
                         </p>
 
                         <label class="flex items-start gap-3">
                             <input type="checkbox" wire:model="logCleanupEnabled" class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
                             <span class="text-sm text-slate-600 dark:text-slate-300">
-                                Enable automatic stored log cleanup
-                                <span class="block text-xs text-slate-400 dark:text-slate-500">Runs once per day when enabled.</span>
+                                {{ __('Enable automatic stored log cleanup') }}
+                                <span class="block text-xs text-slate-400 dark:text-slate-500">{{ __('Runs once per day when enabled.') }}</span>
                             </span>
                         </label>
 
                         <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 p-4">
                             <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                                 <div class="min-w-0">
-                                    <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">Retention Window</div>
-                                    <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">Remove stored logs older than this many days.</div>
+                                    <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Retention Window') }}</div>
+                                    <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ __('Remove stored logs older than this many days.') }}</div>
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <input
@@ -145,7 +145,7 @@
                                         wire:model.defer="logRetentionDays"
                                         class="w-28 rounded-md border border-slate-200/70 bg-white/70 px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                                     />
-                                    <span class="rounded-md border border-slate-200/70 bg-white/70 px-3 py-2 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">Days</span>
+                                    <span class="rounded-md border border-slate-200/70 bg-white/70 px-3 py-2 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">{{ __('Days') }}</span>
                                 </div>
                             </div>
                             <x-input-error :messages="$errors->get('logRetentionDays')" class="mt-3" />
@@ -154,28 +154,28 @@
                         <div class="flex flex-wrap gap-2">
                             <button type="button" wire:click="runLogCleanup" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white inline-flex items-center">
                                 <x-loading-spinner target="runLogCleanup" />
-                                Run Cleanup Now
+                                {{ __('Run Cleanup Now') }}
                             </button>
                             <button
                                 type="button"
                                 wire:click="clearAllStoredLogs"
-                                onclick="return confirm('This will clear all stored deployment, self-update, and scheduler error logs. Continue?')"
+                                onclick="return confirm('{{ __('This will clear all stored deployment, self-update, and scheduler error logs. Continue?') }}')"
                                 class="px-3 py-2 text-xs rounded-md border border-rose-300/70 text-rose-700 hover:text-rose-900 dark:border-rose-500/40 dark:text-rose-200 dark:hover:text-white inline-flex items-center"
                             >
                                 <x-loading-spinner target="clearAllStoredLogs" />
-                                Clear All Stored Logs
+                                {{ __('Clear All Stored Logs') }}
                             </button>
                         </div>
                         <div class="text-xs text-slate-400 dark:text-slate-500">
-                            Manual cleanup keeps deployment and update status history, but removes large console output and scheduler error logs. The Clear All action also runs SQLite VACUUM when supported so disk space can be reclaimed.
+                            {{ __('Manual cleanup keeps deployment and update status history, but removes large console output and scheduler error logs. The Clear All action also runs SQLite VACUUM when supported so disk space can be reclaimed.') }}
                         </div>
                     </div>
 
                     <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
                         <div>
-                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Cron Setup</h3>
+                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Cron Setup') }}</h3>
                             <p class="text-sm text-slate-500 dark:text-slate-400">
-                                Add the cron entry below to run the Laravel scheduler every minute.
+                                {{ __('Add the cron entry below to run the Laravel scheduler every minute.') }}
                             </p>
                         </div>
                         <div class="rounded-md border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-950/40 p-3 text-xs font-mono text-slate-700 dark:text-slate-200">
@@ -183,15 +183,15 @@
                         </div>
                         @if (! ($schedulerRuntime['ok'] ?? true))
                             <div class="rounded-md border border-rose-300/70 bg-rose-50/80 dark:border-rose-500/40 dark:bg-rose-500/10 p-4 space-y-2">
-                                <div class="text-sm font-semibold text-rose-900 dark:text-rose-200">Scheduler PHP Runtime Issue</div>
+                                <div class="text-sm font-semibold text-rose-900 dark:text-rose-200">{{ __('Scheduler PHP Runtime Issue') }}</div>
                                 <p class="text-xs text-rose-800 dark:text-rose-200">
-                                    {{ $schedulerRuntime['message'] ?? 'The configured PHP binary failed the scheduler preflight.' }}
+                                    {{ $schedulerRuntime['message'] ?? __('The configured PHP binary failed the scheduler preflight.') }}
                                 </p>
                                 <div class="text-xs text-rose-800 dark:text-rose-200">
-                                    Configured PHP: <code class="font-mono">{{ $schedulerRuntime['php_binary'] ?? 'php' }}</code>
+                                    {{ __('Configured PHP:') }} <code class="font-mono">{{ $schedulerRuntime['php_binary'] ?? 'php' }}</code>
                                     @if (! empty($schedulerRuntime['resolved_binary']))
                                         <span class="mx-1">&middot;</span>
-                                        Resolved: <code class="font-mono">{{ $schedulerRuntime['resolved_binary'] }}</code>
+                                        {{ __('Resolved:') }} <code class="font-mono">{{ $schedulerRuntime['resolved_binary'] }}</code>
                                     @endif
                                     @if (! empty($schedulerRuntime['version']))
                                         <span class="mx-1">&middot;</span>
@@ -220,7 +220,7 @@
 
                     <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
                         <div>
-                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Scheduler Error Log</h3>
+                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Scheduler Error Log') }}</h3>
                             <p class="text-sm text-slate-600 dark:text-slate-300">
                                 Entries are recorded only when the scheduler reports an issue. Repeated errors increase the count.
                             </p>
@@ -236,7 +236,7 @@
                                     <div class="rounded-md border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/40 p-4">
                                         <div class="flex flex-wrap items-center justify-between gap-2">
                                             <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                                {{ $entry['message'] ?? 'Scheduler error' }}
+                                                {{ $entry['message'] ?? __('Scheduler error') }}
                                             </div>
                                             <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
                                                 Error Count: {{ $entry['count'] ?? 1 }}
@@ -274,33 +274,33 @@
                     ">
                         <button type="button" wire:click="save" wire:loading.attr="disabled" disabled wire:dirty.remove.attr="disabled" class="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center">
                             <x-loading-spinner target="save" />
-                            Save Settings
+                            {{ __('Save Settings') }}
                         </button>
-                        <span wire:dirty class="text-xs text-amber-400">Settings are unsaved.</span>
-                        <span x-show="saved" x-transition.opacity.duration.200ms class="text-xs text-emerald-400">Settings saved.</span>
+                        <span wire:dirty class="text-xs text-amber-400">{{ __('Settings are unsaved.') }}</span>
+                        <span x-show="saved" x-transition.opacity.duration.200ms class="text-xs text-emerald-400">{{ __('Settings saved.') }}</span>
                     </div>
                 @endif
 
                 @if ($settingsSection === 'application')
                     <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-6">
                         <div>
-                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Update Preferences</h3>
-                            <p class="text-sm text-slate-500 dark:text-slate-400">Control how Git Web Manager checks for and applies updates.</p>
+                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Update Preferences') }}</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('Control how Git Web Manager checks for and applies updates.') }}</p>
                         </div>
 
                         <div class="space-y-4">
                             <label class="flex items-start gap-3">
                                 <input type="checkbox" wire:model="checkUpdates" class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
                                 <span class="text-sm text-slate-600 dark:text-slate-300">
-                                    Check for updates
-                                    <span class="block text-xs text-slate-400 dark:text-slate-500">Shows update availability in the System area and navigation.</span>
+                                    {{ __('Check for updates') }}
+                                    <span class="block text-xs text-slate-400 dark:text-slate-500">{{ __('Shows update availability in the System area and navigation.') }}</span>
                                 </span>
                             </label>
                             <label class="flex items-start gap-3">
                                 <input type="checkbox" wire:model="autoUpdate" class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
                                 <span class="text-sm text-slate-600 dark:text-slate-300">
-                                    Perform auto-updates
-                                    <span class="block text-xs text-slate-400 dark:text-slate-500">Runs the nightly self-update schedule when enabled.</span>
+                                    {{ __('Perform auto-updates') }}
+                                    <span class="block text-xs text-slate-400 dark:text-slate-500">{{ __('Runs the nightly self-update schedule when enabled.') }}</span>
                                 </span>
                             </label>
                             <div class="text-xs {{ $autoUpdate ? 'text-emerald-400' : 'text-slate-400 dark:text-slate-500' }}">
@@ -311,27 +311,27 @@
 
                     <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
                         <div>
-                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">GitHub Security</h3>
-                            <p class="text-sm text-slate-500 dark:text-slate-400">Control SSL verification for GitHub API calls.</p>
+                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('GitHub Security') }}</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('Control SSL verification for GitHub API calls.') }}</p>
                         </div>
                         <label class="flex items-start gap-3">
                             <input type="checkbox" wire:model="githubSslVerify" class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
                             <span class="text-sm text-slate-600 dark:text-slate-300">
-                                Verify GitHub SSL certificates
-                                <span class="block text-xs text-slate-400 dark:text-slate-500">Disable only if your host is missing CA certificates.</span>
+                                {{ __('Verify GitHub SSL certificates') }}
+                                <span class="block text-xs text-slate-400 dark:text-slate-500">{{ __('Disable only if your host is missing CA certificates.') }}</span>
                             </span>
                         </label>
                         @if (! $githubSslVerify)
-                            <div class="text-xs text-rose-400">Warning: SSL verification is disabled. GitHub API calls are less secure.</div>
+                            <div class="text-xs text-rose-400">{{ __('Warning: SSL verification is disabled. GitHub API calls are less secure.') }}</div>
                         @endif
                     </div>
 
                     @if ($isLocalInstall)
                         <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
                             <div>
-                                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">SSL / Connection Repair</h3>
+                                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('SSL / Connection Repair') }}</h3>
                                 <p class="text-sm text-slate-500 dark:text-slate-400">
-                                    Fixes cURL error 60 (missing CA certificate bundle) for local installations. Enables a TLS bypass so outbound license verification requests succeed when your host lacks a valid CA trust store.
+                                    {{ __('Fixes cURL error 60 (missing CA certificate bundle) for local installations. Enables a TLS bypass so outbound license verification requests succeed when your host lacks a valid CA trust store.') }}
                                 </p>
                             </div>
                             <div class="flex flex-wrap items-center gap-4">
@@ -341,32 +341,33 @@
                                     class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white inline-flex items-center"
                                 >
                                     <x-loading-spinner target="runLocalLicenseRepair" />
-                                    Run Best-Effort SSL Fix
+                                    {{ __('Run Best-Effort SSL Fix') }}
                                 </button>
                                 @if ($localLicenseTlsBypassEnabled)
-                                    <span class="text-xs text-emerald-500 dark:text-emerald-400">Local TLS bypass is active.</span>
+                                    <span class="text-xs text-emerald-500 dark:text-emerald-400">{{ __('Local TLS bypass is active.') }}</span>
                                 @else
-                                    <span class="text-xs text-slate-400 dark:text-slate-500">Local TLS bypass is not yet enabled.</span>
+                                    <span class="text-xs text-slate-400 dark:text-slate-500">{{ __('Local TLS bypass is not yet enabled.') }}</span>
                                 @endif
                             </div>
                             <p class="text-xs text-slate-400 dark:text-slate-500">
-                                Only available on local installs. This setting does not affect production SSL behaviour.
+                                {{ __('Only available on local installs. This setting does not affect production SSL behaviour.') }}
                             </p>
                         </div>
                     @endif
 
                     <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
                         <div>
-                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Timezone</h3>
-                            <p class="text-sm text-slate-500 dark:text-slate-400">Sets the default timezone used throughout the app.</p>
+                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Timezone') }}</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('Sets the default timezone used throughout the app.') }}</p>
                         </div>
                         <div>
-                            <label class="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">Timezone</label>
-                            <select wire:model="timezone" class="mt-2 w-full rounded-md border border-slate-200/70 bg-white/70 p-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
+                            <label class="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">{{ __('Timezone') }}</label>
+                            <select wire:model.live="timezone" wire:key="system-timezone-{{ $timezone }}" class="mt-2 w-full rounded-md border border-slate-200/70 bg-white/70 p-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
                                 @foreach ($timezones as $tz)
                                     <option value="{{ $tz }}">{{ $tz }}</option>
                                 @endforeach
                             </select>
+                            <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ __('Current value:') }} {{ $timezone ?: 'UTC' }}</p>
                         </div>
                     </div>
                 @endif
@@ -374,43 +375,42 @@
                 @if ($settingsSection === 'audits')
                     <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
                         <div>
-                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Audit Checks</h3>
-                            <p class="text-sm text-slate-500 dark:text-slate-400">Run scheduled project and container audits and track issues in System Security.</p>
+                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Audit Checks') }}</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('Run scheduled project and container audits and track issues in System Security.') }}</p>
                         </div>
                         @if ($isEnterprise)
                             <label class="flex items-start gap-3">
                                 <input type="checkbox" wire:model="auditEnabled" class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
                                 <span class="text-sm text-slate-600 dark:text-slate-300">
-                                    Enable automatic audits
-                                    <span class="block text-xs text-slate-400 dark:text-slate-500">Runs npm/composer project audits and managed container runtime checks on the scheduler.</span>
+                                    {{ __('Enable automatic audits') }}
+                                    <span class="block text-xs text-slate-400 dark:text-slate-500">{{ __('Runs npm/composer project audits and managed container runtime checks on the scheduler.') }}</span>
                                 </span>
                             </label>
                             <label class="flex items-start gap-3">
                                 <input type="checkbox" wire:model="auditEmailEnabled" class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
                                 <span class="text-sm text-slate-600 dark:text-slate-300">
-                                    Email audit summaries
-                                    <span class="block text-xs text-slate-400 dark:text-slate-500">Sends a consolidated report when issues are found or resolved.</span>
+                                    {{ __('Email audit summaries') }}
+                                    <span class="block text-xs text-slate-400 dark:text-slate-500">{{ __('Sends a consolidated report when issues are found or resolved.') }}</span>
                                 </span>
                             </label>
                             <label class="flex items-start gap-3">
                                 <input type="checkbox" wire:model="auditAutoCommit" class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
                                 <span class="text-sm text-slate-600 dark:text-slate-300">
-                                    Auto-commit resolved audit fixes
-                                    <span class="block text-xs text-slate-400 dark:text-slate-500">Pushes dependency lockfile changes when audits resolve all vulnerabilities.</span>
+                                    {{ __('Auto-commit resolved audit fixes') }}
+                                    <span class="block text-xs text-slate-400 dark:text-slate-500">{{ __('Pushes dependency lockfile changes when audits resolve all vulnerabilities.') }}</span>
                                 </span>
                             </label>
                             @if (! $mailConfigured)
-                                <div class="text-xs text-rose-400">Email is not configured. Set SMTP details in System → Email Settings to enable audit emails.</div>
+                                <div class="text-xs text-rose-400">{{ __('Email is not configured. Set SMTP details in System → Email Settings to enable audit emails.') }}</div>
                             @endif
                             @if (! $auditEnabled)
-                                <div class="text-xs text-slate-400 dark:text-slate-500">Scheduled audits are disabled.</div>
+                                <div class="text-xs text-slate-400 dark:text-slate-500">{{ __('Scheduled audits are disabled.') }}</div>
                             @endif
                         @else
                             <div class="rounded-lg border border-amber-300/60 bg-amber-50/70 dark:border-amber-500/30 dark:bg-amber-500/10 p-4">
-                                <div class="text-sm font-semibold text-amber-800 dark:text-amber-200">Enterprise Feature</div>
+                                <div class="text-sm font-semibold text-amber-800 dark:text-amber-200">{{ __('Enterprise Feature') }}</div>
                                 <p class="mt-1 text-xs text-amber-700 dark:text-amber-200">
-                                    Automatic project and container audits are available on Enterprise.
-                                    Upgrade to unlock hourly audit automation and alerting.
+                                    {{ __('Automatic project and container audits are available on Enterprise. Upgrade to unlock hourly audit automation and alerting.') }}
                                 </p>
                                 <button
                                     type="button"
@@ -425,21 +425,21 @@
 
                     <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-4">
                         <div>
-                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Health Alerts</h3>
-                            <p class="text-sm text-slate-500 dark:text-slate-400">Email notifications when projects go offline during automatic checks.</p>
+                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Health Alerts') }}</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('Email notifications when projects go offline during automatic checks.') }}</p>
                         </div>
                         <label class="flex items-start gap-3">
                             <input type="checkbox" wire:model="healthEmailEnabled" class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
                             <span class="text-sm text-slate-600 dark:text-slate-300">
-                                Send email alerts when health checks fail
-                                <span class="block text-xs text-slate-400 dark:text-slate-500">Only automatic checks trigger emails. Manual checks never send alerts.</span>
+                                {{ __('Send email alerts when health checks fail') }}
+                                <span class="block text-xs text-slate-400 dark:text-slate-500">{{ __('Only automatic checks trigger emails. Manual checks never send alerts.') }}</span>
                             </span>
                         </label>
                         @if (! $mailConfigured)
-                            <div class="text-xs text-rose-400">Email is not configured. Set SMTP details in System → Email Settings to enable health alerts.</div>
+                            <div class="text-xs text-rose-400">{{ __('Email is not configured. Set SMTP details in System → Email Settings to enable health alerts.') }}</div>
                         @endif
                         @if (! $healthEmailEnabled)
-                            <div class="text-xs text-slate-400 dark:text-slate-500">Health alert emails are disabled.</div>
+                            <div class="text-xs text-slate-400 dark:text-slate-500">{{ __('Health alert emails are disabled.') }}</div>
                         @endif
                     </div>
                 @endif
@@ -453,21 +453,21 @@
 
                         $isTlsError = str_contains($licenseMessageLower, 'ssl') || str_contains($licenseMessageLower, 'curl error 60');
                         if ($isTlsError) {
-                            $localWarningDetail = 'TLS trust is not configured for this host. Run SSL / Connection Repair on the App & Security tab, then re-verify.';
+                            $localWarningDetail = __('TLS trust is not configured for this host. Run SSL / Connection Repair on the App & Security tab, then re-verify.');
                         } else {
-                            $localWarningDetail = 'License verification must pass before this installation can unlock Enterprise features.';
+                            $localWarningDetail = __('License verification must pass before this installation can unlock Enterprise features.');
                         }
                     @endphp
 
                     @if ($showLocalLicenseWarning)
                         <div class="rounded-xl border border-amber-300/70 bg-amber-50/70 dark:border-amber-500/40 dark:bg-amber-500/10 p-4 space-y-3">
                             <div class="space-y-1">
-                                <div class="text-sm font-semibold text-amber-900 dark:text-amber-200">Local Installation Notice</div>
+                                <div class="text-sm font-semibold text-amber-900 dark:text-amber-200">{{ __('Local Installation Notice') }}</div>
                                 <p class="text-xs text-amber-800 dark:text-amber-200">{{ $localWarningDetail }}</p>
                             </div>
                             @if ($localLicenseTlsBypassEnabled)
                                 <p class="text-xs text-emerald-700 dark:text-emerald-400">
-                                    ✓ Local TLS bypass is active — outbound HTTPS connections are allowed without a CA bundle.
+                                    ✓ {{ __('Local TLS bypass is active — outbound HTTPS connections are allowed without a CA bundle.') }}
                                 </p>
                             @endif
                             @if ($licenseMessage !== '')
@@ -475,7 +475,7 @@
                             @endif
                             @if ($isTlsError)
                                 <p class="text-xs text-amber-700 dark:text-amber-300">
-                                    Use <a href="{{ route('system.application') }}" class="underline">App &amp; Security → SSL / Connection Repair</a> to fix this automatically.
+                                    {{ __('Use :link to fix this automatically.', ['link' => '<a href="'.route('system.application').'" class="underline">App &amp; Security → SSL / Connection Repair</a>']) }}
                                 </p>
                             @endif
                         </div>
@@ -493,8 +493,8 @@
                         @endphp
                         <div class="flex flex-wrap items-center justify-between gap-3">
                             <div>
-                                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Enterprise License</h3>
-                                <p class="text-sm text-slate-500 dark:text-slate-400">License administration handled by Git Web Manager, this panel only verifies the license. If you have your license key, enter it below.</p>
+                                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Enterprise License') }}</h3>
+                                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('License administration handled by Git Web Manager, this panel only verifies the license. If you have your license key, enter it below.') }}</p>
                             </div>
                             @if($licenseStatus !== 'missing')
                                 <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $licenseBadgeClass }}">
@@ -505,38 +505,38 @@
 
                         <div class="space-y-2 text-xs text-slate-500 dark:text-slate-400">
                             @if(!empty($licenseState['configured']))
-                                <div>Configured: {{ ! empty($licenseState['configured']) ? 'Yes' : 'No' }}</div>
+                                <div>{{ __('Configured:') }} {{ ! empty($licenseState['configured']) ? __('Yes') : __('No') }}</div>
                             @endif
-                            <div>Licensed Edition: {{ ucfirst((string) ($licenseState['edition'] ?? 'community')) }}</div>
-                            <div>Package Version: {{ $systemPackageVersion }}</div>
+                            <div>{{ __('Licensed Edition:') }} {{ ucfirst((string) ($licenseState['edition'] ?? 'community')) }}</div>
+                            <div>{{ __('Package Version:') }} {{ $systemPackageVersion }}</div>
                             @if(isset($licenseState['installation_uuid']))
-                                <div>Installation UUID: {{ $licenseState['installation_uuid'] ?? 'Unknown' }}</div>
+                                <div>{{ __('Installation UUID:') }} {{ $licenseState['installation_uuid'] ?? __('Unknown') }}</div>
                             @endif
                             @if(isset($licenseState['message']) && $licenseState['message'] != "No license key configured.")
-                                <div>Message: {{ $licenseState['message'] ?? 'No license state available.' }}</div>
+                                <div>{{ __('Message:') }} {{ $licenseState['message'] ?? __('No license state available.') }}</div>
                             @endif
                             @if(isset($licenseState['bound_ip']))
-                                <div>Bound IP: {{ $licenseState['bound_ip'] ?? 'Unknown' }}</div>
+                                <div>{{ __('Bound IP:') }} {{ $licenseState['bound_ip'] ?? __('Unknown') }}</div>
                             @endif
                             @if(isset($licenseState['detected_ip']))
-                                <div>Detected IP: {{ $licenseState['detected_ip'] ?? 'Unknown' }}</div>
+                                <div>{{ __('Detected IP:') }} {{ $licenseState['detected_ip'] ?? __('Unknown') }}</div>
                             @endif
                             @if(isset($licenseState['verified_at']))
-                                <div>Verified At: {{ \App\Support\DateFormatter::forUser($licenseState['verified_at'] ?? null, 'M j, Y g:i a', 'Never') }}</div>
+                                <div>{{ __('Verified At:') }} {{ \App\Support\DateFormatter::forUser($licenseState['verified_at'] ?? null, 'M j, Y g:i a', __('Never')) }}</div>
                             @endif
                             @if(isset($licenseState['expires_at']))
-                                <div>Expires At: {{ \App\Support\DateFormatter::forUser($licenseState['expires_at'] ?? null, 'M j, Y g:i a', 'Not provided') }}</div>
+                                <div>{{ __('Expires At:') }} {{ \App\Support\DateFormatter::forUser($licenseState['expires_at'] ?? null, 'M j, Y g:i a', __('Not provided')) }}</div>
                             @endif
                             @if(isset($licenseState['grace_ends_at']))
-                                <div>Grace Ends At: {{ \App\Support\DateFormatter::forUser($licenseState['grace_ends_at'] ?? null, 'M j, Y g:i a', 'Not provided') }}</div>
+                                <div>{{ __('Grace Ends At:') }} {{ \App\Support\DateFormatter::forUser($licenseState['grace_ends_at'] ?? null, 'M j, Y g:i a', __('Not provided')) }}</div>
                             @endif
                         </div>
 
                         <div>
-                            <label class="text-xs uppercase tracking-wide text-slate-500">License Key</label>
-                            <input type="text" wire:model.lazy="enterpriseLicenseKey" class="mt-2 w-full rounded-md border border-slate-200/70 bg-white/70 p-2 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" placeholder="Enter new license key to set or rotate" />
+                            <label class="text-xs uppercase tracking-wide text-slate-500">{{ __('License Key') }}</label>
+                            <input type="text" wire:model.lazy="enterpriseLicenseKey" class="mt-2 w-full rounded-md border border-slate-200/70 bg-white/70 p-2 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" placeholder="{{ __('Enter new license key to set or rotate') }}" />
                             <x-input-error :messages="$errors->get('enterpriseLicenseKey')" class="mt-2" />
-                            <p class="mt-1 text-xs text-slate-500">Leave blank to keep the current saved key.</p>
+                            <p class="mt-1 text-xs text-slate-500">{{ __('Leave blank to keep the current saved key.') }}</p>
                         </div>
 
                         <div class="flex flex-wrap gap-2">
@@ -553,7 +553,7 @@
                                 <x-loading-spinner target="verifyLicense" />
                                 Verify License Now
                             </button>
-                            <button type="button" wire:click="clearLicense" onclick="return confirm('Clear the saved license key and cached state?') || event.stopImmediatePropagation()" class="px-3 py-2 text-xs rounded-md border border-rose-500/60 text-rose-700 hover:text-rose-900 dark:text-rose-300 dark:hover:text-rose-100 inline-flex items-center">
+                            <button type="button" wire:click="clearLicense" onclick="return confirm('{{ __('Clear the saved license key and cached state?') }}') || event.stopImmediatePropagation()" class="px-3 py-2 text-xs rounded-md border border-rose-500/60 text-rose-700 hover:text-rose-900 dark:text-rose-300 dark:hover:text-rose-100 inline-flex items-center">
                                 <x-loading-spinner target="clearLicense" />
                                 Clear License
                             </button>
@@ -567,8 +567,8 @@
                         <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 overflow-hidden">
                             <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                                 <div>
-                                    <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">GWM Environment Variables</h3>
-                                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">All <code class="font-mono">GWM_*</code> keys from your <code class="font-mono">.env</code> file. Changes take effect immediately.</p>
+                                    <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('GWM Environment Variables') }}</h3>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{!! __('All :keys keys from your :env file. Changes take effect immediately.', ['keys' => '<code class="font-mono">GWM_*</code>', 'env' => '.env</code>']) !!}</p>
                                 </div>
                             </div>
                             <div class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -580,25 +580,25 @@
                                                 <div class="text-xs text-slate-500 dark:text-slate-400">{{ $meta['description'] }}</div>
                                             @endif
                                             <input
-                                                wire:model="gwmEdits.{{ $key }}"
-                                                type="{{ str_contains(strtolower($key), 'password') || str_contains(strtolower($key), 'secret') ? 'password' : 'text' }}"
-                                                placeholder="{{ $meta['default'] !== '' ? $meta['default'] : '' }}"
-                                                class="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm font-mono text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-indigo-400 focus:outline-none"
-                                            >
-                                            @if ($meta['default'] !== '' && ($gwmEdits[$key] ?? '') === '')
-                                                <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">Default: <code class="font-mono">{{ $meta['default'] }}</code></p>
-                                            @endif
+                                            wire:model="gwmEdits.{{ $key }}"
+                                            type="{{ str_contains(strtolower($key), 'password') || str_contains(strtolower($key), 'secret') ? 'password' : 'text' }}"
+                                            placeholder="{{ $meta['default'] !== '' ? $meta['default'] : '' }}"
+                                            class="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm font-mono text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-indigo-400 focus:outline-none"
+                                        >
+                                        @if ($meta['default'] !== '' && ($gwmEdits[$key] ?? '') === '')
+                                            <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ __('Default:') }} <code class="font-mono">{{ $meta['default'] }}</code></p>
+                                        @endif
                                         </div>
                                         <button
                                             wire:click="saveEnvKey('{{ $key }}')"
                                             class="shrink-0 mt-6 lg:mt-7 px-3 py-1.5 rounded-md border border-indigo-400/60 text-xs font-semibold text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition inline-flex items-center gap-1"
                                         >
                                             <x-loading-spinner target="saveEnvKey('{{ $key }}')" />
-                                            Save
+                                            {{ __('Save') }}
                                         </button>
                                     </div>
                                 @empty
-                                    <div class="px-6 py-8 text-sm text-slate-500 dark:text-slate-400 text-center">No GWM_* variables found in your .env file.</div>
+                                    <div class="px-6 py-8 text-sm text-slate-500 dark:text-slate-400 text-center">{{ __('No GWM_* variables found in your .env file.') }}</div>
                                 @endforelse
                             </div>
                         </div>
@@ -606,15 +606,15 @@
                         {{-- Env Backups --}}
                         <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 overflow-hidden">
                             <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800">
-                                <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Environment Backups</h3>
-                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Snapshots of your <code class="font-mono">.env</code> file. Restore any backup to roll back configuration changes. The current file is saved automatically before each restore.</p>
+                                <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Environment Backups') }}</h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ __('Snapshots of your :env file. Restore any backup to roll back configuration changes. The current file is saved automatically before each restore.', ['env' => '<code class="font-mono">.env</code>']) }}</p>
                             </div>
                             <div class="px-6 py-4 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800">
-                                <input wire:model="envBackupLabel" type="text" placeholder="Label (optional)"
+                                <input wire:model="envBackupLabel" type="text" placeholder="{{ __('Label (optional)') }}"
                                         class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 focus:border-indigo-400 focus:outline-none w-48">
                                 <button wire:click="createEnvBackup" class="px-3 py-1.5 text-xs rounded-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-indigo-300 hover:text-indigo-600 transition inline-flex items-center gap-1">
                                     <x-loading-spinner target="createEnvBackup" />
-                                    Create Backup
+                                    {{ __('Create Backup') }}
                                 </button>
                             </div>
                             @if (count($envBackups) > 0)
@@ -622,7 +622,7 @@
                                     <table class="w-full text-sm">
                                         <thead class="bg-slate-50 dark:bg-slate-800/50">
                                             <tr>
-                                                @foreach (['Filename', 'Created', 'Size', 'Actions'] as $h)
+                                                @foreach ([__('Filename'), __('Created'), __('Size'), __('Actions')] as $h)
                                                     <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{{ $h }}</th>
                                                 @endforeach
                                             </tr>
@@ -637,15 +637,15 @@
                                                         <div class="flex items-center gap-2">
                                                             <button
                                                                 wire:click="restoreEnvBackup('{{ $backup['filename'] }}')"
-                                                                wire:confirm="Restore this backup? Your current .env will be saved first."
+                                                                wire:confirm="{{ __('Restore this backup? Your current .env will be saved first.') }}"
                                                                 class="text-xs px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-indigo-300 hover:text-indigo-600 transition">
-                                                                Restore
+                                                                {{ __('Restore') }}
                                                             </button>
                                                             <button
                                                                 wire:click="deleteEnvBackup('{{ $backup['filename'] }}')"
-                                                                wire:confirm="Delete this backup permanently?"
+                                                                wire:confirm="{{ __('Delete this backup permanently?') }}"
                                                                 class="text-xs px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-slate-500 hover:border-rose-300 hover:text-rose-600 transition">
-                                                                Delete
+                                                                {{ __('Delete') }}
                                                             </button>
                                                         </div>
                                                     </td>
@@ -655,7 +655,7 @@
                                     </table>
                                 </div>
                             @else
-                                <div class="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400">No backups yet. Create one above.</div>
+                                <div class="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400">{{ __('No backups yet. Create one above.') }}</div>
                             @endif
                         </div>
                     </div>
@@ -671,8 +671,8 @@
                         <x-loading-spinner target="save" />
                         Save Settings
                     </button>
-                    <span wire:dirty class="text-xs text-amber-400">Settings are unsaved.</span>
-                    <span x-show="saved" x-transition.opacity.duration.200ms class="text-xs text-emerald-400">Settings saved.</span>
+<span wire:dirty class="text-xs text-amber-400">{{ __('Settings are unsaved.') }}</span>
+                        <span x-show="saved" x-transition.opacity.duration.200ms class="text-xs text-emerald-400">{{ __('Settings saved.') }}</span>
                 </div>
                 @endif
             </div>

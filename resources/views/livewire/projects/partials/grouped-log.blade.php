@@ -75,7 +75,7 @@
                     if (! general) {
                         general = {
                             key: `general-${generalIndex++}`,
-                            title: 'Log output',
+                            title: '{{ __('Log output') }}',
                             command: null,
                             lines: [],
                             exit: null,

@@ -289,7 +289,7 @@ class Index extends Component
 
     public function formatActionLabel(string $action): string
     {
-        return Str::headline($action);
+        return __(Str::headline($action));
     }
 
     /**
@@ -297,7 +297,7 @@ class Index extends Component
      */
     public function workflowActionLabels(Workflow $workflow): array
     {
-        return array_map(fn (string $action): string => $this->actionOptions[$action] ?? $this->formatActionLabel($action), $workflow->triggerActions());
+        return array_map(fn (string $action): string => __($this->actionOptions[$action] ?? $this->formatActionLabel($action)), $workflow->triggerActions());
     }
 
     /**
@@ -305,7 +305,7 @@ class Index extends Component
      */
     public function workflowStatusLabels(Workflow $workflow): array
     {
-        return array_map(fn (string $status): string => $this->statusOptions[$status] ?? ucfirst($status), $workflow->triggerStatuses());
+        return array_map(fn (string $status): string => __($this->statusOptions[$status] ?? ucfirst($status)), $workflow->triggerStatuses());
     }
 
     /**
@@ -318,29 +318,29 @@ class Index extends Component
 
     public function deliveryTypeLabel(array $delivery): string
     {
-        return $this->channelOptions[$delivery['type'] ?? ''] ?? Str::headline((string) ($delivery['type'] ?? 'destination'));
+        return __($this->channelOptions[$delivery['type'] ?? ''] ?? Str::headline((string) ($delivery['type'] ?? 'destination')));
     }
 
     public function deliveryTargetSummary(array $delivery): string
     {
         if (($delivery['type'] ?? null) === 'webhook') {
-            return trim((string) ($delivery['url'] ?? '')) ?: 'No webhook URL configured';
+            return trim((string) ($delivery['url'] ?? '')) ?: __('No webhook URL configured');
         }
 
         $recipients = $this->splitRecipients((string) ($delivery['recipients'] ?? ''));
         $parts = [];
 
         if ((bool) ($delivery['include_owner'] ?? false)) {
-            $parts[] = 'Project owner';
+            $parts[] = __('Project owner');
         }
 
         if ($recipients !== []) {
             $parts[] = count($recipients) === 1
                 ? $recipients[0]
-                : count($recipients).' extra recipients';
+                : __(':count extra recipients', ['count' => count($recipients)]);
         }
 
-        return $parts !== [] ? implode(' + ', $parts) : 'No recipients configured';
+        return $parts !== [] ? implode(' + ', $parts) : __('No recipients configured');
     }
 
     /**

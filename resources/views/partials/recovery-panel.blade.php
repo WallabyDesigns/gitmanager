@@ -18,11 +18,11 @@
 <div id="gwm-recovery-panel" class="{{ $hiddenClass }}" style="{{ $wrapperStyle }}">
     <div style="{{ $panelStyle }}">
         <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
-            <strong style="font-size: 1.2rem;">Recovery Mode</strong>
-            <span style="font-size: 0.8rem; color: #94a3b8;">Assets missing or styling broken</span>
+            <strong style="font-size: 1.2rem;">{{ __('Recovery Mode') }}</strong>
+            <span style="font-size: 0.8rem; color: #94a3b8;">{{ __('Assets missing or styling broken') }}</span>
         </div>
         <p style="margin: 0 0 1rem 0; line-height: 1.5;">
-            Use the actions below to rebuild front-end assets. This panel is hidden when Tailwind loads, so if you can see it the UI assets likely failed.
+            {{ __('Use the actions below to rebuild front-end assets. This panel is hidden when Tailwind loads, so if you can see it the UI assets likely failed.') }}
         </p>
 
         @if ($status)
@@ -34,34 +34,34 @@
         <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
             <form method="POST" action="{{ route('recovery.rebuild') }}">
                 @csrf
-                <button type="submit" style="{{ $primaryStyle }}">Rebuild Front-End Assets</button>
+                <button type="submit" style="{{ $primaryStyle }}">{{ __('Rebuild Front-End Assets') }}</button>
             </form>
             <a
                 href="{{ route('system.update.rollback') }}"
-                onclick="return confirm('Roll back to the previous update? This keeps storage and configuration intact.');"
+                onclick="return confirm('{{ __('Roll back to the previous update? This keeps storage and configuration intact.') }}');"
                 style="{{ $buttonStyle }}"
             >
-                Roll Back Update
+                {{ __('Roll Back Update') }}
             </a>
             @if (!request()->routeIs('recovery.index'))
-                <a href="{{ route('recovery.index') }}" style="{{ $buttonStyle }}">Open Recovery Page</a>
+                <a href="{{ route('recovery.index') }}" style="{{ $buttonStyle }}">{{ __('Open Recovery Page') }}</a>
             @else
                 <a href="#env-backups" style="{{ $buttonStyle }}" onclick="document.getElementById('env-backups-panel')?.scrollIntoView({behavior:'smooth'});return false;">
-                    Restore .env Backup
+                    {{ __('Restore .env Backup') }}
                 </a>
             @endif
             @if (auth()->user()?->isAdmin())
-                <a href="/update" style="{{ $buttonStyle }}">Perform System Update</a>
-                <a href="{{ route('system.updates') }}" style="{{ $buttonStyle }}">Go to System Page</a>
+                <a href="/update" style="{{ $buttonStyle }}">{{ __('Perform System Update') }}</a>
+                <a href="{{ route('system.updates') }}" style="{{ $buttonStyle }}">{{ __('Go to System Page') }}</a>
             @endif
         </div>
         <div style="font-size: 0.8rem; color: #94a3b8; margin-top: -0.5rem;">
-            Rolling back returns to the last successful update and keeps your data, configuration, and logs intact.
+            {{ __('Rolling back returns to the last successful update and keeps your data, configuration, and logs intact.') }}
         </div>
 
         @if ($output)
             <div style="margin-top: 1rem;">
-                <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8;">Recent rebuild log</div>
+                <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8;">{{ __('Recent rebuild log') }}</div>
                 <pre style="margin-top: 0.5rem; max-height: 240px; overflow: auto; background: #020617; padding: 0.75rem; border-radius: 10px; border: 1px solid #1e293b; font-size: 0.75rem; color: #e2e8f0;">{{ $output }}</pre>
             </div>
         @endif

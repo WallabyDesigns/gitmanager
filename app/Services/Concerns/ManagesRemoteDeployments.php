@@ -356,14 +356,14 @@ trait ManagesRemoteDeployments
     {
         $project->loadMissing('ftpAccount');
         if (! $project->ftpAccount) {
-            throw new \RuntimeException('SSH deployment requires an FTP/SSH access record.');
+            throw new \RuntimeException('SSH deployment requires a remote access record.');
         }
 
         $host = trim((string) $project->ftpAccount->host);
         $username = trim((string) $project->ftpAccount->username);
 
         if ($host === '' || $username === '') {
-            throw new \RuntimeException('FTP/SSH access record is missing host or username for SSH deployment.');
+            throw new \RuntimeException('Remote access record is missing host or username for SSH deployment.');
         }
 
         $password = $project->ftpAccount->getDecryptedPassword();
@@ -767,7 +767,7 @@ trait ManagesRemoteDeployments
 
         $project->loadMissing('ftpAccount');
         if (! $project->ftpAccount) {
-            $output[] = 'SSH skipped: no FTP/SSH access record configured for this project.';
+            $output[] = 'SSH skipped: no remote access record configured for this project.';
 
             return;
         }
@@ -829,7 +829,7 @@ trait ManagesRemoteDeployments
 
         $project->loadMissing('ftpAccount');
         if (! $project->ftpAccount) {
-            $output[] = 'FTPS sync skipped: no FTP/SSH access record configured.';
+            $output[] = 'FTPS sync skipped: no remote access record configured.';
 
             return;
         }
@@ -994,7 +994,7 @@ trait ManagesRemoteDeployments
 
         $project->loadMissing('ftpAccount');
         if (! $project->ftpAccount) {
-            $output[] = 'FTP-only pipeline skipped: no FTP/SSH access record configured.';
+            $output[] = 'FTP-only pipeline skipped: no remote access record configured.';
 
             return $plan;
         }

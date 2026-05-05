@@ -8,7 +8,7 @@
     $isKubernetesActive = ($infraTab ?? null) === 'kubernetes'
         || $isKubernetesComponent
         || request()->routeIs('infra.kubernetes*');
-    $currentInfraLabel = $isKubernetesActive ? 'Kubernetes' : 'Docker';
+    $currentInfraLabel = $isKubernetesActive ? __('Kubernetes') : __('Docker');
     $drawerActiveSection = $activeSection ?? null;
     $drawerIsEnterprise = (bool) ($isEnterprise ?? false);
     $drawerNavItem = 'group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition';
@@ -17,26 +17,26 @@
     $drawerLockIcon = '<svg class="h-3.5 w-3.5 text-amber-300" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 1a4 4 0 00-4 4v2H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-1V5a4 4 0 00-4-4zm-2 6V5a2 2 0 114 0v2H8z" clip-rule="evenodd" /></svg>';
 
     $containerDrawerSections = [
-        ['label' => 'Dashboard', 'section' => 'dashboard', 'activeSection' => 'overview', 'icon' => 'grid'],
-        ['label' => 'Docker Containers', 'section' => 'containers', 'icon' => 'cube'],
-        ['label' => 'Images', 'section' => 'images', 'icon' => 'layers'],
-        ['label' => 'Volumes', 'section' => 'volumes', 'icon' => 'database'],
-        ['label' => 'Networks', 'section' => 'networks', 'icon' => 'share'],
-        ['label' => 'Swarm', 'section' => 'swarm', 'enterpriseFeature' => 'Docker Swarm', 'icon' => 'screen'],
+        ['label' => __('Dashboard'), 'section' => 'dashboard', 'activeSection' => 'overview', 'icon' => 'grid'],
+        ['label' => __('Docker Containers'), 'section' => 'containers', 'icon' => 'cube'],
+        ['label' => __('Images'), 'section' => 'images', 'icon' => 'layers'],
+        ['label' => __('Volumes'), 'section' => 'volumes', 'icon' => 'database'],
+        ['label' => __('Networks'), 'section' => 'networks', 'icon' => 'share'],
+        ['label' => __('Swarm'), 'section' => 'swarm', 'enterpriseFeature' => __('Docker Swarm'), 'icon' => 'screen'],
         ['divider' => true],
-        ['label' => 'Servers', 'section' => 'servers', 'activeSection' => 'nodes', 'icon' => 'server'],
-        ['label' => 'Stacks', 'section' => 'stacks', 'icon' => 'layers'],
-        ['label' => 'Deployments', 'section' => 'deployments', 'icon' => 'rocket'],
-        ['label' => 'Builds', 'section' => 'builds', 'icon' => 'wrench'],
-        ['label' => 'Repos', 'section' => 'repos', 'icon' => 'code'],
-        ['label' => 'Procedures & Actions', 'section' => 'procedures', 'icon' => 'bolt'],
-        ['label' => 'Templates', 'section' => 'templates', 'icon' => 'document'],
-        ['label' => 'Syncs', 'section' => 'syncs', 'icon' => 'sync'],
-        ['label' => 'Databases', 'section' => 'databases', 'icon' => 'database'],
-        ['label' => 'Audits', 'section' => 'audits', 'showLock' => ! $drawerIsEnterprise, 'icon' => 'clipboard'],
+        ['label' => __('Servers'), 'section' => 'servers', 'activeSection' => 'nodes', 'icon' => 'server'],
+        ['label' => __('Stacks'), 'section' => 'stacks', 'icon' => 'layers'],
+        ['label' => __('Deployments'), 'section' => 'deployments', 'icon' => 'rocket'],
+        ['label' => __('Builds'), 'section' => 'builds', 'icon' => 'wrench'],
+        ['label' => __('Repos'), 'section' => 'repos', 'icon' => 'code'],
+        ['label' => __('Procedures & Actions'), 'section' => 'procedures', 'icon' => 'bolt'],
+        ['label' => __('Templates'), 'section' => 'templates', 'icon' => 'document'],
+        ['label' => __('Syncs'), 'section' => 'syncs', 'icon' => 'sync'],
+        ['label' => __('Databases'), 'section' => 'databases', 'icon' => 'database'],
+        ['label' => __('Audits'), 'section' => 'audits', 'showLock' => ! $drawerIsEnterprise, 'icon' => 'clipboard'],
         ['divider' => true],
-        ['label' => 'Alerts', 'section' => 'alerts', 'icon' => 'bell'],
-        ['label' => 'Settings', 'section' => 'settings', 'icon' => 'cog'],
+        ['label' => __('Alerts'), 'section' => 'alerts', 'icon' => 'bell'],
+        ['label' => __('Settings'), 'section' => 'settings', 'icon' => 'cog'],
     ];
 
     $kubernetesSectionAccess = \GitManagerEnterprise\Livewire\Infrastructure\Kubernetes::SECTION_ACCESS;
@@ -46,17 +46,17 @@
     $kubernetesSectionAudit = \GitManagerEnterprise\Livewire\Infrastructure\Kubernetes::SECTION_AUDIT;
     $kubernetesDrawerSections = $drawerIsEnterprise
         ? [
-            ['label' => 'Access', 'section' => $kubernetesSectionAccess, 'icon' => 'bars'],
-            ['label' => 'Workloads', 'section' => $kubernetesSectionWorkloads, 'icon' => 'grid'],
-            ['label' => 'Controls & Logs', 'section' => $kubernetesSectionControls, 'icon' => 'clock'],
-            ['label' => 'Events', 'section' => $kubernetesSectionEvents, 'icon' => 'events'],
-            ['label' => 'Audit Log', 'section' => $kubernetesSectionAudit, 'icon' => 'check'],
+            ['label' => __('Access'), 'section' => $kubernetesSectionAccess, 'icon' => 'bars'],
+            ['label' => __('Workloads'), 'section' => $kubernetesSectionWorkloads, 'icon' => 'grid'],
+            ['label' => __('Controls & Logs'), 'section' => $kubernetesSectionControls, 'icon' => 'clock'],
+            ['label' => __('Events'), 'section' => $kubernetesSectionEvents, 'icon' => 'events'],
+            ['label' => __('Audit Log'), 'section' => $kubernetesSectionAudit, 'icon' => 'check'],
         ]
         : [
-            ['label' => 'Access', 'section' => $kubernetesSectionAccess, 'icon' => 'bars'],
-            ['label' => 'Workloads', 'section' => $kubernetesSectionWorkloads, 'enterpriseFeature' => 'Kubernetes Workloads', 'icon' => 'grid'],
-            ['label' => 'Controls & Logs', 'section' => $kubernetesSectionControls, 'enterpriseFeature' => 'Kubernetes Deployment Controls', 'icon' => 'clock'],
-            ['label' => 'Events & Audit', 'section' => $kubernetesSectionEvents, 'enterpriseFeature' => 'Kubernetes Events & Audit', 'icon' => 'events'],
+            ['label' => __('Access'), 'section' => $kubernetesSectionAccess, 'icon' => 'bars'],
+            ['label' => __('Workloads'), 'section' => $kubernetesSectionWorkloads, 'enterpriseFeature' => __('Kubernetes Workloads'), 'icon' => 'grid'],
+            ['label' => __('Controls & Logs'), 'section' => $kubernetesSectionControls, 'enterpriseFeature' => __('Kubernetes Deployment Controls'), 'icon' => 'clock'],
+            ['label' => __('Events & Audit'), 'section' => $kubernetesSectionEvents, 'enterpriseFeature' => __('Kubernetes Events & Audit'), 'icon' => 'events'],
         ];
 @endphp
 
@@ -74,7 +74,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                 </svg>
                 <span class="text-xs uppercase tracking-[0.16em] text-slate-400">{{ $currentInfraLabel }}</span>
-                <span class="font-medium text-white">Navigation</span>
+                <span class="font-medium text-white">{{ __('Navigation') }}</span>
             </span>
             <svg class="h-4 w-4 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
@@ -92,7 +92,7 @@
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
             </svg>
-            Docker
+            {{ __('Docker') }}
         </a>
 
         <a href="{{ route('infra.kubernetes') }}"
@@ -103,7 +103,7 @@
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
             </svg>
-            Kubernetes
+            {{ __('Kubernetes') }}
         </a>
     </div>
 
@@ -138,7 +138,7 @@
                 <div class="flex items-start justify-between px-4 py-4 border-b border-slate-800">
                     <div>
                         <div class="text-xs uppercase tracking-[0.16em] text-slate-400">{{ $currentInfraLabel }}</div>
-                        <div class="mt-1 text-lg font-semibold text-white">Navigation</div>
+                        <div class="mt-1 text-lg font-semibold text-white">{{ __('Navigation') }}</div>
                     </div>
                     <button type="button" @click="open = false" class="mt-0.5 rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition shrink-0">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
@@ -157,7 +157,7 @@
                         <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
                         </svg>
-                        Docker
+                        {{ __('Docker') }}
                     </a>
                     <a
                         href="{{ route('infra.kubernetes') }}"
@@ -168,11 +168,11 @@
                         <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
                         </svg>
-                        Kubernetes
+                        {{ __('Kubernetes') }}
                     </a>
 
                     @if ($isContainersActive)
-                        <div class="mt-3 border-t border-slate-800 pt-4 text-[11px] uppercase tracking-[0.16em] text-slate-500">Docker</div>
+                        <div class="mt-3 border-t border-slate-800 pt-4 text-[11px] uppercase tracking-[0.16em] text-slate-500">{{ __('Docker') }}</div>
                         @foreach ($containerDrawerSections as $drawerSection)
                             @if ($drawerSection['divider'] ?? false)
                                 <div class="my-2 border-t border-slate-800"></div>
@@ -217,7 +217,7 @@
                     @endif
 
                     @if ($isKubernetesActive)
-                        <div class="mt-3 border-t border-slate-800 pt-4 text-[11px] uppercase tracking-[0.16em] text-slate-500">Kubernetes</div>
+                        <div class="mt-3 border-t border-slate-800 pt-4 text-[11px] uppercase tracking-[0.16em] text-slate-500">{{ __('Kubernetes') }}</div>
                         @foreach ($kubernetesDrawerSections as $drawerSection)
                             @php
                                 $isEnterpriseLocked = isset($drawerSection['enterpriseFeature']) && ! $drawerIsEnterprise;

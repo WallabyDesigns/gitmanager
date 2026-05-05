@@ -9,8 +9,8 @@
             :aria-expanded="open"
         >
             <span>
-                @if ($tab === 'create') Create User
-                @else Users
+                @if ($tab === 'create') {{ __('Create User') }}
+                @else {{ __('Users') }}
                 @endif
             </span>
             <svg class="h-4 w-4 text-slate-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -36,7 +36,7 @@
                 class="flex w-full items-center px-4 py-3 text-sm transition {{ $tab === 'list' ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-medium' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800' }}"
                 role="menuitem"
             >
-                Users
+                {{ __('Users') }}
             </button>
             <button
                 type="button"
@@ -45,7 +45,7 @@
                 class="flex w-full items-center px-4 py-3 text-sm transition border-t border-slate-100 dark:border-slate-800 {{ $tab === 'create' ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-medium' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800' }}"
                 role="menuitem"
             >
-                Create User
+                {{ __('Create User') }}
             </button>
         </div>
     </div>
@@ -55,12 +55,12 @@
         <button type="button"
                 wire:click="setTab('list')"
                 class="px-3 py-2 text-sm border-b-2 {{ $tab === 'list' ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
-            Users
+            {{ __('Users') }}
         </button>
         <button type="button"
                 wire:click="setTab('create')"
                 class="px-3 py-2 text-sm border-b-2 {{ $tab === 'create' ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
-            Create User
+            {{ __('Create User') }}
         </button>
     </div>
 </div>

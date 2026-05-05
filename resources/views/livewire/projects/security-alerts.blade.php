@@ -2,29 +2,29 @@
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex items-center gap-3 flex-wrap">
             <button type="button" wire:click="$set('tab', 'current')" class="px-3 py-2 text-sm rounded-md {{ $tab === 'current' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300' }}">
-                Current Issues ({{ $openCount }})
+                {{ __('Current Issues') }} ({{ $openCount }})
             </button>
             <button type="button" wire:click="$set('tab', 'resolved')" class="px-3 py-2 text-sm rounded-md {{ $tab === 'resolved' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300' }}">
-                Resolved Issues ({{ $resolvedCount }})
+                {{ __('Resolved Issues') }} ({{ $resolvedCount }})
             </button>
         </div>
         <div class="flex flex-wrap gap-2">
             @if ($isEnterprise ?? false)
                 <button type="button" wire:click="auditProject" wire:loading.attr="disabled" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
                     <x-loading-spinner target="auditProject" />
-                    Audit Project
+                    {{ __('Audit Project') }}
                 </button>
             @else
                 <button type="button" onclick="window.dispatchEvent(new CustomEvent('gwm-open-enterprise-modal', { detail: { feature: 'Automatic Project & Container Audits' } }));" class="px-3 py-2 text-sm rounded-md border border-amber-300 text-amber-700 hover:text-amber-800 dark:border-amber-500/60 dark:text-amber-300 inline-flex items-center gap-1.5">
                     <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                         <path fill-rule="evenodd" d="M10 1a4 4 0 00-4 4v2H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-1V5a4 4 0 00-4-4zm-2 6V5a2 2 0 114 0v2H8z" clip-rule="evenodd" />
                     </svg>
-                    Audit Project
+                    {{ __('Audit Project') }}
                 </button>
             @endif
             <button type="button" wire:click="sync" wire:loading.attr="disabled" class="px-3 py-2 text-sm rounded-md border border-indigo-300 text-indigo-600 hover:text-indigo-800 dark:border-indigo-500/50 dark:text-indigo-300 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
                 <x-loading-spinner target="sync" />
-                Sync Alerts
+                {{ __('Sync Alerts') }}
             </button>
         </div>
     </div>
@@ -67,7 +67,7 @@
 
     <div class="min-w-0">
         <div class="flex items-center justify-between gap-3">
-            <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Latest Security Output</h4>
+            <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Latest Security Output') }}</h4>
         </div>
         @php
             $latestSecurityOutput = $latestSecurityLog?->output_log;
@@ -87,12 +87,12 @@
                 }
             "
         >
-            <pre class="inline-block min-w-full p-3 text-xs text-slate-600 dark:text-slate-300 whitespace-pre font-mono leading-relaxed align-top">{{ $latestSecurityOutput ?? 'No output yet.' }}</pre>
+            <pre class="inline-block min-w-full p-3 text-xs text-slate-600 dark:text-slate-300 whitespace-pre font-mono leading-relaxed align-top">{{ $latestSecurityOutput ?? __('No output yet.') }}</pre>
         </div>
     </div>
 
     <div>
-        <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Security Logs</h4>
+        <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Security Logs') }}</h4>
         <div class="mt-3 space-y-3">
             @forelse ($securityLogs as $deployment)
                 <div class="min-w-0 rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
@@ -138,7 +138,7 @@
                             x-bind:open="open"
                             @toggle="open = $el.open; localStorage.setItem(key, open)"
                         >
-                            <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">View log</summary>
+                            <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">{{ __('View log') }}</summary>
                             @include('livewire.projects.partials.grouped-log', [
                                 'log' => $deployment->output_log,
                                 'maxHeight' => 'max-h-80',
@@ -150,19 +150,19 @@
                     @endif
                 </div>
             @empty
-                <p class="text-sm text-slate-500 dark:text-slate-400">No security logs yet.</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('No security logs yet.') }}</p>
             @endforelse
         </div>
     </div>
 
     <div class="space-y-6">
         <div class="space-y-3">
-            <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Audit Issues</h3>
+            <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Audit Issues') }}</h3>
             @forelse ($auditIssues as $issue)
                 @php
                     $toolLabel = match ($issue->tool) {
-                        'npm' => 'Npm audit',
-                        'composer' => 'Composer audit',
+                        'npm' => __('Npm Audit'),
+                            'composer' => __('Composer Audit'),
                         default => ucfirst((string) ($issue->tool ?? 'audit')),
                     };
                 @endphp
@@ -171,7 +171,7 @@
                         <div>
                             <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ $toolLabel }}</div>
                             <div class="text-xs text-slate-500 dark:text-slate-400">
-                                Detected: {{ \App\Support\DateFormatter::forUser($issue->detected_at, 'M j, Y g:i a', 'Unknown') }}
+                                {{ __('Detected:') }} {{ \App\Support\DateFormatter::forUser($issue->detected_at, 'M j, Y g:i a', __('Unknown')) }}
                             </div>
                         </div>
                         <div class="flex flex-wrap gap-2 text-xs">
@@ -185,7 +185,7 @@
                             @endif
                             @if ($issue->remaining_count !== null)
                                 <span class="px-2 py-1 rounded-full bg-rose-500/10 text-rose-300">
-                                    {{ $issue->remaining_count }} remaining
+                                    {{ $issue->remaining_count }} {{ __('remaining') }}
                                 </span>
                             @endif
                         </div>
@@ -198,35 +198,35 @@
                     @endif
                     <div class="mt-3 flex flex-wrap gap-3 text-xs text-slate-400 dark:text-slate-500">
                         @if ($issue->found_count !== null)
-                            <span>Found: {{ $issue->found_count }}</span>
+                            <span>{{ __('Found:') }} {{ $issue->found_count }}</span>
                         @endif
                         @if ($issue->fixed_count !== null)
-                            <span>Fixed: {{ $issue->fixed_count }}</span>
+                            <span>{{ __('Fixed:') }} {{ $issue->fixed_count }}</span>
                         @endif
                         @if ($issue->last_seen_at)
-                            <span>Last seen: {{ \App\Support\DateFormatter::forUser($issue->last_seen_at, 'M j, Y g:i a') }}</span>
+                            <span>{{ __('Last seen:') }} {{ \App\Support\DateFormatter::forUser($issue->last_seen_at, 'M j, Y g:i a') }}</span>
                         @endif
                         @if ($issue->resolved_at)
-                            <span>Resolved: {{ \App\Support\DateFormatter::forUser($issue->resolved_at, 'M j, Y g:i a') }}</span>
+                            <span>{{ __('Resolved:') }} {{ \App\Support\DateFormatter::forUser($issue->resolved_at, 'M j, Y g:i a') }}</span>
                         @endif
                     </div>
                 </div>
             @empty
-                <p class="text-sm text-slate-500 dark:text-slate-400">No audit issues found for this tab.</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('No audit issues found for this tab.') }}</p>
             @endforelse
         </div>
 
         <div class="space-y-3">
-            <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Dependabot Alerts</h3>
+            <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Dependabot Alerts') }}</h3>
         @forelse ($alerts as $alert)
                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                {{ $alert->package_name ?? 'Unknown package' }}
+                                {{ $alert->package_name ?? __('Unknown package') }}
                             </div>
                             <div class="text-xs text-slate-500 dark:text-slate-400">
-                                {{ $alert->ecosystem ?? 'unknown ecosystem' }}
+                                {{ $alert->ecosystem ?? __('unknown ecosystem') }}
                             </div>
                         </div>
                         <div class="flex flex-wrap gap-2 text-xs">
@@ -245,26 +245,26 @@
                     @endif
                     <div class="mt-3 flex flex-wrap gap-3 text-xs text-slate-400 dark:text-slate-500">
                         @if ($alert->fixed_in)
-                            <span>Fixed in: {{ $alert->fixed_in }}</span>
+                            <span>{{ __('Fixed in:') }} {{ $alert->fixed_in }}</span>
                         @endif
                         @if ($alert->alert_created_at)
-                            <span>Created: {{ \App\Support\DateFormatter::forUser($alert->alert_created_at, 'M j, Y') }}</span>
+                            <span>{{ __('Created') }}: {{ \App\Support\DateFormatter::forUser($alert->alert_created_at, 'M j, Y') }}</span>
                         @endif
                         @if ($alert->fixed_at)
-                            <span>Fixed: {{ \App\Support\DateFormatter::forUser($alert->fixed_at, 'M j, Y') }}</span>
+                            <span>{{ __('Fixed:') }} {{ \App\Support\DateFormatter::forUser($alert->fixed_at, 'M j, Y') }}</span>
                         @endif
                     </div>
                     <div class="mt-3 flex flex-wrap gap-3 text-sm">
                         @if ($alert->advisory_url)
-                            <a href="{{ $alert->advisory_url }}" target="_blank" class="text-indigo-600 dark:text-indigo-300">Advisory</a>
+                            <a href="{{ $alert->advisory_url }}" target="_blank" class="text-indigo-600 dark:text-indigo-300">{{ __('Advisory') }}</a>
                         @endif
                         @if ($alert->html_url)
-                            <a href="{{ $alert->html_url }}" target="_blank" class="text-indigo-600 dark:text-indigo-300">Dependabot Report</a>
+                            <a href="{{ $alert->html_url }}" target="_blank" class="text-indigo-600 dark:text-indigo-300">{{ __('Dependabot Report') }}</a>
                         @endif
                     </div>
                 </div>
             @empty
-                <p class="text-sm text-slate-500 dark:text-slate-400">No Dependabot alerts found for this tab.</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('No Dependabot alerts found for this tab.') }}</p>
         @endforelse
     </div>
 </div>
@@ -280,15 +280,15 @@
         @click.self="open = false"
     >
         <div class="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800">
-            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Push {{ $pushContext ?: 'Security fix' }} changes?</h3>
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Push :context changes?', ['context' => $pushContext ?? __('Security fix')]) }}</h3>
             <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                {{ $pushContext ?: 'Security fix' }} updated dependency files. Commit and push these changes back to the repository.
+                {{ __(':context updated dependency files. Commit and push these changes back to the repository.', ['context' => $pushContext ?? __('Security fix')]) }}
             </p>
             @if ($pushAuditSummary)
-                <p class="mt-2 text-xs text-emerald-400">Audit summary: {{ $pushAuditSummary }}</p>
+                <p class="mt-2 text-xs text-emerald-400">{{ __('Audit summary:') }} {{ $pushAuditSummary }}</p>
             @endif
             @if ($pushHasOtherChanges)
-                <p class="mt-2 text-xs text-amber-400">Only dependency files will be committed. Other changes remain uncommitted.</p>
+                <p class="mt-2 text-xs text-amber-400">{{ __('Only dependency files will be committed. Other changes remain uncommitted.') }}</p>
             @endif
 
             @if (! empty($pushFiles))
@@ -305,7 +305,7 @@
             @endif
 
             <div class="mt-4">
-                <label class="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">Commit Message</label>
+                <label class="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">{{ __('Commit Message') }}</label>
                 <input type="text" wire:model.live="pushCommitMessage" class="mt-2 w-full rounded-md border border-slate-200/70 bg-white/70 p-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
             </div>
 

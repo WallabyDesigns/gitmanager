@@ -22,7 +22,8 @@ new class extends Component
         $this->checkUpdatesEnabled = (bool) ($state['checkUpdatesEnabled'] ?? true);
         $this->editionLabel = (string) ($state['editionLabel'] ?? 'Community Edition');
         $this->isEnterprise = (bool) ($state['isEnterprise'] ?? false);
-        $this->brandName = (string) ($state['brandName'] ?? config('app.name', 'Git Web Manager'));
+        $brandName = (string) ($state['brandName'] ?? config('app.name', 'Git Web Manager'));
+        $this->brandName = __($brandName);
     }
     /**
      * Log the current user out of the application.
@@ -135,6 +136,15 @@ new class extends Component
 
             <!-- Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center sm:ms-6 gap-3">
+                <button
+                    type="button"
+                    class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white"
+                    aria-label="Choose language"
+                    title="Choose language"
+                    data-gwm-language-open
+                >
+                    <svg class="h-5 w-5" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path fill-rule="evenodd" clip-rule="evenodd" d="M4 0H6V2H10V4H8.86807C8.57073 5.66996 7.78574 7.17117 6.6656 8.35112C7.46567 8.73941 8.35737 8.96842 9.29948 8.99697L10.2735 6H12.7265L15.9765 16H13.8735L13.2235 14H9.77647L9.12647 16H7.0235L8.66176 10.9592C7.32639 10.8285 6.08165 10.3888 4.99999 9.71246C3.69496 10.5284 2.15255 11 0.5 11H0V9H0.5C1.5161 9 2.47775 8.76685 3.33437 8.35112C2.68381 7.66582 2.14629 6.87215 1.75171 6H4.02179C4.30023 6.43491 4.62904 6.83446 4.99999 7.19044C5.88743 6.33881 6.53369 5.23777 6.82607 4H0V2H4V0ZM12.5735 12L11.5 8.69688L10.4265 12H12.5735Z" fill="#ffffff" style="--darkreader-inline-fill: var(--darkreader-background-ffffff, #181a1b);" data-darkreader-inline-fill=""></path> </g></svg>
+                </button>
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 dark:border-slate-700 text-sm leading-4 font-medium rounded-lg text-slate-600 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 focus:outline-none transition ease-in-out duration-150 shadow-sm">
@@ -239,7 +249,7 @@ new class extends Component
                 <div class="flex items-center justify-between px-4 py-4 border-b border-slate-200/70 dark:border-slate-800">
                     <div class="flex items-center gap-2">
                         <x-application-logo class="h-7 w-auto fill-current text-slate-800 dark:text-slate-100" />
-                        <span class="font-semibold text-slate-900 dark:text-slate-100">Navigation</span>
+                        <span class="font-semibold text-slate-900 dark:text-slate-100">{{ __('Navigation') }}</span>
                     </div>
                     <button type="button" @click="open = false" class="rounded-lg p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800 transition">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
@@ -335,6 +345,18 @@ new class extends Component
                         </div>
 
                         <div class="mt-2 space-y-1">
+                            <button type="button" class="w-full text-start" data-gwm-language-open @click="open = false">
+                                <x-responsive-nav-link>
+                                    <span class="flex items-center gap-3">
+                                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.6 9h16.8M3.6 15h16.8M12 3c2.25 2.35 3.38 5.35 3.38 9S14.25 18.65 12 21M12 3C9.75 5.35 8.62 8.35 8.62 12S9.75 18.65 12 21" />
+                                        </svg>
+                                        {{ __('Language') }}
+                                    </span>
+                                </x-responsive-nav-link>
+                            </button>
+
                             <x-responsive-nav-link :href="route('profile')">
                                 <span class="flex items-center gap-3">
                                     <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">

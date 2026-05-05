@@ -8,28 +8,28 @@
             </div>
 
             <div>
-                <h1 class="text-2xl font-semibold text-slate-900 dark:text-slate-100">Purchase Complete</h1>
+                <h1 class="text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ __('Purchase Complete') }}</h1>
                 <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                    Thank you for upgrading to Enterprise Edition.
-                    Your license key will be emailed to you shortly.
+                    {{ __('Thank you for upgrading to Enterprise Edition.') }}
+                    {{ __('Your license key will be emailed to you shortly.') }}
                 </p>
             </div>
 
             <div class="rounded-xl border border-amber-300/60 bg-amber-50/70 dark:border-amber-500/30 dark:bg-amber-500/10 p-5 text-left space-y-2">
-                <div class="text-sm font-semibold text-amber-800 dark:text-amber-200">Next steps</div>
+                <div class="text-sm font-semibold text-amber-800 dark:text-amber-200">{{ __('Next steps') }}</div>
                 <ol class="list-decimal list-inside text-xs text-amber-700 dark:text-amber-300 space-y-1">
-                    <li>Check your email for a license key from Wallaby Designs.</li>
-                    <li>Go to <strong>System → Settings</strong> and enter your license key.</li>
-                    <li>Click <strong>Verify License Now</strong> to activate Enterprise Edition.</li>
+                    <li>{{ __('Check your email for a license key from Wallaby Designs.') }}</li>
+                    <li>{{ __('Go to System → Settings and enter your license key.') }}</li>
+                    <li>{{ __('Click Verify License Now to activate Enterprise Edition.') }}</li>
                 </ol>
             </div>
 
             <div class="flex flex-wrap justify-center gap-3">
                 <a href="{{ route('system.licensing') }}" class="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
-                    Go to System Settings
+                    {{ __('Go to System Settings') }}
                 </a>
                 <a href="{{ route('projects.index') }}" class="inline-flex items-center rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white">
-                    Back to Projects
+                    {{ __('Back to projects') }}
                 </a>
             </div>
         </div>

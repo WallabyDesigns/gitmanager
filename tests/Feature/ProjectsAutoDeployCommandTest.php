@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\DeploymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\File;
 use Mockery;
 use Tests\TestCase;
 
@@ -16,6 +17,8 @@ class ProjectsAutoDeployCommandTest extends TestCase
 
     public function test_scheduled_health_check_command_runs_for_monitored_projects_without_a_prior_deployment(): void
     {
+        File::delete(storage_path('logs/scheduler-heartbeat.json'));
+
         $project = Project::factory()->create([
             'user_id' => User::factory(),
             'auto_deploy' => false,
@@ -34,5 +37,6 @@ class ProjectsAutoDeployCommandTest extends TestCase
         });
 
         $this->assertSame(0, Artisan::call('projects:health-check'));
+        $this->assertFileExists(storage_path('logs/scheduler-heartbeat.json'));
     }
 }

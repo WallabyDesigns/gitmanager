@@ -54,13 +54,13 @@ class Index extends Component
 
         $healthHistory = [];
         foreach ($monitoredProjects as $project) {
-            $healthHistory[$project->id] = $projectIds === [] ? collect() : Deployment::query()
-                ->where('project_id', $project->id)
-                ->where('action', 'health_check')
-                ->latest('started_at')
-                ->limit(30)
-                ->get(['status', 'started_at'])
-                ->reverse()
+            $healthHistory[$project->id] = collect($project->healthHistory())
+                ->map(fn (array $entry): object => (object) [
+                    'status' => (string) ($entry['deployment_status'] ?? (($entry['status'] ?? '') === 'ok' ? 'success' : 'failed')),
+                    'started_at' => $entry['checked_at'] ?? null,
+                    'http_status' => $entry['http_status'] ?? null,
+                ])
+                ->take(-30)
                 ->values();
         }
 

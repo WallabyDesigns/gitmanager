@@ -12,6 +12,8 @@ class Project extends Model
 {
     use HasFactory;
 
+    public const HEALTH_HISTORY_LIMIT = 60;
+
     protected $fillable = [
         'user_id',
         'name',
@@ -115,6 +117,42 @@ class Project extends Model
     public function hasHealthMonitoring(): bool
     {
         return trim((string) $this->health_url) !== '' || trim((string) $this->site_url) !== '';
+    }
+
+    /**
+     * @return list<array{
+     *     checked_at: string,
+     *     status: string,
+     *     deployment_status: string,
+     *     http_status?: int|null,
+     *     issue?: string|null,
+     *     url?: string|null,
+     *     summary?: string|null
+     * }>
+     */
+    public function healthHistory(): array
+    {
+        $raw = (string) ($this->health_log ?? '');
+        if ($raw === '') {
+            return [];
+        }
+
+        $decoded = json_decode($raw, true);
+        if (! is_array($decoded)) {
+            return [];
+        }
+
+        $checks = $decoded['checks'] ?? $decoded;
+        if (! is_array($checks)) {
+            return [];
+        }
+
+        return array_values(array_filter($checks, static fn ($entry): bool => is_array($entry)));
+    }
+
+    public function healthHistoryJsonEntryCount(): int
+    {
+        return count($this->healthHistory());
     }
 
     /**

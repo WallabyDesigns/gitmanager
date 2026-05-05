@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Deployment;
 use App\Models\Project;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -11,6 +10,8 @@ use Illuminate\Support\Facades\Mail;
 class HealthCheckService
 {
     private const EMAIL_COOLDOWN_MINUTES = 10;
+    private const HTTP_ATTEMPTS = 3;
+    private const TRANSPORT_FAILURE_THRESHOLD = 3;
 
     /**
      * @var array<int, array{project: Project, previous: string, current: string, issue: string|null, url: string|null, checked_at: string}>
@@ -28,9 +29,9 @@ class HealthCheckService
         $previousStatus = $project->health_status;
         $previousIssue = $project->health_issue_message;
         $healthLog = ['Health check started at '.now()->toDateTimeString().'.'];
-        $laravelIssue = $this->runLaravelHealthChecks($project, $healthLog);
-
         $healthUrl = $this->resolveHealthUrl($project);
+        $httpStatus = null;
+        $laravelIssue = $this->runLaravelHealthChecks($project, $healthLog);
 
         if ($laravelIssue !== null) {
             $healthLog[] = 'Laravel checks failed: '.$laravelIssue;
@@ -40,48 +41,70 @@ class HealthCheckService
                 $status = 'na';
                 $issueMessage = $laravelIssue;
                 $logText = $this->formatHealthLog($healthLog);
-                $this->saveHealthStatus($project, $status, $issueMessage, $logText);
+                $this->saveHealthStatus($project, $status, $issueMessage, $logText, $healthUrl, $httpStatus);
                 $this->maybeNotifyHealthChange($project, $previousStatus, $status, $issueMessage, $notifyOnFailure);
-                $this->maybeLogHealthCheck($project, $status, $issueMessage, $logText, $log, $previousStatus, $previousIssue);
 
                 return $status;
             }
         }
 
         if (! $healthUrl) {
+            $this->saveHealthStatus($project, 'na', 'No health URL configured.', $this->formatHealthLog($healthLog), null, null);
+
             return 'na';
         }
 
-        try {
-            $response = Http::timeout(10)->get($healthUrl);
-            if ($response->successful()) {
-                $healthLog[] = 'HTTP health check OK ('.$response->status().').';
-                Cache::forget($this->consecutiveFailKey($project));
-                $status = 'ok';
-            } else {
-                $healthLog[] = 'HTTP health check failed ('.$response->status().').';
-                Cache::forget($this->consecutiveFailKey($project));
-                $status = 'na';
+        $transportException = null;
+        for ($attempt = 1; $attempt <= self::HTTP_ATTEMPTS; $attempt++) {
+            try {
+                $response = Http::timeout(10)->get($healthUrl);
+                $httpStatus = $response->status();
+                if ($response->successful()) {
+                    $healthLog[] = 'HTTP health check OK ('.$response->status().').';
+                    Cache::forget($this->consecutiveFailKey($project));
+                    $status = 'ok';
+                } else {
+                    $healthLog[] = 'HTTP health check failed ('.$response->status().').';
+                    Cache::forget($this->consecutiveFailKey($project));
+                    $status = 'na';
+                }
+                $transportException = null;
+
+                break;
+            } catch (\Throwable $exception) {
+                $transportException = $exception;
+                $healthLog[] = sprintf(
+                    'HTTP health check transport exception (attempt %d/%d): %s',
+                    $attempt,
+                    self::HTTP_ATTEMPTS,
+                    $this->cleanExceptionMessage($exception)
+                );
             }
-        } catch (\Throwable $exception) {
-            $healthLog[] = 'HTTP health check exception: '.$exception->getMessage();
+        }
+
+        if ($transportException !== null) {
             $failCount = (int) Cache::get($this->consecutiveFailKey($project), 0) + 1;
             Cache::put($this->consecutiveFailKey($project), $failCount, now()->addHours(2));
-            if ($failCount < 2) {
+            $issueMessage = $this->transportIssueMessage($transportException);
+            if ($failCount < self::TRANSPORT_FAILURE_THRESHOLD) {
+                $healthLog[] = sprintf(
+                    'Transport failure %d/%d; preserving previous health status until the failure threshold is reached.',
+                    $failCount,
+                    self::TRANSPORT_FAILURE_THRESHOLD
+                );
                 $logText = $this->formatHealthLog($healthLog);
-                $this->saveHealthStatus($project, $previousStatus ?? 'na', $previousIssue, $logText);
-                $this->maybeLogHealthCheck($project, 'na', $exception->getMessage(), $logText, $log, $previousStatus, $previousIssue);
+                $this->saveHealthStatus($project, $previousStatus ?? 'na', $previousIssue, $logText, $healthUrl, $httpStatus, 'na', $issueMessage);
 
                 return $previousStatus ?? 'na';
             }
             $status = 'na';
+        } else {
+            $issueMessage = $status === 'ok' ? null : ($httpStatus !== null ? "HTTP {$httpStatus} failed." : null);
         }
 
-        $issueMessage = null;
         $logText = $this->formatHealthLog($healthLog);
-        $this->saveHealthStatus($project, $status, $issueMessage, $logText);
+        $this->saveHealthStatus($project, $status, $issueMessage, $logText, $healthUrl, $httpStatus);
         $this->maybeNotifyHealthChange($project, $previousStatus, $status, $issueMessage, $notifyOnFailure);
-        $this->maybeLogHealthCheck($project, $status, $issueMessage, $logText, $log, $previousStatus, $previousIssue);
 
         return $status;
     }
@@ -121,13 +144,67 @@ class HealthCheckService
         }
     }
 
-    private function saveHealthStatus(Project $project, string $status, ?string $issueMessage, ?string $logText): void
+    private function saveHealthStatus(Project $project, string $status, ?string $issueMessage, ?string $logText, ?string $healthUrl, ?int $httpStatus, ?string $historyStatus = null, ?string $historyIssueMessage = null): void
     {
         $project->health_status = $status;
         $project->health_issue_message = $issueMessage;
-        $project->health_log = $logText;
+        $project->health_log = $this->appendHealthHistory($project, $historyStatus ?? $status, $historyIssueMessage ?? $issueMessage, $logText, $healthUrl, $httpStatus);
         $project->health_checked_at = now();
         $project->save();
+    }
+
+    private function appendHealthHistory(Project $project, string $status, ?string $issueMessage, ?string $logText, ?string $healthUrl, ?int $httpStatus): string
+    {
+        $history = $project->healthHistory();
+
+        $history[] = [
+            'checked_at' => now()->toIso8601String(),
+            'status' => $status,
+            'deployment_status' => $status === 'ok' ? 'success' : 'failed',
+            'http_status' => $httpStatus,
+            'issue' => $issueMessage,
+            'url' => $healthUrl,
+            'summary' => $this->healthSummary($status, $issueMessage, $logText, $httpStatus),
+        ];
+
+        if (count($history) > Project::HEALTH_HISTORY_LIMIT) {
+            $history = array_slice($history, -Project::HEALTH_HISTORY_LIMIT);
+        }
+
+        return json_encode([
+            'version' => 1,
+            'checks' => array_values($history),
+        ], JSON_UNESCAPED_SLASHES);
+    }
+
+    private function healthSummary(string $status, ?string $issueMessage, ?string $logText, ?int $httpStatus): string
+    {
+        if ($httpStatus !== null) {
+            return $status === 'ok'
+                ? "HTTP {$httpStatus}"
+                : "HTTP {$httpStatus} failed";
+        }
+
+        if ($issueMessage) {
+            return $issueMessage;
+        }
+
+        $lastLine = collect(explode("\n", (string) $logText))
+            ->map(fn (string $line): string => trim($line))
+            ->filter()
+            ->last();
+
+        return is_string($lastLine) && $lastLine !== '' ? $lastLine : 'Health check completed.';
+    }
+
+    private function transportIssueMessage(\Throwable $exception): string
+    {
+        return 'HTTP transport failed: '.$this->cleanExceptionMessage($exception);
+    }
+
+    private function cleanExceptionMessage(\Throwable $exception): string
+    {
+        return trim(preg_replace('/\s+/', ' ', $exception->getMessage()) ?: $exception->getMessage());
     }
 
     private function formatHealthLog(array $log): ?string
@@ -151,34 +228,6 @@ class HealthCheckService
         }
 
         return implode("\n", $lines);
-    }
-
-    private function maybeLogHealthCheck(
-        Project $project,
-        string $status,
-        ?string $issueMessage,
-        ?string $logText,
-        bool $forceLog,
-        ?string $previousStatus,
-        ?string $previousIssue
-    ): void {
-        $statusChanged = $previousStatus !== $status;
-        $issueChanged = ($previousIssue ?? '') !== ($issueMessage ?? '');
-        if (! $forceLog && ! $statusChanged && ! $issueChanged) {
-            return;
-        }
-
-        $outputLog = $logText ?: 'Health check completed.';
-
-        Deployment::create([
-            'project_id' => $project->id,
-            'triggered_by' => null,
-            'action' => 'health_check',
-            'status' => $status === 'ok' ? 'success' : 'failed',
-            'output_log' => $outputLog,
-            'started_at' => now(),
-            'finished_at' => now(),
-        ]);
     }
 
     private function maybeNotifyHealthChange(

@@ -3,22 +3,22 @@
     {{-- Stat cards --}}
     <div class="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
-            <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Total Projects</p>
+            <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Total Projects') }}</p>
             <p class="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-100">{{ $totalProjects }}</p>
         </div>
         <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
-            <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Healthy Sites</p>
+            <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Healthy Sites') }}</p>
             <p class="mt-2 text-3xl font-bold text-emerald-600 dark:text-emerald-400">{{ $healthyCount }}</p>
             @if ($monitoredProjects->count() > 0)
-                <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">of {{ $monitoredProjects->count() }} monitored</p>
+                <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ __('of :count monitored', ['count' => $monitoredProjects->count()]) }}</p>
             @endif
         </div>
         <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
-            <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Health Issues</p>
+            <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Health Issues') }}</p>
             <p class="mt-2 text-3xl font-bold {{ $healthIssues->count() > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-slate-100' }}">{{ $healthIssues->count() }}</p>
         </div>
         <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
-            <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Deployments Today</p>
+            <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Deployments Today') }}</p>
             <p class="mt-2 text-3xl font-bold text-indigo-600 dark:text-indigo-400">{{ $deploymentsToday }}</p>
         </div>
     </div>
@@ -35,8 +35,8 @@
                 :aria-expanded="open"
             >
                 <span>
-                    @if ($tab === 'containers') Containers
-                    @else Projects
+                    @if ($tab === 'containers') {{ __('Containers') }}
+                    @else {{ __('Projects') }}
                     @endif
                 </span>
                 <svg class="h-4 w-4 text-slate-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -57,10 +57,10 @@
             >
                 <button type="button" wire:click="setTab('projects')" @click="open = false"
                     class="flex w-full items-center px-4 py-3 text-sm transition {{ $tab === 'projects' ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-medium' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800' }}"
-                    role="menuitem">Projects</button>
+                    role="menuitem">{{ __('Projects') }}</button>
                 <button type="button" wire:click="setTab('containers')" @click="open = false"
                     class="flex w-full items-center px-4 py-3 text-sm transition border-t border-slate-100 dark:border-slate-800 {{ $tab === 'containers' ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-medium' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800' }}"
-                    role="menuitem">Containers</button>
+                    role="menuitem">{{ __('Containers') }}</button>
             </div>
         </div>
 
@@ -68,11 +68,11 @@
         <div class="hidden sm:flex flex-wrap gap-2 border-b border-slate-200/70 dark:border-slate-800">
             <button type="button" wire:click="setTab('projects')"
                 class="px-3 py-2 text-sm border-b-2 {{ $tab === 'projects' ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
-                Projects
+                {{ __('Projects') }}
             </button>
             <button type="button" wire:click="setTab('containers')"
                 class="px-3 py-2 text-sm border-b-2 {{ $tab === 'containers' ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
-                Containers
+                {{ __('Containers') }}
             </button>
         </div>
     </div>
@@ -83,15 +83,15 @@
 
             {{-- Health monitor --}}
             <div class="lg:col-span-2 space-y-4">
-                <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Site Health Monitor</h2>
+                <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Site Health Monitor') }}</h2>
 
                 @if ($monitoredProjects->isEmpty())
                     <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center">
                         <svg class="mx-auto h-10 w-10 text-slate-300 dark:text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.745 3.745 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.745 3.745 0 013.296-1.043A3.745 3.745 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.745 3.745 0 013.296 1.043 3.745 3.745 0 011.043 3.296A3.745 3.745 0 0121 12z" />
                         </svg>
-                        <p class="mt-3 text-sm text-slate-500 dark:text-slate-400">No projects with health monitoring configured.</p>
-                        <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">Add a site URL or health check URL to a project to enable monitoring.</p>
+                        <p class="mt-3 text-sm text-slate-500 dark:text-slate-400">{{ __('No projects with health monitoring configured.') }}</p>
+                        <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ __('Add a site URL or health check URL to a project to enable monitoring.') }}</p>
                     </div>
                 @else
                     <div class="space-y-3">
@@ -131,13 +131,13 @@
                                             @endif
                                         @endif
                                         <span class="text-xs font-semibold uppercase tracking-wide px-2 py-1 rounded-full {{ $isOk ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : ($isNa ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400') }}">
-                                            {{ $isOk ? 'OK' : ($isNa ? 'Down' : 'Unknown') }}
+                                            {{ $isOk ? __('OK') : ($isNa ? __('Down') : __('Unknown')) }}
                                         </span>
                                     </div>
                                 </div>
                                 @if ($project->health_checked_at)
                                     <p class="mt-2 ml-4 text-xs text-slate-400 dark:text-slate-500">
-                                        Last checked {{ $project->health_checked_at->diffForHumans() }}
+                                        {{ __('Last checked :time', ['time' => $project->health_checked_at->diffForHumans()]) }}
                                     </p>
                                 @endif
                             </a>
@@ -154,11 +154,11 @@
                     $issueCount = $healthIssues->count() + $updatesAvailable->count() + $vulnerableProjects->count();
                 @endphp
                 <div>
-                    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-3">Needs Attention</h2>
+                    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-3">{{ __('Needs Attention') }}</h2>
                     @if ($issueCount === 0)
                         <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 text-center">
-                            <p class="text-sm text-emerald-600 dark:text-emerald-400 font-medium">All clear</p>
-                            <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">No issues detected.</p>
+                            <p class="text-sm text-emerald-600 dark:text-emerald-400 font-medium">{{ __('All clear') }}</p>
+                            <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ __('No issues detected.') }}</p>
                         </div>
                     @else
                         <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
@@ -171,7 +171,7 @@
                                             <p class="truncate text-xs text-slate-400 dark:text-slate-500">{{ $project->health_issue_message }}</p>
                                         @endif
                                     </div>
-                                    <span class="shrink-0 text-xs font-medium text-rose-600 dark:text-rose-400">Health</span>
+                                    <span class="shrink-0 text-xs font-medium text-rose-600 dark:text-rose-400">{{ __('Health') }}</span>
                                 </a>
                             @endforeach
                             @foreach ($updatesAvailable as $project)
@@ -180,7 +180,7 @@
                                     <div class="min-w-0 flex-1">
                                         <p class="truncate text-sm text-slate-800 dark:text-slate-200">{{ $project->name }}</p>
                                     </div>
-                                    <span class="shrink-0 text-xs font-medium text-indigo-600 dark:text-indigo-400">Updates</span>
+                                    <span class="shrink-0 text-xs font-medium text-indigo-600 dark:text-indigo-400">{{ __('Updates') }}</span>
                                 </a>
                             @endforeach
                             @foreach ($vulnerableProjects as $project)
@@ -190,7 +190,7 @@
                                         <p class="truncate text-sm text-slate-800 dark:text-slate-200">{{ $project->name }}</p>
                                         <p class="text-xs text-slate-400 dark:text-slate-500">{{ $project->audit_open_count }} {{ Str::plural('vulnerability', $project->audit_open_count) }}</p>
                                     </div>
-                                    <span class="shrink-0 text-xs font-medium text-amber-600 dark:text-amber-400">Security</span>
+                                    <span class="shrink-0 text-xs font-medium text-amber-600 dark:text-amber-400">{{ __('Security') }}</span>
                                 </a>
                             @endforeach
                         </div>
@@ -199,10 +199,10 @@
 
                 {{-- Recent deployments --}}
                 <div>
-                    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-3">Recent Deployments</h2>
+                    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-3">{{ __('Recent Deployments') }}</h2>
                     @if ($recentDeployments->isEmpty())
                         <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 text-center">
-                            <p class="text-sm text-slate-500 dark:text-slate-400">No deployments yet.</p>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('No deployments yet.') }}</p>
                         </div>
                     @else
                         <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
@@ -232,8 +232,8 @@
             <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 flex items-center gap-4">
                 <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-slate-400"></span>
                 <div>
-                    <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Docker not available</p>
-                    <p class="text-xs text-slate-400 dark:text-slate-500">Docker is not running or is not installed on this server.</p>
+                    <p class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ __('Docker not available') }}</p>
+                    <p class="text-xs text-slate-400 dark:text-slate-500">{{ __('Docker is not running or is not installed on this server.') }}</p>
                 </div>
             </div>
         @else
@@ -243,25 +243,25 @@
                 <div class="lg:col-span-2 space-y-4">
 
                     <div class="flex items-center justify-between">
-                        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Containers</h2>
-                        <a href="{{ route('infra.containers') }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">Manage →</a>
+                        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Containers') }}</h2>
+                        <a href="{{ route('infra.containers') }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">{{ __('Manage') }} →</a>
                     </div>
 
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
-                            <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Running</p>
+                            <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Running') }}</p>
                             <p class="mt-1.5 text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ $infra['containers']['running'] }}</p>
                         </div>
                         <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
-                            <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Stopped</p>
+                            <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Stopped') }}</p>
                             <p class="mt-1.5 text-2xl font-bold {{ $infra['containers']['stopped'] > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-slate-100' }}">{{ $infra['containers']['stopped'] }}</p>
                         </div>
                         <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
-                            <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Images</p>
+                            <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Images') }}</p>
                             <p class="mt-1.5 text-2xl font-bold text-slate-900 dark:text-slate-100">{{ $infra['images'] }}</p>
                         </div>
                         <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
-                            <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Volumes</p>
+                            <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Volumes') }}</p>
                             <p class="mt-1.5 text-2xl font-bold text-slate-900 dark:text-slate-100">{{ $infra['volumes'] }}</p>
                         </div>
                     </div>
@@ -269,7 +269,7 @@
                     @if (count($infra['containers_list']) > 0)
                         <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
                             <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
-                                <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">All Containers</h3>
+                                <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('All Containers') }}</h3>
                             </div>
                             <div class="divide-y divide-slate-100 dark:divide-slate-800">
                                 @foreach ($infra['containers_list'] as $container)
@@ -299,28 +299,28 @@
                     @if ($infra['is_enterprise'] && $infra['swarm'] !== null)
                         <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
                             <div class="flex items-center justify-between mb-4">
-                                <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Swarm Cluster</h3>
+                                <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Swarm Cluster') }}</h3>
                                 @if ($infra['swarm']['active'])
                                     <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
                                         <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                                        Active
+                                        {{ __('Active') }}
                                     </span>
                                 @else
                                     <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">
-                                        Inactive
+                                        {{ __('Inactive') }}
                                     </span>
                                 @endif
                             </div>
                             @if ($infra['swarm']['active'])
                                 <div class="space-y-3">
                                     <div class="flex justify-between items-center">
-                                        <span class="text-sm text-slate-500 dark:text-slate-400">Nodes ready</span>
+                                        <span class="text-sm text-slate-500 dark:text-slate-400">{{ __('Nodes ready') }}</span>
                                         <span class="text-sm font-semibold {{ $infra['swarm']['ready_nodes'] === $infra['swarm']['nodes'] ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400' }}">
                                             {{ $infra['swarm']['ready_nodes'] }} / {{ $infra['swarm']['nodes'] }}
                                         </span>
                                     </div>
                                     <div class="flex justify-between items-center">
-                                        <span class="text-sm text-slate-500 dark:text-slate-400">Services</span>
+                                        <span class="text-sm text-slate-500 dark:text-slate-400">{{ __('Services') }}</span>
                                         <span class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ $infra['swarm']['services'] }}</span>
                                     </div>
                                     @if ($infra['swarm']['nodes'] > 0)
@@ -331,36 +331,36 @@
                                     @endif
                                 </div>
                             @else
-                                <p class="text-xs text-slate-400 dark:text-slate-500">Swarm mode is not initialised on this host.</p>
+                                <p class="text-xs text-slate-400 dark:text-slate-500">{{ __('Swarm mode is not initialised on this host.') }}</p>
                             @endif
                         </div>
                     @endif
 
                     <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
-                        <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-4">Docker Summary</h3>
+                        <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-4">{{ __('Docker Summary') }}</h3>
                         <div class="space-y-3">
                             <div class="flex justify-between items-center">
-                                <span class="text-sm text-slate-500 dark:text-slate-400">Total containers</span>
+                                <span class="text-sm text-slate-500 dark:text-slate-400">{{ __('Total containers') }}</span>
                                 <span class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ $infra['containers']['total'] }}</span>
                             </div>
                             <div class="flex justify-between items-center">
-                                <span class="text-sm text-slate-500 dark:text-slate-400">Running</span>
+                                <span class="text-sm text-slate-500 dark:text-slate-400">{{ __('Running') }}</span>
                                 <span class="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{{ $infra['containers']['running'] }}</span>
                             </div>
                             <div class="flex justify-between items-center">
-                                <span class="text-sm text-slate-500 dark:text-slate-400">Stopped</span>
+                                <span class="text-sm text-slate-500 dark:text-slate-400">{{ __('Stopped') }}</span>
                                 <span class="text-sm font-semibold {{ $infra['containers']['stopped'] > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-slate-100' }}">{{ $infra['containers']['stopped'] }}</span>
                             </div>
                             <div class="border-t border-slate-100 dark:border-slate-800 pt-3 flex justify-between items-center">
-                                <span class="text-sm text-slate-500 dark:text-slate-400">Images</span>
+                                <span class="text-sm text-slate-500 dark:text-slate-400">{{ __('Images') }}</span>
                                 <span class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ $infra['images'] }}</span>
                             </div>
                             <div class="flex justify-between items-center">
-                                <span class="text-sm text-slate-500 dark:text-slate-400">Volumes</span>
+                                <span class="text-sm text-slate-500 dark:text-slate-400">{{ __('Volumes') }}</span>
                                 <span class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ $infra['volumes'] }}</span>
                             </div>
                             <div class="flex justify-between items-center">
-                                <span class="text-sm text-slate-500 dark:text-slate-400">Networks</span>
+                                <span class="text-sm text-slate-500 dark:text-slate-400">{{ __('Networks') }}</span>
                                 <span class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ $infra['networks'] }}</span>
                             </div>
                         </div>
@@ -368,7 +368,7 @@
                             @php $runPct = round($infra['containers']['running'] / $infra['containers']['total'] * 100); @endphp
                             <div class="mt-4">
                                 <div class="flex justify-between text-xs text-slate-400 dark:text-slate-500 mb-1">
-                                    <span>Running</span><span>{{ $runPct }}%</span>
+                                    <span>{{ __('Running') }}</span><span>{{ $runPct }}%</span>
                                 </div>
                                 <div class="h-1.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                                     <div class="h-full rounded-full bg-emerald-500" style="width: {{ $runPct }}%"></div>

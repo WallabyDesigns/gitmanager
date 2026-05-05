@@ -95,6 +95,7 @@ class Settings extends Component
     public function mount(): void
     {
         $this->settingsSection = $this->resolveRequestedSection();
+        $this->initializeTimezone();
     }
 
     public function loadData(EditionService $edition, SettingsService $settings, LicenseService $license, EnvManagerService $envManager, EnvBackupService $backupService): void
@@ -129,15 +130,7 @@ class Settings extends Component
             $settings->get('system.logs.retention_days', LogCleanupService::DEFAULT_RETENTION_DAYS)
         );
 
-        $this->timezones = \DateTimeZone::listIdentifiers();
-        $stored = (string) ($settings->get('system.timezone') ?? '');
-        if ($stored === '') {
-            $stored = (string) (User::query()->where('id', 1)->value('timezone') ?? '');
-        }
-        if ($stored === '') {
-            $stored = (string) config('app.timezone');
-        }
-        $this->timezone = $stored;
+        $this->initializeTimezone($settings);
 
         if ($this->settingsSection === self::SECTION_ENVIRONMENT) {
             $this->loadEnvironmentSection($envManager, $backupService);
@@ -551,5 +544,46 @@ class Settings extends Component
         }
 
         return $message;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function timezoneOptions(): array
+    {
+        $timezones = \DateTimeZone::listIdentifiers();
+        $timezones = array_values(array_diff($timezones, ['UTC']));
+        array_unshift($timezones, 'UTC');
+
+        return $timezones;
+    }
+
+    private function normalizeTimezone(?string $timezone): string
+    {
+        $timezone = trim((string) $timezone);
+        $valid = array_flip($this->timezones ?: $this->timezoneOptions());
+
+        return isset($valid[$timezone]) ? $timezone : 'UTC';
+    }
+
+    private function initializeTimezone(?SettingsService $settings = null): void
+    {
+        $this->timezones = $this->timezoneOptions();
+        $settings ??= app(SettingsService::class);
+
+        try {
+            $stored = (string) ($settings->get('system.timezone') ?? '');
+        } catch (\Throwable) {
+            $stored = '';
+        }
+
+        if ($stored === '') {
+            $stored = (string) (User::query()->where('id', 1)->value('timezone') ?? '');
+        }
+        if ($stored === '') {
+            $stored = (string) config('app.timezone', 'UTC');
+        }
+
+        $this->timezone = $this->normalizeTimezone($stored);
     }
 }

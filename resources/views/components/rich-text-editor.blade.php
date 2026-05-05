@@ -159,7 +159,7 @@
                 return;
             }
 
-            const raw = window.prompt('Enter a URL', 'https://');
+            const raw = window.prompt(@js(__('Enter a URL')), 'https://');
             if (!raw) {
                 return;
             }
@@ -220,14 +220,14 @@
     class="space-y-3"
 >
     <div class="gwm-richtext-toolbar flex flex-wrap gap-2 text-slate-600 dark:text-slate-200">
-        <button type="button" @click.prevent="exec('bold')" title="Bold"><strong>B</strong></button>
-        <button type="button" @click.prevent="exec('italic')" title="Italic"><em>I</em></button>
-        <button type="button" @click.prevent="exec('underline')" title="Underline"><span style="text-decoration: underline;">U</span></button>
-        <button type="button" @click.prevent="exec('insertUnorderedList')" title="Bullet list">• List</button>
-        <button type="button" @click.prevent="exec('insertOrderedList')" title="Numbered list">1. List</button>
-        <button type="button" @click.prevent="exec('formatBlock', 'blockquote')" title="Quote">Quote</button>
-        <button type="button" @click.prevent="toggleLink()" title="Insert link">Link</button>
-        <button type="button" @click.prevent="clearFormatting()" title="Clear formatting">Clear</button>
+        <button type="button" @click.prevent="exec('bold')" title="{{ __('Bold') }}"><strong>B</strong></button>
+        <button type="button" @click.prevent="exec('italic')" title="{{ __('Italic') }}"><em>I</em></button>
+        <button type="button" @click.prevent="exec('underline')" title="{{ __('Underline') }}"><span style="text-decoration: underline;">U</span></button>
+        <button type="button" @click.prevent="exec('insertUnorderedList')" title="{{ __('Bullet list') }}">{{ __('Bullet list') }}</button>
+        <button type="button" @click.prevent="exec('insertOrderedList')" title="{{ __('Numbered list') }}">{{ __('Numbered list') }}</button>
+        <button type="button" @click.prevent="exec('formatBlock', 'blockquote')" title="{{ __('Quote') }}">{{ __('Quote') }}</button>
+        <button type="button" @click.prevent="toggleLink()" title="{{ __('Insert link') }}">{{ __('Link') }}</button>
+        <button type="button" @click.prevent="clearFormatting()" title="{{ __('Clear formatting') }}">{{ __('Clear') }}</button>
     </div>
 
     <div class="gwm-richtext-shell" :style="`--gwm-richtext-height: ${minHeight}`">

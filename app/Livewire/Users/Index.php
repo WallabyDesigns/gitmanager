@@ -53,12 +53,15 @@ class Index extends Component
         ]);
 
         $password = $validated['userForm']['password'] ?: Str::password(16);
+        $admin = User::query()->where('id', 1)->first();
 
         $user = User::create([
             'name' => $validated['userForm']['name'],
             'email' => $validated['userForm']['email'],
             'password' => Hash::make($password),
             'must_change_password' => (bool) ($validated['userForm']['require_password_change'] ?? true),
+            'timezone' => $admin?->timezone,
+            'locale' => $admin?->locale ?? 'en',
         ]);
 
         $this->generatedPassword = $password;

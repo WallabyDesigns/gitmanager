@@ -26,7 +26,7 @@
             }
         @endphp
 
-        <title>{{ isset($title) ? $title . ' - ' . $brandName : $brandName }}</title>
+        <title>{{ isset($title) ? $title . ' - ' . __($brandName) : __($brandName) }}</title>
 
         <meta name="color-scheme" content="dark">
 
@@ -65,7 +65,7 @@
         <div class="h-full flex flex-col sm:justify-center items-center pt-6 sm:pt-0">
             @if (! $viteReady)
                 <div class="gwm-fallback-alert">
-                    <strong>Assets are not built.</strong> Run <code>npm run build</code> to restore the styled UI.
+                    <strong>{{ __('Assets are not built.') }}</strong> {{ __('Run :cmd to restore the styled UI.', ['cmd' => '<code>npm run build</code>']) }}
                 </div>
             @endif
             <div>
@@ -85,9 +85,10 @@
             <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white shadow-md overflow-hidden sm:rounded-lg dark:bg-slate-900 dark:border dark:border-slate-800">
                 {{ $slot }}
             </div>
-            <p class="footer-text">Git Web Manager for Git © 2026 <a style="text-decoration: underline;" href="https://wallabydesigns.com/" title="Website built by Wallaby Designs">Wallaby Designs LLC</a> • zlib License<br/>
-                <span class="footer-disclaimer">Git Web Manager is not affiliated with, endorsed by, or sponsored by Git or its maintainers.</span></p>
+            <p class="footer-text">{{ __('Git Web Manager for Git') }} © 2026 <a style="text-decoration: underline;" href="https://wallabydesigns.com/" title="{{ __('Website built by Wallaby Designs') }}">{{ __('Wallaby Designs LLC') }}</a> • zlib License<br/>
+            <span class="footer-disclaimer">{{ __('Git Web Manager is not affiliated with, endorsed by, or sponsored by Git or its maintainers.') }}</span></p>
         </div>
+        @include('partials.language-selector', ['floating' => true])
         <script>
             (() => {
                 const preloadClass = 'gwm-preload';

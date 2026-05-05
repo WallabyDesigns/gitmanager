@@ -4,8 +4,8 @@
 
 <div class="flex items-center justify-between">
     <div>
-        <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">Templates</h2>
-        <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">One-click deploy for common services. Customise before deploying via <em>Configure</em>.</p>
+        <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">{{ __('Templates') }}</h2>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{{ __('One-click deploy for common services. Customise before deploying via :action.', ['action' => '<em>'.__('Configure').'</em>']) }}</p>
     </div>
 </div>
 

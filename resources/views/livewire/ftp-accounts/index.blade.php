@@ -8,59 +8,59 @@
                 @if ($tab === 'ftpcreate')
                     <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6 space-y-6">
                         <div>
-                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ $editingId ? 'Edit FTP/SSH Access' : 'Create FTP/SSH Access' }}</h3>
-                            <p class="text-sm text-slate-500 dark:text-slate-400">Store FTP/SSH credentials securely and reuse them across projects.</p>
+                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ $editingId ? __('Edit Remote Access') : __('Create Remote Access') }}</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('Store remote credentials securely and reuse them across projects.') }}</p>
                         </div>
 
                         <div class="grid gap-4 sm:grid-cols-2">
                             <div>
-                                <x-input-label for="ftp_name" value="Account Name" />
+                                <x-input-label for="ftp_name" :value="__('Account Name')" />
                                 <x-text-input id="ftp_name" class="mt-1 block w-full" wire:model.live="form.name" />
                                 <x-input-error :messages="$errors->get('form.name')" class="mt-2" />
                             </div>
                             <div>
-                                <x-input-label for="ftp_host" value="Host" />
+                                <x-input-label for="ftp_host" :value="__('Host')" />
                                 <x-text-input id="ftp_host" class="mt-1 block w-full" wire:model.live="form.host" placeholder="ftp.example.com" />
                                 <x-input-error :messages="$errors->get('form.host')" class="mt-2" />
                             </div>
                             <div>
-                                <x-input-label for="ftp_port" value="Port" />
+                                <x-input-label for="ftp_port" :value="__('Port')" />
                                 <x-text-input id="ftp_port" class="mt-1 block w-full" wire:model.live="form.port" />
                                 <x-input-error :messages="$errors->get('form.port')" class="mt-2" />
                             </div>
                             <div>
-                                <x-input-label for="ssh_port" value="SSH Port (optional)" />
+                                <x-input-label for="ssh_port" :value="__('SSH Port (optional)')" />
                                 <x-text-input id="ssh_port" class="mt-1 block w-full" wire:model.live="form.ssh_port" placeholder="22" />
                                 <x-input-error :messages="$errors->get('form.ssh_port')" class="mt-2" />
                             </div>
                             <div>
-                                <x-input-label for="ftp_username" value="Username" />
+                                <x-input-label for="ftp_username" :value="__('Username')" />
                                 <x-text-input id="ftp_username" class="mt-1 block w-full" wire:model.live="form.username" />
                                 <x-input-error :messages="$errors->get('form.username')" class="mt-2" />
                             </div>
                             <div>
-                                <x-input-label for="ftp_password" value="{{ $editingId ? 'Password (leave blank to keep)' : 'Password' }}" />
+                                <x-input-label for="ftp_password" :value="$editingId ? __('Password (leave blank to keep)') : __('Password')" />
                                 <x-text-input id="ftp_password" class="mt-1 block w-full" wire:model.live="form.password" type="password" />
                                 <x-input-error :messages="$errors->get('form.password')" class="mt-2" />
                             </div>
                             <div>
-                                <x-input-label for="ftp_root" value="Default Remote Root Path (optional)" />
+                                <x-input-label for="ftp_root" :value="__('Default Remote Root Path (optional)')" />
                                 <x-text-input id="ftp_root" class="mt-1 block w-full" wire:model.live="form.root_path" placeholder="/public_html" />
                                 <x-input-error :messages="$errors->get('form.root_path')" class="mt-2" />
                             </div>
                         </div>
 
                         <div class="border-t border-slate-200/70 dark:border-slate-800 pt-4 space-y-3">
-                            <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">SSH Overrides (optional)</div>
-                            <p class="text-xs text-slate-500 dark:text-slate-400">SSH uses the same host/username/password as FTP by default. Only fill these if SSH needs different helpers or keys.</p>
+                            <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('SSH Overrides (optional)') }}</div>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">{{ __('SSH uses the same host/username/password as FTP by default. Only fill these if SSH needs different helpers or keys.') }}</p>
                             <div class="grid gap-4 sm:grid-cols-2">
                                 <div>
-                                    <x-input-label for="ssh_pass_binary" value="SSH Pass Binary (optional)" />
+                                    <x-input-label for="ssh_pass_binary" :value="__('SSH Pass Binary (optional)')" />
                                     <x-text-input id="ssh_pass_binary" class="mt-1 block w-full" wire:model.live="form.ssh_pass_binary" placeholder="/usr/bin/sshpass" />
                                     <x-input-error :messages="$errors->get('form.ssh_pass_binary')" class="mt-2" />
                                 </div>
                                 <div>
-                                    <x-input-label for="ssh_key_path" value="SSH Key Path (optional)" />
+                                    <x-input-label for="ssh_key_path" :value="__('SSH Key Path (optional)')" />
                                     <x-text-input id="ssh_key_path" class="mt-1 block w-full" wire:model.live="form.ssh_key_path" placeholder="/home/user/.ssh/id_rsa" />
                                     <x-input-error :messages="$errors->get('form.ssh_key_path')" class="mt-2" />
                                 </div>
@@ -70,14 +70,14 @@
                         <div class="grid gap-4 sm:grid-cols-3">
                             <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                                 <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.ssl" />
-                                Use FTPS (SSL)
+                                {{ __('Use FTPS (SSL)') }}
                             </label>
                             <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                                 <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.passive" />
-                                Passive mode
+                                {{ __('Passive mode') }}
                             </label>
                             <div>
-                                <x-input-label for="ftp_timeout" value="Timeout (seconds)" />
+                                <x-input-label for="ftp_timeout" :value="__('Timeout (seconds)')" />
                                 <x-text-input id="ftp_timeout" class="mt-1 block w-full" wire:model.live="form.timeout" />
                                 <x-input-error :messages="$errors->get('form.timeout')" class="mt-2" />
                             </div>
@@ -85,19 +85,19 @@
 
                         <div class="flex flex-wrap items-center gap-3">
                             <button type="button" wire:click="save" class="px-4 py-2 rounded-md bg-slate-900 text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900">
-                                {{ $editingId ? 'Update Account' : 'Create Account' }}
+                                {{ $editingId ? __('Update Account') : __('Create Account') }}
                             </button>
                             <button type="button" wire:click="testConnection" class="px-4 py-2 rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 inline-flex items-center">
                                 <x-loading-spinner target="testConnection" />
-                                Test FTP
+                                {{ __('Test FTP') }}
                             </button>
                             <button type="button" wire:click="testSshConnection" class="px-4 py-2 rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 inline-flex items-center">
                                 <x-loading-spinner target="testSshConnection" />
-                                Test SSH
+                                {{ __('Test SSH') }}
                             </button>
                             @if ($editingId)
-                                <button type="button" wire:click="delete({{ $editingId }})" onclick="return confirm('Delete this FTP/SSH access record?') || event.stopImmediatePropagation()" class="px-4 py-2 rounded-md border border-rose-300 text-rose-600 hover:text-rose-700 dark:border-rose-600/60 dark:text-rose-300">
-                                    Delete
+                                <button type="button" wire:click="delete({{ $editingId }})" onclick="return confirm('{{ __('Delete this remote access record?') }}') || event.stopImmediatePropagation()" class="px-4 py-2 rounded-md border border-rose-300 text-rose-600 hover:text-rose-700 dark:border-rose-600/60 dark:text-rose-300">
+                                    {{ __('Delete') }}
                                 </button>
                             @endif
                             @if ($testStatus)
@@ -142,25 +142,25 @@
                                                 {{ $account->ssl ? 'FTPS' : 'FTP' }}
                                             </span>
                                             @if ($account->passive)
-                                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">Passive</span>
+                                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">{{ __('Passive') }}</span>
                                             @endif
                                             @if ($ftpNeedsTest)
-                                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">FTP Needs Test</span>
+                                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">{{ __('FTP Needs Test') }}</span>
                                             @elseif (in_array($account->ftp_test_status, ['error', 'warning'], true))
-                                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">FTP Issue</span>
+                                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">{{ __('FTP Issue') }}</span>
                                             @endif
                                             @if ($sshNeedsTest)
-                                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">SSH Needs Test</span>
+                                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">{{ __('SSH Needs Test') }}</span>
                                             @elseif (in_array($account->ssh_test_status, ['error', 'warning'], true))
-                                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">SSH Issue</span>
+                                                <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">{{ __('SSH Issue') }}</span>
                                             @endif
                                         </div>
                                         <p class="text-sm text-slate-500 dark:text-slate-400">{{ $account->host }}:{{ $account->port }}</p>
                                         @if ($account->root_path)
-                                            <p class="text-xs text-slate-500 dark:text-slate-400">Root: {{ $account->root_path }}</p>
+                                            <p class="text-xs text-slate-500 dark:text-slate-400">{{ __('Root:') }} {{ $account->root_path }}</p>
                                         @endif
                                         @if ($account->ssh_port && $account->ssh_port !== 22)
-                                            <p class="text-xs text-slate-500 dark:text-slate-400">SSH Port: {{ $account->ssh_port }}</p>
+                                            <p class="text-xs text-slate-500 dark:text-slate-400">{{ __('SSH Port') }}: {{ $account->ssh_port }}</p>
                                         @endif
                                     </div>
                                     <div class="text-xs text-slate-400 dark:text-slate-500">
@@ -170,21 +170,21 @@
                             </button>
                         @empty
                             <div class="rounded-lg border border-dashed border-slate-300/70 dark:border-slate-700 p-6 text-sm text-slate-500 dark:text-slate-400">
-                                No FTP/SSH access records yet.
+                                {{ __('No remote access records yet.') }}
                             </div>
                         @endforelse
                     </div>
 
                     <div class="pt-4 border-t border-slate-200/70 dark:border-slate-800 flex justify-end">
                         <button type="button" wire:click="cleanBuildEnvironments"
-                            onclick="return confirm('Remove local build environments for deleted and non-FTP projects? This cannot be undone.') || event.stopImmediatePropagation()"
+                            onclick="return confirm('{{ __('Remove local build environments for deleted and non-FTP projects? This cannot be undone.') }}') || event.stopImmediatePropagation()"
                             class="px-4 py-2 rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 inline-flex items-center gap-2 text-sm">
                             <x-loading-spinner target="cleanBuildEnvironments" />
                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M20 4 9 15" />
                                 <path d="M8.5 14.5C5.9 14.5 3 17 3 20.5h11.5C14.5 17 11.1 14.5 8.5 14.5Z" />
                             </svg>
-                            Clean Build Environments
+                            {{ __('Clean Build Environments') }}
                         </button>
                     </div>
                 @endif

@@ -105,16 +105,6 @@ class Index extends Component
         $this->dispatchAuditToast($results);
     }
 
-    public function refreshHealth(DeploymentService $service): void
-    {
-        $projects = Auth::user()
-            ->projects()
-            ->get();
-
-        $this->runHealthChecks($service, $projects);
-        $this->runUpdateChecks($service, $projects, true);
-    }
-
     public function render()
     {
         app(DeploymentService::class)->releaseStaleRunningDeployments();
@@ -240,7 +230,7 @@ class Index extends Component
             ],
         ])->layout('layouts.app', [
             'header' => view('livewire.projects.partials.index-header'),
-            'title' => 'Projects',
+            'title' => __('Projects'),
         ]);
     }
 

@@ -28,5 +28,7 @@
             'backups' => $envBackups ?? [],
             'status' => $envStatus ?? null,
         ])
+
+        @include('partials.language-selector', ['floating' => true])
     </body>
 </html>

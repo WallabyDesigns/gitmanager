@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\LanguageOptions;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -41,6 +42,7 @@ class SupportService
             'subject' => $subject,
             'message' => $message,
             'priority' => $priority,
+            'locale' => LanguageOptions::normalize(auth()->user()?->locale ?? app()->getLocale()),
         ]);
 
         $ticket = $json['ticket'] ?? null;
@@ -72,6 +74,7 @@ class SupportService
     {
         $json = $this->request('post', 'tickets/'.$ticketId.'/messages', [
             'message' => $message,
+            'locale' => LanguageOptions::normalize(auth()->user()?->locale ?? app()->getLocale()),
         ]);
 
         $ticket = $json['ticket'] ?? null;
@@ -117,6 +120,7 @@ class SupportService
                 'X-GWM-License-Installation' => $installationUuid,
                 'X-GWM-App-Url' => trim((string) ($context['app_url'] ?? '')),
                 'X-GWM-App-Name' => trim((string) ($context['app_name'] ?? '')),
+                'X-GWM-Locale' => LanguageOptions::normalize(auth()->user()?->locale ?? app()->getLocale()),
             ]);
 
         $publicIp = trim((string) ($context['public_ip'] ?? ''));

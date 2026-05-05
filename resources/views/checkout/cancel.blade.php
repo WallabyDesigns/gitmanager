@@ -8,9 +8,9 @@
             </div>
 
             <div>
-                <h1 class="text-2xl font-semibold text-slate-900 dark:text-slate-100">Checkout Cancelled</h1>
+                <h1 class="text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ __('Checkout Cancelled') }}</h1>
                 <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                    No payment was taken. You can upgrade to Enterprise Edition any time.
+                    {{ __('No payment was taken. You can upgrade to Enterprise Edition any time.') }}
                 </p>
             </div>
 
@@ -20,10 +20,10 @@
                     onclick="window.dispatchEvent(new CustomEvent('gwm-open-enterprise-modal', { detail: { feature: 'Enterprise Edition' } }));"
                     class="inline-flex items-center rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-400"
                 >
-                    Try Again
+                    {{ __('Try Again') }}
                 </button>
                 <a href="{{ route('projects.index') }}" class="inline-flex items-center rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white">
-                    Back to Projects
+                    {{ __('Back to projects') }}
                 </a>
             </div>
         </div>

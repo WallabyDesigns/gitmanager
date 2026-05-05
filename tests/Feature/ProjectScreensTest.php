@@ -36,7 +36,8 @@ class ProjectScreensTest extends TestCase
         $response
             ->assertOk()
             ->assertSee('Clients')
-            ->assertSee('Acme');
+            ->assertSee('Acme')
+            ->assertDontSee('refreshHealth');
     }
 
     public function test_edit_project_screen_loads(): void
@@ -64,7 +65,8 @@ class ProjectScreensTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Latest Debug Logs');
+            ->assertSee('Latest Debug Logs')
+            ->assertDontSee('refreshHealthStatus');
     }
 
     public function test_queue_screen_loads(): void

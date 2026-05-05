@@ -26,7 +26,7 @@
             }
         @endphp
 
-        <title>{{ isset($title) ? $title . ' - ' . $brandName : $brandName }}</title>
+        <title>{{ isset($title) ? $title . ' - ' . __($brandName) : __($brandName) }}</title>
 
         <meta name="color-scheme" content="dark">
 
@@ -63,7 +63,7 @@
         <div class="min-h-screen">
             @if (! $viteReady)
                 <div class="gwm-fallback-alert">
-                    <strong>Assets are not built.</strong> Run <code>npm run build</code> or fix the build permissions to restore the normal UI.
+                    <strong>{{ __('Assets are not built.') }}</strong> {{ __('Run :cmd or fix the build permissions to restore the normal UI.', ['cmd' => '<code>npm run build</code>']) }}
                 </div>
             @endif
 
@@ -93,15 +93,16 @@
                 {{ $slot }}
             </main>
             <footer>
-                <p class="footer-text">Git Web Manager for Git © 2026 <a style="text-decoration: underline;" href="https://wallabydesigns.com/" title="Website built by Wallaby Designs">Wallaby Designs LLC</a> • zlib License<br/>
-                <span class="footer-disclaimer">Git Web Manager is not affiliated with, endorsed by, or sponsored by Git or its maintainers.</span></p>
+                <p class="footer-text">{{ __('Git Web Manager for Git') }} © 2026 <a style="text-decoration: underline;" href="https://wallabydesigns.com/" title="{{ __('Website built by Wallaby Designs') }}">{{ __('Wallaby Designs LLC') }}</a> • zlib License<br/>
+                <span class="footer-disclaimer">{{ __('Git Web Manager is not affiliated with, endorsed by, or sponsored by Git or its maintainers.') }}</span></p>
             </footer>
         </div>
 
         <div id="gwm-toast" class="gwm-toast fixed bottom-6 right-6 hidden max-w-sm rounded-lg border px-4 py-3 text-sm shadow-lg"></div>
+        @include('partials.language-selector')
         <div
-            x-data="{ open: false, feature: 'Enterprise Feature' }"
-            x-on:gwm-open-enterprise-modal.window="feature = ($event.detail && $event.detail.feature) ? $event.detail.feature : 'Enterprise Feature'; open = true"
+            x-data="{ open: false, feature: @js(__('Enterprise Feature')) }"
+            x-on:gwm-open-enterprise-modal.window="feature = ($event.detail && $event.detail.feature) ? $event.detail.feature : @js(__('Enterprise Feature')); open = true"
             x-on:keydown.escape.window="open = false"
         >
             <div
@@ -119,28 +120,28 @@
                                 <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                     <path fill-rule="evenodd" d="M10 1a4 4 0 00-4 4v2H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-1V5a4 4 0 00-4-4zm-2 6V5a2 2 0 114 0v2H8z" clip-rule="evenodd" />
                                 </svg>
-                                Enterprise Feature
+                                {{ __('Enterprise Feature') }}
                             </div>
-                            <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Unlock in Enterprise Edition</h3>
-                        </div>
-                        <button type="button" @click="open = false" class="rounded-md p-2 text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-slate-100" aria-label="Close">
-                            <svg class="h-5 w-5" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
+<h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Unlock in Enterprise Edition') }}</h3>
                     </div>
+                    <button type="button" @click="open = false" class="rounded-md p-2 text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-slate-100" aria-label="{{ __('Close') }}">
+                        <svg class="h-5 w-5" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
 
-                    <p class="mt-4 text-sm text-slate-600 dark:text-slate-300">
-                        <span class="font-semibold text-slate-900 dark:text-slate-100" x-text="feature"></span>
-                        is available in Enterprise Edition. Upgrade to unlock premium infrastructure controls and advanced platform features.
-                    </p>
+                <p class="mt-4 text-sm text-slate-600 dark:text-slate-300">
+                    <span class="font-semibold text-slate-900 dark:text-slate-100" x-text="feature"></span>
+                    {{ __('is available in Enterprise Edition. Upgrade to unlock premium infrastructure controls and advanced platform features.') }}
+                </p>
 
-                    <ul class="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-                        <li>Docker and container management from the project panel.</li>
-                        <li>Kubernetes workload controls and health visibility.</li>
-                        <li>SQL database provisioning and management tools.</li>
-                        <li>White-label branding with custom logo and identity.</li>
-                    </ul>
+                <ul class="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+                    <li>{{ __('Docker and container management from the project panel.') }}</li>
+                    <li>{{ __('Kubernetes workload controls and health visibility.') }}</li>
+                    <li>{{ __('SQL database provisioning and management tools.') }}</li>
+                    <li>{{ __('White-label branding with custom logo and identity.') }}</li>
+                </ul>
 
                     @php
                         $checkoutLive = \Illuminate\Support\Facades\Route::has('checkout.enterprise')
@@ -154,20 +155,20 @@
                                     @csrf
                                 </form>
                                 <button type="button" @click="open = false; document.getElementById('gwm-enterprise-checkout-form').submit()" class="inline-flex items-center rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-400">
-                                    Continue to Checkout
+                                    {{ __('Continue to Checkout') }}
                                 </button>
                             @else
                                 <a href="{{ route('login') }}" class="inline-flex items-center rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-400">
-                                    Sign In to Purchase
+                                    {{ __('Sign In to Purchase') }}
                                 </a>
                             @endauth
                         @else
                             <a href="mailto:hello@wallabydesigns.com?subject=Enterprise%20Edition%20Enquiry" class="inline-flex items-center rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-400">
-                                Contact Us to Purchase
+                                {{ __('Contact Us to Purchase') }}
                             </a>
                         @endif
                         <button type="button" @click="open = false" class="inline-flex items-center rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white">
-                            Maybe Later
+                            {{ __('Maybe Later') }}
                         </button>
                     </div>
                 </div>
@@ -201,7 +202,7 @@
                 const active = variants[type] || variants.info;
                 toast.classList.remove(...variantClasses);
                 toast.classList.add(...active);
-                toast.textContent = event.detail.message || 'Done.';
+                toast.textContent = event.detail.message || @js(__('Done')).concat('.');
                 toast.classList.remove('hidden');
                 clearTimeout(window.GWMToastTimer);
                 window.GWMToastTimer = setTimeout(() => {

@@ -1,40 +1,40 @@
-<div class="py-10" x-data="{ tab: 'overview', deleteOpen: false }" wire:init="refreshHealthStatus" wire:poll.60s="refreshHealthStatus">
+<div class="py-10" x-data="{ tab: 'overview', deleteOpen: false }" wire:poll.60s="$refresh">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid gap-6 lg:grid-cols-[260px,1fr]">
             @include('livewire.projects.partials.tabs')
             <div class="min-w-0 space-y-6">
                 <div class="flex flex-wrap gap-2">
             <button type="button" @click="tab = 'overview'" :class="tab === 'overview' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300'" class="px-3 py-2 text-sm rounded-md">
-                Overview
+                {{ __('Overview') }}
             </button>
             <button type="button" @click="tab = 'repository'" :class="tab === 'repository' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300'" class="px-3 py-2 text-sm rounded-md">
-                Repository
+                {{ __('Repository') }}
             </button>
             <button type="button" @click="tab = 'dependencies'" :class="tab === 'dependencies' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300'" class="px-3 py-2 text-sm rounded-md">
-                Dependency Actions
+                {{ __('Dependency Actions') }}
             </button>
             <button type="button" @click="tab = 'security'" :class="tab === 'security' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300'" class="px-3 py-2 text-sm rounded-md">
                 <span class="flex items-center gap-2">
-                    Security
+                    {{ __('Security') }}
                     @if (($securityOpenCount ?? 0) > 0)
                         <span class="inline-flex items-center justify-center rounded-full bg-rose-500/20 px-2 py-0.5 text-xs text-rose-200">{{ $securityOpenCount }}</span>
                     @endif
                     @if (($auditOpenCount ?? 0) > 0)
-                        <span class="inline-flex items-center justify-center rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-rose-200">Vulnerabilities found</span>
+                        <span class="inline-flex items-center justify-center rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-rose-200">{{ __('Vulnerabilities found') }}</span>
                     @endif
                 </span>
             </button>
             @if ($envTabEnabled)
                 <button type="button" @click="tab = 'env'" :class="tab === 'env' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300'" class="px-3 py-2 text-sm rounded-md">
-                    Environment
+                    {{ __('Environment') }}
                 </button>
             @else
                 <button type="button" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-400 dark:border-slate-700 dark:text-slate-500 opacity-60 cursor-not-allowed" disabled title="No .env or .env.example detected">
-                    Environment
+                    {{ __('Environment') }}
                 </button>
             @endif
             <button type="button" @click="tab = 'debug'" :class="tab === 'debug' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300'" class="px-3 py-2 text-sm rounded-md">
-                Debug
+                {{ __('Debug') }}
             </button>
                 </div>
 
@@ -46,13 +46,13 @@
         @if ($permissionsLocked)
             <div class="rounded-xl border border-amber-300/60 p-4 text-sm text-amber-200 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <div class="text-xs uppercase tracking-wide text-amber-300">Permissions need fixing</div>
-                    <div class="text-sm text-amber-100">Deployments and dependency actions are paused until file permissions are writable.</div>
+                    <div class="text-xs uppercase tracking-wide text-amber-300">{{ __('Permissions need fixing') }}</div>
+                    <div class="text-sm text-amber-100">{{ __('Deployments and dependency actions are paused until file permissions are writable.') }}</div>
                     @if ($project->permissions_issue_message)
                         <div class="text-xs text-amber-200 mt-1">{{ $project->permissions_issue_message }}</div>
                     @endif
                     @if ($project->permissions_checked_at)
-                        <div class="text-xs text-amber-300 mt-1">Last checked: {{ \App\Support\DateFormatter::forUser($project->permissions_checked_at, 'M j, Y g:i a') }}</div>
+                        <div class="text-xs text-amber-300 mt-1">{{ __('Last checked:') }} {{ \App\Support\DateFormatter::forUser($project->permissions_checked_at, 'M j, Y g:i a') }}</div>
                     @endif
                 </div>
                 @if ($permissionsEnforced)
@@ -87,7 +87,7 @@
                             Npm Issue
                         </span>
                     @endif
-                    <span class="text-xs text-slate-500 dark:text-slate-400">Last checked: {{ \App\Support\DateFormatter::forUser($project->health_checked_at, 'M j, Y g:i a', 'Never') }}</span>
+                    <span class="text-xs text-slate-500 dark:text-slate-400">{{ __('Last checked:') }} {{ \App\Support\DateFormatter::forUser($project->health_checked_at, 'M j, Y g:i a', __('Never')) }}</span>
                     @if ($project->health_issue_message)
                         <span class="text-xs text-amber-700 dark:text-amber-300">
                             Laravel check: {{ $project->health_issue_message }}
@@ -97,33 +97,33 @@
                 <div class="flex flex-wrap gap-2">
                     <button type="button" wire:click="deploy" class="px-3 py-2 text-sm rounded-md bg-slate-900 text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
                         <x-loading-spinner target="deploy" />
-                        Deploy
+                        {{ __('Deploy') }}
                     </button>
                     @if ($permissionsLocked)
                         <button type="button" wire:click="deployAnyway" class="px-3 py-2 text-sm rounded-md border border-amber-300 text-amber-700 hover:text-amber-800 dark:border-amber-500/60 dark:text-amber-300 inline-flex items-center">
                             <x-loading-spinner target="deployAnyway" />
-                            Attempt Staging Fix
+                            {{ __('Attempt Staging Fix') }}
                         </button>
                     @endif
-                    <button type="button" wire:click="forceDeploy" onclick="return confirm('Force deploy will discard local changes. Continue?') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-rose-300 text-rose-600 hover:text-rose-700 dark:border-rose-600/60 dark:text-rose-300 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
+                    <button type="button" wire:click="forceDeploy" onclick="return confirm('{{ __('Force deploy will discard local changes. Continue?') }}') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-rose-300 text-rose-600 hover:text-rose-700 dark:border-rose-600/60 dark:text-rose-300 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
                         <x-loading-spinner target="forceDeploy" />
-                        Force Deploy
+                        {{ __('Force Deploy') }}
                     </button>
                     @if ($rollbackAvailable)
-                        <button type="button" wire:click="rollback" onclick="return confirm('Rollback will redeploy the previous successful version. Continue?') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
+                        <button type="button" wire:click="rollback" onclick="return confirm('{{ __('Rollback will redeploy the previous successful version. Continue?') }}') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
                             <x-loading-spinner target="rollback" />
-                            Undo Last Deploy
+                            {{ __('Undo Last Deploy') }}
                         </button>
                     @endif
                     @if (($deploymentRunning ?? false))
-                        <button type="button" wire:click="forceStopDeployment" onclick="return confirm('Stop the running {{ $runningTaskLabel ?? 'task' }} and clear queued items for this project?') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-rose-400 text-rose-700 hover:text-rose-800 dark:border-rose-500/70 dark:text-rose-200 inline-flex items-center">
+                        <button type="button" wire:click="forceStopDeployment" onclick="return confirm('{{ __('Stop the running :task and clear queued items for this project?', ['task' => $runningTaskLabel ?? 'task']) }}') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-rose-400 text-rose-700 hover:text-rose-800 dark:border-rose-500/70 dark:text-rose-200 inline-flex items-center">
                             <x-loading-spinner target="forceStopDeployment" />
-                            Stop {{ $runningTaskLabel ?? 'Task' }}
+                            {{ __('Stop :task', ['task' => $runningTaskLabel ?? 'Task']) }}
                         </button>
                     @endif
                     <button type="button" wire:click="checkHealth" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 inline-flex items-center">
                         <x-loading-spinner target="checkHealth" />
-                        Health Check
+                        {{ __('Health Check') }}
                     </button>
                     @if ($isEnterprise ?? false)
                         <button type="button" wire:click="auditProject" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300 inline-flex items-center">
@@ -141,25 +141,25 @@
                     @if ($permissionsEnforced)
                         <button type="button" wire:click="fixPermissions" class="px-3 py-2 text-sm rounded-md border border-amber-300 text-amber-700 hover:text-amber-800 dark:border-amber-500/60 dark:text-amber-300 inline-flex items-center">
                             <x-loading-spinner target="fixPermissions" />
-                            Fix Permissions
+                            {{ __('Fix Permissions') }}
                         </button>
                     @endif
                     <a href="{{ route('projects.edit', $project) }}" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
-                        Edit
+                        {{ __('Edit') }}
                     </a>
                     <button type="button" @click="deleteOpen = true" class="px-3 py-2 text-sm rounded-md border border-rose-300 text-rose-600 hover:text-rose-700 dark:border-rose-600/60 dark:text-rose-300">
-                        Delete
+                        {{ __('Delete') }}
                     </button>
                 </div>
             </div>
 
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
-                    <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Branch</div>
+                    <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Branch') }}</div>
                     <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ $project->default_branch }}</div>
                 </div>
                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
-                    <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Last Deploy</div>
+                    <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Last Deploy') }}</div>
                     <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
                         @php
                             $lastDeploy = $project->last_deployed_at ?? ($lastSuccessfulDeploy?->started_at ?? null);
@@ -167,45 +167,90 @@
                         {{ \App\Support\DateFormatter::forUser($lastDeploy, 'M j, Y g:i a', 'Never') }}
                     </div>
                     <div class="text-xs text-slate-400 dark:text-slate-500">
-                        {{ $project->last_deployed_hash ?? ($lastSuccessfulDeploy?->to_hash ?? 'No hash yet') }}
+                        {{ $project->last_deployed_hash ?? ($lastSuccessfulDeploy?->to_hash ?? __('No hash yet')) }}
                     </div>
                     <div class="text-xs text-slate-400 dark:text-slate-500">
-                        Last checked: {{ \App\Support\DateFormatter::forUser($project->updates_checked_at, 'M j, Y g:i a', 'Never') }}
+                        {{ __('Last checked: :date', ['date' => \App\Support\DateFormatter::forUser($project->updates_checked_at, 'M j, Y g:i a', 'Never')]) }}
                     </div>
                 </div>
                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
-                    <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Auto Deploy</div>
+                    <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Auto Deploy') }}</div>
                     <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                        {{ $project->auto_deploy ? 'Enabled' : 'Disabled' }}
+                        {{ $project->auto_deploy ? __('Enabled') : __('Disabled') }}
                     </div>
                 </div>
                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
-                    <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Tests</div>
+                    <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Tests') }}</div>
                     <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                        {{ $project->run_test_command ? 'Enabled' : 'Disabled' }}
+                        {{ $project->run_test_command ? __('Enabled') : __('Disabled') }}
                     </div>
                     <div class="text-xs text-slate-400 dark:text-slate-500">{{ $project->test_command }}</div>
                 </div>
                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
-                    <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Last Checked</div>
+                    <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Last Checked') }}</div>
                     <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
                         {{ \App\Support\DateFormatter::forUser($project->last_checked_at, 'M j, Y g:i a', 'Never') }}
                     </div>
                 </div>
                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
-                    <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Site URL</div>
+                    <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Site URL') }}</div>
                     @if ($project->site_url)
                         <a href="{{ $project->site_url }}" target="_blank" rel="noopener noreferrer" class="mt-1 text-sm font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-300 dark:hover:text-indigo-200 inline-flex break-all">
                             {{ $project->site_url }}
                         </a>
                     @else
-                        <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">Not set</div>
+                        <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Not set') }}</div>
                     @endif
                 </div>
             </div>
 
+            @php
+                $healthTotal = $healthHistory->count();
+                $healthPassed = $healthHistory->filter(fn ($entry) => data_get($entry, 'deployment_status') === 'success' || data_get($entry, 'status') === 'ok')->count();
+                $healthFailed = max(0, $healthTotal - $healthPassed);
+                $healthPassRate = $healthTotal > 0 ? round(($healthPassed / $healthTotal) * 100) : null;
+            @endphp
+            <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Health Check Window') }}</h3>
+                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ __('Last :total of :limit scheduled checks.', ['total' => $healthTotal, 'limit' => \App\Models\Project::HEALTH_HISTORY_LIMIT]) }}</p>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="rounded-md bg-slate-50 px-3 py-2 dark:bg-slate-950/60">
+<div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Pass') }}</div>
+                            <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Fail') }}</div>
+                            <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Rate') }}</div>
+                            <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ $healthPassRate === null ? 'N/A' : $healthPassRate.'%' }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 divide-y divide-slate-200/70 overflow-hidden rounded-md border border-slate-200/70 dark:divide-slate-800 dark:border-slate-800">
+                    @forelse ($healthHistory->take(10) as $entry)
+                        @php
+                            $entryOk = data_get($entry, 'deployment_status') === 'success' || data_get($entry, 'status') === 'ok';
+                            $checkedAt = data_get($entry, 'checked_at');
+                        @endphp
+                        <div class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-xs">
+                            <div class="flex min-w-0 items-center gap-2">
+                                <span class="h-2 w-2 shrink-0 rounded-full {{ $entryOk ? 'bg-emerald-400' : 'bg-rose-400' }}"></span>
+                                <span class="truncate text-slate-700 dark:text-slate-200">{{ data_get($entry, 'summary', $entryOk ? 'Health check passed.' : 'Health check failed.') }}</span>
+                            </div>
+                            <div class="flex shrink-0 items-center gap-3 text-slate-500 dark:text-slate-400">
+                                @if (data_get($entry, 'http_status'))
+                                    <span>HTTP {{ data_get($entry, 'http_status') }}</span>
+                                @endif
+                                <span>{{ \App\Support\DateFormatter::forUser($checkedAt, 'M j, Y g:i a', 'Unknown') }}</span>
+                            </div>
+                        </div>
+                    @empty
+                        <div class="px-3 py-4 text-sm text-slate-500 dark:text-slate-400">{{ __('No health checks recorded yet.') }}</div>
+                    @endforelse
+                </div>
+            </div>
+
             <div>
-                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Latest Debug Logs</h3>
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Latest Debug Logs') }}</h3>
                 <div class="mt-3 space-y-3">
                     @forelse ($recentDebug as $deployment)
                         <div class="min-w-0 rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
@@ -245,7 +290,7 @@
                                     x-bind:open="open"
                                     @toggle="open = $el.open; localStorage.setItem(key, open)"
                                 >
-                                    <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">View log</summary>
+<summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">{{ __('View Logs') }}</summary>
                                     @include('livewire.projects.partials.grouped-log', [
                                         'log' => $deployment->output_log,
                                         'maxHeight' => 'max-h-80',
@@ -257,7 +302,7 @@
                             @endif
                         </div>
                     @empty
-                        <p class="text-sm text-slate-500 dark:text-slate-400">No logs yet.</p>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('No logs yet.') }}</p>
                     @endforelse
                 </div>
             </div>
@@ -291,8 +336,8 @@
             </div>
 
             <div>
-                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Recent Commits</h3>
-                <p class="text-sm text-slate-500 dark:text-slate-400">Last three commits on the default branch.</p>
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Recent Commits') }}</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('Last three commits on the default branch.') }}</p>
                 <div class="mt-4 space-y-3">
                     @forelse ($commits as $commit)
                         <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
@@ -320,14 +365,14 @@
                             </div>
                         </div>
                     @empty
-                        <p class="text-sm text-slate-500 dark:text-slate-400">No commits found yet.</p>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('No commits found yet.') }}</p>
                     @endforelse
                 </div>
             </div>
 
             <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
-                <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Preview Build</h4>
-                <p class="text-xs text-slate-500 dark:text-slate-400">Create a preview from any commit or branch.</p>
+                <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Preview Build') }}</h4>
+                <p class="text-xs text-slate-500 dark:text-slate-400">{{ __('Create a preview from any commit or branch.') }}</p>
                 <div class="mt-3 flex flex-wrap gap-3">
                     <x-text-input id="preview_commit" class="block w-full sm:max-w-md {{ $actionDisabledClass }}" wire:model.live="previewCommit" placeholder="origin/main or commit hash" {{ $permissionsLocked ? 'disabled' : '' }} />
                     <button type="button" wire:click="createPreview" class="px-3 py-2 text-sm rounded-md bg-slate-900 text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
@@ -353,7 +398,7 @@
         @endif
 
         <div x-show="tab === 'debug'" x-cloak class="min-w-0 bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800 p-6">
-            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Debug Logs</h3>
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Debug Logs') }}</h3>
 
             <div class="mt-4 space-y-4">
                 @forelse ($deployments as $deployment)
@@ -396,7 +441,7 @@
                                 x-bind:open="open"
                                 @toggle="open = $el.open; localStorage.setItem(key, open)"
                             >
-                                <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">View log</summary>
+                                <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">{{ __('View log') }}</summary>
                             @include('livewire.projects.partials.grouped-log', [
                                 'log' => $deployment->output_log,
                                 'maxHeight' => 'max-h-80',
@@ -408,7 +453,7 @@
                     @endif
                 </div>
                 @empty
-                    <p class="text-sm text-slate-500 dark:text-slate-400">No deployments yet.</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('No deployments yet.') }}</p>
                 @endforelse
             </div>
 
@@ -432,19 +477,19 @@
         @click.self="deleteOpen = false"
     >
         <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800">
-            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Delete project?</h3>
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Delete project?') }}</h3>
             <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                Choose whether to delete just the project record or also remove its files from disk.
+                {{ __('Choose whether to delete just the project record or also remove its files from disk.') }}
             </p>
             <div class="mt-6 flex flex-wrap justify-end gap-2">
                 <button type="button" @click="deleteOpen = false" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
-                    Cancel
+                    {{ __('Cancel') }}
                 </button>
                 <button type="button" wire:click="deleteProject" @click="deleteOpen = false" class="px-3 py-2 text-sm rounded-md border border-rose-300 text-rose-600 hover:text-rose-700 dark:border-rose-600/60 dark:text-rose-300">
-                    Delete
+                    {{ __('Delete') }}
                 </button>
                 <button type="button" wire:click="deleteProjectFiles" @click="deleteOpen = false" class="px-3 py-2 text-sm rounded-md border border-rose-400 text-rose-700 hover:text-rose-800 dark:border-rose-500/70 dark:text-rose-200">
-                    Delete Files
+                    {{ __('Delete Files') }}
                 </button>
             </div>
         </div>

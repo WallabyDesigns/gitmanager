@@ -4,34 +4,34 @@
     @endphp
 
     <div>
-        <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Dependency Actions</h3>
-        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Run composer/npm actions on demand.</p>
+        <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Dependency Actions') }}</h3>
+        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ __('Run composer/npm actions on demand.') }}</p>
 
         <div class="mt-4 grid gap-4 sm:grid-cols-2">
             @if ($hasComposer)
                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
-                    <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">Composer</div>
+                    <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Composer') }}</div>
                     <div class="mt-3 flex flex-wrap gap-2">
                         <button type="button" wire:click="composerInstall" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
                             <x-loading-spinner target="composerInstall" />
-                            Install
+                            {{ __('Install') }}
                         </button>
                         <button type="button" wire:click="composerUpdate" class="px-3 py-2 text-sm rounded-md border border-indigo-300 text-indigo-600 hover:text-indigo-800 dark:border-indigo-500/50 dark:text-indigo-300 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
                             <x-loading-spinner target="composerUpdate" />
-                            Update
+                            {{ __('Update') }}
                         </button>
                         <button type="button" wire:click="composerAudit" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
                             <x-loading-spinner target="composerAudit" />
-                            Audit
+                            {{ __('Audit') }}
                         </button>
                         <button type="button" wire:click="appClearCache" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
                             <x-loading-spinner target="appClearCache" />
-                            Clear Cache
+                            {{ __('Clear Cache') }}
                         </button>
                         @if ($hasLaravel)
                             <button type="button" wire:click="laravelMigrate" class="px-3 py-2 text-sm rounded-md border border-sky-300 text-sky-700 hover:text-sky-900 dark:border-sky-500/50 dark:text-sky-300 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
                                 <x-loading-spinner target="laravelMigrate" />
-                                Migrate
+                                {{ __('Migrate') }}
                             </button>
                         @endif
                     </div>
@@ -39,37 +39,37 @@
             @endif
             @if ($hasNpm)
                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
-                    <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">Npm</div>
+                    <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Npm') }}</div>
                     <div class="mt-3 flex flex-wrap gap-2">
                         <button type="button" wire:click="npmInstall" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
                             <x-loading-spinner target="npmInstall" />
-                            Install
+                            {{ __('Install') }}
                         </button>
                         <button type="button" wire:click="npmUpdate" class="px-3 py-2 text-sm rounded-md border border-indigo-300 text-indigo-600 hover:text-indigo-800 dark:border-indigo-500/50 dark:text-indigo-300 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
                             <x-loading-spinner target="npmUpdate" />
-                            Update
+                            {{ __('Update') }}
                         </button>
                         <button type="button" wire:click="npmAuditFix" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
                             <x-loading-spinner target="npmAuditFix" />
-                            Audit Fix
+                            {{ __('Audit Fix') }}
                         </button>
-                        <button type="button" wire:click="npmAuditFixForce" onclick="return confirm('Force audit fix can introduce breaking changes. Continue?') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-rose-300 text-rose-600 hover:text-rose-700 dark:border-rose-600/60 dark:text-rose-300 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
+                        <button type="button" wire:click="npmAuditFixForce" onclick="return confirm('{{ __('Force audit fix can introduce breaking changes. Continue?') }}') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border border-rose-300 text-rose-600 hover:text-rose-700 dark:border-rose-600/60 dark:text-rose-300 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
                             <x-loading-spinner target="npmAuditFixForce" />
-                            Audit Fix (Force)
+                            {{ __('Audit Fix (Force)') }}
                         </button>
                     </div>
                 </div>
             @endif
         </div>
         @if (! $hasComposer && ! $hasNpm)
-            <p class="mt-3 text-sm text-slate-500 dark:text-slate-400">No composer.json or package.json detected. Use manual commands below.</p>
+            <p class="mt-3 text-sm text-slate-500 dark:text-slate-400">{{ __('No composer.json or package.json detected. Use manual commands below.') }}</p>
         @endif
     </div>
 
     <div>
-        <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Manual Command</h4>
+        <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Manual Command') }}</h4>
         <div class="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <label class="sr-only" for="custom_command">Command</label>
+            <label class="sr-only" for="custom_command">{{ __('Command') }}</label>
             <input
                 id="custom_command"
                 type="text"
@@ -80,16 +80,16 @@
             />
             <button type="button" wire:click="runCustomCommand" class="px-3 py-2 text-sm rounded-md bg-slate-900 text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
                 <x-loading-spinner target="runCustomCommand" />
-                Run Command
+                {{ __('Run Command') }}
             </button>
         </div>
     </div>
 
     <div class="min-w-0">
         <div class="flex items-center justify-between gap-3">
-            <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Latest Output</h4>
+            <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Latest Output') }}</h4>
             <button type="button" wire:click="clearLatestDependencyOutput" class="text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
-                Clear
+                {{ __('Clear') }}
             </button>
         </div>
         @php
@@ -110,12 +110,12 @@
                 }
             "
         >
-            <pre class="inline-block min-w-full p-3 text-xs text-slate-600 dark:text-slate-300 whitespace-pre font-mono leading-relaxed align-top">{{ $latestDependencyOutput ?? 'No output yet.' }}</pre>
+            <pre class="inline-block min-w-full p-3 text-xs text-slate-600 dark:text-slate-300 whitespace-pre font-mono leading-relaxed align-top">{{ $latestDependencyOutput ?? __('No output yet.') }}</pre>
         </div>
     </div>
 
     <div>
-        <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Dependency Logs</h4>
+        <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Dependency Logs') }}</h4>
         <div class="mt-3 space-y-3">
             @forelse ($dependencyLogs as $deployment)
                 <div class="min-w-0 rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
@@ -152,7 +152,7 @@
                             x-bind:open="open"
                             @toggle="open = $el.open; localStorage.setItem(key, open)"
                         >
-                            <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">View log</summary>
+                            <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">{{ __('View log') }}</summary>
                             @include('livewire.projects.partials.grouped-log', [
                                 'log' => $deployment->output_log,
                                 'maxHeight' => 'max-h-80',
@@ -164,7 +164,7 @@
                     @endif
                 </div>
             @empty
-                <p class="text-sm text-slate-500 dark:text-slate-400">No dependency actions yet.</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('No dependency actions yet.') }}</p>
             @endforelse
         </div>
     </div>
@@ -180,15 +180,15 @@
             @click.self="open = false"
         >
             <div class="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800">
-                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Push {{ $pushContext ?: 'Dependency update' }} changes?</h3>
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Push :context changes?', ['context' => $pushContext ?? __('Dependency Update')]) }}</h3>
                 <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                    {{ $pushContext ?: 'Dependency update' }} updated dependency files. Commit and push these changes back to the repository.
+                    {{ __(':context updated dependency files. Commit and push these changes back to the repository.', ['context' => $pushContext ?? __('Dependency Update')]) }}
                 </p>
                 @if ($pushAuditSummary)
-                    <p class="mt-2 text-xs text-emerald-400">Audit summary: {{ $pushAuditSummary }}</p>
+                    <p class="mt-2 text-xs text-emerald-400">{{ __('Audit summary:') }} {{ $pushAuditSummary }}</p>
                 @endif
                 @if ($pushHasOtherChanges)
-                    <p class="mt-2 text-xs text-amber-400">Only dependency files will be committed. Other changes remain uncommitted.</p>
+                    <p class="mt-2 text-xs text-amber-400">{{ __('Only dependency files will be committed. Other changes remain uncommitted.') }}</p>
                 @endif
 
                 @if (! empty($pushFiles))
@@ -205,7 +205,7 @@
                 @endif
 
                 <div class="mt-4">
-                    <label class="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">Commit Message</label>
+                    <label class="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">{{ __('Commit Message') }}</label>
                     <input type="text" wire:model.live="pushCommitMessage" class="mt-2 w-full rounded-md border border-slate-200/70 bg-white/70 p-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
                 </div>
 

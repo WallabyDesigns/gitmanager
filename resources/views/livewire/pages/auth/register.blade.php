@@ -5,6 +5,8 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
+use Illuminate\Validation\Rule;
+use App\Support\LanguageOptions;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -14,6 +16,12 @@ new #[Layout('layouts.guest')] class extends Component
     public string $email = '';
     public string $password = '';
     public string $password_confirmation = '';
+    public string $locale = 'en';
+
+    public function mount(): void
+    {
+        $this->locale = LanguageOptions::normalize(session('locale') ?? app()->getLocale());
+    }
 
     /**
      * Handle an incoming registration request.
@@ -24,13 +32,16 @@ new #[Layout('layouts.guest')] class extends Component
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
+            'locale' => ['required', 'string', Rule::in(LanguageOptions::codes())],
         ]);
 
         $validated['password'] = Hash::make($validated['password']);
+        $validated['locale'] = LanguageOptions::normalize($validated['locale']);
 
         event(new Registered($user = User::create($validated)));
 
         Auth::login($user);
+        session()->put('locale', $user->locale);
 
         $this->redirect(route('projects.index', absolute: false), navigate: true);
     }
@@ -73,6 +84,22 @@ new #[Layout('layouts.guest')] class extends Component
                             name="password_confirmation" required autocomplete="new-password" />
 
             <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
+        </div>
+
+        <!-- Language -->
+        <div class="mt-4">
+            <x-input-label for="locale" :value="__('Language')" />
+            <select
+                wire:model="locale"
+                id="locale"
+                name="locale"
+                class="block mt-1 w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+            >
+                @foreach (LanguageOptions::all() as $locale => $label)
+                    <option value="{{ $locale }}">{{ $label }}</option>
+                @endforeach
+            </select>
+            <x-input-error :messages="$errors->get('locale')" class="mt-2" />
         </div>
 
         <div class="flex items-center justify-end mt-4">

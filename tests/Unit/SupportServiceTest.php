@@ -64,11 +64,13 @@ class SupportServiceTest extends TestCase
                 && $request->method() === 'POST'
                 && $request['subject'] === 'Deploy failure'
                 && $request['priority'] === 'high'
+                && $request['locale'] === 'en'
                 && $request->hasHeader('Authorization', 'Basic '.base64_encode('gwm_TESTKEY123:'.$installationUuid))
                 && $request->hasHeader('X-GWM-License-Key', 'gwm_TESTKEY123')
                 && $request->hasHeader('X-GWM-License-Installation', $installationUuid)
                 && $request->hasHeader('X-GWM-App-Url', 'http://localhost')
-                && $request->hasHeader('X-GWM-App-Name', 'Git Web Manager');
+                && $request->hasHeader('X-GWM-App-Name', 'Git Web Manager')
+                && $request->hasHeader('X-GWM-Locale', 'en');
         });
     }
 

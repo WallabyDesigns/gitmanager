@@ -46,7 +46,7 @@ class Index extends Component
         return view('livewire.ftp-accounts.index', [
             'accounts' => FtpAccount::query()->orderBy('name')->get(),
         ])->layout('layouts.app', [
-            'title' => 'FTP/SSH Accounts',
+            'title' => 'Remote Access',
             'header' => view('livewire.ftp-accounts.partials.header'),
         ]);
     }
@@ -104,14 +104,14 @@ class Index extends Component
             }
             $this->applyTestResultsToModel($account);
             $account->save();
-            $message = 'FTP/SSH access updated.';
+            $message = 'Remote access updated.';
         } else {
             $this->runAutoTestsOnCreate($data, $password);
             $account = new FtpAccount($data);
             $account->setPassword($password);
             $this->applyTestResultsToModel($account);
             $account->save();
-            $message = 'FTP/SSH access created.';
+            $message = 'Remote access created.';
         }
 
         $this->dispatch('notify', message: $message);
@@ -125,13 +125,13 @@ class Index extends Component
         $inUse = Project::query()->where('ftp_account_id', $account->id)->exists();
 
         if ($inUse) {
-            $this->dispatch('notify', message: 'This FTP/SSH access record is in use by one or more projects.');
+            $this->dispatch('notify', message: 'This remote access record is in use by one or more projects.');
 
             return;
         }
 
         $account->delete();
-        $this->dispatch('notify', message: 'FTP/SSH access deleted.');
+        $this->dispatch('notify', message: 'Remote access deleted.');
     }
 
     public function testConnection(): void

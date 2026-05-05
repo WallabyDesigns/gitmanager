@@ -6,28 +6,27 @@
             <div class="min-w-0 space-y-6">
                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-4 text-sm text-slate-600 dark:text-slate-300 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <div class="font-semibold text-slate-900 dark:text-slate-100">Queue Runner</div>
+                        <div class="font-semibold text-slate-900 dark:text-slate-100">{{ __('Queue Runner') }}</div>
                         <div>
-                            Queued tasks are processed by the scheduler (<code>php artisan schedule:work</code>) or a cron task.
-                            If the scheduler isn’t running, use “Process Queue” to advance items.
+                            {{ __('Queued tasks are processed by the scheduler (:command) or a cron task. If the scheduler isn\'t running, use "Process Queue" to advance items.', ['command' => 'php artisan schedule:work']) }}
                             @if (auth()->user()?->isAdmin())
-                                Manage scheduler health in <a href="{{ route('system.scheduler') }}" class="text-indigo-600 hover:text-indigo-500 dark:text-indigo-300 dark:hover:text-indigo-200">System Settings</a>.
+                                {{ __('Manage scheduler health in :link.', ['link' => '']) }}<a href="{{ route('system.scheduler') }}" class="text-indigo-600 hover:text-indigo-500 dark:text-indigo-300 dark:hover:text-indigo-200">{{ __('System Settings') }}</a>.
                             @endif
                         </div>
-                        <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">Project audits and update-triggered deployments appear here. App self-updates stay under System &gt; App Updates.</div>
+                        <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ __('Project audits and update-triggered deployments appear here. App self-updates stay under System > App Updates.') }}</div>
                     </div>
                     <div class="flex flex-wrap gap-2">
                         <button type="button" wire:click="processNow" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white inline-flex items-center">
                             <x-loading-spinner target="processNow" />
-                            Process Queue
+                            {{ __('Process Queue') }}
                         </button>
                         <button type="button" wire:click="purgeDuplicates" class="px-3 py-2 text-xs rounded-md border border-amber-500/50 text-amber-200 hover:text-white hover:bg-amber-500/10 inline-flex items-center">
                             <x-loading-spinner target="purgeDuplicates" />
-                            Purge Duplicates
+                            {{ __('Purge Duplicates') }}
                         </button>
                         <button type="button" wire:click="clearQueue" class="px-3 py-2 text-xs rounded-md border border-rose-500/60 text-rose-200 hover:text-white hover:bg-rose-500/10 inline-flex items-center">
                             <x-loading-spinner target="clearQueue" />
-                            Clear Queue
+                            {{ __('Clear Queue') }}
                         </button>
                     </div>
                 </div>
@@ -61,43 +60,43 @@
                             <input type="text" wire:model.live.debounce.400ms="search" placeholder="Project name or action" class="w-full rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none">
                         </label>
                         <label class="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-400">
-                            Status
+                            {{ __('Status') }}
                             <select wire:model="statusFilter" class="w-full rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none">
-                                <option value="all">All</option>
-                                <option value="queued">Queued</option>
-                                <option value="running">Running</option>
-                                <option value="completed">Completed</option>
-                                <option value="failed">Failed</option>
-                                <option value="cancelled">Cancelled</option>
+                                <option value="all">{{ __('All') }}</option>
+                                <option value="queued">{{ __('Queued') }}</option>
+                                <option value="running">{{ __('Running') }}</option>
+                                <option value="completed">{{ __('Completed') }}</option>
+                                <option value="failed">{{ __('Failed') }}</option>
+                                <option value="cancelled">{{ __('Cancelled') }}</option>
                             </select>
                         </label>
                         <label class="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-400">
-                            Action
+                            {{ __('Action') }}
                             <select wire:model="actionFilter" class="w-full rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none">
-                                <option value="all">All</option>
-                                <option value="deploy">Deploy</option>
-                                <option value="force_deploy">Force Deploy</option>
-                                <option value="rollback">Rollback</option>
-                                <option value="dependency_update">Dependency Update</option>
-                                <option value="composer_install">Composer Install</option>
-                                <option value="composer_update">Composer Update</option>
-                                <option value="composer_audit">Composer Audit</option>
-                                <option value="npm_install">Npm Install</option>
-                                <option value="npm_update">Npm Update</option>
-                                <option value="npm_audit">Npm Audit</option>
-                                <option value="npm_audit_fix">Npm Audit Fix</option>
-                                <option value="npm_audit_fix_force">Npm Audit Fix (Force)</option>
-                                <option value="audit_project">Project Audit</option>
-                                <option value="app_clear_cache">App Clear Cache</option>
-                                <option value="laravel_migrate">Laravel Migrate</option>
-                                <option value="preview_build">Preview Build</option>
-                                <option value="custom_command">Custom Command</option>
+                                <option value="all">{{ __('All') }}</option>
+                                <option value="deploy">{{ __('Deploy') }}</option>
+                                <option value="force_deploy">{{ __('Force Deploy') }}</option>
+                                <option value="rollback">{{ __('Rollback') }}</option>
+                                <option value="dependency_update">{{ __('Dependency Update') }}</option>
+                                <option value="composer_install">{{ __('Composer Install') }}</option>
+                                <option value="composer_update">{{ __('Composer Update') }}</option>
+                                <option value="composer_audit">{{ __('Composer Audit') }}</option>
+                                <option value="npm_install">{{ __('Npm Install') }}</option>
+                                <option value="npm_update">{{ __('Npm Update') }}</option>
+                                <option value="npm_audit">{{ __('Npm Audit') }}</option>
+                                <option value="npm_audit_fix">{{ __('Npm Audit Fix') }}</option>
+                                <option value="npm_audit_fix_force">{{ __('Npm Audit Fix (Force)') }}</option>
+                                <option value="audit_project">{{ __('Project Audit') }}</option>
+                                <option value="app_clear_cache">{{ __('App Clear Cache') }}</option>
+                                <option value="laravel_migrate">{{ __('Laravel Migrate') }}</option>
+                                <option value="preview_build">{{ __('Preview Build') }}</option>
+                                <option value="custom_command">{{ __('Custom Command') }}</option>
                             </select>
                         </label>
                     </div>
                     <div class="flex justify-end">
                         <button type="button" wire:click="clearFilters" class="px-3 py-2 text-xs rounded-md border border-slate-700 text-slate-200 hover:text-white hover:border-slate-500">
-                            Clear Filters
+                            {{ __('Clear Filters') }}
                         </button>
                     </div>
                 </div>
@@ -111,7 +110,7 @@
                             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <div class="flex items-center gap-2">
-                                    <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ $item->project?->name ?? 'Unknown project' }}</h4>
+                                    <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ $item->project?->name ?? __('Unknown project') }}</h4>
                                     <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $item->status === 'queued' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' : ($item->status === 'running' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300' : ($item->status === 'completed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300')) }}">
                                         {{ $item->status }}
                                     </span>
@@ -185,12 +184,12 @@
                                     @endphp
                                     <button type="button"
                                             wire:click="forceCancel({{ $item->id }})"
-                                            onclick="return confirm('Force cancel this running item? This will release the queue lock but may not stop the underlying process.') || event.stopImmediatePropagation()"
+                                            onclick="return confirm('{{ __('Force cancel this running item? This will release the queue lock but may not stop the underlying process.') }}') || event.stopImmediatePropagation()"
                                             class="px-3 py-1.5 text-xs rounded-md border border-rose-500/60 text-rose-200 hover:text-white hover:bg-rose-500/10">
-                                        Force Cancel
+                                        {{ __('Force Cancel') }}
                                     </button>
                                     @if ($item->started_at && $item->started_at->lt($staleCutoff))
-                                        <span class="text-xs text-amber-200">Stale</span>
+                                        <span class="text-xs text-amber-200">{{ __('Stale') }}</span>
                                     @endif
                                 @endif
                             </div>
@@ -214,14 +213,14 @@
                                     @toggle="open = $el.open; localStorage.setItem(key, open)"
                                 >
                                     <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">
-                                        {{ $item->status === 'running' ? 'Live task log' : 'Task log' }}
+                                        {{ $item->status === 'running' ? __('Live task log') : __('Task log') }}
                                     </summary>
                                     @include('livewire.projects.partials.grouped-log', [
                                         'log' => $log,
                                         'maxHeight' => 'max-h-[calc(100vh-18rem)]',
                                         'autoScroll' => true,
                                         'reverse' => false,
-                                        'placeholder' => 'No output yet. Refreshing...',
+                                        'placeholder' => __('No output yet. Refreshing...'),
                                     ])
                                 </details>
                             @endif

@@ -25,12 +25,17 @@ class RegistrationTest extends TestCase
             ->set('name', 'Test User')
             ->set('email', 'test@example.com')
             ->set('password', 'password')
-            ->set('password_confirmation', 'password');
+            ->set('password_confirmation', 'password')
+            ->set('locale', 'fr');
 
         $component->call('register');
 
         $component->assertRedirect(route('projects.index', absolute: false));
 
         $this->assertAuthenticated();
+        $this->assertDatabaseHas('users', [
+            'email' => 'test@example.com',
+            'locale' => 'fr',
+        ]);
     }
 }

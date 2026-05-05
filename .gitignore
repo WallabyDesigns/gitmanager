@@ -25,3 +25,7 @@ goals.md
 migrationguide.md
 # Internal implementation notes (never commit)
 .internal-notes/
+
+# Local scripts and config
+.local/
+

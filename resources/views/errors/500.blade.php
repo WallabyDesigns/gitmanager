@@ -30,7 +30,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Something went wrong | {{ config('app.name', 'Git Web Manager') }}</title>
+        <title>{{ __('Something went wrong') }} | {{ config('app.name', 'Git Web Manager') }}</title>
         <style>
             :root {
                 color-scheme: dark;
@@ -140,28 +140,27 @@
     <body>
         <div class="card">
             <div class="eyebrow">Git Web Manager</div>
-            <h1>Something went wrong</h1>
+            <h1>{{ __('Something went wrong') }}</h1>
             <p>
-                The application hit an unexpected error. If this happened after an update, you can roll back to the previous
-                version and get back online quickly.
+                {{ __('The application hit an unexpected error. If this happened after an update, you can roll back to the previous version and get back online quickly.') }}
             </p>
 
             <div class="actions">
                 @if (auth()->check())
-                    <a class="btn primary" href="{{ $rollbackUrl }}" onclick="return confirm('Roll back to the previous update? This keeps storage and configuration intact.');">Roll Back Update</a>
+                    <a class="btn primary" href="{{ $rollbackUrl }}" onclick="return confirm('{{ __('Roll back to the previous update? This keeps storage and configuration intact.') }}');">{{ __('Roll Back Update') }}</a>
                 @endif
-                <a class="btn" href="{{ $reportUrl }}" target="_blank" rel="noreferrer">Report This Issue</a>
+                <a class="btn" href="{{ $reportUrl }}" target="_blank" rel="noreferrer">{{ __('Report This Issue') }}</a>
             </div>
 
             @if (auth()->check())
                 <div class="callout">
-                    Rolling back returns to the last successful update and keeps your data, configuration, and logs intact.
+                    {{ __('Rolling back returns to the last successful update and keeps your data, configuration, and logs intact.') }}
                 </div>
             @endif
 
             @if ($detailText !== '')
                 <details>
-                    <summary>View error details</summary>
+                    <summary>{{ __('View error details') }}</summary>
                     <div style="margin-top: 0.75rem; display: flex; justify-content: flex-end;">
                         <button
                             type="button"
@@ -169,7 +168,7 @@
                             style="padding: 0.45rem 0.9rem; font-size: 0.8rem;"
                             onclick="navigator.clipboard?.writeText(document.getElementById('gwm-error-details')?.innerText || '')"
                         >
-                            Copy Details
+                            {{ __('Copy Details') }}
                         </button>
                     </div>
                     <pre id="gwm-error-details">{{ $detailText }}</pre>

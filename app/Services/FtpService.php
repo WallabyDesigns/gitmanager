@@ -175,12 +175,12 @@ class FtpService
         $project->loadMissing('ftpAccount');
         $account = $project->ftpAccount;
         if (! $account) {
-            throw new \RuntimeException('FTP/SSH access record not configured for this project.');
+            throw new \RuntimeException('Remote access record not configured for this project.');
         }
 
         $rootPath = $this->resolveRootPath($project);
         if ($rootPath === '') {
-            throw new \RuntimeException('Remote Root Path is required for FTP sync. Set it on the project or selected FTP/SSH access record.');
+            throw new \RuntimeException('Remote Root Path is required for FTP sync. Set it on the project or selected remote access record.');
         }
 
         if (! $this->ftpAvailable((bool) $account->ssl)) {
@@ -238,12 +238,12 @@ class FtpService
         $project->loadMissing('ftpAccount');
         $account = $project->ftpAccount;
         if (! $account) {
-            throw new \RuntimeException('FTP/SSH access record not configured for this project.');
+            throw new \RuntimeException('Remote access record not configured for this project.');
         }
 
         $rootPath = $this->resolveRootPath($project);
         if ($rootPath === '') {
-            throw new \RuntimeException('Remote Root Path is required for FTP sync. Set it on the project or selected FTP/SSH access record.');
+            throw new \RuntimeException('Remote Root Path is required for FTP sync. Set it on the project or selected remote access record.');
         }
 
         if (! $this->ftpAvailable((bool) $account->ssl)) {
@@ -355,7 +355,7 @@ class FtpService
         $project->loadMissing('ftpAccount');
         $account = $project->ftpAccount;
         if (! $account) {
-            $output[] = 'FTP-only pipeline skipped: no FTP/SSH access record configured.';
+            $output[] = 'FTP-only pipeline skipped: no remote access record configured.';
 
             return [];
         }
@@ -679,7 +679,7 @@ class FtpService
         }
 
         @ftp_pasv($connection, $passive);
-        $initial['message'] .= ' Try toggling passive mode in FTP/SSH Access.';
+        $initial['message'] .= ' Try toggling passive mode in Remote Access.';
 
         return $initial;
     }
@@ -876,7 +876,7 @@ class FtpService
 
             if (! $this->uploadRemoteFile($connection, $remotePath, $item->getPathname())) {
                 if (! $this->retryUpload($connection, $remotePath, $item->getPathname(), $relative, $output)) {
-                    throw new \RuntimeException('FTP upload failed for '.$relative.'. This is likely an FTP/FTPS issue: the remote directory exists but the data channel cannot access it. Try toggling Passive Mode in FTP/SSH Access settings, or check if the remote directory has correct permissions/ownership.');
+                    throw new \RuntimeException('FTP upload failed for '.$relative.'. This is likely an FTP/FTPS issue: the remote directory exists but the data channel cannot access it. Try toggling Passive Mode in Remote Access settings, or check if the remote directory has correct permissions/ownership.');
                 }
             }
 
@@ -926,7 +926,7 @@ class FtpService
             if (is_array($this->syncContext)) {
                 $this->syncContext['passive'] = ! $passive;
             }
-            $output[] = 'FTPS upload succeeded after toggling passive mode '.($passive ? 'off' : 'on').'. Update the passive mode setting in FTP/SSH Access to avoid retries on future deploys.';
+            $output[] = 'FTPS upload succeeded after toggling passive mode '.($passive ? 'off' : 'on').'. Update the passive mode setting in Remote Access to avoid retries on future deploys.';
 
             return true;
         }
@@ -1034,9 +1034,9 @@ class FtpService
             @ftp_pasv($connection, $passive);
 
             if ($succeededToggled) {
-                $output[] = 'FTP write test succeeded after toggling passive mode '.($passive ? 'off' : 'on').'. Update the passive mode setting in FTP/SSH Access to fix uploads.';
+                $output[] = 'FTP write test succeeded after toggling passive mode '.($passive ? 'off' : 'on').'. Update the passive mode setting in Remote Access to fix uploads.';
             } else {
-                $output[] = 'FTP data channel failed in '.($remoteDir === '' ? '(root)' : $remoteDir).'. The command channel works but file uploads fail - this is an FTP configuration issue. Try toggling Passive Mode in FTP/SSH Access, or check firewall/iptptables settings on the server.';
+                $output[] = 'FTP data channel failed in '.($remoteDir === '' ? '(root)' : $remoteDir).'. The command channel works but file uploads fail - this is an FTP configuration issue. Try toggling Passive Mode in Remote Access, or check firewall/iptptables settings on the server.';
             }
 
             return;

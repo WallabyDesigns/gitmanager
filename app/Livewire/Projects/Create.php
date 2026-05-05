@@ -276,7 +276,7 @@ class Create extends Component
         }
 
         if (empty($this->form['ftp_account_id'] ?? null)) {
-            $this->dispatch('notify', message: 'Select an FTP/SSH access record to use for SSH deployments.');
+            $this->dispatch('notify', message: 'Select a remote access record to use for SSH deployments.');
         }
     }
 
@@ -402,7 +402,7 @@ class Create extends Component
         $accountId = $this->form['ftp_account_id'] ?? null;
         if (! $accountId) {
             $this->ftpTestStatus = 'error';
-            $this->ftpTestMessage = 'Select an FTP/SSH access record to test.';
+            $this->ftpTestMessage = 'Select a remote access record to test.';
 
             return;
         }
@@ -410,7 +410,7 @@ class Create extends Component
         $account = FtpAccount::query()->find($accountId);
         if (! $account) {
             $this->ftpTestStatus = 'error';
-            $this->ftpTestMessage = 'FTP/SSH access record not found.';
+            $this->ftpTestMessage = 'Remote access record not found.';
 
             return;
         }

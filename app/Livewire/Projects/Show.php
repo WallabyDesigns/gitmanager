@@ -13,7 +13,6 @@ use App\Services\DeploymentService;
 use App\Services\EditionService;
 use App\Services\ProjectSeedService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -45,6 +44,7 @@ class Show extends Component
         $deployments = $this->project->deployments()
             ->select($this->deploymentColumns())
             ->addSelect($logPreview)
+            ->where('action', '!=', 'health_check')
             ->orderByDesc('started_at');
         $lastSuccessfulDeploy = (clone $deployments)
             ->where('action', 'deploy')
@@ -91,6 +91,7 @@ class Show extends Component
         return view('livewire.projects.show', [
             'deployments' => (clone $deployments)->paginate(20),
             'recentDebug' => (clone $deployments)->take(3)->get(),
+            'healthHistory' => collect($this->project->healthHistory())->reverse()->take(60)->values(),
             'commits' => $commits,
             'activeCommit' => $activeCommit,
             'lastSuccessfulDeploy' => $lastSuccessfulDeploy,
@@ -113,38 +114,6 @@ class Show extends Component
             ]),
             'title' => $this->project->name,
         ]);
-    }
-
-    public function refreshHealthStatus(DeploymentService $service): void
-    {
-        if (
-            $this->shouldAutoCheckHealth($this->project)
-            && (! $this->project->health_checked_at || $this->project->health_checked_at->lt(now()->subMinute()))
-        ) {
-            $service->checkHealth($this->project);
-            $this->project->refresh();
-        }
-
-        $updatesCheckedAt = $this->project->updates_checked_at;
-        if (is_string($updatesCheckedAt)) {
-            $updatesCheckedAt = Carbon::parse($updatesCheckedAt);
-        }
-
-        if (! $updatesCheckedAt || $updatesCheckedAt->lt(now()->subMinutes(5))) {
-            $wasAvailable = (bool) $this->project->updates_available;
-            try {
-                $hasUpdates = $service->checkForUpdates($this->project);
-            } catch (\Throwable $exception) {
-                $this->markUpdateCheckAttempt();
-
-                return;
-            }
-            $this->project->refresh();
-
-            if (! $wasAvailable && $hasUpdates && $this->project->auto_deploy && $this->queueEnabled()) {
-                app(DeploymentQueueService::class)->enqueue($this->project, 'deploy', ['reason' => 'auto_update'], Auth::user());
-            }
-        }
     }
 
     public function deploy(DeploymentService $service): void
@@ -286,16 +255,6 @@ class Show extends Component
     private function queueEnabled(): bool
     {
         return (bool) config('gitmanager.deploy_queue.enabled', true);
-    }
-
-    private function shouldAutoCheckHealth(Project $project): bool
-    {
-        return (bool) (
-            $project->health_url
-            || $project->site_url
-            || $project->last_deployed_at
-            || $project->last_deployed_hash
-        );
     }
 
     private function deploymentInProgress(): bool

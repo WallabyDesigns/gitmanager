@@ -131,6 +131,42 @@ Set these in `.env` as needed:
 
 Legacy `GPM_*` keys are still supported for backward compatibility.
 
+## Localization
+Git Web Manager supports multiple languages out of the box. Users can switch language from the UI, and the preference is saved per-user or in the session for guests.
+
+### Supported Languages
+| Language | Code |
+|----------|------|
+| English | `en` |
+| Spanish (Español) | `es` |
+| French (Français) | `fr` |
+| German (Deutsch) | `de` |
+| Italian (Italiano) | `it` |
+| Portuguese - Brazil (Português) | `pt_BR` |
+| Dutch (Nederlands) | `nl` |
+| Polish (Polski) | `pl` |
+| Swedish (Svenska) | `sv` |
+| Japanese (日本語) | `ja` |
+| Korean (한국어) | `ko` |
+| Chinese Simplified (简体中文) | `zh_CN` |
+| Hindi (हिन्दी) | `hi` |
+| Arabic (العربية) | `ar` |
+
+### Configuration
+Set the default locale in `.env`:
+```bash
+APP_LOCALE=en
+APP_FALLBACK_LOCALE=en
+```
+
+### Contributing Translations
+Translation files are stored in `lang/*.json` as Laravel JSON language files. To contribute improvements:
+1. Edit the relevant `lang/<locale>.json` file
+2. Keep the key in English; translate only the value
+3. Submit a pull request with your changes
+
+The translation script (for maintainers) is located at `.local/translate-lang.php` and can be used to machine-translate new strings added to `en.json`.
+
 ## Enterprise License Runtime Security
 Enterprise runtime secrets are designed to be stored encrypted in the app database (settings table), then hydrated from your external licensing API response.
 

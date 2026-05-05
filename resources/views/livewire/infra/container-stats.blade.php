@@ -4,13 +4,13 @@
             <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800">
                 <div class="flex items-center gap-2">
                     <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-                    <span class="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Docker</span>
+                    <span class="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">{{ __('Docker') }}</span>
                     <span class="text-xs text-slate-500 dark:text-slate-400">
-                        {{ $summary['running'] }}/{{ $summary['total'] }} running
+                        {{ $summary['running'] }}/{{ $summary['total'] }} {{ __('running') }}
                     </span>
                 </div>
                 <a href="{{ route('infra.containers') }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">
-                    Manage →
+                    {{ __('Manage') }} →
                 </a>
             </div>
 
@@ -46,7 +46,7 @@
                     </table>
                 </div>
             @else
-                <p class="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">No running containers.</p>
+                <p class="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{{ __('No running containers.') }}</p>
             @endif
         </div>
     @endif

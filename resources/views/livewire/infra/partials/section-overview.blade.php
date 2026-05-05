@@ -30,10 +30,10 @@
 @if (count($containerStats) > 0)
     <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-            <h3 class="font-semibold text-slate-900 dark:text-slate-100">Container Resource Usage</h3>
+            <h3 class="font-semibold text-slate-900 dark:text-slate-100">{{ __('Container Resource Usage') }}</h3>
             <button wire:click="loadPageData" class="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1">
                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                Refresh
+                {{ __('Refresh') }}
             </button>
         </div>
         <div class="overflow-x-auto">
@@ -75,8 +75,8 @@
 @if (count($containers) > 0)
     <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-            <h3 class="font-semibold text-slate-900 dark:text-slate-100">All Containers</h3>
-            <a href="{{ route('infra.containers.section', 'containers') }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">Manage →</a>
+            <h3 class="font-semibold text-slate-900 dark:text-slate-100">{{ __('All Containers') }}</h3>
+            <a href="{{ route('infra.containers.section', 'containers') }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">{{ __('Manage') }} →</a>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
@@ -103,9 +103,9 @@
                             <td class="px-4 py-3 text-slate-500 dark:text-slate-400 font-mono text-xs">{{ Str::limit($c['Ports'] ?? '', 40) }}</td>
                             <td class="px-4 py-3">
                                 @if ($state === 'running')
-                                    <button wire:click="stopContainer('{{ $c['ID'] }}')" class="text-xs text-slate-500 hover:text-rose-600 dark:hover:text-rose-400">Stop</button>
+                                    <button wire:click="stopContainer('{{ $c['ID'] }}')" class="text-xs text-slate-500 hover:text-rose-600 dark:hover:text-rose-400">{{ __('Stop') }}</button>
                                 @else
-                                    <button wire:click="startContainer('{{ $c['ID'] }}')" class="text-xs text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400">Start</button>
+                                    <button wire:click="startContainer('{{ $c['ID'] }}')" class="text-xs text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400">{{ __('Start') }}</button>
                                 @endif
                             </td>
                         </tr>

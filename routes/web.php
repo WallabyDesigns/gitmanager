@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\LanguageController;
 use App\Http\Controllers\RecoveryController;
 use App\Http\Controllers\SelfUpdateController;
 use App\Http\Controllers\Webhooks\GitHubWebhookController;
@@ -41,6 +42,10 @@ Route::get('/', function () {
 Route::post('/webhooks/github', GitHubWebhookController::class)
     ->middleware('throttle:60,1')
     ->name('webhooks.github');
+
+Route::post('/language', [LanguageController::class, 'update'])
+    ->middleware('throttle:20,1')
+    ->name('language.update');
 
 Route::middleware(['auth', 'verified', EnsurePasswordChanged::class])->group(function () {
     Route::get('/dashboard', DashboardIndex::class)->name('dashboard');
