@@ -3,7 +3,6 @@
 <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Environment') }}</h3>
         <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ __('Edit the project\'s .env file directly.') }}</p>
         <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ __('Path:') }} {{ $envPath }}</p>
-        @endif
     </div>
 
     <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4 space-y-4">
