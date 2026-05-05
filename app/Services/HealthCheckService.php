@@ -83,6 +83,26 @@ class HealthCheckService
         }
 
         if ($transportException !== null) {
+            if ($this->isInconclusiveTransportException($transportException)) {
+                $issueMessage = $this->transportIssueMessage($transportException);
+                $healthLog[] = 'Transport failure is local/inconclusive; preserving previous health status.';
+                $logText = $this->formatHealthLog($healthLog);
+                Cache::forget($this->consecutiveFailKey($project));
+                $this->saveHealthStatus(
+                    $project,
+                    $previousStatus ?? 'na',
+                    $previousIssue,
+                    $logText,
+                    $healthUrl,
+                    $httpStatus,
+                    'inconclusive',
+                    $issueMessage,
+                    'inconclusive'
+                );
+
+                return $previousStatus ?? 'na';
+            }
+
             $failCount = (int) Cache::get($this->consecutiveFailKey($project), 0) + 1;
             Cache::put($this->consecutiveFailKey($project), $failCount, now()->addHours(2));
             $issueMessage = $this->transportIssueMessage($transportException);
@@ -144,23 +164,23 @@ class HealthCheckService
         }
     }
 
-    private function saveHealthStatus(Project $project, string $status, ?string $issueMessage, ?string $logText, ?string $healthUrl, ?int $httpStatus, ?string $historyStatus = null, ?string $historyIssueMessage = null): void
+    private function saveHealthStatus(Project $project, string $status, ?string $issueMessage, ?string $logText, ?string $healthUrl, ?int $httpStatus, ?string $historyStatus = null, ?string $historyIssueMessage = null, ?string $historyDeploymentStatus = null): void
     {
         $project->health_status = $status;
         $project->health_issue_message = $issueMessage;
-        $project->health_log = $this->appendHealthHistory($project, $historyStatus ?? $status, $historyIssueMessage ?? $issueMessage, $logText, $healthUrl, $httpStatus);
+        $project->health_log = $this->appendHealthHistory($project, $historyStatus ?? $status, $historyIssueMessage ?? $issueMessage, $logText, $healthUrl, $httpStatus, $historyDeploymentStatus);
         $project->health_checked_at = now();
         $project->save();
     }
 
-    private function appendHealthHistory(Project $project, string $status, ?string $issueMessage, ?string $logText, ?string $healthUrl, ?int $httpStatus): string
+    private function appendHealthHistory(Project $project, string $status, ?string $issueMessage, ?string $logText, ?string $healthUrl, ?int $httpStatus, ?string $deploymentStatus = null): string
     {
         $history = $project->healthHistory();
 
         $history[] = [
             'checked_at' => now()->toIso8601String(),
             'status' => $status,
-            'deployment_status' => $status === 'ok' ? 'success' : 'failed',
+            'deployment_status' => $deploymentStatus ?? ($status === 'ok' ? 'success' : 'failed'),
             'http_status' => $httpStatus,
             'issue' => $issueMessage,
             'url' => $healthUrl,
@@ -200,6 +220,14 @@ class HealthCheckService
     private function transportIssueMessage(\Throwable $exception): string
     {
         return 'HTTP transport failed: '.$this->cleanExceptionMessage($exception);
+    }
+
+    private function isInconclusiveTransportException(\Throwable $exception): bool
+    {
+        $message = strtolower($this->cleanExceptionMessage($exception));
+
+        return str_contains($message, 'getaddrinfo() thread failed to start')
+            || str_contains($message, 'getaddrinfo thread failed to start');
     }
 
     private function cleanExceptionMessage(\Throwable $exception): string

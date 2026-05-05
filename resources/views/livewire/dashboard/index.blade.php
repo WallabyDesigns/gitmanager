@@ -101,8 +101,9 @@
                                 $isOk = $status === 'ok';
                                 $isNa = $status === 'na';
                                 $history = $healthHistory[$project->id] ?? collect();
-                                $uptimePercent = $history->count() > 0
-                                    ? round($history->where('status', 'success')->count() / $history->count() * 100)
+                                $conclusiveHistory = $history->reject(fn ($check) => $check->status === 'inconclusive');
+                                $uptimePercent = $conclusiveHistory->count() > 0
+                                    ? round($conclusiveHistory->where('status', 'success')->count() / $conclusiveHistory->count() * 100)
                                     : null;
                             @endphp
                             <a href="{{ route('projects.show', $project) }}" class="block rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 transition hover:border-indigo-300 dark:hover:border-indigo-500/60 hover:shadow-sm">
@@ -123,7 +124,7 @@
                                         @if ($history->count() > 0)
                                             <div class="hidden sm:flex items-end gap-0.5 h-5">
                                                 @foreach ($history->take(30) as $check)
-                                                    <span class="w-1.5 rounded-sm {{ $check->status === 'success' ? 'bg-emerald-400 dark:bg-emerald-500' : 'bg-rose-400 dark:bg-rose-500' }}" style="height: {{ $check->status === 'success' ? '100%' : '50%' }}"></span>
+                                                    <span class="w-1.5 rounded-sm {{ $check->status === 'success' ? 'bg-emerald-400 dark:bg-emerald-500' : ($check->status === 'inconclusive' ? 'bg-slate-300 dark:bg-slate-600' : 'bg-rose-400 dark:bg-rose-500') }}" style="height: {{ $check->status === 'success' ? '100%' : ($check->status === 'inconclusive' ? '35%' : '50%') }}"></span>
                                                 @endforeach
                                             </div>
                                             @if ($uptimePercent !== null)

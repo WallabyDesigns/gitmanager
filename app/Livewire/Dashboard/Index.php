@@ -57,6 +57,7 @@ class Index extends Component
             $healthHistory[$project->id] = collect($project->healthHistory())
                 ->map(fn (array $entry): object => (object) [
                     'status' => (string) ($entry['deployment_status'] ?? (($entry['status'] ?? '') === 'ok' ? 'success' : 'failed')),
+                    'inconclusive' => ($entry['deployment_status'] ?? null) === 'inconclusive',
                     'started_at' => $entry['checked_at'] ?? null,
                     'http_status' => $entry['http_status'] ?? null,
                 ])

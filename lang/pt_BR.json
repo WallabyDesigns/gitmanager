@@ -906,6 +906,7 @@
     "Restart policy": "Política de reinicialização",
     "Restart Policy": "Política de reinicialização",
     "Restarts: :restarts - Node: :node": "Reinicia: :restarts - Nó: :node",
+    "Restarts :restarts": "Reinicia :restarts",
     "Restore": "Restaurar",
     "Restore .env Backup": "Restaurar backup .env",
     "Restore a previous .env configuration": "Restaurar uma configuração .env anterior",

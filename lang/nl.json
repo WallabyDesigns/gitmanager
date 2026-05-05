@@ -906,6 +906,7 @@
     "Restart policy": "Beleid opnieuw starten",
     "Restart Policy": "Beleid opnieuw starten",
     "Restarts: :restarts - Node: :node": "Opnieuw opstarten: :restarts - Knooppunt: :node",
+    "Restarts :restarts": "Start :restarts opnieuw",
     "Restore": "Herstellen",
     "Restore .env Backup": "Herstel .env-back-up",
     "Restore a previous .env configuration": "Herstel een eerdere .env-configuratie",

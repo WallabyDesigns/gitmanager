@@ -906,6 +906,7 @@
     "Restart policy": "정책 다시 시작",
     "Restart Policy": "재시작 정책",
     "Restarts: :restarts - Node: :node": "다시 시작: :restarts - 노드: :node",
+    "Restarts :restarts": ":restarts을 다시 시작합니다.",
     "Restore": "복원하다",
     "Restore .env Backup": ".env 백업 복원",
     "Restore a previous .env configuration": "이전 .env 구성 복원",

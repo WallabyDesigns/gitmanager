@@ -113,7 +113,7 @@ class HealthCheckServiceTest extends TestCase
     public function test_transport_exceptions_must_repeat_before_marking_project_down(): void
     {
         Http::fake([
-            'https://example.test/up' => fn () => throw new \RuntimeException('cURL error 6: getaddrinfo() thread failed to start'),
+            'https://example.test/up' => fn () => throw new \RuntimeException('Connection timed out'),
         ]);
 
         $project = Project::factory()->create([
@@ -132,8 +132,39 @@ class HealthCheckServiceTest extends TestCase
         $project->refresh();
 
         $this->assertSame('na', $project->health_status);
-        $this->assertStringContainsString('HTTP transport failed: cURL error 6', (string) $project->health_issue_message);
+        $this->assertStringContainsString('HTTP transport failed: Connection timed out', (string) $project->health_issue_message);
         $this->assertSame(3, $project->healthHistoryJsonEntryCount());
+    }
+
+    public function test_getaddrinfo_thread_failures_are_recorded_as_inconclusive_without_marking_project_down(): void
+    {
+        Http::fake([
+            'https://example.test/up' => fn () => throw new \RuntimeException('cURL error 6: getaddrinfo() thread failed to start'),
+        ]);
+
+        $project = Project::factory()->create([
+            'user_id' => User::factory(),
+            'project_type' => 'static',
+            'health_url' => 'https://example.test/up',
+            'health_status' => 'ok',
+            'health_issue_message' => null,
+        ]);
+
+        $service = app(HealthCheckService::class);
+
+        $this->assertSame('ok', $service->checkHealth($project, true));
+        $this->assertSame('ok', $service->checkHealth($project->fresh(), true));
+        $this->assertSame('ok', $service->checkHealth($project->fresh(), true));
+
+        $project->refresh();
+        $history = $project->healthHistory();
+
+        $this->assertSame('ok', $project->health_status);
+        $this->assertNull($project->health_issue_message);
+        $this->assertSame(3, $project->healthHistoryJsonEntryCount());
+        $this->assertSame('inconclusive', $history[0]['status']);
+        $this->assertSame('inconclusive', $history[0]['deployment_status']);
+        $this->assertStringContainsString('getaddrinfo() thread failed to start', (string) $history[0]['issue']);
     }
 
     public function test_health_history_keeps_only_last_sixty_entries(): void

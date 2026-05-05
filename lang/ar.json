@@ -906,6 +906,7 @@
     "Restart policy": "إعادة تشغيل السياسة",
     "Restart Policy": "إعادة تشغيل السياسة",
     "Restarts: :restarts - Node: :node": "إعادة التشغيل: :إعادة التشغيل - العقدة: :node",
+    "Restarts :restarts": "إعادة تشغيل :restarts",
     "Restore": "يعيد",
     "Restore .env Backup": "استعادة النسخة الاحتياطية .env",
     "Restore a previous .env configuration": "استعادة تكوين .env السابق",

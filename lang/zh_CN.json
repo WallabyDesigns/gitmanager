@@ -906,6 +906,7 @@
     "Restart policy": "重启政策",
     "Restart Policy": "重启政策",
     "Restarts: :restarts - Node: :node": "重新启动: :restarts - 节点: :node",
+    "Restarts :restarts": "重新启动 :restarts",
     "Restore": "恢复",
     "Restore .env Backup": "恢复 .env 备份",
     "Restore a previous .env configuration": "恢复以前的 .env 配置",

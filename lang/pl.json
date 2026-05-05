@@ -906,6 +906,7 @@
     "Restart policy": "Uruchom ponownie politykę",
     "Restart Policy": "Uruchom ponownie zasady",
     "Restarts: :restarts - Node: :node": "Restartuje: :restarts - Węzeł: :node",
+    "Restarts :restarts": "Uruchamia ponownie :restarts",
     "Restore": "Przywrócić",
     "Restore .env Backup": "Przywróć kopię zapasową .env",
     "Restore a previous .env configuration": "Przywróć poprzednią konfigurację .env",

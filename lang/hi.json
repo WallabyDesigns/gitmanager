@@ -906,6 +906,7 @@
     "Restart policy": "पुनः प्रारंभ नीति",
     "Restart Policy": "पुनरारंभ नीति",
     "Restarts: :restarts - Node: :node": "पुनरारंभ: :पुनरारंभ - नोड::नोड",
+    "Restarts :restarts": ":restarts को पुनरारंभ करता है",
     "Restore": "पुनर्स्थापित करना",
     "Restore .env Backup": ".env बैकअप पुनर्स्थापित करें",
     "Restore a previous .env configuration": "पिछले .env कॉन्फ़िगरेशन को पुनर्स्थापित करें",

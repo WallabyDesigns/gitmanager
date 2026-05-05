@@ -906,6 +906,7 @@
     "Restart policy": "再起動ポリシー",
     "Restart Policy": "再起動ポリシー",
     "Restarts: :restarts - Node: :node": "再起動: :restarts - ノード: :node",
+    "Restarts :restarts": ":restarts を再起動します",
     "Restore": "復元する",
     "Restore .env Backup": ".env バックアップを復元する",
     "Restore a previous .env configuration": "以前の .env 構成を復元する",

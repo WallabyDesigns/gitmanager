@@ -906,6 +906,7 @@
     "Restart policy": "Richtlinie neu starten",
     "Restart Policy": "Richtlinie neu starten",
     "Restarts: :restarts - Node: :node": "Neustarts: :restarts - Knoten: :node",
+    "Restarts :restarts": "Startet :restarts neu",
     "Restore": "Wiederherstellen",
     "Restore .env Backup": "Stellen Sie die .env-Sicherung wieder her",
     "Restore a previous .env configuration": "Stellen Sie eine frühere .env-Konfiguration wieder her",
