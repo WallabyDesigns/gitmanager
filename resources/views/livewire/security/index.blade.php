@@ -15,7 +15,7 @@
                         <div>
                             <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Current Issues') }}</h3>
                             <p class="text-sm text-slate-500 dark:text-slate-400">
-                                {{ $openCount }} actionable issue{{ $openCount === 1 ? '' : 's' }} across dependency checks, alerts, and audits.
+                                {{ $openCount }} {{ __('actionable issues across dependency checks, alerts, and audits.') }}
                             </p>
                         </div>
                 <div class="flex flex-wrap gap-2">

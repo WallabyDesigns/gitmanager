@@ -36,32 +36,32 @@
         @if ($hasComposer ?? false)
             <button type="button" wire:click="composerUpdate" class="px-3 py-2 text-xs rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 inline-flex items-center {{ $actionDisabledClass }}" {{ ($permissionsLocked ?? false) ? 'disabled' : '' }}>
                 <x-loading-spinner target="composerUpdate" />
-                Composer Update
+                {{ __('Composer Update') }}
             </button>
         @endif
         @if ($hasNpm ?? false)
             <button type="button" wire:click="npmAuditFix" class="px-3 py-2 text-xs rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 inline-flex items-center {{ $actionDisabledClass }}" {{ ($permissionsLocked ?? false) ? 'disabled' : '' }}>
                 <x-loading-spinner target="npmAuditFix" />
-                Npm Audit Fix
+                {{ __('Npm Audit Fix') }}
             </button>
             <button type="button" wire:click="npmAuditFixForce" onclick="return confirm('Force audit fix can introduce breaking changes. Continue?') || event.stopImmediatePropagation()" class="px-3 py-2 text-xs rounded-md border border-rose-300 text-rose-600 hover:text-rose-700 dark:border-rose-600/60 dark:text-rose-300 inline-flex items-center {{ $actionDisabledClass }}" {{ ($permissionsLocked ?? false) ? 'disabled' : '' }}>
                 <x-loading-spinner target="npmAuditFixForce" />
-                Npm Audit Fix (Force)
+                {{ __('Npm Audit Fix (Force)') }}
             </button>
         @endif
     </div>
     <p class="text-xs text-slate-500 dark:text-slate-400">
-        Use the Dependency Actions tab to review logs or commit dependency changes after fixes.
+        {{ __('Use the Dependency Actions tab to review logs or commit dependency changes after fixes.') }}
     </p>
 
     @if (! $sslVerifyEnabled)
         <div class="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">
-            GitHub SSL verification is disabled. Sync runs without certificate validation.
+            {{__('GitHub SSL verification is disabled. Sync runs without certificate validation.') }}
         </div>
     @endif
     @if ($permissionsLocked ?? false)
         <div class="rounded-lg border border-amber-300/60 bg-amber-500/10 p-3 text-xs text-amber-200">
-            Permissions need fixing before running security actions.
+            {{__('Permissions need fixing before running security actions.') }}
         </div>
     @endif
 
@@ -87,7 +87,9 @@
                 }
             "
         >
-            <pre class="inline-block min-w-full p-3 text-xs text-slate-600 dark:text-slate-300 whitespace-pre font-mono leading-relaxed align-top">{{ $latestSecurityOutput ?? __('No output yet.') }}</pre>
+            <pre class="inline-block min-w-full p-3 text-xs text-slate-600 dark:text-slate-300 whitespace-pre font-mono leading-relaxed align-top">
+                {{ $latestSecurityOutput ?? __('No output yet.') }}
+            </pre>
         </div>
     </div>
 
@@ -98,7 +100,7 @@
                 <div class="min-w-0 rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            {{ ucfirst(str_replace('_', ' ', $deployment->action)) }}
+                            {{__(ucfirst(str_replace('_', ' ', $deployment->action))) }}
                         </div>
                         @php
                             $warn = $deployment->status === 'warning'
@@ -106,11 +108,11 @@
                                     && str_contains($deployment->output_log ?? '', 'stashed changes could not be restored'));
                         @endphp
                         <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $warn ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' : ($deployment->status === 'success' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : ($deployment->status === 'failed' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300')) }}">
-                            {{ $warn ? 'warning' : $deployment->status }}
+                            {{ $warn ? __('warning') : __($deployment->status) }}
                         </span>
                     </div>
                     <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
-                        {{ \App\Support\DateFormatter::forUser($deployment->started_at, 'M j, Y g:i a', 'Queued') }}
+                        {{ \App\Support\DateFormatter::forUser($deployment->started_at, 'M j, Y g:i a', __('Queued')) }}
                     </div>
                     @php
                         $hasEnvWarnings = $deployment->action === 'composer_audit'
@@ -120,7 +122,7 @@
                     @endphp
                     @if ($hasEnvWarnings)
                         <div class="mt-2 text-xs text-amber-500">
-                            Environment warnings detected (PHP extensions). Audit results are still valid.
+                            {{__('Environment warnings detected (PHP extensions). Audit results are still valid.') }}
                         </div>
                     @endif
                     @if ($deployment->output_log)
@@ -176,7 +178,7 @@
                         </div>
                         <div class="flex flex-wrap gap-2 text-xs">
                             <span class="px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                {{ $issue->status }}
+                                {{ __($issue->status) }}
                             </span>
                             @if ($issue->severity)
                                 <span class="px-2 py-1 rounded-full bg-rose-500/10 text-rose-300">
@@ -231,11 +233,12 @@
                         </div>
                         <div class="flex flex-wrap gap-2 text-xs">
                             <span class="px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                {{ $alert->state }}
+                                {{  __($alert->state) }}
+                                
                             </span>
                             @if ($alert->severity)
                                 <span class="px-2 py-1 rounded-full bg-rose-500/10 text-rose-300">
-                                    {{ strtoupper($alert->severity) }}
+                                    {{  __(strtoupper($alert->severity)) }}
                                 </span>
                             @endif
                         </div>
@@ -299,7 +302,7 @@
                         @endif
                     @endforeach
                     @if (count($pushFiles ?? []) > 12)
-                        <div class="mt-2 text-slate-400 dark:text-slate-500">+ {{ count($pushFiles ?? []) - 12 }} more file(s)</div>
+                        <div class="mt-2 text-slate-400 dark:text-slate-500">+ {{ count($pushFiles ?? []) - 12 }} {{ __('more files') }}</div>
                     @endif
                 </div>
             @endif
@@ -311,10 +314,10 @@
 
             <div class="mt-6 flex flex-wrap justify-end gap-2">
                 <button type="button" wire:click="closePushModal" @click="open = false" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
-                    Not Now
+                    {{ __('Not Now') }}
                 </button>
                 <button type="button" wire:click="commitAuditFix" class="px-3 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-500">
-                    Commit & Push
+                    {{ __('Commit & Push') }}
                 </button>
             </div>
         </div>

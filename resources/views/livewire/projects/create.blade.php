@@ -26,10 +26,10 @@
                             <div class="flex flex-wrap items-center justify-between gap-3">
                                 <div class="text-xs">
                                     <div class="font-semibold {{ $projectCount >= $communityProjectLimit ? 'text-amber-700 dark:text-amber-200' : 'text-slate-700 dark:text-slate-200' }}">
-                                        Community project usage: {{ $projectCount }} / {{ $communityProjectLimit }}
+                                        {{ __('Community project usage') }}: {{ $projectCount }} / {{ $communityProjectLimit }}
                                     </div>
                                     <div class="mt-1 {{ $projectCount >= $communityProjectLimit ? 'text-amber-700 dark:text-amber-200' : 'text-slate-500 dark:text-slate-400' }}">
-                                        {{ $projectCount >= $communityProjectLimit ? 'Project creation is locked until you upgrade to Enterprise.' : 'You can create '.($communityProjectLimit - $projectCount).' more project(s) on Community.' }}
+                                        {{ $projectCount >= $communityProjectLimit ? __('Project creation is locked until you upgrade to Enterprise Edition.') : ($communityProjectLimit - $projectCount)." ".__(' remaining projects available on Community Edition.') }}
                                     </div>
                                 </div>
                                 @if ($projectCount >= $communityProjectLimit)
@@ -38,7 +38,7 @@
                                         onclick="window.dispatchEvent(new CustomEvent('gwm-open-enterprise-modal', { detail: { feature: 'Unlimited Projects' } }));"
                                         class="inline-flex items-center rounded-md border border-amber-400/70 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100"
                                     >
-                                        Upgrade
+                                        {{ __('Upgrade') }}
                                     </button>
                                 @endif
                             </div>
@@ -54,18 +54,18 @@
                         @if ($step === 1)
                         <div class="grid gap-4 sm:grid-cols-2">
                             <div>
-                                <x-input-label for="name" value="Project Name" />
+                                <x-input-label for="name" value='{{__("Project Name")}}' />
                                 <x-text-input id="name" class="mt-1 block w-full" wire:model.live="form.name" />
                                 <x-input-error :messages="$errors->get('form.name')" class="mt-2" />
                             </div>
                             <div>
                                 <x-input-label for="directory_path" value="{{ __('Project Directory (optional)') }}" />
-                                <x-text-input id="directory_path" class="mt-1 block w-full" wire:model.live="form.directory_path" placeholder="Clients/Acme/Website" />
+                                <x-text-input id="directory_path" class="mt-1 block w-full" wire:model.live="form.directory_path" placeholder='{{__("Clients/Websites")}}' />
                                 <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ __('Use nested folders to organize projects. Leave blank to keep this project at the root level.') }}</p>
                                 <x-input-error :messages="$errors->get('form.directory_path')" class="mt-2" />
                             </div>
                             <div>
-                                <x-input-label for="project_type" value="Project Type" />
+                                <x-input-label for="project_type" value='{{__("Project Type")}}' />
                                 <select id="project_type" class="mt-1 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" wire:model.live="form.project_type">
                                     @foreach ($projectTypes as $type)
                                         <option value="{{ $type['value'] }}">
@@ -77,35 +77,36 @@
                                     $typeMeta = collect($projectTypes)->firstWhere('value', $form['project_type'] ?? 'custom');
                                 @endphp
                                 <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">
-                                    {{ $typeMeta['description'] ?? '' }}
+                                    {{ __($typeMeta['description']) ?? '' }}
                                 </p>
                                 @if (! empty($typeMeta['locked']))
                                     <p class="mt-1 text-xs text-amber-500 dark:text-amber-300">
-                                        {{ $typeMeta['locked_message'] ?? 'This project type is currently unavailable.' }}
+                                        {{ $typeMeta['locked_message'] ?? __('This project type is currently unavailable.') }}
                                     </p>
                                 @endif
                                 <x-input-error :messages="$errors->get('form.project_type')" class="mt-2" />
                             </div>
                             <div>
-                                <x-input-label for="repo_url" value="Repository URL" />
+                                <x-input-label for="repo_url" value='{{__("Repository Address")}}' />
                                 <x-text-input id="repo_url" class="mt-1 block w-full" wire:model.live="form.repo_url" />
                                 <x-input-error :messages="$errors->get('form.repo_url')" class="mt-2" />
                             </div>
                             <div>
                                 <x-input-label for="site_url" value="{{ __('Site URL') }}" />
-                                <x-text-input id="site_url" class="mt-1 block w-full" wire:model.live="form.site_url" placeholder="https://example.com" />
+                                <x-text-input id="site_url" class="mt-1 block w-full" wire:model.live="form.site_url" placeholder="https://{{ __('example') }}.com" />
                                 <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ __('Main domain for this project. Used for quick links and as the default health check when Health Check URL is blank.') }}</p>
                                 <x-input-error :messages="$errors->get('form.site_url')" class="mt-2" />
                             </div>
                             <div>
-                                <x-input-label for="default_branch" value="Default Branch" />
+                                <x-input-label for="default_branch" value='{{__("Default Branch")}}' />
                                 <x-text-input id="default_branch" class="mt-1 block w-full" wire:model.live="form.default_branch" />
                                 <x-input-error :messages="$errors->get('form.default_branch')" class="mt-2" />
                             </div>
                             <div class="sm:col-span-2">
                                 <x-input-label for="local_path" value="{{ __('Local Path') }}" />
-                                <x-text-input id="local_path" class="mt-1 block w-full" wire:model.live="form.local_path" placeholder="/home/user/testwebsite" />
-                                <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ __('For standard/SSH deploys, this is the local build path. For FTP-only deploys, this is the remote subdirectory appended to FTP Root Path (:ftpPath/:localPath), and builds run in a managed workspace. If FTP Root Path is blank and Local Path starts with :slash, it is treated as an absolute remote path.', ['ftpPath' => '<code>{FTP Root Path}</code>', 'localPath' => '<code>{Local Path}</code>', 'slash' => '<code>/</code>']) }}</p>
+                                <x-text-input id="local_path" class="mt-1 block w-full" wire:model.live="form.local_path" placeholder="{{ __('/home/user/website') }}" />
+                                <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                                    {!! __('For standard/SSH deploys, this is the local build path. For FTP-only deploys, this is the remote subdirectory appended to FTP Root Path (:ftpPath/:localPath), and builds run in a managed workspace. If FTP Root Path is blank and Local Path starts with :slash, it is treated as an absolute remote path.', ['ftpPath' => '<code>{FTP Root Path}</code>', 'localPath' => '<code>{Local Path}</code>', 'slash' => '<code>/</code>']) !!}</p>
                                 @if ($localPathUsageWarning)
                                     <div class="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
                                         {{ $localPathUsageWarning }}
@@ -113,7 +114,7 @@
                                 @endif
                                 <label class="mt-2 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                                     <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="checkPermissions" />
-                                    Check permissions for this path
+                                    {{__("Check permissions for this path")}}
                                 </label>
                                 @if ($permissionStatus)
                                     @php
@@ -214,13 +215,13 @@
                                             </label>
                                         <div class="grid gap-3 sm:grid-cols-2">
                                             <div>
-                                                <x-input-label for="ssh_port" value="SSH Port" />
+                                                <x-input-label for="ssh_port" value="{{ __('SSH Port') }}" />
                                                 <x-text-input id="ssh_port" class="mt-1 block w-full" wire:model.live="form.ssh_port" placeholder="22" :disabled="! ($form['ssh_enabled'] ?? false)" />
                                                 <x-input-error :messages="$errors->get('form.ssh_port')" class="mt-2" />
                                             </div>
                                             <div>
-                                                <x-input-label for="ssh_root_path" value="SSH Root Path (optional)" />
-                                                <x-text-input id="ssh_root_path" class="mt-1 block w-full" wire:model.live="form.ssh_root_path" placeholder="/home/user/public_html" :disabled="! ($form['ssh_enabled'] ?? false)" />
+                                                <x-input-label for="ssh_root_path" value="{{ __('SSH Root Path (optional)') }}" />
+                                                <x-text-input id="ssh_root_path" class="mt-1 block w-full" wire:model.live="form.ssh_root_path" placeholder="{{ __('/home/user/public_html') }}" :disabled="! ($form['ssh_enabled'] ?? false)" />
                                                 <x-input-error :messages="$errors->get('form.ssh_root_path')" class="mt-2" />
                                             </div>
                                         </div>
@@ -229,7 +230,7 @@
                                             <textarea id="ssh_commands" rows="4" class="mt-1 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" wire:model.live="form.ssh_commands" placeholder="composer install --no-dev&#10;npm install&#10;npm run build" @disabled(! ($form['ssh_enabled'] ?? false))></textarea>
                                             <x-input-error :messages="$errors->get('form.ssh_commands')" class="mt-2" />
                                         </div>
-                                        <p class="text-xs text-slate-500 dark:text-slate-400">{{ __('Password-based SSH uses a built-in askpass helper by default. You can optionally configure :sshpass per remote access record or via :passBinary; use a per-record key path or :keyPath for key-based auth.', ['sshpass' => '<code>sshpass</code>', 'passBinary' => '<code>GWM_SSH_PASS_BINARY</code>', 'keyPath' => '<code>GWM_SSH_KEY_PATH</code>']) }}</p>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400">{!! __('Password-based SSH uses a built-in askpass helper by default. You can optionally configure :sshpass per remote access record or via :passBinary; use a per-record key path or :keyPath for key-based auth.', ['sshpass' => '<code>sshpass</code>', 'passBinary' => '<code>GWM_SSH_PASS_BINARY</code>', 'keyPath' => '<code>GWM_SSH_KEY_PATH</code>']) !!}</p>
                                     </div>
                                 </div>
                             </div>
@@ -244,16 +245,16 @@
                             @if ($showEnvConfig)
                                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
                                     <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Environment (.env)') }}</div>
-                                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ __('Paste an optional :envFile file to create during setup. If :example or :sample exists, you can prefill from it.', ['envFile' => '<code>.env</code>', 'example' => '<code>.env.example</code>', 'sample' => '<code>.env.sample</code>']) }}</p>
+                                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{!! __('Paste an optional :envFile file to create during setup. If :example or :sample exists, you can prefill from it.', ['envFile' => '<code>.env</code>', 'example' => '<code>.env.example</code>', 'sample' => '<code>.env.sample</code>']) !!}</p>
                                     <label class="mt-3 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
                                         <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.env_use_example" @disabled(! ($envExampleAvailable ?? false)) />
-                                        {{ __('Prefill from :filename', ['filename' => $envExampleFilename ?? '.env.example']) }}
+                                        {!! __('Prefill from :filename', ['filename' => $envExampleFilename ?? '.env.example']) !!}
                                     </label>
                                     @if (! ($envExampleAvailable ?? false))
-                                        <p class="mt-1 text-xs text-amber-600 dark:text-amber-300">{{ __('No :example or :sample detected yet. Paste values manually.', ['example' => '<code>.env.example</code>', 'sample' => '<code>.env.sample</code>']) }}</p>
+                                        <p class="mt-1 text-xs text-amber-600 dark:text-amber-300">{!! __('No :example or :sample detected yet. Paste values manually.', ['example' => '<code>.env.example</code>', 'sample' => '<code>.env.sample</code>']) !!}</p>
                                     @endif
                                     @if (! empty($envExampleMessage ?? null))
-                                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ $envExampleMessage }}</p>
+                                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{!! __($envExampleMessage) !!}</p>
                                     @endif
                                     <textarea rows="8" class="mt-3 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" wire:model.defer="form.env_content" placeholder="APP_ENV=production&#10;APP_KEY=&#10;APP_DEBUG=false"></textarea>
                                     <x-input-error :messages="$errors->get('form.env_content')" class="mt-2" />
@@ -339,7 +340,7 @@
                             <div>
                                 <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                                     <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.run_build_command" />
-                                    Run build command
+                                    {{ __('Run build command') }}
                                 </label>
                                 <x-text-input id="build_command" class="mt-2 block w-full" wire:model.live="form.build_command" placeholder="npm run build" />
                                 <x-input-error :messages="$errors->get('form.build_command')" class="mt-2" />
@@ -347,7 +348,7 @@
                             <div>
                                 <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                                     <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.run_test_command" />
-                                    Run tests before deploy
+                                    {{ __('Run tests before deploy') }}
                                 </label>
                                 <x-text-input id="test_command" class="mt-2 block w-full" wire:model.live="form.test_command" placeholder="php artisan test" />
                                 <x-input-error :messages="$errors->get('form.test_command')" class="mt-2" />
@@ -358,24 +359,24 @@
                         <div class="flex flex-wrap items-center gap-3">
                             @if ($step === 1)
                                 <x-primary-button wire:loading.attr="disabled" wire:target="nextStep" :disabled="! $isEnterprise && $projectCount >= $communityProjectLimit">
-                                    Next
+                                    {{ __('Next') }}
                                     <x-loading-spinner target="nextStep" class="ml-2" />
                                 </x-primary-button>
                                 <a href="{{ route('projects.index') }}" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
-                                    Cancel
+                                    {{ __('Cancel') }}
                                 </a>
                             @endif
 
                             @if ($step === 2)
                                 <button type="button" wire:click="previousStep" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
-                                    Back
+                                    {{ __('Back') }}
                                 </button>
                                 <x-primary-button wire:loading.attr="disabled" wire:target="nextStep">
-                                    Next
+                                    {{ __('Next') }}
                                     <x-loading-spinner target="nextStep" class="ml-2" />
                                 </x-primary-button>
                                 <a href="{{ route('projects.index') }}" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
-                                    Cancel
+                                    {{ __('Cancel') }}
                                 </a>
                             @endif
 
