@@ -167,52 +167,6 @@ Translation files are stored in `lang/*.json` as Laravel JSON language files. To
 
 The translation script (for maintainers) is located at `.local/translate-lang.php` and can be used to machine-translate new strings added to `en.json`.
 
-## Enterprise License Runtime Security
-Enterprise runtime secrets are designed to be stored encrypted in the app database (settings table), then hydrated from your external licensing API response.
-
-- Local secret storage:
-  - License key is stored encrypted.
-  - Response-signing secret and request-signing secret are stored encrypted when provided by the license API.
-  - Stripe secret and Stripe webhook secret are stored encrypted when provided by the license API.
-- Transport hardening:
-  - Production license verification requires an HTTPS endpoint.
-  - The app can attach signed request headers (`X-GWM-License-Signature`, `X-GWM-License-Timestamp`, `X-GWM-License-Installation`) when a request-signing secret is configured.
-  - The app validates response signatures (`X-GWM-License-Signature`) when signature verification is enabled.
-- Runtime config hydration:
-  - License verification responses may include `runtime_config` and `commerce` payloads.
-  - When present, these values are persisted to encrypted/locked settings and used for subsequent checks and checkout/webhook config.
-
-Expected verification response shape (minimum):
-
-```json
-{
-  "valid": true,
-  "edition": "enterprise",
-  "installation_uuid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  "message": "License validated.",
-  "bound_ip": "203.0.113.10",
-  "expires_at": "2026-12-31T23:59:59Z",
-  "grace_ends_at": "2027-01-07T23:59:59Z",
-  "runtime_config": {
-    "verify_url": "https://gitwebmanager.com/api/v1/license/verify",
-    "timeout": 10,
-    "cache_seconds": 900,
-    "strict_ip": true,
-    "public_ip": "203.0.113.10",
-    "verify_signature": true,
-    "response_signing_secret": "server_generated_secret",
-    "request_signing_secret": "server_generated_secret"
-  },
-  "commerce": {
-    "enterprise_price_id": "price_xxx",
-    "enterprise_product_id": "prod_xxx",
-    "enterprise_display_price": "29.99",
-    "stripe_secret": "sk_live_xxx",
-    "stripe_webhook_secret": "whsec_xxx"
-  }
-}
-```
-
 ## Scheduler & Queue
 Start a worker for webhook deployments:
 ```bash
