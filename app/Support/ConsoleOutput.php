@@ -15,9 +15,28 @@ class ConsoleOutput
             return $output;
         }
 
-        $filtered = array_values(array_filter($lines, static function (string $line): bool {
-            return ! preg_match('/^\s*PHP\s+Warning:/i', $line);
-        }));
+        $filtered = [];
+        $skipSourceGuardianLines = 0;
+
+        foreach ($lines as $line) {
+            if ($skipSourceGuardianLines > 0) {
+                $skipSourceGuardianLines--;
+
+                continue;
+            }
+
+            if (preg_match('/^\s*PHP\s+Warning:/i', $line)) {
+                continue;
+            }
+
+            if (preg_match('/^\s*SourceGuardian\s+requires\s+Zend\s+Engine\s+API\s+version\b/i', $line)) {
+                $skipSourceGuardianLines = 2;
+
+                continue;
+            }
+
+            $filtered[] = $line;
+        }
 
         return trim(implode("\n", $filtered));
     }

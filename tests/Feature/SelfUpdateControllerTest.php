@@ -97,6 +97,36 @@ class SelfUpdateControllerTest extends TestCase
             ->assertSeeText('Waiting for the background updater to create its log entry...');
     }
 
+    public function test_update_does_not_show_previous_completed_log_while_new_background_update_is_starting(): void
+    {
+        AppUpdate::query()->create([
+            'status' => 'failed',
+            'action' => 'self_update',
+            'from_hash' => 'old111',
+            'to_hash' => 'old222',
+            'output_log' => 'Previous failed update output.',
+            'started_at' => now()->subHour(),
+            'finished_at' => now()->subHour(),
+        ]);
+
+        $this->mock(SelfUpdateService::class, function ($mock) {
+            $mock->shouldReceive('startUpdateInBackground')
+                ->once()
+                ->with(\Mockery::any())
+                ->andReturn(['ok' => true, 'message' => 'Update started in the background.']);
+        });
+
+        $response = $this->actingAs($this->adminUser())->get('/update');
+
+        $response->assertOk()
+            ->assertHeader('Refresh', '2')
+            ->assertSeeText('Update launch: started')
+            ->assertSeeText('Update status: starting')
+            ->assertSeeText('Waiting for the background updater to create its log entry...')
+            ->assertDontSeeText('Previous failed update output.')
+            ->assertDontSeeText('Update status: failed');
+    }
+
     public function test_rollback_requires_authentication(): void
     {
         $this->get('/rollback')->assertRedirect('/login');

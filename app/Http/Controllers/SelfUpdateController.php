@@ -13,10 +13,16 @@ class SelfUpdateController extends Controller
     public function update(SelfUpdateService $service): Response
     {
         $running = $this->runningManualUpdate();
+        $launchWindowStartedAt = now()->subSeconds(2);
         $result = $running
             ? ['ok' => true, 'message' => 'A self-update is already running.']
             : $service->startUpdateInBackground(Auth::user());
-        $update = $running ?: $this->latestManualUpdate();
+        $launchStarted = (bool) ($result['ok'] ?? false);
+        $update = $running ?: (
+            $launchStarted
+                ? $this->latestManualUpdateSince($launchWindowStartedAt)
+                : $this->latestManualUpdate()
+        );
 
         $lines = [
             'Update launch: '.(($result['ok'] ?? false) ? 'started' : 'failed'),
@@ -48,7 +54,7 @@ class SelfUpdateController extends Controller
         $response = response(implode("\n", $lines), 200)
             ->header('Content-Type', 'text/plain; charset=UTF-8');
 
-        if (! $update || $update->status === 'running') {
+        if ($launchStarted && (! $update || $update->status === 'running')) {
             $response->header('Refresh', '2');
         }
 
@@ -84,6 +90,16 @@ class SelfUpdateController extends Controller
     {
         return AppUpdate::query()
             ->whereIn('action', ['self_update', 'force_update'])
+            ->latest('started_at')
+            ->latest('id')
+            ->first();
+    }
+
+    private function latestManualUpdateSince(\DateTimeInterface $startedAt): ?AppUpdate
+    {
+        return AppUpdate::query()
+            ->whereIn('action', ['self_update', 'force_update'])
+            ->where('started_at', '>=', $startedAt)
             ->latest('started_at')
             ->latest('id')
             ->first();

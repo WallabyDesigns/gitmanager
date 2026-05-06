@@ -4,8 +4,13 @@ namespace App\Livewire\Dashboard;
 
 use App\Models\Deployment;
 use App\Models\Project;
+use App\Services\AuditService;
+use App\Services\DeploymentQueueService;
+use App\Services\DeploymentService;
 use App\Services\DockerService;
 use App\Services\EditionService;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
@@ -22,11 +27,88 @@ class Index extends Component
         $this->tab = $tab;
     }
 
+    public function checkAllHealth(DeploymentService $service): void
+    {
+        $projects = Auth::user()
+            ->projects()
+            ->get();
+
+        $this->runHealthChecks($service, $projects, true);
+
+        $this->dispatch('notify', message: 'Health checks complete.');
+    }
+
+    public function checkAllUpdates(DeploymentService $service): void
+    {
+        $projects = Auth::user()
+            ->projects()
+            ->get();
+
+        $this->runUpdateChecks($service, $projects, false);
+
+        $this->dispatch('notify', message: 'Update checks complete.');
+    }
+
+    public function auditAllProjects(AuditService $audit): void
+    {
+        if (! $this->isEnterpriseEdition()) {
+            $this->dispatch('notify', message: 'Automatic project audits are available in Enterprise Edition.', type: 'warning');
+            $this->dispatch('gwm-open-enterprise-modal', feature: 'Automatic Project & Container Audits');
+
+            return;
+        }
+
+        $projects = Auth::user()
+            ->projects()
+            ->get();
+
+        if ($this->queueEnabled()) {
+            $queued = 0;
+            $existing = 0;
+            $skipped = 0;
+
+            foreach ($projects as $project) {
+                if ($project->permissions_locked && ! $project->ftp_enabled && ! $project->ssh_enabled) {
+                    $skipped++;
+
+                    continue;
+                }
+
+                $item = app(DeploymentQueueService::class)->enqueue($project, 'audit_project', [
+                    'auto_fix' => true,
+                    'send_email' => true,
+                    'source' => 'bulk_project_audit',
+                ], Auth::user());
+
+                if ($item->wasRecentlyCreated) {
+                    $queued++;
+                } else {
+                    $existing++;
+                }
+            }
+
+            $message = "Queued {$queued} project audit(s).";
+            if ($existing > 0) {
+                $message .= " {$existing} already queued.";
+            }
+            if ($skipped > 0) {
+                $message .= " {$skipped} skipped because permissions are locked.";
+            }
+
+            $this->dispatch('notify', message: $message);
+
+            return;
+        }
+
+        $results = $audit->auditProjects($projects, Auth::user(), true, true);
+        $this->dispatchAuditToast($results);
+    }
+
     public function render()
     {
         $user = Auth::user();
 
-        $allProjects = Project::query()
+        $allProjects = $user->projects()
             ->withCount([
                 'auditIssues as audit_open_count' => fn ($q) => $q->where('status', 'open'),
             ])
@@ -158,5 +240,154 @@ class Index extends Component
         }
 
         return $base;
+    }
+
+    private function queueEnabled(): bool
+    {
+        return (bool) config('gitmanager.deploy_queue.enabled', true);
+    }
+
+    private function isEnterpriseEdition(): bool
+    {
+        return app(EditionService::class)->current() === EditionService::ENTERPRISE;
+    }
+
+    private function shouldAutoCheckHealth(Project $project): bool
+    {
+        return $project->hasSuccessfulDeployment();
+    }
+
+    /**
+     * @param  Collection<int, Project>  $projects
+     */
+    private function runHealthChecks(DeploymentService $service, $projects, bool $force = false): void
+    {
+        foreach ($projects as $project) {
+            if ($force) {
+                $service->checkHealth($project);
+
+                continue;
+            }
+
+            if (
+                $this->shouldAutoCheckHealth($project)
+                && (! $project->health_checked_at || $project->health_checked_at->lt(now()->subMinute()))
+            ) {
+                $service->checkHealth($project);
+            }
+        }
+    }
+
+    /**
+     * @param  Collection<int, Project>  $projects
+     */
+    private function runUpdateChecks(DeploymentService $service, $projects, bool $autoNotify): void
+    {
+        foreach ($projects as $project) {
+            $updatesCheckedAt = $project->updates_checked_at;
+            if (is_string($updatesCheckedAt)) {
+                $updatesCheckedAt = Carbon::parse($updatesCheckedAt);
+            }
+
+            if (! $updatesCheckedAt || $updatesCheckedAt->lt(now()->subMinutes(5))) {
+                $wasAvailable = (bool) $project->updates_available;
+                try {
+                    $hasUpdates = $service->checkForUpdates($project);
+                } catch (\Throwable) {
+                    $this->markUpdateCheckAttempt($project);
+
+                    continue;
+                }
+
+                $queued = false;
+                if (! $wasAvailable && $hasUpdates && $project->auto_deploy && $this->queueEnabled()) {
+                    app(DeploymentQueueService::class)->enqueue($project, 'deploy', ['reason' => 'auto_update'], Auth::user());
+                    $queued = true;
+                }
+
+                if (! $queued && $project->hasSuccessfulDeployment()) {
+                    $service->checkHealth($project, false, $autoNotify);
+                }
+            }
+        }
+
+        $service->flushHealthNotifications();
+    }
+
+    private function markUpdateCheckAttempt(Project $project): void
+    {
+        $project->last_checked_at = now();
+        $project->updates_checked_at = now();
+        $project->save();
+    }
+
+    /**
+     * @param  array<int, array<string, array<string, mixed>>>  $results
+     */
+    private function dispatchAuditToast(array $results): void
+    {
+        $summary = $this->summarizeProjectAuditResults($results);
+
+        if ($summary['remaining'] > 0) {
+            $label = $summary['remaining'] === 1 ? '1 vulnerability' : "{$summary['remaining']} vulnerabilities";
+            $projects = $summary['projects_with_issues'] === 1
+                ? '1 project'
+                : "{$summary['projects_with_issues']} projects";
+            $this->dispatch('notify', message: "Vulnerabilities found in {$projects} ({$label} total). Open the Security tab to resolve them.", type: 'error');
+
+            return;
+        }
+
+        if ($summary['failed'] > 0) {
+            $this->dispatch('notify', message: 'Audit checks completed with errors. Check the logs for details.', type: 'warning');
+
+            return;
+        }
+
+        $this->dispatch('notify', message: 'Audit checks complete. No vulnerabilities found.', type: 'success');
+    }
+
+    /**
+     * @param  array<int, array<string, array<string, mixed>>>  $results
+     * @return array{remaining: int, failed: int, projects_with_issues: int}
+     */
+    private function summarizeProjectAuditResults(array $results): array
+    {
+        $remaining = 0;
+        $failed = 0;
+        $projectsWithIssues = 0;
+
+        foreach ($results as $projectResults) {
+            if (! is_array($projectResults)) {
+                continue;
+            }
+
+            $projectRemaining = 0;
+            foreach ($projectResults as $result) {
+                if (! is_array($result)) {
+                    continue;
+                }
+
+                if (($result['status'] ?? '') === 'failed') {
+                    $failed++;
+                }
+
+                $count = $result['remaining'] ?? null;
+                if (is_numeric($count)) {
+                    $projectRemaining += (int) $count;
+                }
+            }
+
+            if ($projectRemaining > 0) {
+                $projectsWithIssues++;
+                $remaining += $projectRemaining;
+            }
+        }
+
+        return [
+            'remaining' => $remaining,
+            'failed' => $failed,
+            'projects_with_issues' => $projectsWithIssues,
+        ];
     }
 }

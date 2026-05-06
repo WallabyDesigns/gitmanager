@@ -30,6 +30,22 @@ class ConsoleOutputTest extends TestCase
         );
     }
 
+    public function test_sourceguardian_loader_banner_is_removed_from_console_output(): void
+    {
+        $output = implode("\n", [
+            'Starting update',
+            'SourceGuardian requires Zend Engine API version 420220829.',
+            'The Zend Engine API version 420230831 which is installed, is newer.',
+            'Contact SourceGuardian Ltd. at https://www.sourceguardian.com/ for a later version of SourceGuardian.',
+            'Actual useful output',
+        ]);
+
+        $this->assertSame(
+            "Starting update\nActual useful output",
+            ConsoleOutput::withoutPhpWarnings($output)
+        );
+    }
+
     public function test_stored_output_logs_are_sanitized_when_read(): void
     {
         $project = Project::factory()->create(['user_id' => User::factory()]);
