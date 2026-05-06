@@ -46,6 +46,21 @@ class ConsoleOutputTest extends TestCase
         );
     }
 
+    public function test_successful_php_lint_lines_are_removed_from_console_output(): void
+    {
+        $output = implode("\n", [
+            'Validating application views after update.',
+            'No syntax errors detected in /home/example/storage/framework/views/abc.php',
+            'No syntax errors detected in E:\\sites\\app\\storage\\framework\\views\\def.php',
+            'Compiled view validation complete.',
+        ]);
+
+        $this->assertSame(
+            "Validating application views after update.\nCompiled view validation complete.",
+            ConsoleOutput::withoutPhpWarnings($output)
+        );
+    }
+
     public function test_stored_output_logs_are_sanitized_when_read(): void
     {
         $project = Project::factory()->create(['user_id' => User::factory()]);
