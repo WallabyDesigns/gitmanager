@@ -29,6 +29,7 @@
                     <form method="POST" action="{{ route('checkout.enterprise') }}">
                         @csrf
                         <input type="hidden" name="force_live" value="1">
+                        <input type="hidden" name="locale" value="{{ \App\Support\LanguageOptions::normalize(auth()->user()?->locale ?? session('locale') ?? app()->getLocale()) }}">
                         <button type="submit" class="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
                             {{ __('Open Live Stripe Checkout') }}
                         </button>
@@ -66,6 +67,7 @@
                     <form method="POST" action="{{ route('checkout.enterprise') }}">
                         @csrf
                         <input type="hidden" name="force_live" value="1">
+                        <input type="hidden" name="locale" value="{{ \App\Support\LanguageOptions::normalize(auth()->user()?->locale ?? session('locale') ?? app()->getLocale()) }}">
                         <button type="submit" class="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
                             Open Live Stripe Checkout
                         </button>
