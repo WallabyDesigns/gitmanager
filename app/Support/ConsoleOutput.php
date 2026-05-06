@@ -35,6 +35,10 @@ class ConsoleOutput
                 continue;
             }
 
+            if (preg_match('/^\s*No\s+syntax\s+errors\s+detected\s+in\s+.+$/i', $line)) {
+                continue;
+            }
+
             $filtered[] = $line;
         }
 

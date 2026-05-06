@@ -73,6 +73,17 @@
   transition-delay: 0s;
 }
 
+[dir="rtl"] .gwm-spinner-wrap {
+  margin-right: 0;
+  margin-left: 0;
+  transition-property: opacity, max-width, max-height, margin-left;
+}
+
+[dir="rtl"] .gwm-spinner-wrap.gwm-spinner-visible {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
 .gwm-spinner {
   animation: gwm-spin 1s linear infinite;
 }
