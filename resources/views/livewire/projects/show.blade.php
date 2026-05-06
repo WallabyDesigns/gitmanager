@@ -58,7 +58,7 @@
                 @if ($permissionsEnforced)
                     <button type="button" wire:click="fixPermissions" class="inline-flex items-center justify-center rounded-md border border-amber-300/60 px-3 py-1.5 text-xs font-semibold text-amber-100 hover:border-white hover:text-white">
                         <x-loading-spinner target="fixPermissions" />
-                        Run Fix Permissions
+                        {{ __('Run Fix Permissions') }}
                     </button>
                 @endif
             </div>
@@ -75,22 +75,22 @@
                             : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300';
                     @endphp
                     <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $healthClass }}">
-                        {{ $healthLabel }}
+                        {{ __($healthLabel) }}
                     </span>
                     @if ($composerIssue ?? false)
                         <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-                            Composer Issue
+                            {{ __('Composer Issue') }}
                         </span>
                     @endif
                     @if ($npmIssue ?? false)
                         <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-                            Npm Issue
+                            {{ __('NPM Issue') }}
                         </span>
                     @endif
                     <span class="text-xs text-slate-500 dark:text-slate-400">{{ __('Last checked:') }} {{ \App\Support\DateFormatter::forUser($project->health_checked_at, 'M j, Y g:i a', __('Never')) }}</span>
                     @if ($project->health_issue_message)
                         <span class="text-xs text-amber-700 dark:text-amber-300">
-                            Laravel check: {{ $project->health_issue_message }}
+                            {{ __('Laravel check') }}: {{ $project->health_issue_message }}
                         </span>
                     @endif
                 </div>
@@ -128,14 +128,14 @@
                     @if ($isEnterprise ?? false)
                         <button type="button" wire:click="auditProject" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300 inline-flex items-center">
                             <x-loading-spinner target="auditProject" />
-                            Audit Project
+                            {{ __('Audit Project') }}
                         </button>
                     @else
                         <button type="button" onclick="window.dispatchEvent(new CustomEvent('gwm-open-enterprise-modal', { detail: { feature: 'Automatic Project & Container Audits' } }));" class="px-3 py-2 text-sm rounded-md border border-amber-300 text-amber-700 hover:text-amber-800 dark:border-amber-500/60 dark:text-amber-300 inline-flex items-center gap-1.5">
                             <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                 <path fill-rule="evenodd" d="M10 1a4 4 0 00-4 4v2H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-1V5a4 4 0 00-4-4zm-2 6V5a2 2 0 114 0v2H8z" clip-rule="evenodd" />
                             </svg>
-                            Audit Project
+                            {{ __('Audit Project') }}
                         </button>
                     @endif
                     @if ($permissionsEnforced)
@@ -164,13 +164,13 @@
                         @php
                             $lastDeploy = $project->last_deployed_at ?? ($lastSuccessfulDeploy?->started_at ?? null);
                         @endphp
-                        {{ \App\Support\DateFormatter::forUser($lastDeploy, 'M j, Y g:i a', 'Never') }}
+                        {{ \App\Support\DateFormatter::forUser($lastDeploy, 'M j, Y g:i a', __('Never')) }}
                     </div>
                     <div class="text-xs text-slate-400 dark:text-slate-500">
                         {{ $project->last_deployed_hash ?? ($lastSuccessfulDeploy?->to_hash ?? __('No hash yet')) }}
                     </div>
                     <div class="text-xs text-slate-400 dark:text-slate-500">
-                        {{ __('Last checked: :date', ['date' => \App\Support\DateFormatter::forUser($project->updates_checked_at, 'M j, Y g:i a', 'Never')]) }}
+                        {{ __('Last checked: :date', ['date' => \App\Support\DateFormatter::forUser($project->updates_checked_at, 'M j, Y g:i a', __('Never'))]) }}
                     </div>
                 </div>
                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
@@ -275,7 +275,7 @@
                             @php($hasEnvWarnings = $deployment->action === 'composer_audit' && $deployment->output_log && (str_contains($deployment->output_log, 'PHP Warning:') || str_contains($deployment->output_log, 'SourceGuardian requires')))
                             @if ($hasEnvWarnings)
                                 <div class="mt-2 text-xs text-amber-500">
-                                    Environment warnings detected (PHP extensions). Audit results are still valid.
+                                    {{ __('Environment warnings detected (PHP extensions). Audit results are still valid.') }}
                                 </div>
                             @endif
                             @if ($deployment->output_log)
@@ -315,25 +315,25 @@
             <div class="flex flex-wrap gap-2">
                 <button type="button" wire:click="checkUpdates" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 inline-flex items-center">
                     <x-loading-spinner target="checkUpdates" />
-                    Check Updates
+                    {{ __('Check Updates') }}
                 </button>
                 @if ($isEnterprise ?? false)
                     <button type="button" wire:click="auditProject" class="px-3 py-2 text-sm rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300 inline-flex items-center">
                         <x-loading-spinner target="auditProject" />
-                        Audit Project
+                        {{ __('Audit Project') }}
                     </button>
                 @else
                     <button type="button" onclick="window.dispatchEvent(new CustomEvent('gwm-open-enterprise-modal', { detail: { feature: 'Automatic Project & Container Audits' } }));" class="px-3 py-2 text-sm rounded-md border border-amber-300 text-amber-700 hover:text-amber-800 dark:border-amber-500/60 dark:text-amber-300 inline-flex items-center gap-1.5">
                         <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                             <path fill-rule="evenodd" d="M10 1a4 4 0 00-4 4v2H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-1V5a4 4 0 00-4-4zm-2 6V5a2 2 0 114 0v2H8z" clip-rule="evenodd" />
                         </svg>
-                        Audit Project
+                        {{ __('Audit Project') }}
                     </button>
                 @endif
                 @if ($rollbackAvailable)
                     <button type="button" wire:click="rollback" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
                         <x-loading-spinner target="rollback" />
-                        Rollback
+                        {{ __('Rollback') }}
                     </button>
                 @endif
             </div>
@@ -356,12 +356,12 @@
                                 <div class="flex items-center gap-2">
                                     @if ($activeCommit && $commit['hash'] === $activeCommit)
                                         <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
-                                            Active
+                                            {{ __('Active') }}
                                         </span>
                                     @else
                                         <button type="button" wire:click="createPreviewForCommit('{{ $commit['hash'] }}')" class="px-3 py-2 text-sm rounded-md border border-indigo-300 text-indigo-600 hover:text-indigo-800 dark:border-indigo-500/50 dark:text-indigo-300 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
                                             <x-loading-spinner target="createPreviewForCommit" />
-                                            Create Preview
+                                            {{ __('Create Preview') }}
                                         </button>
                                     @endif
                                 </div>
@@ -380,7 +380,7 @@
                     <x-text-input id="preview_commit" class="block w-full sm:max-w-md {{ $actionDisabledClass }}" wire:model.live="previewCommit" placeholder="origin/main or commit hash" {{ $permissionsLocked ? 'disabled' : '' }} />
                     <button type="button" wire:click="createPreview" class="px-3 py-2 text-sm rounded-md bg-slate-900 text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
                         <x-loading-spinner target="createPreview" />
-                        Create Preview
+                        {{ __('Create Preview') }}
                     </button>
                 </div>
             </div>
@@ -412,16 +412,16 @@
                             </div>
                             @php($warn = $deployment->status === 'warning' || ($deployment->status === 'failed' && str_contains($deployment->output_log ?? '', 'stashed changes could not be restored')))
                             <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $warn ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' : ($deployment->status === 'success' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : ($deployment->status === 'failed' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300')) }}">
-                                {{ $warn ? 'warning' : $deployment->status }}
+                                {{ __( $warn ? 'warning' : $deployment->status ) }}
                             </span>
                         </div>
                             <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
-                                {{ \App\Support\DateFormatter::forUser($deployment->started_at, 'M j, Y g:i a', 'Queued') }}
+                                {{ \App\Support\DateFormatter::forUser($deployment->started_at, 'M j, Y g:i a', __('Queued')) }}
                             </div>
                             @php($hasEnvWarnings = $deployment->action === 'composer_audit' && $deployment->output_log && (str_contains($deployment->output_log, 'PHP Warning:') || str_contains($deployment->output_log, 'SourceGuardian requires')))
                             @if ($hasEnvWarnings)
                                 <div class="mt-2 text-xs text-amber-500">
-                                    Environment warnings detected (PHP extensions). Audit results are still valid.
+                                    {{ __('Environment warnings detected (PHP extensions). Audit results are still valid.') }}
                                 </div>
                             @endif
                         @if ($deployment->from_hash || $deployment->to_hash)

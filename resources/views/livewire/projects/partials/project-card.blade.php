@@ -37,32 +37,32 @@
             <div class="mt-2 flex flex-wrap items-center gap-2">
                 @if ($hasHealthMonitoring)
                 <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $healthClass }}">
-                    {{ $healthLabel }}
+                    {{ __( $healthLabel ) }}
                 </span>
                 @endif
                 @if ($permissionsIssue)
                     <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-                        Permissions
+                        {{ __('Permissions') }}
                     </span>
                 @endif
                 @if ($project->updates_available)
                     <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
-                        Updates Available
+                        {{ __('Updates Available') }}
                     </span>
                 @endif
                 @if (($project->audit_open_count ?? 0) > 0)
                     <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
-                        Vulnerabilities found
+                        {{ __('Vulnerabilities found') }}
                     </span>
                 @endif
                 @if ($composerIssue)
                     <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-                        Composer Issue
+                        {{ __('Composer Issue') }}
                     </span>
                 @endif
                 @if ($npmIssue)
                     <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-                        Npm Issue
+                        {{ __('Npm Issue') }}
                     </span>
                 @endif
                 @if ($project->ftp_enabled)
@@ -72,43 +72,44 @@
                 @endif
                 @if ($ftpNeedsTest)
                     <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        FTP Needs Test
+                        {{ __('FTP Needs Test') }}
                     </span>
                 @endif
                 @if ($sshNeedsTest)
                     <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        SSH Needs Test
+                        {{ __('SSH Needs Test') }}
                     </span>
                 @endif
                 @if ($ftpIssue)
                     <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
                         FTP Issue
+                        FTP {{ __('Issue') }}
                     </span>
                 @endif
                 @if ($sshIssue)
                     <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
-                        SSH Issue
+                        SSH {{ __('Issue') }}
                     </span>
                 @endif
                 @if (in_array($project->id, $queueProjects ?? [], true))
                     <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                        In Queue
+                        {{ __('In Queue') }}
                     </span>
                 @endif
                 @if (in_array($project->id, $auditInProcess ?? [], true))
                     <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-                        Audit in process
+                        {{ __('Audit in process') }}
                     </span>
                 @endif
                 @if (in_array($project->id, $buildInProcess ?? [], true))
                     <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
-                        Build in process
+                        {{ __('Build in process') }}
                     </span>
                 @endif
             </div>
             @if ($project->directory_path)
                 <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
-                    Folder: {{ $project->directory_path }}
+                    {{ __('Folder') }}: {{ $project->directory_path }}
                 </div>
             @endif
             @if ($project->site_url)
@@ -121,12 +122,12 @@
             <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
                 @php($lastDeploy = $project->last_deployed_at ?? ($project->last_successful_deploy_at ?? null))
                 @php($lastChecked = $project->updates_checked_at)
-                Last deployed: {{ \App\Support\DateFormatter::forUser($lastDeploy, 'M j, Y g:i a', 'Never') }}.
-                Last checked: {{ \App\Support\DateFormatter::forUser($lastChecked, 'M j, Y g:i a', 'Never') }}
+                {{ __('Last deployed') }}: {{ \App\Support\DateFormatter::forUser($lastDeploy, 'M j, Y g:i a', __('Never')) }}.
+                {{ __('Last checked') }}: {{ \App\Support\DateFormatter::forUser($lastChecked, 'M j, Y g:i a', __('Never')) }}
             </div>
             @if ($hasHealthMonitoring)
             <div class="mt-1 text-xs text-slate-400 dark:text-slate-500">
-                Last health check: {{ \App\Support\DateFormatter::forUser($project->health_checked_at, 'M j, Y g:i a', 'Never') }}
+                {{ __('Last health check') }}: {{ \App\Support\DateFormatter::forUser($project->health_checked_at, 'M j, Y g:i a', __('Never')) }}
             </div>
             @endif
         </div>

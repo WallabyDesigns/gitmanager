@@ -48,7 +48,7 @@
                                 wire:key="queue-status-{{ $value }}"
                                 wire:click="setStatusFilter('{{ $value }}')"
                                 class="px-3 py-2 text-sm border-b-2 {{ $statusFilter === $value ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
-                            {{ $label }}
+                            {{ __($label) }}
                         </button>
                     @endforeach
                 </div>
@@ -56,8 +56,8 @@
                 <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-200 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 flex-1">
                         <label class="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-400">
-                            Search
-                            <input type="text" wire:model.live.debounce.400ms="search" placeholder="Project name or action" class="w-full rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none">
+                            {{ __('Search') }}
+                            <input type="text" wire:model.live.debounce.400ms="search" placeholder="{{ __('Project name or action') }}" class="w-full rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none">
                         </label>
                         <label class="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-400">
                             {{ __('Status') }}
