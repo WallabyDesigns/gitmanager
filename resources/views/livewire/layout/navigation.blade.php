@@ -92,7 +92,7 @@ new class extends Component
                             <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
                             </svg>
-                            Containers
+                            {{ __('Containers') }}
                         </button>
                     @endif
                     @if (auth()->user()?->isAdmin())
@@ -125,7 +125,7 @@ new class extends Component
                                     </span>
                                 @elseif ($updateAvailable)
                                     <span class="inline-flex items-center justify-center rounded-full bg-amber-400/20 px-1.5 py-0.5 text-xs text-amber-700 dark:text-amber-200">
-                                        NEW
+                                        {{ __('New') }}
                                     </span>
                                 @endif
                             </span>

@@ -153,6 +153,7 @@
                             @auth
                                 <form method="POST" action="{{ route('checkout.enterprise') }}" id="gwm-enterprise-checkout-form">
                                     @csrf
+                                    <input type="hidden" name="locale" value="{{ \App\Support\LanguageOptions::normalize(auth()->user()?->locale ?? session('locale') ?? app()->getLocale()) }}">
                                 </form>
                                 <button type="button" @click="open = false; document.getElementById('gwm-enterprise-checkout-form').submit()" class="inline-flex items-center rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-400">
                                     {{ __('Continue to Checkout') }}
