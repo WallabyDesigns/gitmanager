@@ -4,7 +4,7 @@
         <button
             type="button"
             @click="open = !open"
-            class="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200/70 dark:border-slate-700 bg-white dark:bg-slate-900/60 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 transition"
+            class="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-200 hover:border-slate-600 transition"
             aria-haspopup="true"
             :aria-expanded="open"
         >
@@ -26,14 +26,14 @@
             x-transition:leave="transition ease-in duration-75"
             x-transition:leave-start="opacity-100 scale-100"
             x-transition:leave-end="opacity-0 scale-95"
-            class="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border border-slate-200/70 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg overflow-hidden"
+            class="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border border-slate-700 bg-slate-900 shadow-lg overflow-hidden"
             role="menu"
         >
             <button
                 type="button"
                 wire:click="setTab('list')"
                 @click="open = false"
-                class="flex w-full items-center px-4 py-3 text-sm transition {{ $tab === 'list' ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-medium' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800' }}"
+                class="flex w-full items-center px-4 py-3 text-sm transition {{ $tab === 'list' ? 'bg-indigo-500/10 font-medium' : 'text-slate-200 hover:bg-slate-800' }}"
                 role="menuitem"
             >
                 {{ __('Users') }}
@@ -42,7 +42,7 @@
                 type="button"
                 wire:click="setTab('create')"
                 @click="open = false"
-                class="flex w-full items-center px-4 py-3 text-sm transition border-t border-slate-100 dark:border-slate-800 {{ $tab === 'create' ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-medium' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800' }}"
+                class="flex w-full items-center px-4 py-3 text-sm transition border-t border-slate-800 {{ $tab === 'create' ? 'bg-indigo-500/10 font-medium' : 'text-slate-200 hover:bg-slate-800' }}"
                 role="menuitem"
             >
                 {{ __('Create User') }}
@@ -51,15 +51,15 @@
     </div>
 
     {{-- Desktop: horizontal tabs (hidden on mobile) --}}
-    <div class="hidden sm:flex flex-wrap gap-2 border-b border-slate-200/70 dark:border-slate-800">
+    <div class="hidden sm:flex flex-wrap gap-2 border-b border-slate-800">
         <button type="button"
                 wire:click="setTab('list')"
-                class="px-3 py-2 text-sm border-b-2 {{ $tab === 'list' ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
+                class="px-3 py-2 text-sm border-b-2 {{ $tab === 'list' ? 'border-indigo-500' : 'border-transparent text-slate-400 hover:text-slate-200' }}">
             {{ __('Users') }}
         </button>
         <button type="button"
                 wire:click="setTab('create')"
-                class="px-3 py-2 text-sm border-b-2 {{ $tab === 'create' ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
+                class="px-3 py-2 text-sm border-b-2 {{ $tab === 'create' ? 'border-indigo-500' : 'border-transparent text-slate-400 hover:text-slate-200' }}">
             {{ __('Create User') }}
         </button>
     </div>

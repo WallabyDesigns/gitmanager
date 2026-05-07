@@ -93,7 +93,7 @@ new #[Layout('layouts.guest')] class extends Component
                 wire:model="locale"
                 id="locale"
                 name="locale"
-                class="block mt-1 w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                class="block mt-1 w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border-slate-700 bg-slate-950 text-slate-100"
             >
                 @foreach (LanguageOptions::all() as $locale => $label)
                     <option value="{{ $locale }}">{{ $label }}</option>

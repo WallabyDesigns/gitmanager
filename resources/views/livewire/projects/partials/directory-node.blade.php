@@ -10,7 +10,7 @@
 
 <details
     wire:key="project-folder-{{ md5($folderPath) }}"
-    class="rounded-lg border border-slate-200/70 bg-slate-900/30 dark:border-slate-800 p-3"
+    class="rounded-lg border bg-slate-900/30 border-slate-800 p-3"
     x-data="{
         key: @js($folderKey),
         open: false,
@@ -34,37 +34,37 @@
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     @if (($issueCounts['permissions'] ?? 0) > 0)
-                        <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                        <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-500/10 text-amber-300">
                             Permissions {{ $issueCounts['permissions'] }}
                         </span>
                     @endif
                     @if (($issueCounts['updates'] ?? 0) > 0)
-                        <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
+                        <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-indigo-500/10 text-indigo-300">
                             Updates {{ $issueCounts['updates'] }}
                         </span>
                     @endif
                     @if (($issueCounts['vulnerabilities'] ?? 0) > 0)
-                        <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+                        <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-500/10 text-rose-300">
                             Vulnerabilities {{ $issueCounts['vulnerabilities'] }}
                         </span>
                     @endif
                     @if (($issueCounts['composer'] ?? 0) > 0)
-                        <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                        <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-500/10 text-amber-300">
                             Composer {{ $issueCounts['composer'] }}
                         </span>
                     @endif
                     @if (($issueCounts['npm'] ?? 0) > 0)
-                        <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                        <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-500/10 text-amber-300">
                             Npm {{ $issueCounts['npm'] }}
                         </span>
                     @endif
                     @if (($issueCounts['ftp'] ?? 0) > 0)
-                        <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+                        <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-500/10 text-rose-300">
                             FTP {{ $issueCounts['ftp'] }}
                         </span>
                     @endif
                     @if (($issueCounts['ssh'] ?? 0) > 0)
-                        <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+                        <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-rose-500/10 text-rose-300">
                             SSH {{ $issueCounts['ssh'] }}
                         </span>
                     @endif

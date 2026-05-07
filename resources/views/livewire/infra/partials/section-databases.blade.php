@@ -1,14 +1,14 @@
 <div>
-    <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">{{ __('Databases') }}</h2>
-    <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{{ __('Detected running MySQL, PostgreSQL, MongoDB, Redis, and other database containers. Launch Adminer to browse them in-browser.') }}</p>
+    <h2 class="text-base font-semibold text-slate-100">{{ __('Databases') }}</h2>
+    <p class="text-sm text-slate-400 mt-0.5">{{ __('Detected running MySQL, PostgreSQL, MongoDB, Redis, and other database containers. Launch Adminer to browse them in-browser.') }}</p>
 </div>
 
 @if (count($containers) === 0)
-    <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-12 text-center space-y-3">
+    <div class="rounded-xl border border-dashed border-slate-700 p-12 text-center space-y-3">
         <svg class="mx-auto h-10 w-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.25"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg>
-        <p class="text-sm font-medium text-slate-600 dark:text-slate-400">{{ __('No databases found.') }}</p>
+        <p class="text-sm font-medium text-slate-400">{{ __('No databases found.') }}</p>
         <a href="{{ route('infra.containers.section', 'templates') }}"
-           class="inline-flex items-center text-sm text-indigo-600 dark:text-indigo-400 hover:underline">
+           class="inline-flex items-center text-sm text-indigo-400 hover:underline">
             {{ __('Create a database →') }}
         </a>
     </div>
@@ -30,23 +30,22 @@
                 };
                 $canAdminer = in_array($dbType, ['MySQL', 'MariaDB', 'PostgreSQL'], true);
             @endphp
-            <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+            <div class="rounded-xl border border-slate-800 bg-slate-900 p-5">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
                         <div class="flex items-center gap-2 flex-wrap">
-                            <h3 class="font-semibold text-slate-900 dark:text-slate-100 truncate">{{ $name }}</h3>
-                            <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium
-                                {{ $state === 'running' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400' }}">
+                            <h3 class="font-semibold text-slate-100 truncate">{{ $name }}</h3>
+                            <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium {{ $state === 'running' ? 'bg-emerald-500/10 text-emerald-300' : 'bg-slate-800 text-slate-400' }}">
                                 <span class="h-1.5 w-1.5 rounded-full {{ $state === 'running' ? 'bg-emerald-500' : 'bg-slate-400' }}"></span>
                                 {{ ucfirst($state) }}
                             </span>
                         </div>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-mono">{{ $c['Image'] ?? '' }}</p>
+                        <p class="text-xs text-slate-400 mt-1 font-mono">{{ $c['Image'] ?? '' }}</p>
                         @if ($ports)
-                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ __('Ports') }}: {{ $ports }}</p>
+                            <p class="text-xs text-slate-400 mt-0.5">{{ __('Ports') }}: {{ $ports }}</p>
                         @endif
                     </div>
-                    <span class="shrink-0 inline-flex rounded-md bg-blue-100 dark:bg-blue-500/10 px-2 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300">{{ $dbType }}</span>
+                    <span class="shrink-0 inline-flex rounded-md bg-blue-500/10 px-2 py-1 text-xs font-semibold text-blue-300">{{ $dbType }}</span>
                 </div>
 
                 <div class="mt-4 flex flex-wrap gap-2">
@@ -58,11 +57,11 @@
                         </button>
                     @endif
                     <button wire:click="viewLogs('{{ $c['ID'] ?? '' }}')"
-                            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:border-indigo-300 hover:text-indigo-600 transition">
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-400 hover:border-indigo-300 hover:text-indigo-600 transition">
                         {{ __('Logs') }}
                     </button>
                     <button wire:click="inspectContainer('{{ $c['ID'] ?? '' }}')"
-                            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:border-slate-400 transition">
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-400 hover:border-slate-400 transition">
                         {{ __('Inspect') }}
                     </button>
                 </div>
@@ -75,9 +74,9 @@
     </div>
 
     {{-- Adminer tip --}}
-    <div class="rounded-xl border border-amber-100 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/20 p-4 flex items-start gap-3">
+    <div class="rounded-xl border border-amber-800/40 bg-amber-950/20 p-4 flex items-start gap-3">
         <svg class="h-5 w-5 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
-        <div class="text-sm text-amber-800 dark:text-amber-300">
+        <div class="text-sm text-amber-300">
             <strong>{{ __('Tip') }}:</strong> {{ __('For Redis, use the :redis1 or :redis2 template in the Templates tab for a dedicated browser UI. For MongoDB, use :mongo.', ['redis1' => '<strong>RedisInsight</strong>', 'redis2' => '<strong>Redis Commander</strong>', 'mongo' => '<strong>mongo-express</strong>']) }}
         </div>
     </div>

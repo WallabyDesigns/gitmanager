@@ -5,7 +5,7 @@
             @include('livewire.projects.partials.tabs', ['showBulkActions' => true])
             
             <div class="mt-6 sm:mt-0 space-y-4">
-                <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-200 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-200 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 flex-1">
                         <label class="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-400">
                             {{ __('Search') }}
@@ -31,7 +31,7 @@
                 @endphp
     
                 @if (! $hasProjects)
-                    <div class="rounded-lg border border-dashed border-slate-300/70 dark:border-slate-700 p-6 text-sm text-slate-500 dark:text-slate-400">
+                    <div class="rounded-lg border border-dashed border-slate-700 p-6 text-sm text-slate-400">
                         {{ __('No projects yet. Add one above to get started.') }}
                     </div>
                 @else

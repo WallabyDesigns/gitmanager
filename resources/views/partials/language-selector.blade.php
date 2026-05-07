@@ -11,7 +11,7 @@
 @if ($floating)
     <button
         type="button"
-        class="fixed right-4 top-4 z-[1200] inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white"
+        class="fixed right-4 top-4 z-[1200] inline-flex h-9 w-9 items-center justify-center rounded-lg border shadow-sm transition focus:outline-none border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white"
         aria-label="{{ __('Choose language') }}"
         title="{{ __('Choose language') }}"
         data-gwm-language-open
@@ -24,13 +24,13 @@
 
 <div id="gwm-language-modal" class="fixed inset-0 z-[1400] hidden items-center justify-center px-4 py-6" aria-hidden="true">
     <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" data-gwm-language-close></div>
-    <div class="relative w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+    <div class="relative w-full max-w-md rounded-xl border p-6 shadow-2xl border-slate-800 bg-slate-900">
         <div class="flex items-start justify-between gap-3">
             <div>
-                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Language') }}</h3>
-                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ __('Current language: :language', ['language' => $currentLanguage]) }}</p>
+                <h3 class="text-lg font-semibold text-slate-100">{{ __('Language') }}</h3>
+                <p class="mt-1 text-sm text-slate-400">{{ __('Current language: :language', ['language' => $currentLanguage]) }}</p>
             </div>
-            <button type="button" class="rounded-md p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100" aria-label="{{ __('Close language selector') }}" data-gwm-language-close>
+            <button type="button" class="rounded-md p-2 transition text-slate-300 hover:bg-slate-800 hover:text-slate-100" aria-label="{{ __('Close language selector') }}" data-gwm-language-close>
                 <svg class="h-5 w-5" stroke="currentColor" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -39,11 +39,11 @@
 
         <form method="POST" action="{{ \Illuminate\Support\Facades\Route::has('language.update') ? route('language.update') : url('/language') }}" class="mt-5 space-y-4">
             @csrf
-            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" for="gwm-language-select">{{ __('Display Language') }}</label>
+            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400" for="gwm-language-select">{{ __('Display Language') }}</label>
             <select
                 id="gwm-language-select"
                 name="locale"
-                class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                class="w-full rounded-md border px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border-slate-700 bg-slate-950 text-slate-100"
             >
                 @foreach ($languageOptions as $locale => $label)
                     <option value="{{ $locale }}" @selected($currentLocale === $locale)>{{ $label }}</option>
@@ -51,7 +51,7 @@
             </select>
 
             <div class="flex flex-wrap items-center justify-end gap-2">
-                <button type="button" class="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white" data-gwm-language-close>
+                <button type="button" class="rounded-md border px-4 py-2 text-sm transition border-slate-700 text-slate-200 hover:text-white" data-gwm-language-close>
                     {{ __('Cancel') }}
                 </button>
                 <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500">
