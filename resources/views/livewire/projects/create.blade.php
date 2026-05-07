@@ -2,33 +2,33 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid gap-6 lg:grid-cols-[260px,1fr]">
             @include('livewire.projects.partials.tabs')
-            <div class="bg-white dark:bg-slate-900 shadow-sm sm:rounded-xl border border-slate-200/60 dark:border-slate-800">
+            <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800">
                 <div class="p-6">
                     <div class="flex flex-wrap items-center justify-between gap-4">
                         <div>
-                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Add Project') }}</h3>
-                            <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('Use the wizard to configure a new project.') }}</p>
+                            <h3 class="text-lg font-semibold text-slate-100">{{ __('Add Project') }}</h3>
+                            <p class="text-sm text-slate-400">{{ __('Use the wizard to configure a new project.') }}</p>
                         </div>
-                        <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full {{ $step === 1 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-200 dark:bg-slate-800' }}">1</span>
+                        <div class="flex items-center gap-2 text-xs text-slate-400">
+                            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full {{ $step === 1 ? 'bg-slate-100 text-slate-900' : 'bg-slate-800' }}">1</span>
                             <span>{{ __('Setup') }}</span>
-                            <span class="text-slate-300 dark:text-slate-700">→</span>
-                            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full {{ $step === 2 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-200 dark:bg-slate-800' }}">2</span>
+                            <span class="text-slate-700">→</span>
+                            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full {{ $step === 2 ? 'bg-slate-100 text-slate-900' : 'bg-slate-800' }}">2</span>
                             <span>{{ __('Configuration') }}</span>
-                            <span class="text-slate-300 dark:text-slate-700">→</span>
-                            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full {{ $step === 3 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-200 dark:bg-slate-800' }}">3</span>
+                            <span class="text-slate-700">→</span>
+                            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full {{ $step === 3 ? 'bg-slate-100 text-slate-900' : 'bg-slate-800' }}">3</span>
                             <span>{{ __('Build & Deploy') }}</span>
                         </div>
                     </div>
 
                     @if (! $isEnterprise)
-                        <div class="mt-4 rounded-md border {{ $projectCount >= $communityProjectLimit ? 'border-amber-300/70 bg-amber-50/70 dark:border-amber-500/40 dark:bg-amber-500/10' : 'border-slate-200/70 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-950/40' }} px-4 py-3">
+                        <div class="mt-4 rounded-md border {{ $projectCount >= $communityProjectLimit ? 'border-amber-400/60 bg-amber-500/10' : 'border-slate-800 bg-slate-950/40' }} px-4 py-3">
                             <div class="flex flex-wrap items-center justify-between gap-3">
                                 <div class="text-xs">
-                                    <div class="font-semibold {{ $projectCount >= $communityProjectLimit ? 'text-amber-700 dark:text-amber-200' : 'text-slate-700 dark:text-slate-200' }}">
+                                    <div class="font-semibold {{ $projectCount >= $communityProjectLimit ? 'text-amber-300' : 'text-slate-200' }}">
                                         {{ __('Community project usage') }}: {{ $projectCount }} / {{ $communityProjectLimit }}
                                     </div>
-                                    <div class="mt-1 {{ $projectCount >= $communityProjectLimit ? 'text-amber-700 dark:text-amber-200' : 'text-slate-500 dark:text-slate-400' }}">
+                                    <div class="mt-1 {{ $projectCount >= $communityProjectLimit ? 'text-amber-300' : 'text-slate-400' }}">
                                         {{ $projectCount >= $communityProjectLimit ? __('Project creation is locked until you upgrade to Enterprise Edition.') : ($communityProjectLimit - $projectCount)." ".__(' remaining projects available on Community Edition.') }}
                                     </div>
                                 </div>
@@ -36,7 +36,7 @@
                                     <button
                                         type="button"
                                         onclick="window.dispatchEvent(new CustomEvent('gwm-open-enterprise-modal', { detail: { feature: 'Unlimited Projects' } }));"
-                                        class="inline-flex items-center rounded-md border border-amber-400/70 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100"
+                                        class="inline-flex items-center rounded-md border border-amber-400/70 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:text-amber-100"
                                     >
                                         {{ __('Upgrade') }}
                                     </button>
@@ -61,12 +61,12 @@
                             <div>
                                 <x-input-label for="directory_path" value="{{ __('Project Directory (optional)') }}" />
                                 <x-text-input id="directory_path" class="mt-1 block w-full" wire:model.live="form.directory_path" placeholder='{{__("Clients/Websites")}}' />
-                                <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ __('Use nested folders to organize projects. Leave blank to keep this project at the root level.') }}</p>
+                                <p class="mt-1 text-xs text-slate-500">{{ __('Use nested folders to organize projects. Leave blank to keep this project at the root level.') }}</p>
                                 <x-input-error :messages="$errors->get('form.directory_path')" class="mt-2" />
                             </div>
                             <div>
                                 <x-input-label for="project_type" value='{{__("Project Type")}}' />
-                                <select id="project_type" class="mt-1 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" wire:model.live="form.project_type">
+                                <select id="project_type" class="mt-1 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border-slate-700 bg-slate-900 text-slate-100" wire:model.live="form.project_type">
                                     @foreach ($projectTypes as $type)
                                         <option value="{{ $type['value'] }}">
                                             {{ $type['label'] }}{{ ! empty($type['locked']) ? ' 🔒' : '' }}
@@ -76,11 +76,11 @@
                                 @php
                                     $typeMeta = collect($projectTypes)->firstWhere('value', $form['project_type'] ?? 'custom');
                                 @endphp
-                                <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                                <p class="mt-1 text-xs text-slate-500">
                                     {{ __($typeMeta['description']) ?? '' }}
                                 </p>
                                 @if (! empty($typeMeta['locked']))
-                                    <p class="mt-1 text-xs text-amber-500 dark:text-amber-300">
+                                    <p class="mt-1 text-xs text-amber-300">
                                         {{ $typeMeta['locked_message'] ?? __('This project type is currently unavailable.') }}
                                     </p>
                                 @endif
@@ -94,7 +94,7 @@
                             <div>
                                 <x-input-label for="site_url" value="{{ __('Site URL') }}" />
                                 <x-text-input id="site_url" class="mt-1 block w-full" wire:model.live="form.site_url" placeholder="https://{{ __('example') }}.com" />
-                                <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ __('Main domain for this project. Used for quick links and as the default health check when Health Check URL is blank.') }}</p>
+                                <p class="mt-1 text-xs text-slate-500">{{ __('Main domain for this project. Used for quick links and as the default health check when Health Check URL is blank.') }}</p>
                                 <x-input-error :messages="$errors->get('form.site_url')" class="mt-2" />
                             </div>
                             <div>
@@ -105,23 +105,23 @@
                             <div class="sm:col-span-2">
                                 <x-input-label for="local_path" value="{{ __('Local Path') }}" />
                                 <x-text-input id="local_path" class="mt-1 block w-full" wire:model.live="form.local_path" placeholder="{{ __('/home/user/website') }}" />
-                                <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                                <p class="mt-1 text-xs text-slate-500">
                                     {!! __('For standard/SSH deploys, this is the local build path. For FTP-only deploys, this is the remote subdirectory appended to FTP Root Path (:ftpPath/:localPath), and builds run in a managed workspace. If FTP Root Path is blank and Local Path starts with :slash, it is treated as an absolute remote path.', ['ftpPath' => '<code>{FTP Root Path}</code>', 'localPath' => '<code>{Local Path}</code>', 'slash' => '<code>/</code>']) !!}</p>
                                 @if ($localPathUsageWarning)
-                                    <div class="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+                                    <div class="mt-2 rounded-md border px-3 py-2 text-xs border-amber-500/30 bg-amber-500/10 text-amber-300">
                                         {{ $localPathUsageWarning }}
                                     </div>
                                 @endif
-                                <label class="mt-2 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                <label class="mt-2 flex items-center gap-2 text-xs text-slate-400">
                                     <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="checkPermissions" />
                                     {{__("Check permissions for this path")}}
                                 </label>
                                 @if ($permissionStatus)
                                     @php
                                         $permissionClass = match ($permissionStatus) {
-                                            'ok', 'can_create' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300',
-                                            'needs_privilege' => 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300',
-                                            default => 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300',
+                                            'ok', 'can_create' => 'bg-emerald-500/10 text-emerald-300',
+                                            'needs_privilege' => 'bg-amber-500/10 text-amber-300',
+                                            default => 'bg-rose-500/10 text-rose-300',
                                         };
                                         $permissionLabel = match ($permissionStatus) {
                                             'ok' => 'Writable',
@@ -133,10 +133,10 @@
                                     @endphp
                                     <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
                                         <span class="px-2 py-1 rounded-full uppercase tracking-wide {{ $permissionClass }}">{{ $permissionLabel }}</span>
-                                        <span class="text-slate-500 dark:text-slate-400">{{ $permissionMessage }}</span>
+                                        <span class="text-slate-400">{{ $permissionMessage }}</span>
                                     </div>
                                     @if ($permissionParent)
-                                        <div class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ __('Parent:') }} {{ $permissionParent }}</div>
+                                        <div class="mt-1 text-xs text-slate-500">{{ __('Parent:') }} {{ $permissionParent }}</div>
                                     @endif
                                 @endif
                                 <x-input-error :messages="$errors->get('form.local_path')" class="mt-2" />
@@ -145,38 +145,38 @@
                                 <x-input-label for="health_url" value="{{ __('Health Check URL') }}" />
                                 <x-text-input id="health_url" class="mt-1 block w-full" wire:model.live="form.health_url" />
                                 @if (($form['project_type'] ?? 'custom') === 'laravel')
-                                    <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ __('Laravel apps often expose /up. Use a full URL or just /up to read APP_URL from the project, or leave blank to use the Site URL (defaults to /up).') }}</p>
+                                    <p class="mt-1 text-xs text-slate-500">{{ __('Laravel apps often expose /up. Use a full URL or just /up to read APP_URL from the project, or leave blank to use the Site URL (defaults to /up).') }}</p>
                                 @else
-                                    <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ __('Used for health checks. Provide a full URL or a path relative to the project base, or leave blank to use the Site URL.') }}</p>
+                                    <p class="mt-1 text-xs text-slate-500">{{ __('Used for health checks. Provide a full URL or a path relative to the project base, or leave blank to use the Site URL.') }}</p>
                                 @endif
                                 <x-input-error :messages="$errors->get('form.health_url')" class="mt-2" />
                             </div>
                             <div class="sm:col-span-2">
                                 <x-input-label for="exclude_paths" value="{{ __('Excluded Paths') }}" />
-                                <textarea id="exclude_paths" rows="4" class="mt-1 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" wire:model.live="form.exclude_paths" placeholder="storage/app/uploads&#10;public/uploads&#10;cache/*"></textarea>
-                                <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ __('One entry per line (or comma-separated). These paths are preserved during force deploy cleanup. The :storage folder is always excluded.', ['storage' => '<code>storage</code>']) }}</p>
+                                <textarea id="exclude_paths" rows="4" class="mt-1 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border-slate-700 bg-slate-900 text-slate-100" wire:model.live="form.exclude_paths" placeholder="storage/app/uploads&#10;public/uploads&#10;cache/*"></textarea>
+                                <p class="mt-1 text-xs text-slate-500">{{ __('One entry per line (or comma-separated). These paths are preserved during force deploy cleanup. The :storage folder is always excluded.', ['storage' => '<code>storage</code>']) }}</p>
                                 <x-input-error :messages="$errors->get('form.exclude_paths')" class="mt-2" />
                             </div>
                             <div class="sm:col-span-2">
                                 <x-input-label for="whitelist_paths" value="{{ __('Whitelist Paths') }}" />
-                                <textarea id="whitelist_paths" rows="4" class="mt-1 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" wire:model.live="form.whitelist_paths" placeholder="public/build&#10;public/assets&#10;index.php"></textarea>
-                                <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ __('One entry per line (or comma-separated). If empty, all project paths are allowed. When set, FTPS deploy sync only uploads matching files/directories.') }}</p>
+                                <textarea id="whitelist_paths" rows="4" class="mt-1 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border-slate-700 bg-slate-900 text-slate-100" wire:model.live="form.whitelist_paths" placeholder="public/build&#10;public/assets&#10;index.php"></textarea>
+                                <p class="mt-1 text-xs text-slate-500">{{ __('One entry per line (or comma-separated). If empty, all project paths are allowed. When set, FTPS deploy sync only uploads matching files/directories.') }}</p>
                                 <x-input-error :messages="$errors->get('form.whitelist_paths')" class="mt-2" />
                             </div>
                             <div class="sm:col-span-2">
-                                <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4 space-y-3">
+                                <div class="rounded-lg border border-slate-800 p-4 space-y-3">
                                         <div>
-                                            <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Remote Deployment (FTPS)') }}</div>
-                                            <p class="text-xs text-slate-500 dark:text-slate-400">{{ __('Sync build output to a remote host via FTPS after local deploys. If SSH deployment is enabled, builds run on the remote host and FTPS sync is skipped.') }}</p>
+                                            <div class="text-sm font-semibold text-slate-100">{{ __('Remote Deployment (FTPS)') }}</div>
+                                            <p class="text-xs text-slate-400">{{ __('Sync build output to a remote host via FTPS after local deploys. If SSH deployment is enabled, builds run on the remote host and FTPS sync is skipped.') }}</p>
                                         </div>
-                                    <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                    <label class="flex items-center gap-2 text-sm text-slate-300">
                                         <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.ftp_enabled" />
                                         {{ __('Enable FTPS sync for this project') }}
                                     </label>
                                     <div class="grid gap-3 sm:grid-cols-2">
                                             <div>
                                                 <x-input-label for="ftp_account_id" :value="__('Remote Access')" />
-                                                <select id="ftp_account_id" class="mt-1 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" wire:model.live="form.ftp_account_id" @disabled(! ($form['ftp_enabled'] ?? false))>
+                                                <select id="ftp_account_id" class="mt-1 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border-slate-700 bg-slate-900 text-slate-100" wire:model.live="form.ftp_account_id" @disabled(! ($form['ftp_enabled'] ?? false))>
                                                     <option value="">{{ __('Select access') }}</option>
                                                     @foreach ($ftpAccounts as $account)
                                                         <option value="{{ $account->id }}">{{ $account->name }} ({{ $account->host }})</option>
@@ -191,25 +191,25 @@
                                         </div>
                                     </div>
                                     <div class="flex flex-wrap items-center gap-3">
-                                        <button type="button" wire:click="testFtpConnection" class="px-3 py-2 text-xs rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100" @disabled(! ($form['ftp_enabled'] ?? false))>
+                                        <button type="button" wire:click="testFtpConnection" class="px-3 py-2 text-xs rounded-md border border-slate-700 text-slate-300 hover:text-slate-100" @disabled(! ($form['ftp_enabled'] ?? false))>
                                             {{ __('Test Connection') }}
                                         </button>
                                         @if ($ftpTestStatus)
                                             @php
                                                 $ftpClass = match ($ftpTestStatus) {
-                                                    'ok' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300',
-                                                    'warning' => 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300',
-                                                    default => 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300',
+                                                    'ok' => 'bg-emerald-500/10 text-emerald-300',
+                                                    'warning' => 'bg-amber-500/10 text-amber-300',
+                                                    default => 'bg-rose-500/10 text-rose-300',
                                                 };
                                             @endphp
                                             <span class="px-2 py-1 rounded-full text-xs uppercase tracking-wide {{ $ftpClass }}">{{ $ftpTestStatus }}</span>
-                                            <span class="text-xs text-slate-500 dark:text-slate-400">{{ $ftpTestMessage }}</span>
+                                            <span class="text-xs text-slate-400">{{ $ftpTestMessage }}</span>
                                         @endif
                                     </div>
-                                        <div class="border-t border-slate-200/70 dark:border-slate-800 pt-3 space-y-3">
-                                            <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Remote Deployment (SSH)') }}</div>
-                                            <p class="text-xs text-slate-500 dark:text-slate-400">{{ __('Use the selected remote access credentials to run git + build steps on the remote host. When enabled, deployments run over SSH and local builds are skipped.') }}</p>
-                                            <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                        <div class="border-t border-slate-800 pt-3 space-y-3">
+                                            <div class="text-sm font-semibold text-slate-100">{{ __('Remote Deployment (SSH)') }}</div>
+                                            <p class="text-xs text-slate-400">{{ __('Use the selected remote access credentials to run git + build steps on the remote host. When enabled, deployments run over SSH and local builds are skipped.') }}</p>
+                                            <label class="flex items-center gap-2 text-sm text-slate-300">
                                                 <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.ssh_enabled" />
                                                 {{ __('Deploy over SSH (remote build)') }}
                                             </label>
@@ -227,10 +227,10 @@
                                         </div>
                                         <div>
                                             <x-input-label for="ssh_commands" value="{{ __('SSH Commands (one per line)') }}" />
-                                            <textarea id="ssh_commands" rows="4" class="mt-1 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" wire:model.live="form.ssh_commands" placeholder="composer install --no-dev&#10;npm install&#10;npm run build" @disabled(! ($form['ssh_enabled'] ?? false))></textarea>
+                                            <textarea id="ssh_commands" rows="4" class="mt-1 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border-slate-700 bg-slate-900 text-slate-100" wire:model.live="form.ssh_commands" placeholder="composer install --no-dev&#10;npm install&#10;npm run build" @disabled(! ($form['ssh_enabled'] ?? false))></textarea>
                                             <x-input-error :messages="$errors->get('form.ssh_commands')" class="mt-2" />
                                         </div>
-                                        <p class="text-xs text-slate-500 dark:text-slate-400">{!! __('Password-based SSH uses a built-in askpass helper by default. You can optionally configure :sshpass per remote access record or via :passBinary; use a per-record key path or :keyPath for key-based auth.', ['sshpass' => '<code>sshpass</code>', 'passBinary' => '<code>GWM_SSH_PASS_BINARY</code>', 'keyPath' => '<code>GWM_SSH_KEY_PATH</code>']) !!}</p>
+                                        <p class="text-xs text-slate-400">{!! __('Password-based SSH uses a built-in askpass helper by default. You can optionally configure :sshpass per remote access record or via :passBinary; use a per-record key path or :keyPath for key-based auth.', ['sshpass' => '<code>sshpass</code>', 'passBinary' => '<code>GWM_SSH_PASS_BINARY</code>', 'keyPath' => '<code>GWM_SSH_KEY_PATH</code>']) !!}</p>
                                     </div>
                                 </div>
                             </div>
@@ -243,27 +243,27 @@
                                 $showEnvConfig = in_array(($form['project_type'] ?? 'custom'), ['laravel', 'node', 'nextjs', 'react'], true) || ($envExampleAvailable ?? false);
                             @endphp
                             @if ($showEnvConfig)
-                                <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
-                                    <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Environment (.env)') }}</div>
-                                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{!! __('Paste an optional :envFile file to create during setup. If :example or :sample exists, you can prefill from it.', ['envFile' => '<code>.env</code>', 'example' => '<code>.env.example</code>', 'sample' => '<code>.env.sample</code>']) !!}</p>
-                                    <label class="mt-3 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+                                <div class="rounded-lg border border-slate-800 p-4">
+                                    <div class="text-sm font-semibold text-slate-100">{{ __('Environment (.env)') }}</div>
+                                    <p class="mt-1 text-xs text-slate-400">{!! __('Paste an optional :envFile file to create during setup. If :example or :sample exists, you can prefill from it.', ['envFile' => '<code>.env</code>', 'example' => '<code>.env.example</code>', 'sample' => '<code>.env.sample</code>']) !!}</p>
+                                    <label class="mt-3 flex items-center gap-2 text-xs text-slate-300">
                                         <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.env_use_example" @disabled(! ($envExampleAvailable ?? false)) />
                                         {!! __('Prefill from :filename', ['filename' => $envExampleFilename ?? '.env.example']) !!}
                                     </label>
                                     @if (! ($envExampleAvailable ?? false))
-                                        <p class="mt-1 text-xs text-amber-600 dark:text-amber-300">{!! __('No :example or :sample detected yet. Paste values manually.', ['example' => '<code>.env.example</code>', 'sample' => '<code>.env.sample</code>']) !!}</p>
+                                        <p class="mt-1 text-xs text-amber-300">{!! __('No :example or :sample detected yet. Paste values manually.', ['example' => '<code>.env.example</code>', 'sample' => '<code>.env.sample</code>']) !!}</p>
                                     @endif
                                     @if (! empty($envExampleMessage ?? null))
-                                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{!! __($envExampleMessage) !!}</p>
+                                        <p class="mt-1 text-xs text-slate-400">{!! __($envExampleMessage) !!}</p>
                                     @endif
-                                    <textarea rows="8" class="mt-3 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" wire:model.defer="form.env_content" placeholder="APP_ENV=production&#10;APP_KEY=&#10;APP_DEBUG=false"></textarea>
+                                    <textarea rows="8" class="mt-3 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border-slate-700 bg-slate-900 text-slate-100" wire:model.defer="form.env_content" placeholder="APP_ENV=production&#10;APP_KEY=&#10;APP_DEBUG=false"></textarea>
                                     <x-input-error :messages="$errors->get('form.env_content')" class="mt-2" />
                                 </div>
                             @endif
-                            <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
-<div class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('.htaccess') }}</div>
-                                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ __('Optional Apache rules to create during setup. Defaults are based on the project type.') }}</p>
-                                <textarea rows="8" class="mt-3 block w-full rounded-md border-slate-300 bg-white text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 font-mono text-xs" wire:model.defer="form.htaccess_content"></textarea>
+                            <div class="rounded-lg border border-slate-800 p-4">
+<div class="text-sm font-semibold text-slate-100">{{ __('.htaccess') }}</div>
+                                    <p class="mt-1 text-xs text-slate-400">{{ __('Optional Apache rules to create during setup. Defaults are based on the project type.') }}</p>
+                                <textarea rows="8" class="mt-3 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border-slate-700 bg-slate-900 text-slate-100 font-mono text-xs" wire:model.defer="form.htaccess_content"></textarea>
                                 <x-input-error :messages="$errors->get('form.htaccess_content')" class="mt-2" />
                             </div>
                         </div>
@@ -271,22 +271,22 @@
 
                     @if ($step === 3)
                         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                            <label class="flex items-center gap-2 text-sm text-slate-300">
                                 <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.auto_deploy" />
                                 {{ __('Auto deploy on update') }}
                             </label>
-                            <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                            <label class="flex items-center gap-2 text-sm text-slate-300">
                                 <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.allow_dependency_updates" />
                                 {{ __('Allow dependency updates') }}
                             </label>
                         </div>
 
-<div class="rounded-lg border border-rose-200/80 dark:border-rose-500/40 bg-rose-50/70 dark:bg-rose-500/10 p-4">
-                            <div class="text-sm font-semibold text-rose-900 dark:text-rose-200">{{ __('Migration Safety Override') }}</div>
-                            <p class="mt-1 text-xs text-rose-700 dark:text-rose-300">
+<div class="rounded-lg border border-rose-500/40 bg-rose-500/10 p-4">
+                            <div class="text-sm font-semibold text-rose-200">{{ __('Migration Safety Override') }}</div>
+                            <p class="mt-1 text-xs text-rose-300">
                                 {{ __('If your database already has tables, running migrations may fail with "table already exists." Enable this to log a warning and continue deployments instead of failing the build.') }}
                             </p>
-                            <label class="mt-3 flex items-center gap-2 text-sm text-rose-800 dark:text-rose-200">
+                            <label class="mt-3 flex items-center gap-2 text-sm text-rose-200">
                                 <input type="checkbox" class="rounded border-rose-300 text-rose-600 shadow-sm focus:ring-rose-500" wire:model.live="form.ignore_migration_table_exists" />
                                 {{ __('Ignore migration "table already exists" errors') }}
                             </label>
@@ -294,9 +294,9 @@
 
                         <div class="grid gap-4 sm:grid-cols-2">
                             @if ($showComposer)
-                                <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
-                                    <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Composer') }}</div>
-                                    <label class="mt-3 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                <div class="rounded-lg border border-slate-800 p-4">
+                                    <div class="text-sm font-semibold text-slate-100">{{ __('Composer') }}</div>
+                                    <label class="mt-3 flex items-center gap-2 text-sm text-slate-300">
                                         <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.run_composer_install" />
                                         {{ __('Run composer install') }}
                                     </label>
@@ -304,9 +304,9 @@
                             @endif
 
                             @if ($showNpm)
-                                <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
-                                    <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Npm') }}</div>
-                                    <label class="mt-3 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                <div class="rounded-lg border border-slate-800 p-4">
+                                    <div class="text-sm font-semibold text-slate-100">{{ __('Npm') }}</div>
+                                    <label class="mt-3 flex items-center gap-2 text-sm text-slate-300">
                                         <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.run_npm_install" />
                                         {{ __('Run npm install') }}
                                     </label>
@@ -316,9 +316,9 @@
 
                         <div class="grid gap-4 sm:grid-cols-2">
                             @if ($showComposer)
-                                <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
-                                    <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Composer') }}</div>
-                                    <label class="mt-3 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                <div class="rounded-lg border border-slate-800 p-4">
+                                    <div class="text-sm font-semibold text-slate-100">{{ __('Composer') }}</div>
+                                    <label class="mt-3 flex items-center gap-2 text-sm text-slate-300">
                                         <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.run_composer_install" />
                                         {{ __('Run composer install') }}
                                     </label>
@@ -326,9 +326,9 @@
                             @endif
 
                             @if ($showNpm)
-                                <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
-                                    <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Npm') }}</div>
-                                    <label class="mt-3 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                <div class="rounded-lg border border-slate-800 p-4">
+                                    <div class="text-sm font-semibold text-slate-100">{{ __('Npm') }}</div>
+                                    <label class="mt-3 flex items-center gap-2 text-sm text-slate-300">
                                         <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.run_npm_install" />
                                         {{ __('Run npm install') }}
                                     </label>
@@ -338,7 +338,7 @@
 
                         <div class="grid gap-4 sm:grid-cols-2">
                             <div>
-                                <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                <label class="flex items-center gap-2 text-sm text-slate-300">
                                     <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.run_build_command" />
                                     {{ __('Run build command') }}
                                 </label>
@@ -346,7 +346,7 @@
                                 <x-input-error :messages="$errors->get('form.build_command')" class="mt-2" />
                             </div>
                             <div>
-                                <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                <label class="flex items-center gap-2 text-sm text-slate-300">
                                     <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.run_test_command" />
                                     {{ __('Run tests before deploy') }}
                                 </label>
@@ -362,33 +362,33 @@
                                     {{ __('Next') }}
                                     <x-loading-spinner target="nextStep" class="ml-2" />
                                 </x-primary-button>
-                                <a href="{{ route('projects.index') }}" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+                                <a href="{{ route('projects.index') }}" class="text-sm text-slate-400 hover:text-slate-200">
                                     {{ __('Cancel') }}
                                 </a>
                             @endif
 
                             @if ($step === 2)
-                                <button type="button" wire:click="previousStep" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
+                                <button type="button" wire:click="previousStep" class="px-3 py-2 text-sm rounded-md border border-slate-700 text-slate-300 hover:text-slate-100">
                                     {{ __('Back') }}
                                 </button>
                                 <x-primary-button wire:loading.attr="disabled" wire:target="nextStep">
                                     {{ __('Next') }}
                                     <x-loading-spinner target="nextStep" class="ml-2" />
                                 </x-primary-button>
-                                <a href="{{ route('projects.index') }}" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+                                <a href="{{ route('projects.index') }}" class="text-sm text-slate-400 hover:text-slate-200">
                                     {{ __('Cancel') }}
                                 </a>
                             @endif
 
                             @if ($step === 3)
-                                <button type="button" wire:click="previousStep" class="px-3 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100">
+                                <button type="button" wire:click="previousStep" class="px-3 py-2 text-sm rounded-md border border-slate-700 text-slate-300 hover:text-slate-100">
                                     {{ __('Back') }}
                                 </button>
                                 <x-primary-button wire:loading.attr="disabled" wire:target="save">
                                     {{ __('Save Project') }}
                                     <x-loading-spinner target="save" class="ml-2" />
                                 </x-primary-button>
-                                <a href="{{ route('projects.index') }}" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+                                <a href="{{ route('projects.index') }}" class="text-sm text-slate-400 hover:text-slate-200">
                                     {{ __('Cancel') }}
                                 </a>
                             @endif

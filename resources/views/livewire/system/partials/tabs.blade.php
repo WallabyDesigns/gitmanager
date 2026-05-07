@@ -66,7 +66,7 @@
 
     {{-- Desktop aside (hidden on mobile) --}}
     <aside class="hidden lg:block space-y-4">
-        <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 bg-slate-950/90 p-4 text-slate-200">
+        <div class="rounded-xl border border-slate-800 bg-slate-950/90 p-4 text-slate-200">
             <div>
                 <div class="text-xs uppercase tracking-[0.16em] text-slate-400">{{ __('System') }}</div>
                 <div class="mt-1 text-lg font-semibold text-white">{{ __('Control Center') }}</div>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}" class="h-full dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}" class="h-full">
     <head>
         <meta charset="utf-8">
 
@@ -61,7 +61,7 @@
         </style>
         <noscript><style>body.gwm-preload { opacity: 1 !important; }</style></noscript>
     </head>
-    <body class="gwm-preload min-h-screen font-sans antialiased h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <body class="gwm-preload min-h-screen font-sans antialiased h-full bg-slate-950 text-slate-100">
         <div class="h-full flex flex-col sm:justify-center items-center pt-6 sm:pt-0">
             @if (! $viteReady)
                 <div class="gwm-fallback-alert">
@@ -72,17 +72,17 @@
                 <a href="/" class="flex items-center">
                     <x-application-logo class="w-20 h-20 fill-current text-gray-500" />
                     <div>
-                        <h2 class="text-xl px-2 font-semibold text-slate-900 dark:text-slate-100">
+                        <h2 class="text-xl px-2 font-semibold text-slate-100">
                             {{ $brandName }}
                         </h2>
-                        <p class="px-2 -mt-1 text-[11px] uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                        <p class="px-2 -mt-1 text-[11px] uppercase tracking-[0.12em] text-slate-400">
                             {{ $editionLabel }}
                         </p>
                     </div>
                 </a>
             </div>
 
-            <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white shadow-md overflow-hidden sm:rounded-lg dark:bg-slate-900 dark:border dark:border-slate-800">
+            <div class="w-full sm:max-w-md mt-6 px-6 py-4 shadow-md overflow-hidden sm:rounded-lg bg-slate-900 border border-slate-800">
                 {{ $slot }}
             </div>
             <p class="footer-text">{{ __('Git Web Manager for Git') }} © 2026 <a style="text-decoration: underline;" href="https://wallabydesigns.com/" title="{{ __('Website built by Wallaby Designs') }}">{{ __('Wallaby Designs LLC') }}</a> • zlib License<br/>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}" class="h-full dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}" class="h-full">
     <head>
         <meta charset="utf-8">
 
@@ -55,7 +55,7 @@
             }
         </style>
     </head>
-    <body class="nonrenderhide opacity-100 font-sans antialiased h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <body class="nonrenderhide opacity-100 font-sans antialiased h-full bg-slate-950 text-slate-100">
         <div class="min-h-screen">
             @if (! $viteReady)
                 <div class="gwm-fallback-alert">
@@ -109,30 +109,30 @@
                 aria-modal="true"
             >
                 <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" @click="open = false"></div>
-                <div class="relative w-full max-w-lg rounded-2xl border border-amber-300/40 bg-white p-6 shadow-2xl dark:border-amber-500/30 dark:bg-slate-900">
+                <div class="relative w-full max-w-lg rounded-2xl border p-6 shadow-2xl border-amber-500/30 bg-slate-900">
                     <div class="flex items-start justify-between gap-3">
                         <div>
-                            <div class="inline-flex items-center gap-2 rounded-full border border-amber-300/60 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:border-amber-500/50 dark:bg-amber-500/10 dark:text-amber-300">
+                            <div class="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide border-amber-500/50 bg-amber-500/10 text-amber-300">
                                 <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                     <path fill-rule="evenodd" d="M10 1a4 4 0 00-4 4v2H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-1V5a4 4 0 00-4-4zm-2 6V5a2 2 0 114 0v2H8z" clip-rule="evenodd" />
                                 </svg>
                                 {{ __('Enterprise Feature') }}
                             </div>
-<h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Unlock in Enterprise Edition') }}</h3>
+<h3 class="mt-3 text-lg font-semibold text-slate-100">{{ __('Unlock in Enterprise Edition') }}</h3>
                     </div>
-                    <button type="button" @click="open = false" class="rounded-md p-2 text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-slate-100" aria-label="{{ __('Close') }}">
+                    <button type="button" @click="open = false" class="rounded-md p-2 text-slate-300 hover:text-slate-100" aria-label="{{ __('Close') }}">
                         <svg class="h-5 w-5" stroke="currentColor" fill="none" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
 
-                <p class="mt-4 text-sm text-slate-600 dark:text-slate-300">
-                    <span class="font-semibold text-slate-900 dark:text-slate-100" x-text="feature"></span>
+                <p class="mt-4 text-sm text-slate-300">
+                    <span class="font-semibold text-slate-100" x-text="feature"></span>
                     {{ __('is available in Enterprise Edition. Upgrade to unlock premium infrastructure controls and advanced platform features.') }}
                 </p>
 
-                <ul class="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+                <ul class="mt-4 space-y-2 text-sm text-slate-300">
                     <li>{{ __('Docker and container management from the project panel.') }}</li>
                     <li>{{ __('Kubernetes workload controls and health visibility.') }}</li>
                     <li>{{ __('SQL database provisioning and management tools.') }}</li>
@@ -164,7 +164,7 @@
                                 {{ __('Contact Us to Purchase') }}
                             </a>
                         @endif
-                        <button type="button" @click="open = false" class="inline-flex items-center rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white">
+                        <button type="button" @click="open = false" class="inline-flex items-center rounded-md border px-4 py-2 text-sm border-slate-700 text-slate-200 hover:text-white">
                             {{ __('Maybe Later') }}
                         </button>
                     </div>
@@ -189,10 +189,10 @@
                     return;
                 }
                 const variants = {
-                    success: ['border-emerald-300/70', 'bg-emerald-50', 'text-emerald-800', 'dark:border-emerald-500/40', 'dark:bg-emerald-500/10', 'dark:text-emerald-200'],
-                    error: ['border-rose-300/70', 'bg-rose-50', 'text-rose-800', 'dark:border-rose-500/40', 'dark:bg-rose-500/10', 'dark:text-rose-200'],
-                    warning: ['border-amber-300/70', 'bg-amber-50', 'text-amber-800', 'dark:border-amber-500/40', 'dark:bg-amber-500/10', 'dark:text-amber-200'],
-                    info: ['border-slate-200', 'bg-white', 'text-slate-700', 'dark:border-slate-800', 'dark:bg-slate-900', 'dark:text-slate-200'],
+                    success: ['border-emerald-500/40', 'bg-emerald-500/10', 'text-emerald-200'],
+                    error: ['border-rose-500/40', 'bg-rose-500/10', 'text-rose-200'],
+                    warning: ['border-amber-500/40', 'bg-amber-500/10', 'text-amber-200'],
+                    info: ['border-slate-800', 'bg-slate-900', 'text-slate-200'],
                 };
                 const variantClasses = Object.values(variants).flat();
                 const type = event.detail?.type || 'info';

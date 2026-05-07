@@ -6,15 +6,10 @@
 @once
     <style>
         .gwm-richtext-shell {
-            border: 1px solid rgba(148, 163, 184, 0.35);
+            border: 1px solid rgb(51 65 85 / 0.9);
             border-radius: 0.75rem;
-            background: rgba(255, 255, 255, 0.82);
-            overflow: hidden;
-        }
-
-        .dark .gwm-richtext-shell {
-            border-color: rgb(51 65 85 / 0.9);
             background: rgb(2 6 23 / 0.88);
+            overflow: hidden;
         }
 
         .gwm-richtext-toolbar button {
@@ -219,7 +214,7 @@
     x-init="init()"
     class="space-y-3"
 >
-    <div class="gwm-richtext-toolbar flex flex-wrap gap-2 text-slate-600 dark:text-slate-200">
+    <div class="gwm-richtext-toolbar flex flex-wrap gap-2 text-slate-200">
         <button type="button" @click.prevent="exec('bold')" title="{{ __('Bold') }}"><strong>B</strong></button>
         <button type="button" @click.prevent="exec('italic')" title="{{ __('Italic') }}"><em>I</em></button>
         <button type="button" @click.prevent="exec('underline')" title="{{ __('Underline') }}"><span style="text-decoration: underline;">U</span></button>
@@ -237,7 +232,7 @@
             :data-placeholder="placeholder"
             @input="syncFromEditor()"
             @blur="syncFromEditor()"
-            class="gwm-richtext-editor w-full px-3 py-3 text-sm text-slate-900 dark:text-slate-100"
+            class="gwm-richtext-editor w-full px-3 py-3 text-sm text-slate-100"
         ></div>
     </div>
 </div>

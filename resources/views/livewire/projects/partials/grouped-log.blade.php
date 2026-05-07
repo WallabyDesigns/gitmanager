@@ -7,7 +7,7 @@
 @endphp
 
 <div
-    class="mt-1 w-full min-w-0 max-w-full {{ $maxHeight }} overflow-auto rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 text-xs text-slate-600 dark:text-slate-300"
+    class="mt-1 w-full min-w-0 max-w-full {{ $maxHeight }} overflow-auto rounded-lg border border-slate-800 bg-slate-950/40 text-xs text-slate-300"
     style="scrollbar-gutter: stable;"
     x-data="{
         raw: @js($logText),
@@ -123,11 +123,11 @@
         <template x-for="section in sections" :key="section.key">
             <div class="mb-2 w-max min-w-full last:mb-0">
                 <template x-if="section.isGeneral">
-                    <pre class="inline-block min-w-full whitespace-pre font-mono leading-relaxed text-slate-600 dark:text-slate-300" x-text="section.lines.join('\n')"></pre>
+                    <pre class="inline-block min-w-full whitespace-pre font-mono leading-relaxed text-slate-300" x-text="section.lines.join('\n')"></pre>
                 </template>
                 <template x-if="!section.isGeneral">
-                    <details class="w-max min-w-full rounded-md border border-slate-200/70 dark:border-slate-800 bg-white/70 dark:bg-slate-900/40 p-2" :open="section.open">
-                        <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">
+                    <details class="w-max min-w-full rounded-md border border-slate-800 bg-slate-900/40 p-2" :open="section.open">
+                        <summary class="cursor-pointer text-xs text-indigo-300">
                             <span x-text="section.title"></span>
                             <template x-if="section.command">
                                 <span class="mt-1 block break-all text-[10px] text-slate-400 sm:mt-0 sm:inline">
@@ -139,7 +139,7 @@
                                 <span class="text-[10px] text-slate-400"> (exit <span x-text="section.exit"></span>)</span>
                             </template>
                         </summary>
-                        <pre class="mt-2 inline-block min-w-full whitespace-pre font-mono leading-relaxed text-slate-600 dark:text-slate-300" x-text="section.lines.join('\n')"></pre>
+                        <pre class="mt-2 inline-block min-w-full whitespace-pre font-mono leading-relaxed text-slate-300" x-text="section.lines.join('\n')"></pre>
                     </details>
                 </template>
             </div>

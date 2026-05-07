@@ -4,19 +4,19 @@
             @include('livewire.projects.partials.tabs')
 
             <div class="min-w-0 space-y-6">
-                <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-4 text-sm text-slate-600 dark:text-slate-300 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-300 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <div class="font-semibold text-slate-900 dark:text-slate-100">{{ __('Queue Runner') }}</div>
+                        <div class="font-semibold text-slate-100">{{ __('Queue Runner') }}</div>
                         <div>
                             {{ __('Queued tasks are processed by the scheduler (:command) or a cron task. If the scheduler isn\'t running, use "Process Queue" to advance items.', ['command' => 'php artisan schedule:work']) }}
                             @if (auth()->user()?->isAdmin())
-                                {{ __('Manage scheduler health in :link.', ['link' => '']) }}<a href="{{ route('system.scheduler') }}" class="text-indigo-600 hover:text-indigo-500 dark:text-indigo-300 dark:hover:text-indigo-200">{{ __('System Settings') }}</a>.
+                                {{ __('Manage scheduler health in :link.', ['link' => '']) }}<a href="{{ route('system.scheduler') }}" class="text-indigo-300 hover:text-indigo-200">{{ __('System Settings') }}</a>.
                             @endif
                         </div>
-                        <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ __('Project audits and update-triggered deployments appear here. App self-updates stay under System > App Updates.') }}</div>
+                        <div class="mt-1 text-xs text-slate-400">{{ __('Project audits and update-triggered deployments appear here. App self-updates stay under System > App Updates.') }}</div>
                     </div>
                     <div class="flex flex-wrap gap-2">
-                        <button type="button" wire:click="processNow" class="px-3 py-2 text-xs rounded-md border border-slate-200 text-slate-700 hover:text-slate-900 dark:border-slate-700 dark:text-slate-200 dark:hover:text-white inline-flex items-center">
+                        <button type="button" wire:click="processNow" class="px-3 py-2 text-xs rounded-md border border-slate-700 text-slate-200 hover:text-white inline-flex items-center">
                             <x-loading-spinner target="processNow" />
                             {{ __('Process Queue') }}
                         </button>
@@ -42,18 +42,18 @@
                     ];
                 @endphp
 
-                <div class="flex flex-wrap gap-2 border-b border-slate-200/70 dark:border-slate-800">
+                <div class="flex flex-wrap gap-2 border-b border-slate-800">
                     @foreach ($queueTabs as $value => $label)
                         <button type="button"
                                 wire:key="queue-status-{{ $value }}"
                                 wire:click="setStatusFilter('{{ $value }}')"
-                                class="px-3 py-2 text-sm border-b-2 {{ $statusFilter === $value ? 'border-indigo-500 text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200' }}">
+                                class="px-3 py-2 text-sm border-b-2 {{ $statusFilter === $value ? 'border-indigo-500' : 'border-transparent text-slate-400 hover:text-slate-200' }}">
                             {{ __($label) }}
                         </button>
                     @endforeach
                 </div>
 
-                <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-200 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-200 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 flex-1">
                         <label class="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-400">
                             {{ __('Search') }}
@@ -106,12 +106,12 @@
                         @php
                             $presentation = $this->actionPresentation($item);
                         @endphp
-                        <div class="min-w-0 rounded-lg border border-slate-200/70 dark:border-slate-800 p-4 flex flex-col gap-3" wire:key="queue-item-{{ $item->id }}">
+                        <div class="min-w-0 rounded-lg border border-slate-800 p-4 flex flex-col gap-3" wire:key="queue-item-{{ $item->id }}">
                             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <div class="flex items-center gap-2">
-                                    <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ $item->project?->name ?? __('Unknown project') }}</h4>
-                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $item->status === 'queued' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' : ($item->status === 'running' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300' : ($item->status === 'completed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300')) }}">
+                                    <h4 class="text-sm font-semibold text-slate-100">{{ $item->project?->name ?? __('Unknown project') }}</h4>
+                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $item->status === 'queued' ? 'bg-amber-100 : ($item->status === 'running' ? 'bg-indigo-100 : ($item->status === 'completed' ? 'bg-emerald-500/10 text-emerald-300' : 'bg-rose-100 bg-rose-500/10 text-rose-300')) }}">
                                         {{ $item->status }}
                                     </span>
                                     @if ($item->status === 'running')
@@ -124,17 +124,17 @@
                                             && $item->project->permissions_locked;
                                     @endphp
                                     @if ($permissionsIssue)
-                                        <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                                        <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-amber-500/10 text-amber-300">
                                             Permissions
                                         </span>
                                     @endif
                                     @if ($item->project_id && $runningDeployments->has($item->project_id))
-                                        <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
+                                        <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-indigo-500/10 text-indigo-300">
                                             Build in process
                                         </span>
                                     @endif
                                 </div>
-                                <div class="text-xs text-slate-400 dark:text-slate-500">
+                                <div class="text-xs text-slate-500">
                                     @php
                                         $timestampLabel = match ($item->status) {
                                             'queued' => 'Queued',
@@ -165,14 +165,14 @@
                                             wire:click="processItem({{ $item->id }})"
                                             wire:loading.attr="disabled"
                                             wire:target="processItem({{ $item->id }})"
-                                            class="px-3 py-1.5 text-xs rounded-md border border-emerald-300 text-emerald-700 hover:text-emerald-900 dark:border-emerald-500/60 dark:text-emerald-300 dark:hover:text-white inline-flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
+                                            class="px-3 py-1.5 text-xs rounded-md border border-emerald-500/60 text-emerald-300 hover:text-white inline-flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
                                         <x-loading-spinner target="processItem({{ $item->id }})" size="w-3 h-3" />
                                         Process Item
                                     </button>
-                                    <button type="button" wire:click="moveUp({{ $item->id }})" class="px-3 py-1.5 text-xs rounded-md border border-slate-200 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-white">
+                                    <button type="button" wire:click="moveUp({{ $item->id }})" class="px-3 py-1.5 text-xs rounded-md border border-slate-700 text-slate-300 hover:text-white">
                                         Move Up
                                     </button>
-                                    <button type="button" wire:click="moveDown({{ $item->id }})" class="px-3 py-1.5 text-xs rounded-md border border-slate-200 text-slate-600 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-white">
+                                    <button type="button" wire:click="moveDown({{ $item->id }})" class="px-3 py-1.5 text-xs rounded-md border border-slate-700 text-slate-300 hover:text-white">
                                         Move Down
                                     </button>
                                     <button type="button" wire:click="cancel({{ $item->id }})" class="px-3 py-1.5 text-xs rounded-md border border-rose-500/60 text-rose-200 hover:text-white hover:bg-rose-500/10">
@@ -212,7 +212,7 @@
                                     x-bind:open="open"
                                     @toggle="open = $el.open; localStorage.setItem(key, open)"
                                 >
-                                    <summary class="cursor-pointer text-xs text-indigo-600 dark:text-indigo-300">
+                                    <summary class="cursor-pointer text-xs text-indigo-300">
                                         {{ $item->status === 'running' ? __('Live task log') : __('Task log') }}
                                     </summary>
                                     @include('livewire.projects.partials.grouped-log', [
@@ -226,7 +226,7 @@
                             @endif
                         </div>
                     @empty
-                        <div class="rounded-lg border border-dashed border-slate-300/70 dark:border-slate-700 p-6 text-sm text-slate-500 dark:text-slate-400">
+                        <div class="rounded-lg border border-dashed border-slate-700 p-6 text-sm text-slate-400">
                             No queued tasks yet.
                         </div>
                     @endforelse
