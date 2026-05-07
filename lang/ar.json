@@ -476,6 +476,7 @@
     "Generate temp password": "إنشاء كلمة مرور مؤقتة",
     "GitHub Security": "جيثب الأمن",
     "GitHub SSL verification is disabled. Sync runs without certificate validation.": "تم تعطيل التحقق من GitHub SSL. تعمل المزامنة بدون التحقق من صحة الشهادة.",
+    "Git Repo": "جيت الريبو",
     "Git Web Manager": "مدير ويب جيت",
     "Git Web Manager for Git": "Git مدير الويب لـ Git",
     "Git Web Manager is not affiliated with, endorsed by, or sponsored by Git or its maintainers.": "لا ينتمي Git Web Manager إلى Git أو المشرفين عليه أو يدعمه أو يرعاه.",

@@ -475,6 +475,7 @@
     "Generate temp password": "Wygeneruj hasło tymczasowe",
     "GitHub Security": "Bezpieczeństwo GitHuba",
     "GitHub SSL verification is disabled. Sync runs without certificate validation.": "Weryfikacja SSL w GitHub jest wyłączona. Synchronizacja przebiega bez sprawdzania certyfikatu.",
+    "Git Repo": "Repozytorium Git",
     "Git Web Manager": "Menedżer sieciowy Git",
     "Git Web Manager for Git": "Git Web Manager dla Git",
     "Git Web Manager is not affiliated with, endorsed by, or sponsored by Git or its maintainers.": "Git Web Manager nie jest powiązany, wspierany ani sponsorowany przez Git lub jego opiekunów.",

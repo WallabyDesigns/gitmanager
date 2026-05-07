@@ -158,6 +158,16 @@ new class extends Component
                     </x-slot>
 
                     <x-slot name="content">
+                        <div class="flex items-center gap-3 px-3 py-2">
+                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-500/20 text-indigo-300 font-semibold text-sm">
+                                {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                            </span>
+                            <div class="min-w-0">
+                                <div class="font-medium text-sm text-slate-100 truncate" x-data="{{ json_encode(['name' => auth()->user()->name]) }}" x-text="name" x-on:profile-updated.window="name = $event.detail.name"></div>
+                                <div class="text-xs text-slate-400 truncate">{{ auth()->user()->email }}</div>
+                            </div>
+                        </div>
+                        
                         <x-dropdown-link :href="route('profile')">
                             <span class="flex items-center gap-2">
                                 <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
@@ -173,6 +183,13 @@ new class extends Component
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.966 8.966 0 00-6 2.292m0-14.25v14.25" />
                                 </svg>
                                 {{ __('Documentation') }}
+                            </span>
+                        </x-dropdown-link>
+
+                        <x-dropdown-link href="https://github.com/WallabyDesigns/gitmanager" target="_blank" rel="noopener">
+                            <span class="flex items-center gap-2">
+                                <svg class="h-4 w-4" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" version="1.1" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" style="--darkreader-inline-stroke: var(--darkreader-text-000000, #e8e6e3);" data-darkreader-inline-stroke=""><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="m5.75 14.25s-.5-2 .5-3c0 0-2 0-3.5-1.5s-1-4.5 0-5.5c-.5-1.5.5-2.5.5-2.5s1.5 0 2.5 1c1-.5 3.5-.5 4.5 0 1-1 2.5-1 2.5-1s1 1 .5 2.5c1 1 1.5 4 0 5.5s-3.5 1.5-3.5 1.5c1 1 .5 3 .5 3"></path> <path d="m5.25 13.75c-1.5.5-3-.5-3.5-1"></path> </g></svg>
+                                {{ __('Git Repo') }}
                             </span>
                         </x-dropdown-link>
 
@@ -366,6 +383,15 @@ new class extends Component
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.966 8.966 0 00-6 2.292m0-14.25v14.25" />
                                     </svg>
                                     {{ __('Documentation') }}
+                                </span>
+                            </x-responsive-nav-link>
+
+                            <x-responsive-nav-link href="https://github.com/WallabyDesigns/gitmanager" target="_blank" rel="noopener">
+                                <span class="flex items-center gap-3">
+                                    <span class="flex items-center gap-2">
+                                    <svg class="h-4 w-4" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" version="1.1" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" style="--darkreader-inline-stroke: var(--darkreader-text-000000, #e8e6e3);" data-darkreader-inline-stroke=""><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="m5.75 14.25s-.5-2 .5-3c0 0-2 0-3.5-1.5s-1-4.5 0-5.5c-.5-1.5.5-2.5.5-2.5s1.5 0 2.5 1c1-.5 3.5-.5 4.5 0 1-1 2.5-1 2.5-1s1 1 .5 2.5c1 1 1.5 4 0 5.5s-3.5 1.5-3.5 1.5c1 1 .5 3 .5 3"></path> <path d="m5.25 13.75c-1.5.5-3-.5-3.5-1"></path> </g></svg>
+                                        {{ __('Git Repo') }}
+                                    </span>
                                 </span>
                             </x-responsive-nav-link>
 

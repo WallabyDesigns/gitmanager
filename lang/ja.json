@@ -475,6 +475,7 @@
     "Generate temp password": "一時パスワードを生成する",
     "GitHub Security": "GitHubのセキュリティ",
     "GitHub SSL verification is disabled. Sync runs without certificate validation.": "GitHub の SSL 検証が無効になっています。同期は証明書の検証なしで実行されます。",
+    "Git Repo": "Git リポジトリ",
     "Git Web Manager": "Git Webマネージャー",
     "Git Web Manager for Git": "Git 用の Git Web マネージャー",
     "Git Web Manager is not affiliated with, endorsed by, or sponsored by Git or its maintainers.": "Git Web Manager は、Git またはそのメンテナーと提携、承認、後援されていません。",
