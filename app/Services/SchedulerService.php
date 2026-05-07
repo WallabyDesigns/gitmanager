@@ -185,7 +185,7 @@ class SchedulerService
 
         $lines = preg_split('/\r\n|\r|\n/', $current) ?: [];
         $updated = false;
-        $artisanPath = base_path('artisan');
+        $basePath = base_path();
         $normalizedLines = [];
 
         foreach ($lines as $line) {
@@ -196,7 +196,7 @@ class SchedulerService
                 continue;
             }
 
-            if ($this->isManagedSchedulerCronLine($line, $artisanPath)) {
+            if ($this->isManagedSchedulerCronLine($line, $basePath)) {
                 if (! $updated) {
                     $normalizedLines[] = $command;
                     $updated = true;
@@ -523,9 +523,9 @@ class SchedulerService
         return storage_path('app/scheduler-errors.json');
     }
 
-    private function isManagedSchedulerCronLine(string $line, string $artisanPath): bool
+    private function isManagedSchedulerCronLine(string $line, string $basePath): bool
     {
-        return Str::contains($line, $artisanPath)
+        return Str::contains($line, $basePath)
             && (Str::contains($line, 'schedule:run') || Str::contains($line, 'scheduler:run'));
     }
 }
