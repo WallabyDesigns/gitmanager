@@ -1,4 +1,10 @@
 import './bootstrap';
+import { registerSW } from 'virtual:pwa-register';
+
+// Only activate the service worker on HTTPS — local HTTP installs are unaffected
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    registerSW({ immediate: false });
+}
 
 // Navigation progress bar — replaces Livewire's built-in bar (disabled via config)
 (function () {
