@@ -5,16 +5,6 @@
             <span>/</span>
         </div>
         <h2 class="text-xl font-semibold text-slate-900 dark:text-slate-100">{{ $project->name }}</h2>
-        @if (($envSeedPending ?? false) || ($htaccessSeedPending ?? false))
-            <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                @if ($envSeedPending ?? false)
-                    <span class="px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 uppercase tracking-wide">{{ __('Env seed pending') }}</span>
-                @endif
-                @if ($htaccessSeedPending ?? false)
-                    <span class="px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 uppercase tracking-wide">{{ __('.htaccess seed pending') }}</span>
-                @endif
-            </div>
-        @endif
         <p class="text-sm text-slate-500 dark:text-slate-400">{{ $project->local_path }}</p>
     </div>
     <a href="{{ route('projects.index') }}" class="text-sm flex items-center text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">

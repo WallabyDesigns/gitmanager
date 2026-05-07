@@ -154,7 +154,7 @@
                 <button wire:click="$set('showCreate', false)" class="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100">{{ __('Cancel') }}</button>
                 <button wire:click="createContainer" wire:loading.attr="disabled"
                         class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 px-5 py-2 text-sm font-semibold text-white shadow-sm transition disabled:opacity-50">
-                    <span wire:loading wire:target="createContainer">
+                    <span wire:loading.delay wire:target="createContainer">
                         <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                     </span>
                     {{ __('Deploy Container') }}

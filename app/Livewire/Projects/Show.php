@@ -30,6 +30,8 @@ class Show extends Component
 
     public string $previewCommit = '';
 
+    private bool $staleReleased = false;
+
     public function mount(Project $project): void
     {
         $this->authorize('view', $project);
@@ -257,12 +259,21 @@ class Show extends Component
         return (bool) config('gitmanager.deploy_queue.enabled', true);
     }
 
+    private function releaseStaleOnce(): void
+    {
+        if ($this->staleReleased) {
+            return;
+        }
+        app(DeploymentService::class)->releaseStaleRunningDeployments();
+        app(DeploymentQueueService::class)->releaseStaleRunning();
+        $this->staleReleased = true;
+    }
+
     private function deploymentInProgress(): bool
     {
         $projectId = $this->project->id;
 
-        app(DeploymentService::class)->releaseStaleRunningDeployments();
-        app(DeploymentQueueService::class)->releaseStaleRunning();
+        $this->releaseStaleOnce();
 
         $runningDeployment = Deployment::query()
             ->where('project_id', $projectId)
@@ -286,8 +297,7 @@ class Show extends Component
     {
         $projectId = $this->project->id;
 
-        app(DeploymentService::class)->releaseStaleRunningDeployments();
-        app(DeploymentQueueService::class)->releaseStaleRunning();
+        $this->releaseStaleOnce();
 
         $runningDeployment = Deployment::query()
             ->where('project_id', $projectId)
