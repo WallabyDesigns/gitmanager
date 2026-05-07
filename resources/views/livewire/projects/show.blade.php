@@ -204,51 +204,53 @@
                 </div>
             </div>
 
-            @php
-                $healthTotal = $healthHistory->count();
-                $healthPassed = $healthHistory->filter(fn ($entry) => data_get($entry, 'deployment_status') === 'success' || data_get($entry, 'status') === 'ok')->count();
-                $healthInconclusive = $healthHistory->filter(fn ($entry) => data_get($entry, 'deployment_status') === 'inconclusive')->count();
-                $healthConclusive = max(0, $healthTotal - $healthInconclusive);
-                $healthFailed = max(0, $healthConclusive - $healthPassed);
-                $healthPassRate = $healthConclusive > 0 ? round(($healthPassed / $healthConclusive) * 100) : null;
-            @endphp
-            <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
-                <div class="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                        <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Health Check Window') }}</h3>
-                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ __('Last :total of :limit scheduled checks.', ['total' => $healthTotal, 'limit' => \App\Models\Project::HEALTH_HISTORY_LIMIT]) }}</p>
-                    </div>
-                    <div class="grid grid-cols-3 gap-2 text-center rounded-md bg-slate-50 px-3 py-2 dark:bg-slate-950/60">
-                        <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Pass') }}</div>
-                        <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Fail') }}</div>
-                        <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Rate') }}</div>
-                        <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ $healthPassRate === null ? 'N/A' : $healthPassRate.'%' }}</div>
-                    </div>
-                </div>
-                <div class="mt-4 divide-y divide-slate-200/70 overflow-hidden rounded-md border border-slate-200/70 dark:divide-slate-800 dark:border-slate-800">
-                    @forelse ($healthHistory->take(5) as $entry)
-                        @php
-                            $entryOk = data_get($entry, 'deployment_status') === 'success' || data_get($entry, 'status') === 'ok';
-                            $entryInconclusive = data_get($entry, 'deployment_status') === 'inconclusive';
-                            $checkedAt = data_get($entry, 'checked_at');
-                        @endphp
-                        <div class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-xs">
-                            <div class="flex min-w-0 items-center gap-2">
-                                <span class="h-2 w-2 shrink-0 rounded-full {{ $entryOk ? 'bg-emerald-400' : ($entryInconclusive ? 'bg-slate-400' : 'bg-rose-400') }}"></span>
-                                <span class="truncate text-slate-700 dark:text-slate-200">{{ data_get($entry, 'summary', $entryOk ? __('Health check passed.') : ($entryInconclusive ? __('Health check inconclusive.') : __('Health check failed.'))) }}</span>
-                            </div>
-                            <div class="flex shrink-0 items-center gap-3 text-slate-500 dark:text-slate-400">
-                                @if (data_get($entry, 'http_status'))
-                                    <span>HTTP {{ data_get($entry, 'http_status') }}</span>
-                                @endif
-                                <span>{{ \App\Support\DateFormatter::forUser($checkedAt, 'M j, Y g:i a', 'Unknown') }}</span>
-                            </div>
+            @if($project->health_url)
+                @php
+                    $healthTotal = $healthHistory->count();
+                    $healthPassed = $healthHistory->filter(fn ($entry) => data_get($entry, 'deployment_status') === 'success' || data_get($entry, 'status') === 'ok')->count();
+                    $healthInconclusive = $healthHistory->filter(fn ($entry) => data_get($entry, 'deployment_status') === 'inconclusive')->count();
+                    $healthConclusive = max(0, $healthTotal - $healthInconclusive);
+                    $healthFailed = max(0, $healthConclusive - $healthPassed);
+                    $healthPassRate = $healthConclusive > 0 ? round(($healthPassed / $healthConclusive) * 100) : null;
+                @endphp
+                <div class="rounded-lg border border-slate-200/70 dark:border-slate-800 p-4">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Health Check Window') }}</h3>
+                            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ __('Last :total of :limit scheduled checks.', ['total' => $healthTotal, 'limit' => \App\Models\Project::HEALTH_HISTORY_LIMIT]) }}</p>
                         </div>
-                    @empty
-                        <div class="px-3 py-4 text-sm text-slate-500 dark:text-slate-400">{{ __('No health checks recorded yet.') }}</div>
-                    @endforelse
+                        <div class="grid grid-cols-3 gap-2 text-center rounded-md bg-slate-50 px-3 py-2 dark:bg-slate-950/60">
+                            <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Pass') }}</div>
+                            <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Fail') }}</div>
+                            <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Rate') }}</div>
+                            <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ $healthPassRate === null ? 'N/A' : $healthPassRate.'%' }}</div>
+                        </div>
+                    </div>
+                    <div class="mt-4 divide-y divide-slate-200/70 overflow-hidden rounded-md border border-slate-200/70 dark:divide-slate-800 dark:border-slate-800">
+                        @forelse ($healthHistory->take(5) as $entry)
+                            @php
+                                $entryOk = data_get($entry, 'deployment_status') === 'success' || data_get($entry, 'status') === 'ok';
+                                $entryInconclusive = data_get($entry, 'deployment_status') === 'inconclusive';
+                                $checkedAt = data_get($entry, 'checked_at');
+                            @endphp
+                            <div class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-xs">
+                                <div class="flex min-w-0 items-center gap-2">
+                                    <span class="h-2 w-2 shrink-0 rounded-full {{ $entryOk ? 'bg-emerald-400' : ($entryInconclusive ? 'bg-slate-400' : 'bg-rose-400') }}"></span>
+                                    <span class="truncate text-slate-700 dark:text-slate-200">{{ data_get($entry, 'summary', $entryOk ? __('Health check passed.') : ($entryInconclusive ? __('Health check inconclusive.') : __('Health check failed.'))) }}</span>
+                                </div>
+                                <div class="flex shrink-0 items-center gap-3 text-slate-500 dark:text-slate-400">
+                                    @if (data_get($entry, 'http_status'))
+                                        <span>HTTP {{ data_get($entry, 'http_status') }}</span>
+                                    @endif
+                                    <span>{{ \App\Support\DateFormatter::forUser($checkedAt, 'M j, Y g:i a', 'Unknown') }}</span>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="px-3 py-4 text-sm text-slate-500 dark:text-slate-400">{{ __('No health checks recorded yet.') }}</div>
+                        @endforelse
+                    </div>
                 </div>
-            </div>
+            @endif
 
             <div>
                 <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ __('Latest Debug Logs') }}</h3>
