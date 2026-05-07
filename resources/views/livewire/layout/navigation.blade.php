@@ -40,7 +40,7 @@ new class extends Component
     <!-- Primary Navigation Menu -->
     <div class="mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
-            <div class="flex">
+            <div class="flex justify-center w-full">
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center min-w-0">
                     <a href="{{ route('dashboard') }}"  class="flex items-center min-w-0">
@@ -57,7 +57,7 @@ new class extends Component
                 </div>
 
                 <!-- Navigation Links -->
-                <div class="hidden space-x-2 gap-4 sm:-my-px sm:ms-10 sm:flex justify-center">
+                <div class="hidden w-full space-x-2 gap-4 sm:-my-px sm:ms-10 sm:flex justify-center">
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         <span class="flex items-center gap-1.5">
                             <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">

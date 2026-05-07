@@ -139,67 +139,41 @@
     @if ($tab === 'projects')
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 
-            {{-- Health monitor --}}
+            {{-- Project directory monitor --}}
             <div class="lg:col-span-2 space-y-4">
-                <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Site Health Monitor') }}</h2>
+                <div class="flex items-center justify-between gap-3">
+                    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Project Directory Monitor') }}</h2>
+                    <a href="{{ route('projects.index') }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">{{ __('Manage') }} &rarr;</a>
+                </div>
 
-                @if ($monitoredProjects->isEmpty())
+                @php
+                    $rootProjects = $projectTree['projects'] ?? [];
+                    $directoryNodes = array_values($projectTree['directories'] ?? []);
+                    $hasProjects = ! empty($rootProjects) || ! empty($directoryNodes);
+                @endphp
+
+                @if (! $hasProjects)
                     <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center">
                         <svg class="mx-auto h-10 w-10 text-slate-300 dark:text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.745 3.745 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.745 3.745 0 013.296-1.043A3.745 3.745 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.745 3.745 0 013.296 1.043 3.745 3.745 0 011.043 3.296A3.745 3.745 0 0121 12z" />
                         </svg>
-                        <p class="mt-3 text-sm text-slate-500 dark:text-slate-400">{{ __('No projects with health monitoring configured.') }}</p>
-                        <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ __('Add a site URL or health check URL to a project to enable monitoring.') }}</p>
+                        <p class="mt-3 text-sm text-slate-500 dark:text-slate-400">{{ __('No projects yet.') }}</p>
+                        <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ __('Create a project to begin tracking deployments and health checks.') }}</p>
                     </div>
                 @else
                     <div class="space-y-3">
-                        @foreach ($monitoredProjects as $project)
-                            @php
-                                $status = $project->health_status;
-                                $isOk = $status === 'ok';
-                                $isNa = $status === 'na';
-                                $history = $healthHistory[$project->id] ?? collect();
-                                $conclusiveHistory = $history->reject(fn ($check) => $check->status === 'inconclusive');
-                                $uptimePercent = $conclusiveHistory->count() > 0
-                                    ? round($conclusiveHistory->where('status', 'success')->count() / $conclusiveHistory->count() * 100)
-                                    : null;
-                            @endphp
-                            <a href="{{ route('projects.show', $project) }}" class="block rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 transition hover:border-indigo-300 dark:hover:border-indigo-500/60 hover:shadow-sm">
-                                <div class="flex items-center justify-between gap-3">
-                                    <div class="min-w-0 flex-1">
-                                        <div class="flex items-center gap-2">
-                                            <span class="inline-block h-2 w-2 shrink-0 rounded-full {{ $isOk ? 'bg-emerald-500' : ($isNa ? 'bg-rose-500' : 'bg-slate-400') }}"></span>
-                                            <span class="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{{ $project->name }}</span>
-                                            @if ($project->directory_path)
-                                                <span class="hidden sm:inline text-xs text-slate-400 dark:text-slate-500 truncate">{{ $project->directory_path }}</span>
-                                            @endif
-                                        </div>
-                                        @if ($project->site_url || $project->health_url)
-                                            <p class="mt-0.5 ml-4 text-xs text-slate-400 dark:text-slate-500 truncate">{{ $project->health_url ?: $project->site_url }}</p>
-                                        @endif
-                                    </div>
-                                    <div class="shrink-0 flex items-center gap-4">
-                                        @if ($history->count() > 0)
-                                            <div class="hidden sm:flex items-end gap-0.5 h-5">
-                                                @foreach ($history->take(30) as $check)
-                                                    <span class="w-1.5 rounded-sm {{ $check->status === 'success' ? 'bg-emerald-400 dark:bg-emerald-500' : ($check->status === 'inconclusive' ? 'bg-slate-300 dark:bg-slate-600' : 'bg-rose-400 dark:bg-rose-500') }}" style="height: {{ $check->status === 'success' ? '100%' : ($check->status === 'inconclusive' ? '35%' : '50%') }}"></span>
-                                                @endforeach
-                                            </div>
-                                            @if ($uptimePercent !== null)
-                                                <span class="text-xs font-medium {{ $uptimePercent >= 95 ? 'text-emerald-600 dark:text-emerald-400' : ($uptimePercent >= 75 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400') }}">{{ $uptimePercent }}%</span>
-                                            @endif
-                                        @endif
-                                        <span class="text-xs font-semibold uppercase tracking-wide px-2 py-1 rounded-full {{ $isOk ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : ($isNa ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400') }}">
-                                            {{ $isOk ? __('OK') : ($isNa ? __('Down') : __('Unknown')) }}
-                                        </span>
-                                    </div>
-                                </div>
-                                @if ($project->health_checked_at)
-                                    <p class="mt-2 ml-4 text-xs text-slate-400 dark:text-slate-500">
-                                        {{ __('Last checked :time', ['time' => $project->health_checked_at->diffForHumans()]) }}
-                                    </p>
-                                @endif
-                            </a>
+                        @foreach ($rootProjects as $project)
+                            @include('livewire.dashboard.partials.project-row', [
+                                'project' => $project,
+                                'healthHistory' => $healthHistory,
+                            ])
+                        @endforeach
+
+                        @foreach ($directoryNodes as $node)
+                            @include('livewire.dashboard.partials.project-node', [
+                                'node' => $node,
+                                'healthHistory' => $healthHistory,
+                            ])
                         @endforeach
                     </div>
                 @endif
@@ -247,7 +221,7 @@
                                     <span class="inline-block h-2 w-2 shrink-0 rounded-full bg-amber-500"></span>
                                     <div class="min-w-0 flex-1">
                                         <p class="truncate text-sm text-slate-800 dark:text-slate-200">{{ $project->name }}</p>
-                                        <p class="text-xs text-slate-400 dark:text-slate-500">{{ $project->audit_open_count }} {{ Str::plural('vulnerability', $project->audit_open_count) }}</p>
+                                        <p class="text-xs text-slate-400 dark:text-slate-500">{{ $project->audit_open_count }} {{ __( \Illuminate\Support\Str::plural('vulnerability', $project->audit_open_count) ) }}</p>
                                     </div>
                                     <span class="shrink-0 text-xs font-medium text-amber-600 dark:text-amber-400">{{ __('Security') }}</span>
                                 </a>
@@ -326,28 +300,19 @@
                     </div>
 
                     @if (count($infra['containers_list']) > 0)
-                        <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
-                            <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
-                                <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('All Containers') }}</h3>
-                            </div>
-                            <div class="divide-y divide-slate-100 dark:divide-slate-800">
-                                @foreach ($infra['containers_list'] as $container)
-                                    @php
-                                        $isRunning = ($container['State'] ?? '') === 'running';
-                                        $cName = ltrim($container['Names'] ?? $container['ID'] ?? '?', '/');
-                                    @endphp
-                                    <div class="flex items-center gap-3 px-4 py-2.5">
-                                        <span class="inline-block h-2 w-2 shrink-0 rounded-full {{ $isRunning ? 'bg-emerald-500' : 'bg-slate-400' }}"></span>
-                                        <div class="min-w-0 flex-1">
-                                            <p class="truncate text-sm font-medium text-slate-800 dark:text-slate-200">{{ $cName }}</p>
-                                            <p class="truncate text-xs text-slate-400 dark:text-slate-500">{{ $container['Image'] ?? '' }}</p>
-                                        </div>
-                                        <span class="shrink-0 text-xs font-medium capitalize {{ $isRunning ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400' }}">
-                                            {{ $container['State'] ?? 'unknown' }}
-                                        </span>
-                                    </div>
-                                @endforeach
-                            </div>
+                        @php
+                            $containerRoot = $infra['container_tree'] ?? ['directories' => [], 'containers' => []];
+                            $containerRootNodes = array_values($containerRoot['directories'] ?? []);
+                            $rootContainers = $containerRoot['containers'] ?? [];
+                        @endphp
+                        <div class="space-y-3">
+                            @foreach ($containerRootNodes as $node)
+                                @include('livewire.dashboard.partials.container-node', ['node' => $node])
+                            @endforeach
+
+                            @foreach ($rootContainers as $container)
+                                @include('livewire.dashboard.partials.container-row', ['container' => $container])
+                            @endforeach
                         </div>
                     @endif
                 </div>

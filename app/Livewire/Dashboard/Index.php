@@ -119,6 +119,9 @@ class Index extends Component
         $allProjects = $user->projects()
             ->withCount([
                 'auditIssues as audit_open_count' => fn ($q) => $q->where('status', 'open'),
+                'deployments as deployments_today_count' => fn ($q) => $q
+                    ->where('action', 'deploy')
+                    ->where('started_at', '>=', now()->startOfDay()),
             ])
             ->get();
 
@@ -158,9 +161,11 @@ class Index extends Component
             ->count();
 
         $infra = $this->loadInfrastructure();
+        $projectTree = $this->buildProjectTree($allProjects);
 
         return view('livewire.dashboard.index', [
             'totalProjects' => $allProjects->count(),
+            'projectTree' => $projectTree,
             'monitoredProjects' => $monitoredProjects,
             'healthyCount' => $healthyCount,
             'healthIssues' => $healthIssues,
@@ -185,6 +190,7 @@ class Index extends Component
      *   swarm: array{active: bool, nodes: int, ready_nodes: int, services: int}|null,
      *   is_enterprise: bool,
      *   containers_list: array<int, array<string, mixed>>,
+     *   container_tree: array<string, mixed>,
      * }
      */
     private function loadInfrastructure(): array
@@ -200,6 +206,7 @@ class Index extends Component
             'swarm' => null,
             'is_enterprise' => $isEnterprise,
             'containers_list' => [],
+            'container_tree' => $this->emptyContainerNode('Containers', ''),
         ];
 
         try {
@@ -218,6 +225,7 @@ class Index extends Component
                 'total' => $containerCollection->count(),
             ];
             $base['containers_list'] = $containerCollection->sortBy('Names')->values()->all();
+            $base['container_tree'] = $this->buildContainerTree($base['containers_list']);
             $base['images'] = count($docker->listImages());
             $base['volumes'] = count($docker->listVolumes());
             $base['networks'] = count($docker->listNetworks());
@@ -244,6 +252,284 @@ class Index extends Component
         }
 
         return $base;
+    }
+
+    /**
+     * @param  Collection<int, Project>  $projects
+     * @return array<string, mixed>
+     */
+    private function buildProjectTree(Collection $projects): array
+    {
+        $root = $this->emptyProjectNode(__('Projects'), '');
+
+        foreach ($projects as $project) {
+            $segments = $this->directorySegments((string) ($project->directory_path ?? ''));
+            $this->insertProjectIntoTree($root, $segments, $project);
+        }
+
+        $this->sortTreeNode($root);
+
+        return $root;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function emptyProjectNode(string $name, string $path): array
+    {
+        return [
+            'name' => $name,
+            'path' => $path,
+            'stats' => [
+                'total' => 0,
+                'monitored' => 0,
+                'healthy' => 0,
+                'down' => 0,
+                'unknown' => 0,
+                'updates' => 0,
+                'vulnerabilities' => 0,
+                'deployments_today' => 0,
+            ],
+            'directories' => [],
+            'projects' => [],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $node
+     * @param  array<int, string>  $segments
+     */
+    private function insertProjectIntoTree(array &$node, array $segments, Project $project): void
+    {
+        $this->applyProjectStats($node, $project);
+
+        if ($segments === []) {
+            $node['projects'][] = $project;
+
+            return;
+        }
+
+        $segment = array_shift($segments);
+        if (! is_string($segment) || trim($segment) === '') {
+            $node['projects'][] = $project;
+
+            return;
+        }
+
+        $label = trim($segment);
+        $key = strtolower($label);
+        if (! isset($node['directories'][$key])) {
+            $path = trim(((string) ($node['path'] ?? '')).'/'.$label, '/');
+            $node['directories'][$key] = $this->emptyProjectNode($label, $path);
+        }
+
+        $this->insertProjectIntoTree($node['directories'][$key], $segments, $project);
+    }
+
+    /**
+     * @param  array<string, mixed>  $node
+     */
+    private function applyProjectStats(array &$node, Project $project): void
+    {
+        $node['stats']['total']++;
+        $node['stats']['updates'] += $project->updates_available ? 1 : 0;
+        $node['stats']['vulnerabilities'] += (int) ($project->audit_open_count ?? 0);
+        $node['stats']['deployments_today'] += (int) ($project->deployments_today_count ?? 0);
+
+        if (! $project->hasHealthMonitoring()) {
+            return;
+        }
+
+        $node['stats']['monitored']++;
+        if ($project->health_status === 'ok') {
+            $node['stats']['healthy']++;
+        } elseif ($project->health_status === 'na') {
+            $node['stats']['down']++;
+        } else {
+            $node['stats']['unknown']++;
+        }
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $containers
+     * @return array<string, mixed>
+     */
+    private function buildContainerTree(array $containers): array
+    {
+        $root = $this->emptyContainerNode(__('Containers'), '');
+
+        foreach ($containers as $container) {
+            $segments = $this->containerSegments($container);
+            $this->insertContainerIntoTree($root, $segments, $container);
+        }
+
+        $this->sortTreeNode($root);
+
+        return $root;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function emptyContainerNode(string $name, string $path): array
+    {
+        return [
+            'name' => $name,
+            'path' => $path,
+            'stats' => [
+                'total' => 0,
+                'running' => 0,
+                'stopped' => 0,
+            ],
+            'directories' => [],
+            'containers' => [],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $node
+     * @param  array<int, string>  $segments
+     * @param  array<string, mixed>  $container
+     */
+    private function insertContainerIntoTree(array &$node, array $segments, array $container): void
+    {
+        $this->applyContainerStats($node, $container);
+
+        if ($segments === []) {
+            $node['containers'][] = $container;
+
+            return;
+        }
+
+        $segment = array_shift($segments);
+        if (! is_string($segment) || trim($segment) === '') {
+            $node['containers'][] = $container;
+
+            return;
+        }
+
+        $label = trim($segment);
+        $key = strtolower($label);
+        if (! isset($node['directories'][$key])) {
+            $path = trim(((string) ($node['path'] ?? '')).'/'.$label, '/');
+            $node['directories'][$key] = $this->emptyContainerNode($label, $path);
+        }
+
+        $this->insertContainerIntoTree($node['directories'][$key], $segments, $container);
+    }
+
+    /**
+     * @param  array<string, mixed>  $node
+     * @param  array<string, mixed>  $container
+     */
+    private function applyContainerStats(array &$node, array $container): void
+    {
+        $node['stats']['total']++;
+        if (($container['State'] ?? '') === 'running') {
+            $node['stats']['running']++;
+        } else {
+            $node['stats']['stopped']++;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $container
+     * @return array<int, string>
+     */
+    private function containerSegments(array $container): array
+    {
+        $labels = $this->containerLabels($container['Labels'] ?? '');
+        $composeProject = trim((string) ($labels['com.docker.compose.project'] ?? ''));
+        if ($composeProject !== '') {
+            return [__('Compose'), $composeProject];
+        }
+
+        $swarmService = trim((string) ($labels['com.docker.swarm.service.name'] ?? ''));
+        if ($swarmService !== '') {
+            return [__('Swarm'), $swarmService];
+        }
+
+        $image = trim((string) ($container['Image'] ?? ''));
+        if (str_contains($image, '/')) {
+            $parts = array_values(array_filter(explode('/', $image), static fn (string $part): bool => trim($part) !== ''));
+            if (count($parts) > 1) {
+                array_pop($parts);
+
+                return array_merge([__('Images')], $parts);
+            }
+        }
+
+        return [__('Standalone')];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function containerLabels(mixed $labels): array
+    {
+        if (is_array($labels)) {
+            return array_map(static fn ($value): string => (string) $value, $labels);
+        }
+
+        $parsed = [];
+        foreach (explode(',', (string) $labels) as $pair) {
+            [$key, $value] = array_pad(explode('=', $pair, 2), 2, '');
+            $key = trim($key);
+            if ($key !== '') {
+                $parsed[$key] = trim($value);
+            }
+        }
+
+        return $parsed;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function directorySegments(string $path): array
+    {
+        $normalized = str_replace('\\', '/', $path);
+        $normalized = preg_replace('/\/+/', '/', $normalized) ?? $normalized;
+        $normalized = trim($normalized, '/ ');
+
+        if ($normalized === '') {
+            return [];
+        }
+
+        return array_values(array_filter(
+            array_map(static fn (string $segment): string => trim($segment), explode('/', $normalized)),
+            static fn (string $segment): bool => $segment !== ''
+        ));
+    }
+
+    /**
+     * @param  array<string, mixed>  $node
+     */
+    private function sortTreeNode(array &$node): void
+    {
+        uasort($node['directories'], static function (array $left, array $right): int {
+            return strnatcasecmp((string) ($left['name'] ?? ''), (string) ($right['name'] ?? ''));
+        });
+
+        foreach ($node['directories'] as &$child) {
+            $this->sortTreeNode($child);
+        }
+        unset($child);
+
+        if (isset($node['projects']) && is_array($node['projects'])) {
+            usort($node['projects'], static function (Project $left, Project $right): int {
+                return strnatcasecmp((string) $left->name, (string) $right->name);
+            });
+        }
+
+        if (isset($node['containers']) && is_array($node['containers'])) {
+            usort($node['containers'], static function (array $left, array $right): int {
+                $leftName = ltrim((string) ($left['Names'] ?? $left['ID'] ?? ''), '/');
+                $rightName = ltrim((string) ($right['Names'] ?? $right['ID'] ?? ''), '/');
+
+                return strnatcasecmp($leftName, $rightName);
+            });
+        }
     }
 
     private function queueEnabled(): bool

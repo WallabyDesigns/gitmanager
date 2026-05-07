@@ -204,7 +204,7 @@
                 </div>
             </div>
 
-            @if($project->health_url)
+            @if($project->health_url != "")
                 @php
                     $healthTotal = $healthHistory->count();
                     $healthPassed = $healthHistory->filter(fn ($entry) => data_get($entry, 'deployment_status') === 'success' || data_get($entry, 'status') === 'ok')->count();
