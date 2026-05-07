@@ -218,17 +218,15 @@
                         <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ __('Health Check Window') }}</h3>
                         <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ __('Last :total of :limit scheduled checks.', ['total' => $healthTotal, 'limit' => \App\Models\Project::HEALTH_HISTORY_LIMIT]) }}</p>
                     </div>
-                    <div class="grid grid-cols-3 gap-2 text-center">
-                        <div class="rounded-md bg-slate-50 px-3 py-2 dark:bg-slate-950/60">
-<div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Pass') }}</div>
-                            <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Fail') }}</div>
-                            <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Rate') }}</div>
-                            <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ $healthPassRate === null ? 'N/A' : $healthPassRate.'%' }}</div>
-                        </div>
+                    <div class="grid grid-cols-3 gap-2 text-center rounded-md bg-slate-50 px-3 py-2 dark:bg-slate-950/60">
+                        <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Pass') }}</div>
+                        <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Fail') }}</div>
+                        <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ __('Rate') }}</div>
+                        <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ $healthPassRate === null ? 'N/A' : $healthPassRate.'%' }}</div>
                     </div>
                 </div>
                 <div class="mt-4 divide-y divide-slate-200/70 overflow-hidden rounded-md border border-slate-200/70 dark:divide-slate-800 dark:border-slate-800">
-                    @forelse ($healthHistory->take(10) as $entry)
+                    @forelse ($healthHistory->take(5) as $entry)
                         @php
                             $entryOk = data_get($entry, 'deployment_status') === 'success' || data_get($entry, 'status') === 'ok';
                             $entryInconclusive = data_get($entry, 'deployment_status') === 'inconclusive';

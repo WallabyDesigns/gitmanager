@@ -63,45 +63,53 @@ class Index extends Component
             ->get();
 
         if ($this->queueEnabled()) {
-            $queued = 0;
-            $existing = 0;
-            $skipped = 0;
-
-            foreach ($projects as $project) {
-                if ($project->permissions_locked && ! $project->ftp_enabled && ! $project->ssh_enabled) {
-                    $skipped++;
-
-                    continue;
-                }
-
-                $item = app(DeploymentQueueService::class)->enqueue($project, 'audit_project', [
-                    'auto_fix' => true,
-                    'send_email' => true,
-                    'source' => 'bulk_project_audit',
-                ], Auth::user());
-
-                if ($item->wasRecentlyCreated) {
-                    $queued++;
-                } else {
-                    $existing++;
-                }
-            }
-
-            $message = "Queued {$queued} project audit(s).";
-            if ($existing > 0) {
-                $message .= " {$existing} already queued.";
-            }
-            if ($skipped > 0) {
-                $message .= " {$skipped} skipped because permissions are locked.";
-            }
-
-            $this->dispatch('notify', message: $message);
+            $this->queueBulkAudit($projects);
 
             return;
         }
 
         $results = $audit->auditProjects($projects, Auth::user(), true, true);
         $this->dispatchAuditToast($results);
+    }
+
+    /**
+     * @param  Collection<int, Project>  $projects
+     */
+    private function queueBulkAudit(Collection $projects): void
+    {
+        $queued = 0;
+        $existing = 0;
+        $skipped = 0;
+
+        foreach ($projects as $project) {
+            if ($project->permissions_locked && ! $project->ftp_enabled && ! $project->ssh_enabled) {
+                $skipped++;
+
+                continue;
+            }
+
+            $item = app(DeploymentQueueService::class)->enqueue($project, 'audit_project', [
+                'auto_fix' => true,
+                'send_email' => true,
+                'source' => 'bulk_project_audit',
+            ], Auth::user());
+
+            if ($item->wasRecentlyCreated) {
+                $queued++;
+            } else {
+                $existing++;
+            }
+        }
+
+        $message = "Queued {$queued} project audit(s).";
+        if ($existing > 0) {
+            $message .= " {$existing} already queued.";
+        }
+        if ($skipped > 0) {
+            $message .= " {$skipped} skipped because permissions are locked.";
+        }
+
+        $this->dispatch('notify', message: $message);
     }
 
     public function render()
@@ -117,14 +125,10 @@ class Index extends Component
         $monitoredProjects = $allProjects->filter(fn ($p) => $p->hasHealthMonitoring())->values();
         $healthyCount = $monitoredProjects->where('health_status', 'ok')->count();
         $healthIssues = $monitoredProjects->where('health_status', 'na')->values();
-        $updatesAvailable = $user->projects()->where('updates_available', true)->get();
-        $vulnerableProjects = $user->projects()
-            ->withCount(['auditIssues as audit_open_count' => fn ($q) => $q->where('status', 'open')])
-            ->get()
-            ->filter(fn ($p) => ($p->audit_open_count ?? 0) > 0)
-            ->values();
+        $updatesAvailable = $allProjects->where('updates_available', true)->values();
+        $vulnerableProjects = $allProjects->filter(fn ($p) => ($p->audit_open_count ?? 0) > 0)->values();
 
-        $projectIds = $user->projects()->pluck('id')->all();
+        $projectIds = $allProjects->pluck('id')->all();
 
         $recentDeployments = $projectIds === [] ? collect() : Deployment::query()
             ->whereIn('project_id', $projectIds)
@@ -284,34 +288,41 @@ class Index extends Component
     private function runUpdateChecks(DeploymentService $service, $projects, bool $autoNotify): void
     {
         foreach ($projects as $project) {
-            $updatesCheckedAt = $project->updates_checked_at;
-            if (is_string($updatesCheckedAt)) {
-                $updatesCheckedAt = Carbon::parse($updatesCheckedAt);
-            }
-
-            if (! $updatesCheckedAt || $updatesCheckedAt->lt(now()->subMinutes(5))) {
-                $wasAvailable = (bool) $project->updates_available;
-                try {
-                    $hasUpdates = $service->checkForUpdates($project);
-                } catch (\Throwable) {
-                    $this->markUpdateCheckAttempt($project);
-
-                    continue;
-                }
-
-                $queued = false;
-                if (! $wasAvailable && $hasUpdates && $project->auto_deploy && $this->queueEnabled()) {
-                    app(DeploymentQueueService::class)->enqueue($project, 'deploy', ['reason' => 'auto_update'], Auth::user());
-                    $queued = true;
-                }
-
-                if (! $queued && $project->hasSuccessfulDeployment()) {
-                    $service->checkHealth($project, false, $autoNotify);
-                }
-            }
+            $this->checkProjectUpdates($service, $project, $autoNotify);
         }
 
         $service->flushHealthNotifications();
+    }
+
+    private function checkProjectUpdates(DeploymentService $service, Project $project, bool $autoNotify): void
+    {
+        $updatesCheckedAt = $project->updates_checked_at;
+        if (is_string($updatesCheckedAt)) {
+            $updatesCheckedAt = Carbon::parse($updatesCheckedAt);
+        }
+
+        if ($updatesCheckedAt && $updatesCheckedAt->gte(now()->subMinutes(5))) {
+            return;
+        }
+
+        $wasAvailable = (bool) $project->updates_available;
+        try {
+            $hasUpdates = $service->checkForUpdates($project);
+        } catch (\Throwable) {
+            $this->markUpdateCheckAttempt($project);
+
+            return;
+        }
+
+        if (! $wasAvailable && $hasUpdates && $project->auto_deploy && $this->queueEnabled()) {
+            app(DeploymentQueueService::class)->enqueue($project, 'deploy', ['reason' => 'auto_update'], Auth::user());
+
+            return;
+        }
+
+        if ($project->hasSuccessfulDeployment()) {
+            $service->checkHealth($project, false, $autoNotify);
+        }
     }
 
     private function markUpdateCheckAttempt(Project $project): void
@@ -362,21 +373,8 @@ class Index extends Component
                 continue;
             }
 
-            $projectRemaining = 0;
-            foreach ($projectResults as $result) {
-                if (! is_array($result)) {
-                    continue;
-                }
-
-                if (($result['status'] ?? '') === 'failed') {
-                    $failed++;
-                }
-
-                $count = $result['remaining'] ?? null;
-                if (is_numeric($count)) {
-                    $projectRemaining += (int) $count;
-                }
-            }
+            [$projectRemaining, $projectFailed] = $this->tallyProjectResults($projectResults);
+            $failed += $projectFailed;
 
             if ($projectRemaining > 0) {
                 $projectsWithIssues++;
@@ -389,5 +387,32 @@ class Index extends Component
             'failed' => $failed,
             'projects_with_issues' => $projectsWithIssues,
         ];
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $projectResults
+     * @return array{int, int}
+     */
+    private function tallyProjectResults(array $projectResults): array
+    {
+        $remaining = 0;
+        $failed = 0;
+
+        foreach ($projectResults as $result) {
+            if (! is_array($result)) {
+                continue;
+            }
+
+            if (($result['status'] ?? '') === 'failed') {
+                $failed++;
+            }
+
+            $count = $result['remaining'] ?? null;
+            if (is_numeric($count)) {
+                $remaining += (int) $count;
+            }
+        }
+
+        return [$remaining, $failed];
     }
 }

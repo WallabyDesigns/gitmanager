@@ -61,7 +61,7 @@
                                     wire:loading.attr="disabled"
                                     wire:target="deployTemplate('{{ $key }}')"
                                     class="flex-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-white transition disabled:opacity-50">
-                                <span wire:loading wire:target="deployTemplate('{{ $key }}')">
+                                <span wire:loading.delay wire:target="deployTemplate('{{ $key }}')">
                                     <svg class="inline h-3 w-3 animate-spin mr-1" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                                 </span>
                                 Deploy
