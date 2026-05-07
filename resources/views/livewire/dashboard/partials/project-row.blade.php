@@ -38,7 +38,7 @@
                 @endif
             @endif
             @if ($project->hasHealthMonitoring())
-                <span class="text-xs font-semibold uppercase tracking-wide px-2 py-1 rounded-full {{ $isOk ? 'bg-emerald-100' : ($isNa ? 'bg-rose-100' : 'bg-slate-800 text-slate-400') }}">
+                <span class="text-xs font-semibold uppercase tracking-wide px-2 py-1 rounded-full {{ $isOk ? 'bg-emerald-600' : ($isNa ? 'bg-rose-100' : 'bg-slate-800 text-slate-400') }}">
                     {{ $isOk ? __('OK') : ($isNa ? __('Down') : __('Unknown')) }}
                 </span>
             @endif
