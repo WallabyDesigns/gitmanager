@@ -124,7 +124,7 @@
                             {{ ucfirst(str_replace('_', ' ', $deployment->action)) }}
                         </div>
                     @php($warn = $deployment->status === 'warning' || ($deployment->status === 'failed' && str_contains($deployment->output_log ?? '', 'stashed changes could not be restored')))
-                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $warn ? 'bg-amber-100 : ($deployment->status === 'success' ? 'bg-emerald-100 : ($deployment->status === 'failed' ? 'bg-rose-500/10 text-rose-300' : 'bg-slate-800 text-slate-300')) }}">
+                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $warn ? 'bg-amber-500/10 text-amber-300' : ($deployment->status === 'success' ? 'bg-emerald-500/10 text-emerald-300' : ($deployment->status === 'failed' ? 'bg-rose-500/10 text-rose-300' : 'bg-slate-800 text-slate-300')) }}">
                         {{ $warn ? 'warning' : $deployment->status }}
                     </span>
                     </div>

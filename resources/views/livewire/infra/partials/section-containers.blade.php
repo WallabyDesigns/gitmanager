@@ -34,7 +34,7 @@
                             </td>
                             <td class="px-4 py-3 font-mono text-xs text-slate-400">{{ Str::limit($c['Image'] ?? '', 35) }}</td>
                             <td class="px-4 py-3">
-                                <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium {{ $state === 'running' ? 'bg-emerald-100 : ($state === 'exited' ? 'bg-rose-500/10 text-rose-300' : 'bg-slate-800 text-slate-400') }}">
+                                <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium {{ $state === 'running' ? 'bg-emerald-500/10 text-emerald-300' : ($state === 'exited' ? 'bg-rose-500/10 text-rose-300' : 'bg-slate-800 text-slate-400') }}">
                                     <span class="h-1.5 w-1.5 rounded-full {{ $state === 'running' ? 'bg-emerald-500' : ($state === 'exited' ? 'bg-rose-500' : 'bg-slate-400') }}"></span>
                                     {{ $state ? ucfirst($state) : __('Unknown') }}
                                 </span>

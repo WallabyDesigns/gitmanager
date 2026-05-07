@@ -111,7 +111,7 @@
                             <div>
                                 <div class="flex items-center gap-2">
                                     <h4 class="text-sm font-semibold text-slate-100">{{ $item->project?->name ?? __('Unknown project') }}</h4>
-                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $item->status === 'queued' ? 'bg-amber-100 : ($item->status === 'running' ? 'bg-indigo-100 : ($item->status === 'completed' ? 'bg-emerald-500/10 text-emerald-300' : 'bg-rose-100 bg-rose-500/10 text-rose-300')) }}">
+                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $item->status === 'queued' ? 'bg-amber-500/10 text-amber-300' : ($item->status === 'running' ? 'bg-indigo-500/10 text-indigo-300' : ($item->status === 'completed' ? 'bg-emerald-500/10 text-emerald-300' : 'bg-rose-500/10 text-rose-300')) }}">
                                         {{ $item->status }}
                                     </span>
                                     @if ($item->status === 'running')
