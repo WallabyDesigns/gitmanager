@@ -271,6 +271,20 @@ class LicenseService
         [$response, $exception] = $this->attemptVerifyRequest($endpoint, $installationUuid, $key, $detectedIp, $timeout);
 
         if ($exception !== null) {
+            if ($this->canRetainCurrentLicenseAfterVerifyException()) {
+                $this->settings->set(self::SETTING_STATUS, 'valid');
+                $this->settings->set(
+                    self::SETTING_MESSAGE,
+                    'License verification is temporarily unavailable: '.$this->formatVerifyExceptionDetail($exception).'. Enterprise access was retained from the previous successful verification.'
+                );
+                $this->settings->set(self::SETTING_VERIFIED_AT, now()->toIso8601String());
+                if ($detectedIp !== null) {
+                    $this->settings->set(self::SETTING_DETECTED_IP, $detectedIp);
+                }
+
+                return $this->state();
+            }
+
             $this->settings->set(self::SETTING_STATUS, 'invalid');
             $this->settings->set(self::SETTING_MESSAGE, $this->formatVerifyExceptionMessage($exception));
             $this->settings->set(self::SETTING_EDITION, self::EDITION_COMMUNITY);
@@ -441,6 +455,15 @@ class LicenseService
         }
 
         return $expiresAt->lte(now());
+    }
+
+    private function canRetainCurrentLicenseAfterVerifyException(): bool
+    {
+        $state = $this->state();
+
+        return ($state['status'] ?? '') === 'valid'
+            && $this->normalizeEdition((string) ($state['edition'] ?? self::EDITION_COMMUNITY)) === self::EDITION_ENTERPRISE
+            && ! $this->isExpired($state);
     }
 
     private function detectPublicIp(bool $allowRemoteLookup): ?string
@@ -856,7 +879,7 @@ class LicenseService
 
     private function formatVerifyExceptionMessage(\Throwable $exception): string
     {
-        $raw = trim($exception->getMessage());
+        $raw = $this->formatVerifyExceptionDetail($exception);
         $lower = strtolower($raw);
 
         if (str_contains($lower, 'curl error 60')) {
@@ -868,5 +891,10 @@ class LicenseService
         }
 
         return 'License verification failed: '.$raw;
+    }
+
+    private function formatVerifyExceptionDetail(\Throwable $exception): string
+    {
+        return trim($exception->getMessage()) ?: $exception::class;
     }
 }

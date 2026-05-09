@@ -127,6 +127,35 @@ class LicenseServiceTest extends TestCase
         $this->assertStringContainsString('Connection refused', $state['message']);
     }
 
+    public function test_verify_now_retains_existing_enterprise_license_for_transport_failure(): void
+    {
+        $installationUuid = app(LicenseService::class)->installationUuid();
+
+        Http::fake(['*' => Http::response([
+            'valid' => true,
+            'message' => 'License validated.',
+            'edition' => 'enterprise',
+            'installation_uuid' => $installationUuid,
+        ], 200)]);
+
+        $svc = $this->service();
+        $svc->setLicenseKey('gwm_TESTKEY123');
+        $validState = $svc->verifyNow();
+
+        $this->assertSame('valid', $validState['status']);
+        $this->assertSame('enterprise', $validState['edition']);
+
+        Http::fake(['*' => fn () => throw new \Exception('cURL error 6: getaddrinfo() thread failed to start')]);
+
+        $state = $svc->verifyNow();
+
+        $this->assertSame('valid', $state['status']);
+        $this->assertSame('enterprise', $state['edition']);
+        $this->assertStringContainsString('temporarily unavailable', $state['message']);
+        $this->assertStringContainsString('getaddrinfo() thread failed to start', $state['message']);
+        $this->assertTrue($svc->hasValidEnterpriseLicense());
+    }
+
     public function test_has_valid_enterprise_license_returns_false_with_no_key(): void
     {
         $this->assertFalse($this->service()->hasValidEnterpriseLicense());
