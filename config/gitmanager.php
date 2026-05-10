@@ -73,6 +73,16 @@ return [
     'scheduler' => [
         'stale_seconds' => env('GWM_SCHEDULER_STALE_SECONDS', 120),
     ],
+    'health' => [
+        'stream_fallback_enabled' => env('GWM_HEALTH_STREAM_FALLBACK_ENABLED', true),
+        'cli_fallback_enabled' => env('GWM_HEALTH_CLI_FALLBACK_ENABLED', true),
+        'primary_failure_threshold' => env('GWM_HEALTH_PRIMARY_FAILURE_THRESHOLD', 3),
+        'primary_fallback_seconds' => env('GWM_HEALTH_PRIMARY_FALLBACK_SECONDS', 3600),
+        'bundled_probe_enabled' => env('GWM_HEALTH_BUNDLED_PROBE_ENABLED', true),
+        'bundled_probe_script' => env('GWM_HEALTH_BUNDLED_PROBE_SCRIPT', base_path('bin/gwm-http-status.php')),
+        'httpie_binary' => env('GWM_HTTPIE_BINARY', 'http'),
+        'curl_binary' => env('GWM_CURL_BINARY', 'curl'),
+    ],
     'license' => [
         // NOTE:
         // These env fallbacks are only honored in local/testing by LicenseService.

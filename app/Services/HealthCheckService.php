@@ -6,6 +6,7 @@ use App\Models\Project;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Symfony\Component\Process\Process;
 
 class HealthCheckService
 {
@@ -55,23 +56,64 @@ class HealthCheckService
         }
 
         $transportException = null;
-        for ($attempt = 1; $attempt <= self::HTTP_ATTEMPTS; $attempt++) {
+        $skipPrimaryTransport = false;
+        if ($this->shouldUseFallbackFirst($project, $healthUrl)) {
+            $fallbackStatus = $this->fallbackHttpStatus($healthUrl);
+            if ($fallbackStatus !== null) {
+                $httpStatus = $fallbackStatus;
+                $status = $fallbackStatus >= 200 && $fallbackStatus < 400 ? 'ok' : 'na';
+                $healthLog[] = sprintf(
+                    'HTTP health check %s via fallback transport after repeated primary transport failures (%d).',
+                    $status === 'ok' ? 'OK' : 'failed',
+                    $fallbackStatus
+                );
+                Cache::forget($this->consecutiveFailKey($project));
+            } else {
+                $healthLog[] = 'Primary HTTP transport is cooling down, but fallback transport was unavailable.';
+                $transportException = new \RuntimeException('Primary HTTP transport is cooling down and fallback transport was unavailable.');
+                $skipPrimaryTransport = true;
+            }
+        }
+
+        for ($attempt = 1; ! $skipPrimaryTransport && ! isset($status) && $attempt <= self::HTTP_ATTEMPTS; $attempt++) {
             try {
                 $response = Http::timeout(10)->get($healthUrl);
                 $httpStatus = $response->status();
                 if ($response->successful()) {
                     $healthLog[] = 'HTTP health check OK ('.$response->status().').';
                     Cache::forget($this->consecutiveFailKey($project));
+                    $this->clearPrimaryTransportFailures($project, $healthUrl);
                     $status = 'ok';
                 } else {
                     $healthLog[] = 'HTTP health check failed ('.$response->status().').';
                     Cache::forget($this->consecutiveFailKey($project));
+                    $this->clearPrimaryTransportFailures($project, $healthUrl);
                     $status = 'na';
                 }
                 $transportException = null;
 
                 break;
             } catch (\Throwable $exception) {
+                if ($this->isInconclusiveTransportException($exception) && $this->fallbackEnabled()) {
+                    $this->recordPrimaryTransportFailure($project, $healthUrl);
+                    $fallbackStatus = $this->fallbackHttpStatus($healthUrl);
+                    if ($fallbackStatus !== null) {
+                        $httpStatus = $fallbackStatus;
+                        if ($fallbackStatus >= 200 && $fallbackStatus < 400) {
+                            $healthLog[] = 'HTTP health check OK via fallback transport ('.$fallbackStatus.').';
+                            Cache::forget($this->consecutiveFailKey($project));
+                            $status = 'ok';
+                        } else {
+                            $healthLog[] = 'HTTP health check failed via fallback transport ('.$fallbackStatus.').';
+                            Cache::forget($this->consecutiveFailKey($project));
+                            $status = 'na';
+                        }
+                        $transportException = null;
+
+                        break;
+                    }
+                }
+
                 $transportException = $exception;
                 $healthLog[] = sprintf(
                     'HTTP health check transport exception (attempt %d/%d): %s',
@@ -85,13 +127,14 @@ class HealthCheckService
         if ($transportException !== null) {
             if ($this->isInconclusiveTransportException($transportException)) {
                 $issueMessage = $this->transportIssueMessage($transportException);
+                $projectIssueMessage = ($previousStatus ?? 'na') === 'ok' ? null : $previousIssue;
                 $healthLog[] = 'Transport failure is local/inconclusive; preserving previous health status.';
                 $logText = $this->formatHealthLog($healthLog);
                 Cache::forget($this->consecutiveFailKey($project));
                 $this->saveHealthStatus(
                     $project,
                     $previousStatus ?? 'na',
-                    $previousIssue,
+                    $projectIssueMessage,
                     $logText,
                     $healthUrl,
                     $httpStatus,
@@ -199,6 +242,10 @@ class HealthCheckService
 
     private function healthSummary(string $status, ?string $issueMessage, ?string $logText, ?int $httpStatus): string
     {
+        if ($status === 'inconclusive') {
+            return 'Health check inconclusive: local HTTP transport could not complete.';
+        }
+
         if ($httpStatus !== null) {
             return $status === 'ok'
                 ? "HTTP {$httpStatus}"
@@ -228,6 +275,190 @@ class HealthCheckService
 
         return str_contains($message, 'getaddrinfo() thread failed to start')
             || str_contains($message, 'getaddrinfo thread failed to start');
+    }
+
+    private function fallbackEnabled(): bool
+    {
+        return (bool) config('gitmanager.health.stream_fallback_enabled', true)
+            || (bool) config('gitmanager.health.cli_fallback_enabled', true);
+    }
+
+    private function shouldUseFallbackFirst(Project $project, string $url): bool
+    {
+        return $this->fallbackEnabled() && Cache::has($this->primaryTransportCooldownKey($project, $url));
+    }
+
+    private function recordPrimaryTransportFailure(Project $project, string $url): void
+    {
+        $threshold = max(1, (int) config('gitmanager.health.primary_failure_threshold', 3));
+        $failureKey = $this->primaryTransportFailureKey($project, $url);
+        $failures = (int) Cache::get($failureKey, 0) + 1;
+
+        Cache::put($failureKey, $failures, now()->addHour());
+
+        if ($failures >= $threshold) {
+            Cache::put(
+                $this->primaryTransportCooldownKey($project, $url),
+                true,
+                now()->addSeconds(max(60, (int) config('gitmanager.health.primary_fallback_seconds', 3600)))
+            );
+        }
+    }
+
+    private function clearPrimaryTransportFailures(Project $project, string $url): void
+    {
+        Cache::forget($this->primaryTransportFailureKey($project, $url));
+        Cache::forget($this->primaryTransportCooldownKey($project, $url));
+    }
+
+    protected function fallbackHttpStatus(string $url): ?int
+    {
+        $streamStatus = (bool) config('gitmanager.health.stream_fallback_enabled', true)
+            ? $this->streamHttpStatus($url)
+            : null;
+
+        return $streamStatus ?? $this->cliHttpStatus($url);
+    }
+
+    protected function streamHttpStatus(string $url): ?int
+    {
+        $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+        if (! in_array($scheme, ['http', 'https'], true)) {
+            return null;
+        }
+
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'GET',
+                'timeout' => 10,
+                'ignore_errors' => true,
+                'header' => implode("\r\n", [
+                    'User-Agent: Git Web Manager Health Check',
+                    'Accept: */*',
+                ]),
+            ],
+        ]);
+
+        $headers = [];
+        set_error_handler(static function (): bool {
+            return true;
+        });
+
+        try {
+            $result = file_get_contents($url, false, $context);
+            $headers = $http_response_header ?? [];
+        } finally {
+            restore_error_handler();
+        }
+
+        if ($result === false && $headers === []) {
+            return null;
+        }
+
+        foreach ($headers as $header) {
+            if (preg_match('/^HTTP\/\S+\s+(\d{3})\b/i', (string) $header, $matches)) {
+                return (int) $matches[1];
+            }
+        }
+
+        return null;
+    }
+
+    protected function cliHttpStatus(string $url): ?int
+    {
+        if (! (bool) config('gitmanager.health.cli_fallback_enabled', true)) {
+            return null;
+        }
+
+        return $this->bundledProbeStatus($url) ?? $this->httpieStatus($url) ?? $this->curlStatus($url);
+    }
+
+    private function bundledProbeStatus(string $url): ?int
+    {
+        if (! (bool) config('gitmanager.health.bundled_probe_enabled', true)) {
+            return null;
+        }
+
+        $script = (string) config('gitmanager.health.bundled_probe_script', base_path('bin/gwm-http-status.php'));
+        if ($script === '' || ! is_file($script)) {
+            return null;
+        }
+
+        $phpBinary = trim((string) config('gitmanager.php_binary', PHP_BINARY ?: 'php'));
+        if ($phpBinary === '') {
+            $phpBinary = PHP_BINARY ?: 'php';
+        }
+
+        return $this->runStatusCommand([
+            $phpBinary,
+            $script,
+            $url,
+            '10',
+        ]);
+    }
+
+    private function httpieStatus(string $url): ?int
+    {
+        $binary = trim((string) config('gitmanager.health.httpie_binary', 'http'));
+        if ($binary === '') {
+            return null;
+        }
+
+        return $this->runStatusCommand([
+            $binary,
+            '--ignore-stdin',
+            '--headers',
+            '--timeout=10',
+            'GET',
+            $url,
+        ]);
+    }
+
+    private function curlStatus(string $url): ?int
+    {
+        $binary = trim((string) config('gitmanager.health.curl_binary', 'curl'));
+        if ($binary === '') {
+            return null;
+        }
+
+        return $this->runStatusCommand([
+            $binary,
+            '--head',
+            '--location',
+            '--max-time',
+            '10',
+            '--silent',
+            '--show-error',
+            $url,
+        ]);
+    }
+
+    /**
+     * @param  array<int, string>  $command
+     */
+    private function runStatusCommand(array $command): ?int
+    {
+        try {
+            $process = new Process($command);
+            $process->setTimeout(15);
+            $process->run();
+        } catch (\Throwable $exception) {
+            return null;
+        }
+
+        return $this->parseHttpStatus($process->getOutput()."\n".$process->getErrorOutput());
+    }
+
+    private function parseHttpStatus(string $output): ?int
+    {
+        $status = null;
+        if (preg_match_all('/^HTTP\/\S+\s+(\d{3})\b/im', $output, $matches)) {
+            foreach ($matches[1] as $match) {
+                $status = (int) $match;
+            }
+        }
+
+        return $status;
     }
 
     private function cleanExceptionMessage(\Throwable $exception): string
@@ -467,6 +698,16 @@ class HealthCheckService
     private function consecutiveFailKey(Project $project): string
     {
         return 'gwm_health_consecutive_fail_'.$project->id;
+    }
+
+    private function primaryTransportFailureKey(Project $project, string $url): string
+    {
+        return 'gwm_health_primary_transport_fail_'.$project->id.'_'.sha1($url);
+    }
+
+    private function primaryTransportCooldownKey(Project $project, string $url): string
+    {
+        return 'gwm_health_primary_transport_cooldown_'.$project->id.'_'.sha1($url);
     }
 
     private function resolveHealthUrl(Project $project): ?string
