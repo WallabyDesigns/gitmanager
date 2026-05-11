@@ -7,9 +7,9 @@
     $isEnterprise = (bool) ($systemNavState['isEnterprise'] ?? false);
     $showLocalLicenseBadge = (bool) ($systemNavState['showLocalLicenseBadge'] ?? false);
 
-    $navItem = 'group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition';
-    $activeNav = 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100';
-    $idleNav = 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white';
+    $navItem = 'gwm-system-nav-item';
+    $activeNav = 'gwm-system-nav-active';
+    $idleNav = 'gwm-system-nav-idle';
 
     $currentSystemTab = $systemTab ?? match (true) {
         request()->routeIs('system.updates') => 'updates',

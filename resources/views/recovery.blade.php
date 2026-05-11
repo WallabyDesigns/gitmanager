@@ -7,14 +7,11 @@
 
         <title>Recovery | {{ config('app.name', 'Git Web Manager') }}</title>
 
-        @php
-            $viteManifest = public_path('build/manifest.json');
-            $viteHot = public_path('hot');
-            $viteReady = file_exists($viteManifest) || file_exists($viteHot);
-        @endphp
-        @if ($viteReady)
-            @vite(['resources/css/app.css', 'resources/js/app.js'])
+        <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+        @if (class_exists(\GitManagerEnterprise\EnterpriseServiceProvider::class))
+            <link rel="stylesheet" href="{{ asset('vendor/gitmanager-enterprise/gitmanager-enterprise.css') }}">
         @endif
+        <script src="{{ asset('js/app.js') }}" defer></script>
     </head>
     <body class="bg-slate-950 text-slate-100 min-h-screen">
         @include('partials.recovery-panel', [

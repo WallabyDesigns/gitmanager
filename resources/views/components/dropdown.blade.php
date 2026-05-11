@@ -1,14 +1,14 @@
-@props(['align' => 'right', 'width' => '48', 'contentClasses' => 'py-1 bg-slate-900'])
+@props(['align' => 'right', 'width' => '48', 'contentClasses' => 'gwm-dropdown-content'])
 
 @php
 $alignmentClasses = match ($align) {
-    'left' => 'ltr:origin-top-left rtl:origin-top-right start-0',
-    'top' => 'origin-top',
-    default => 'ltr:origin-top-right rtl:origin-top-left end-0',
+    'left' => 'gwm-dropdown-align-left',
+    'top' => 'gwm-dropdown-align-top',
+    default => 'gwm-dropdown-align-right',
 };
 
 $width = match ($width) {
-    '48' => 'w-48',
+    '48' => 'gwm-dropdown-width-48',
     default => $width,
 };
 @endphp

@@ -12,8 +12,8 @@
                 $healthStatus = $project->health_status ?? 'na';
                 $healthLabel = $healthStatus === 'ok' ? 'Health: OK' : 'Health: N/A';
                 $healthClass = $healthStatus === 'ok'
-                    ? 'bg-emerald-500/10 text-emerald-300'
-                    : 'bg-slate-800 text-slate-300';
+                    ? 'gwm-status-success'
+                    : 'gwm-status-muted';
                 $ftpNeedsTest = $project->ftp_enabled
                     && $project->ftpAccount
                     && $project->ftpAccount->ftpNeedsTest();
