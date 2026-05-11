@@ -31,22 +31,11 @@
         <meta name="color-scheme" content="dark">
 
 
-        <!-- Scripts -->
-        @php
-            $viteManifest = public_path('build/manifest.json');
-            $viteHot = public_path('hot');
-            $viteReady = file_exists($viteManifest) || file_exists($viteHot);
-        @endphp
-        @if ($viteReady)
-            @vite(['resources/css/app.css', 'resources/js/app.js'])
-        @else
-            <style>
-                body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f172a; color: #e2e8f0; }
-                a { color: #fbbf24; text-decoration: underline; }
-                .gwm-fallback-alert { max-width: 72rem; margin: 1.5rem auto; padding: 0.75rem 1rem; border-radius: 0.75rem; background: #1f2937; border: 1px solid #334155; }
-                .gwm-fallback-alert strong { color: #f8fafc; }
-            </style>
+        <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+        @if (class_exists(\GitManagerEnterprise\EnterpriseServiceProvider::class))
+            <link rel="stylesheet" href="{{ asset('vendor/gitmanager-enterprise/gitmanager-enterprise.css') }}">
         @endif
+        <script src="{{ asset('js/app.js') }}" defer></script>
         @livewireStyles
         <style>
             [x-cloak] { display: none !important; }
@@ -57,12 +46,6 @@
     </head>
     <body class="nonrenderhide opacity-100 font-sans antialiased h-full bg-slate-950 text-slate-100">
         <div class="min-h-screen">
-            @if (! $viteReady)
-                <div class="gwm-fallback-alert">
-                    <strong>{{ __('Assets are not built.') }}</strong> {{ __('Run :cmd or fix the build permissions to restore the normal UI.', ['cmd' => '<code>npm run build</code>']) }}
-                </div>
-            @endif
-
             @auth
                 @include('partials.recovery-panel', [
                     'forceVisible' => false,

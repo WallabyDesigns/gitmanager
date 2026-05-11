@@ -41,7 +41,7 @@
         @php
             $permissionsEnforced = ! $project->ftp_enabled && ! $project->ssh_enabled;
             $permissionsLocked = $permissionsEnforced && (bool) $project->permissions_locked;
-            $actionDisabledClass = $permissionsLocked ? 'opacity-60 cursor-not-allowed' : '';
+            $actionDisabledClass = $permissionsLocked ? 'gwm-action-disabled' : '';
         @endphp
         @if ($permissionsLocked)
             <div class="rounded-xl border border-amber-300/60 p-4 text-sm text-amber-200 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -71,8 +71,8 @@
                         $healthStatus = $project->health_status ?? 'na';
                         $healthLabel = $healthStatus === 'ok' ? 'Health: OK' : 'Health: N/A';
                         $healthClass = $healthStatus === 'ok'
-                            ? 'bg-emerald-500/10 text-emerald-300'
-                            : 'bg-slate-800 text-slate-300';
+                            ? 'gwm-status-success'
+                            : 'gwm-status-muted';
                     @endphp
                     <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $healthClass }}">
                         {{ __($healthLabel) }}

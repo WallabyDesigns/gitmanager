@@ -1,10 +1,7 @@
-@import '@fontsource/figtree/latin-400.css';
-@import '@fontsource/figtree/latin-500.css';
-@import '@fontsource/figtree/latin-600.css';
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/*
+ * Runtime styling is served from public/css/app.css so the UI does not depend
+ * on Vite or Tailwind compiling successfully on an installed application.
+ */
 
 #gwm-nav-bar {
   position: fixed;
@@ -99,4 +96,115 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.gwm-system-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.gwm-system-nav-active {
+  border-color: rgba(129, 140, 248, 0.4);
+  background-color: rgba(99, 102, 241, 0.2);
+  color: rgb(224 231 255);
+}
+
+.gwm-system-nav-idle {
+  color: rgb(203 213 225);
+}
+
+.gwm-system-nav-idle:hover {
+  border-color: rgb(51 65 85);
+  background-color: rgba(30, 41, 59, 0.7);
+  color: #fff;
+}
+
+.gwm-status-success {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: rgb(110 231 183);
+}
+
+.gwm-status-warning {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: rgb(252 211 77);
+}
+
+.gwm-status-danger {
+  background-color: rgba(244, 63, 94, 0.1);
+  color: rgb(253 164 175);
+}
+
+.gwm-status-muted {
+  background-color: rgb(30 41 59);
+  color: rgb(203 213 225);
+}
+
+.gwm-action-disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.gwm-dropdown-align-left {
+  inset-inline-start: 0;
+  transform-origin: 0 0;
+}
+
+.gwm-dropdown-align-right {
+  inset-inline-end: 0;
+  transform-origin: 100% 0;
+}
+
+.gwm-dropdown-align-top {
+  transform-origin: top;
+}
+
+.gwm-dropdown-width-48 {
+  width: 12rem;
+}
+
+.gwm-dropdown-content {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+  background-color: rgb(15 23 42);
+}
+
+.gwm-stat-icon {
+  display: flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+}
+
+.gwm-stat-icon-svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.gwm-stat-icon-success {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: rgb(52 211 153);
+}
+
+.gwm-stat-icon-info {
+  background-color: rgba(99, 102, 241, 0.1);
+  color: rgb(129 140 248);
+}
+
+.gwm-stat-icon-accent {
+  background-color: rgba(139, 92, 246, 0.1);
+  color: rgb(167 139 250);
+}
+
+.gwm-stat-icon-muted {
+  background-color: rgb(30 41 59);
+  color: rgb(148 163 184);
 }

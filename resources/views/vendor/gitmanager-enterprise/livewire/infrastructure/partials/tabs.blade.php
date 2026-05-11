@@ -11,9 +11,9 @@
     $currentInfraLabel = $isKubernetesActive ? __('Kubernetes') : __('Docker');
     $drawerActiveSection = $activeSection ?? null;
     $drawerIsEnterprise = (bool) ($isEnterprise ?? false);
-    $drawerNavItem = 'group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition';
-    $drawerActiveNav = 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100';
-    $drawerIdleNav = 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white';
+    $drawerNavItem = 'gme-drawer-nav-item';
+    $drawerActiveNav = 'gme-drawer-nav-active';
+    $drawerIdleNav = 'gme-drawer-nav-idle';
     $drawerLockIcon = '<svg class="h-3.5 w-3.5 text-amber-300" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 1a4 4 0 00-4 4v2H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-1V5a4 4 0 00-4-4zm-2 6V5a2 2 0 114 0v2H8z" clip-rule="evenodd" /></svg>';
 
     $containerDrawerSections = [

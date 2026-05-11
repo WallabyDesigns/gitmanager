@@ -1,6 +1,6 @@
 <div class="min-w-0 space-y-6">
     @php
-        $actionDisabledClass = $permissionsLocked ? 'opacity-60 cursor-not-allowed' : '';
+        $actionDisabledClass = $permissionsLocked ? 'gwm-action-disabled' : '';
     @endphp
 
     <div>

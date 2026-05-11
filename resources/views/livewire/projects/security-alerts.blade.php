@@ -30,7 +30,7 @@
     </div>
 
     @php
-        $actionDisabledClass = ($permissionsLocked ?? false) ? 'opacity-60 cursor-not-allowed' : '';
+        $actionDisabledClass = ($permissionsLocked ?? false) ? 'gwm-action-disabled' : '';
     @endphp
     <div class="flex flex-wrap gap-2">
         @if ($hasComposer ?? false)

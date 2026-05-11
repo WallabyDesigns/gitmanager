@@ -147,9 +147,9 @@
                     @if ($ftpTestStatus ?? false)
                         @php
                             $ftpClass = match ($ftpTestStatus) {
-                                'ok' => 'bg-emerald-500/10 text-emerald-300',
-                                'warning' => 'bg-amber-500/10 text-amber-300',
-                                default => 'bg-rose-500/10 text-rose-300',
+                                'ok' => 'gwm-status-success',
+                                'warning' => 'gwm-status-warning',
+                                default => 'gwm-status-danger',
                             };
                         @endphp
                         <span class="px-2 py-1 rounded-full text-xs uppercase tracking-wide {{ $ftpClass }}">{{ $ftpTestStatus }}</span>

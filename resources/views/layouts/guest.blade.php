@@ -30,30 +30,14 @@
 
         <meta name="color-scheme" content="dark">
 
-        <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.bunny.net" crossorigin>
-        <link rel="dns-prefetch" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
-
-        <!-- Scripts -->
-        @php
-            $viteManifest = public_path('build/manifest.json');
-            $viteHot = public_path('hot');
-            $viteReady = file_exists($viteManifest) || file_exists($viteHot);
-        @endphp
         @php
             $editionLabel = $editionService->label();
         @endphp
-        @if ($viteReady)
-            @vite(['resources/css/app.css', 'resources/js/app.js'])
-        @else
-            <style>
-                body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f172a; color: #e2e8f0; }
-                a { color: #fbbf24; text-decoration: underline; }
-                .gwm-fallback-alert { max-width: 36rem; margin: 1.5rem auto; padding: 0.75rem 1rem; border-radius: 0.75rem; background: #1f2937; border: 1px solid #334155; text-align: center; }
-                .gwm-fallback-alert strong { color: #f8fafc; }
-            </style>
+        <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+        @if (class_exists(\GitManagerEnterprise\EnterpriseServiceProvider::class))
+            <link rel="stylesheet" href="{{ asset('vendor/gitmanager-enterprise/gitmanager-enterprise.css') }}">
         @endif
+        <script src="{{ asset('js/app.js') }}" defer></script>
         @livewireStyles
         <style>
             body { transition: opacity 0.12s ease; }
@@ -63,11 +47,6 @@
     </head>
     <body class="gwm-preload min-h-screen font-sans antialiased h-full bg-slate-950 text-slate-100">
         <div class="h-full flex flex-col sm:justify-center items-center pt-6 sm:pt-0">
-            @if (! $viteReady)
-                <div class="gwm-fallback-alert">
-                    <strong>{{ __('Assets are not built.') }}</strong> {{ __('Run :cmd to restore the styled UI.', ['cmd' => '<code>npm run build</code>']) }}
-                </div>
-            @endif
             <div>
                 <a href="/" class="flex items-center">
                     <x-application-logo class="w-20 h-20 fill-current text-gray-500" />

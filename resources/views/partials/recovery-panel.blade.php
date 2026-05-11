@@ -42,7 +42,7 @@
             <span style="font-size: 0.8rem; color: #94a3b8;">{{ __('Assets missing or styling broken') }}</span>
         </div>
         <p style="margin: 0 0 1rem 0; line-height: 1.5;">
-            {{ __('Use the actions below to rebuild front-end assets. This panel is hidden when Tailwind loads, so if you can see it the UI assets likely failed.') }}
+            {{ __('Use the actions below to rebuild front-end assets. This panel appears when the UI assets are missing or styling has failed.') }}
         </p>
 
         @if ($status)
@@ -102,9 +102,9 @@
         sentinel.style.top = '-9999px';
         document.body.appendChild(sentinel);
 
-        const tailwindReady = () => window.getComputedStyle(sentinel).display === 'none';
+        const stylesReady = () => window.getComputedStyle(sentinel).display === 'none';
 
-        if (!tailwindReady()) {
+        if (!stylesReady()) {
             panel.style.display = 'flex';
             panel.style.alignItems = 'center';
             panel.style.justifyContent = 'center';
@@ -113,7 +113,7 @@
             let attempts = 0;
             const timer = setInterval(() => {
                 attempts += 1;
-                if (tailwindReady()) {
+                if (stylesReady()) {
                     panel.style.display = '';
                     panel.style.alignItems = '';
                     panel.style.justifyContent = '';

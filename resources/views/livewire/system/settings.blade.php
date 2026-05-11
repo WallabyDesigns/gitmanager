@@ -485,10 +485,10 @@
                         @php
                             $licenseStatus = (string) ($licenseState['status'] ?? 'missing');
                             $licenseBadgeClass = match ($licenseStatus) {
-                                'valid' => 'bg-emerald-500/10 text-emerald-300',
-                                'invalid' => 'bg-rose-500/10 text-rose-300',
-                                'unverified' => 'bg-amber-500/10 text-amber-300',
-                                default => 'bg-slate-700 text-slate-300',
+                                'valid' => 'gwm-status-success',
+                                'invalid' => 'gwm-status-danger',
+                                'unverified' => 'gwm-status-warning',
+                                default => 'gwm-status-muted',
                             };
                         @endphp
                         <div class="flex flex-wrap items-center justify-between gap-3">
