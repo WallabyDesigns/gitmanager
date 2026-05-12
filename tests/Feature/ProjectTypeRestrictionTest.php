@@ -39,6 +39,37 @@ class ProjectTypeRestrictionTest extends TestCase
         ]);
     }
 
+    public function test_rust_project_type_is_enterprise_only_and_has_cargo_defaults(): void
+    {
+        $user = User::factory()->create();
+        $this->mockCommunityEdition();
+
+        $community = Livewire::actingAs($user)->test(Create::class);
+        $rustType = collect($community->instance()->projectTypes)->firstWhere('value', 'rust');
+        $this->assertTrue((bool) ($rustType['locked'] ?? false));
+
+        $form = $community->instance()->form;
+        $form['project_type'] = 'rust';
+
+        $community
+            ->set('form', $form)
+            ->call('save')
+            ->assertHasErrors(['form.project_type']);
+
+        $this->mockEnterpriseEdition();
+        $enterprise = Livewire::actingAs($user)->test(Create::class);
+
+        $rustType = collect($enterprise->instance()->projectTypes)->firstWhere('value', 'rust');
+        $this->assertFalse((bool) ($rustType['locked'] ?? true));
+
+        $enterprise->set('form.project_type', 'rust');
+
+        $this->assertSame('cargo build --release', $enterprise->instance()->form['build_command']);
+        $this->assertSame('cargo test', $enterprise->instance()->form['test_command']);
+        $this->assertTrue((bool) $enterprise->instance()->form['run_build_command']);
+        $this->assertTrue((bool) $enterprise->instance()->form['run_test_command']);
+    }
+
     public function test_custom_project_type_is_locked_and_rejected_on_edit_for_community_edition(): void
     {
         $user = User::factory()->create();
@@ -68,6 +99,13 @@ class ProjectTypeRestrictionTest extends TestCase
     {
         $this->mock(EditionService::class, function ($mock): void {
             $mock->shouldReceive('current')->andReturn(EditionService::COMMUNITY);
+        });
+    }
+
+    private function mockEnterpriseEdition(): void
+    {
+        $this->mock(EditionService::class, function ($mock): void {
+            $mock->shouldReceive('current')->andReturn(EditionService::ENTERPRISE);
         });
     }
 }
