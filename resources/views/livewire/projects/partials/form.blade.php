@@ -22,6 +22,7 @@
                         ['value' => 'nextjs', 'label' => 'Next.js', 'locked' => true, 'locked_message' => 'Next.js projects are available in Enterprise Edition.'],
                         ['value' => 'react', 'label' => 'React App', 'locked' => true, 'locked_message' => 'React App projects are available in Enterprise Edition.'],
                         ['value' => 'python', 'label' => 'Python', 'locked' => true],
+                        ['value' => 'rust', 'label' => 'Rust', 'locked' => true, 'locked_message' => 'Rust projects are available in Enterprise Edition.'],
                         ['value' => 'container', 'label' => 'Container', 'locked' => false],
                         ['value' => 'custom', 'label' => 'Custom', 'locked' => true, 'locked_message' => 'Custom projects are available in Enterprise Edition.'],
                     ];

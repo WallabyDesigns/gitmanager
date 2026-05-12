@@ -584,6 +584,16 @@ class Create extends Component
                 'test_command' => 'pytest',
                 'allow_dependency_updates' => false,
             ],
+            'rust' => [
+                'health_url' => '',
+                'run_composer_install' => false,
+                'run_npm_install' => false,
+                'run_build_command' => true,
+                'build_command' => 'cargo build --release',
+                'run_test_command' => true,
+                'test_command' => 'cargo test',
+                'allow_dependency_updates' => false,
+            ],
             'container' => [
                 'health_url' => '',
                 'run_composer_install' => false,
