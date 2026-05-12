@@ -29,8 +29,7 @@ class Index extends Component
 
     public function checkAllHealth(DeploymentService $service): void
     {
-        $projects = Auth::user()
-            ->projects()
+        $projects = Project::query()
             ->get();
 
         $this->runHealthChecks($service, $projects, true);
@@ -40,8 +39,7 @@ class Index extends Component
 
     public function checkAllUpdates(DeploymentService $service): void
     {
-        $projects = Auth::user()
-            ->projects()
+        $projects = Project::query()
             ->get();
 
         $this->runUpdateChecks($service, $projects, false);
@@ -58,8 +56,7 @@ class Index extends Component
             return;
         }
 
-        $projects = Auth::user()
-            ->projects()
+        $projects = Project::query()
             ->get();
 
         if ($this->queueEnabled()) {
@@ -114,9 +111,7 @@ class Index extends Component
 
     public function render()
     {
-        $user = Auth::user();
-
-        $allProjects = $user->projects()
+        $allProjects = Project::query()
             ->withCount([
                 'auditIssues as audit_open_count' => fn ($q) => $q->where('status', 'open'),
                 'deployments as deployments_today_count' => fn ($q) => $q

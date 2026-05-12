@@ -16,22 +16,22 @@ class DashboardBulkActionsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_dashboard_health_button_checks_authenticated_users_projects(): void
+    public function test_dashboard_health_button_checks_workspace_projects(): void
     {
         $user = User::factory()->create();
         $otherUser = User::factory()->create();
 
         $first = Project::factory()->create(['user_id' => $user->id]);
         $second = Project::factory()->create(['user_id' => $user->id]);
-        Project::factory()->create(['user_id' => $otherUser->id]);
+        $third = Project::factory()->create(['user_id' => $otherUser->id]);
 
         $this->mockDashboardInfrastructure();
 
-        $this->mock(DeploymentService::class, function ($mock) use ($first, $second): void {
-            $projectIds = [$first->id, $second->id];
+        $this->mock(DeploymentService::class, function ($mock) use ($first, $second, $third): void {
+            $projectIds = [$first->id, $second->id, $third->id];
 
             $mock->shouldReceive('checkHealth')
-                ->twice()
+                ->times(3)
                 ->withArgs(fn (Project $project): bool => in_array($project->id, $projectIds, true))
                 ->andReturn('ok');
         });
@@ -41,7 +41,7 @@ class DashboardBulkActionsTest extends TestCase
             ->call('checkAllHealth');
     }
 
-    public function test_dashboard_update_button_checks_authenticated_users_projects(): void
+    public function test_dashboard_update_button_checks_workspace_projects(): void
     {
         $user = User::factory()->create();
         $otherUser = User::factory()->create();
@@ -54,18 +54,18 @@ class DashboardBulkActionsTest extends TestCase
             'user_id' => $user->id,
             'updates_checked_at' => null,
         ]);
-        Project::factory()->create([
+        $third = Project::factory()->create([
             'user_id' => $otherUser->id,
             'updates_checked_at' => now()->subMinutes(10),
         ]);
 
         $this->mockDashboardInfrastructure();
 
-        $this->mock(DeploymentService::class, function ($mock) use ($first, $second): void {
-            $projectIds = [$first->id, $second->id];
+        $this->mock(DeploymentService::class, function ($mock) use ($first, $second, $third): void {
+            $projectIds = [$first->id, $second->id, $third->id];
 
             $mock->shouldReceive('checkForUpdates')
-                ->twice()
+                ->times(3)
                 ->withArgs(fn (Project $project): bool => in_array($project->id, $projectIds, true))
                 ->andReturnFalse();
             $mock->shouldReceive('checkHealth')->never();

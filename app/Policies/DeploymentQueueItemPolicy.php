@@ -9,7 +9,7 @@ class DeploymentQueueItemPolicy
 {
     public function view(User $user, DeploymentQueueItem $item): bool
     {
-        return $user->isAdmin() || ($item->project && $item->project->user_id === $user->id);
+        return $user !== null;
     }
 
     public function update(User $user, DeploymentQueueItem $item): bool

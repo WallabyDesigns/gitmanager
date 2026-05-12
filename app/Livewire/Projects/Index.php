@@ -30,8 +30,7 @@ class Index extends Component
 
     public function checkAllHealth(DeploymentService $service): void
     {
-        $projects = Auth::user()
-            ->projects()
+        $projects = Project::query()
             ->get();
 
         $this->runHealthChecks($service, $projects, true);
@@ -41,8 +40,7 @@ class Index extends Component
 
     public function checkAllUpdates(DeploymentService $service): void
     {
-        $projects = Auth::user()
-            ->projects()
+        $projects = Project::query()
             ->get();
 
         $this->runUpdateChecks($service, $projects, false);
@@ -59,8 +57,7 @@ class Index extends Component
             return;
         }
 
-        $projects = Auth::user()
-            ->projects()
+        $projects = Project::query()
             ->get();
 
         if ($this->queueEnabled()) {
@@ -121,8 +118,7 @@ class Index extends Component
 
     public function render()
     {
-        $baseQuery = Auth::user()
-            ->projects()
+        $baseQuery = Project::query()
             ->with('ftpAccount')
             ->withCount([
                 'auditIssues as audit_open_count' => fn ($query) => $query->where('status', 'open'),
@@ -220,14 +216,12 @@ class Index extends Component
             'auditInProcess' => $auditInProcess,
             'queueProjects' => $queueProjectIds,
             'counts' => [
-                'all' => Auth::user()->projects()->count(),
-                'health' => Auth::user()
-                    ->projects()
+                'all' => Project::query()->count(),
+                'health' => Project::query()
                     ->withHealthMonitoring()
                     ->where('health_status', 'na')
                     ->count(),
-                'permissions' => Auth::user()
-                    ->projects()
+                'permissions' => Project::query()
                     ->where('permissions_locked', true)
                     ->where('ftp_enabled', false)
                     ->where('ssh_enabled', false)

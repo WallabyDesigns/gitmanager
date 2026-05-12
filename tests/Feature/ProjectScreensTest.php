@@ -69,6 +69,31 @@ class ProjectScreensTest extends TestCase
             ->assertDontSee('refreshHealthStatus');
     }
 
+    public function test_sub_user_can_see_and_manage_projects_created_by_other_users(): void
+    {
+        $owner = User::factory()->create();
+        $subUser = User::factory()->create();
+        $project = Project::factory()->create([
+            'user_id' => $owner->id,
+            'name' => 'Shared Workspace Project',
+        ]);
+
+        $this->actingAs($subUser)
+            ->get(route('projects.index'))
+            ->assertOk()
+            ->assertSee('Shared Workspace Project');
+
+        $this->actingAs($subUser)
+            ->get(route('projects.show', $project))
+            ->assertOk()
+            ->assertSee('Latest Debug Logs');
+
+        $this->actingAs($subUser)
+            ->get(route('projects.edit', $project))
+            ->assertOk()
+            ->assertSee('Edit '.$project->name);
+    }
+
     public function test_queue_screen_loads(): void
     {
         $user = User::factory()->create();

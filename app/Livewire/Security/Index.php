@@ -59,11 +59,9 @@ class Index extends Component
         $updateIssueCount = $latestUpdate && $latestUpdate->status === 'failed' ? 1 : 0;
         $openCount = SecurityAlert::query()
             ->where('state', 'open')
-            ->whereHas('project', fn ($query) => $query->where('user_id', Auth::id()))
             ->count()
             + AuditIssue::query()
                 ->where('status', 'open')
-                ->whereHas('project', fn ($query) => $query->where('user_id', Auth::id()))
                 ->count()
             + $dependencyIssueCount;
 
@@ -270,7 +268,6 @@ class Index extends Component
     ): void {
         $alert = SecurityAlert::query()
             ->where('id', $alertId)
-            ->whereHas('project', fn ($query) => $query->where('user_id', Auth::id()))
             ->with('project')
             ->firstOrFail();
 
@@ -308,7 +305,6 @@ class Index extends Component
     ): void {
         $alert = SecurityAlert::query()
             ->where('id', $alertId)
-            ->whereHas('project', fn ($query) => $query->where('user_id', Auth::id()))
             ->with('project')
             ->firstOrFail();
 
@@ -347,7 +343,6 @@ class Index extends Component
     ): void {
         $issue = AuditIssue::query()
             ->where('id', $issueId)
-            ->whereHas('project', fn ($query) => $query->where('user_id', Auth::id()))
             ->with('project')
             ->firstOrFail();
 
@@ -386,7 +381,6 @@ class Index extends Component
     ): void {
         $issue = AuditIssue::query()
             ->where('id', $issueId)
-            ->whereHas('project', fn ($query) => $query->where('user_id', Auth::id()))
             ->with('project')
             ->firstOrFail();
 
@@ -423,7 +417,6 @@ class Index extends Component
     private function dependencyIssueProjects()
     {
         return Project::query()
-            ->where('user_id', Auth::id())
             ->addSelect([
                 'last_composer_status' => Deployment::query()
                     ->select('status')
@@ -449,14 +442,12 @@ class Index extends Component
     private function alertsQuery()
     {
         return SecurityAlert::query()
-            ->whereHas('project', fn ($query) => $query->where('user_id', Auth::id()))
             ->with('project');
     }
 
     private function auditIssuesQuery()
     {
         return AuditIssue::query()
-            ->whereHas('project', fn ($query) => $query->where('user_id', Auth::id()))
             ->with('project');
     }
 
@@ -692,7 +683,6 @@ class Index extends Component
     {
         return Project::query()
             ->where('id', $projectId)
-            ->where('user_id', Auth::id())
             ->firstOrFail();
     }
 

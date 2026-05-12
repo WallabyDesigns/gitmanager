@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Livewire\Projects\Concerns;
 
 use App\Models\Project;
-use Illuminate\Support\Facades\Auth;
 
 trait InteractsWithProjectTypes
 {
@@ -92,29 +91,12 @@ trait InteractsWithProjectTypes
 
     private function refreshProjectStats(): void
     {
-        $userId = (int) Auth::id();
-        if ($userId <= 0) {
-            $this->projectCount = 0;
-
-            return;
-        }
-
-        $this->projectCount = Project::query()
-            ->where('user_id', $userId)
-            ->count();
+        $this->projectCount = Project::query()->count();
     }
 
     private function refreshContainerProjectStats(): void
     {
-        $userId = (int) Auth::id();
-        if ($userId <= 0) {
-            $this->containerProjectCount = 0;
-
-            return;
-        }
-
         $query = Project::query()
-            ->where('user_id', $userId)
             ->where('project_type', 'container');
 
         if (property_exists($this, 'project') && $this->project instanceof Project) {

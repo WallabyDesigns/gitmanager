@@ -192,17 +192,15 @@ class NavigationStateService
             return ['security' => 0, 'audit' => 0];
         }
 
-        $cacheKey = 'alert-counts:'.$userId;
+        $cacheKey = 'alert-counts:workspace';
 
-        return $this->remember($cacheKey, function () use ($userId): array {
+        return $this->remember($cacheKey, function (): array {
             return [
                 'security' => SecurityAlert::query()
                     ->where('state', 'open')
-                    ->whereHas('project', fn ($query) => $query->where('user_id', $userId))
                     ->count(),
                 'audit' => AuditIssue::query()
                     ->where('status', 'open')
-                    ->whereHas('project', fn ($query) => $query->where('user_id', $userId))
                     ->count(),
             ];
         });
@@ -216,7 +214,6 @@ class NavigationStateService
 
         return DeploymentQueueItem::query()
             ->whereIn('status', ['queued', 'running'])
-            ->whereHas('project', fn ($query) => $query->where('user_id', $userId))
             ->count();
     }
 
@@ -226,7 +223,7 @@ class NavigationStateService
             return 0;
         }
 
-        return $this->remember('dependency-issues:'.$userId, function () use ($userId): int {
+        return $this->remember('dependency-issues:workspace', function (): int {
             $composerStatusSubquery = Deployment::query()
                 ->select('status')
                 ->whereColumn('project_id', 'projects.id')
@@ -242,7 +239,6 @@ class NavigationStateService
                 ->limit(1);
 
             $statuses = Project::query()
-                ->where('user_id', $userId)
                 ->select('projects.id')
                 ->selectSub($composerStatusSubquery, 'last_composer_status')
                 ->selectSub($npmStatusSubquery, 'last_npm_status');

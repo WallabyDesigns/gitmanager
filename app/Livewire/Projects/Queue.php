@@ -142,7 +142,6 @@ class Queue extends Component
 
     public function render()
     {
-        $userId = Auth::id();
         $queueService = app(DeploymentQueueService::class);
         $queueService->releaseStaleRunning();
         $queueService->normalizeQueuedPositions();
@@ -157,7 +156,6 @@ class Queue extends Component
                     $query->select($deploymentColumns)->addSelect($logPreview);
                 },
             ])
-            ->whereHas('project', fn ($query) => $query->where('user_id', $userId))
             ->when($this->statusFilter !== 'all', fn ($query) => $query->where('status', $this->statusFilter))
             ->when($this->actionFilter !== 'all', fn ($query) => $query->where('action', $this->actionFilter))
             ->when(trim($this->search) !== '', function ($query) {
