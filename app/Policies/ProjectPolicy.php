@@ -14,16 +14,16 @@ class ProjectPolicy
 
     public function view(User $user, Project $project): bool
     {
-        return $user->isAdmin() || $project->user_id === $user->id;
+        return $user !== null;
     }
 
     public function update(User $user, Project $project): bool
     {
-        return $user->isAdmin() || $project->user_id === $user->id;
+        return $user !== null;
     }
 
     public function delete(User $user, Project $project): bool
     {
-        return $user->isAdmin() || $project->user_id === $user->id;
+        return $user !== null;
     }
 }

@@ -223,7 +223,6 @@ class DeploymentQueueService
         $queued = DeploymentQueueItem::query()
             ->with('project')
             ->where('status', 'queued')
-            ->whereHas('project', fn ($query) => $query->where('user_id', $user->id))
             ->orderBy('project_id')
             ->orderBy('position')
             ->get();
@@ -258,13 +257,11 @@ class DeploymentQueueService
     {
         $cancelled = DeploymentQueueItem::query()
             ->where('status', 'queued')
-            ->whereHas('project', fn ($query) => $query->where('user_id', $user->id))
             ->count();
 
         if ($cancelled > 0) {
             DeploymentQueueItem::query()
                 ->where('status', 'queued')
-                ->whereHas('project', fn ($query) => $query->where('user_id', $user->id))
                 ->update([
                     'status' => 'cancelled',
                     'finished_at' => now(),
@@ -273,7 +270,6 @@ class DeploymentQueueService
 
         $deleted = DeploymentQueueItem::query()
             ->where('status', 'cancelled')
-            ->whereHas('project', fn ($query) => $query->where('user_id', $user->id))
             ->delete();
 
         return [
