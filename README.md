@@ -10,11 +10,7 @@ Git Web Manager is not affiliated with, endorsed by, or sponsored by Git or GitH
 [![please donate](https://img.shields.io/liberapay/receives/wallaby.svg?logo=liberapay)](https://liberapay.com/wallaby/donate)
 
 ## Documentation Site (GitHub Pages)
-The docs site is maintained in a separate repository: `gitmanager-docs`.
-Local workspace path:
-- `E:\vsprojects\gitmanager-docs`
-
-You can read them directly here: [documentation](https://docs.gitwebmanager.com).
+To review the documentation for this project, click here: [documentation](https://docs.gitwebmanager.com).
 
 [![documentation](/assets/docs.png)](https://docs.gitwebmanager.com)
 
