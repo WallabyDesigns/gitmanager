@@ -29,7 +29,7 @@
                     {{ __('Environment') }}
                 </button>
             @else
-                <button type="button" class="px-3 py-2 text-sm rounded-md border border-slate-700 text-slate-500 opacity-60 cursor-not-allowed" disabled title="No .env or .env.example detected">
+                <button type="button" class="px-3 py-2 text-sm rounded-md border border-slate-700 text-slate-500 opacity-60 cursor-not-allowed" disabled title="Project path not found">
                     {{ __('Environment') }}
                 </button>
             @endif
