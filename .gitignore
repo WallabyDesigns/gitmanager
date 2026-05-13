@@ -14,6 +14,7 @@
 /public/hot
 /public/storage
 /builds
+/worktrees
 /storage/*.key
 /storage/pail
 /vendor

@@ -15,7 +15,6 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->validateCsrfTokens(except: [
             'webhooks/github',
-            'webhooks/stripe',
         ]);
         $middleware->appendToGroup('web', SetUserLocale::class);
         $middleware->appendToGroup('web', CheckEnvMigration::class);
