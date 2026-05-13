@@ -193,19 +193,13 @@ Set GitHub to POST to:
 
 Use the same `GITHUB_WEBHOOK_SECRET` in GitHub and `.env`.
 
-Enterprise Stripe events should POST to:
-```
-/webhooks/stripe
-```
-
-Stripe webhook secret is read from enterprise runtime config (encrypted settings) with enterprise package env fallback support.
-
 ## Enterprise Checkout Flow
 - Checkout entry point: `POST /checkout/enterprise`.
 - Success redirect: `/checkout/enterprise/success`.
 - Cancel redirect: `/checkout/enterprise/cancel`.
 - Trusted testing installs can use `/checkout/enterprise/testing` to validate UX without charging a card.
-- Successful checkout and Stripe payment webhooks trigger license verification and enterprise activation logic.
+- The app requests a checkout URL from the website API; Stripe secrets and Stripe webhooks stay on the website.
+- Successful checkout returns to the app, which re-verifies the license and activates enterprise access.
 
 ## App Updates
 The app can update itself from its repo. By default it preserves local changes when detected. If an update fails, you can run a **Force Update** to hard-reset to the remote branch while preserving `.env`, `storage/`, `.htaccess`, and `GWM_SELF_UPDATE_EXCLUDE_PATHS`.
