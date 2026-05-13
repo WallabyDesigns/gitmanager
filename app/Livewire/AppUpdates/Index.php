@@ -143,24 +143,6 @@ class Index extends Component
         $this->resetExpandedUpdateLog();
     }
 
-    public function updateAppNpm(SelfUpdateService $service): void
-    {
-        $update = $service->updateAppNpmDependencies(Auth::user());
-        $this->dispatch('notify', message: $update->status === 'success'
-            ? 'App npm dependencies updated.'
-            : 'App npm update failed. Review the logs.');
-        $this->resetExpandedUpdateLog();
-    }
-
-    public function fixAppNpmAudit(SelfUpdateService $service): void
-    {
-        $update = $service->fixAppNpmAudit(Auth::user(), false);
-        $this->dispatch('notify', message: $update->status === 'success'
-            ? 'App npm audit fix completed.'
-            : 'App npm audit fix failed. Review the logs.');
-        $this->resetExpandedUpdateLog();
-    }
-
     public function toggleUpdateLog(int $updateId): void
     {
         $this->activeTab = 'logs';
@@ -266,9 +248,6 @@ class Index extends Component
         return [
             'app_dependency_audit',
             'app_composer_update',
-            'app_npm_update',
-            'app_npm_audit_fix',
-            'app_npm_audit_fix_force',
         ];
     }
 }

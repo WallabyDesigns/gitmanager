@@ -14,9 +14,6 @@
         'rollback' => __('Rollback'),
         'app_dependency_audit' => __('App Dependency Audit'),
         'app_composer_update' => __('App Composer Update'),
-        'app_npm_update' => __('App Npm Update'),
-        'app_npm_audit_fix' => __('App Npm Audit Fix'),
-        'app_npm_audit_fix_force' => __('App Npm Audit Fix (Force)'),
         default => ucfirst(str_replace('_', ' ', (string) ($action ?: 'update'))),
     };
     $statusPill = fn (?string $status): string => match ($status) {
@@ -162,8 +159,6 @@
                             <div class="flex flex-wrap gap-2">
                                 <button type="button" wire:click="auditAppDependencies" wire:loading.attr="disabled" class="px-3 py-2 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-500 inline-flex items-center"><x-loading-spinner target="auditAppDependencies" />{{ __('Audit App') }}</button>
                                 <button type="button" wire:click="updateAppComposer" wire:loading.attr="disabled" class="px-3 py-2 rounded-md border text-sm border-slate-700 text-slate-200 hover:text-white inline-flex items-center"><x-loading-spinner target="updateAppComposer" />{{ __('Composer Update') }}</button>
-                                <button type="button" wire:click="updateAppNpm" wire:loading.attr="disabled" class="px-3 py-2 rounded-md border text-sm border-slate-700 text-slate-200 hover:text-white inline-flex items-center"><x-loading-spinner target="updateAppNpm" />{{ __('Npm Update') }}</button>
-                                <button type="button" wire:click="fixAppNpmAudit" wire:loading.attr="disabled" class="px-3 py-2 rounded-md border border-amber-400/70 text-sm text-amber-300 hover:text-amber-100 inline-flex items-center"><x-loading-spinner target="fixAppNpmAudit" />{{ __('Npm Audit Fix') }}</button>
                             </div>
                         </div>
                     </div>

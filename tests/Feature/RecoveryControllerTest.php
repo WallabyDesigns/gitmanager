@@ -27,31 +27,13 @@ class RecoveryControllerTest extends TestCase
         $this->post('/rebuild')->assertRedirect('/login');
     }
 
-    public function test_rebuild_fails_gracefully_without_package_json(): void
+    public function test_repair_refreshes_published_assets_without_node_build(): void
     {
-        $tmpDir = sys_get_temp_dir().DIRECTORY_SEPARATOR.'gwm-test-'.uniqid();
-        // Recreate the directory structure that storage_path() and log writing expect
-        mkdir($tmpDir.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'logs', 0755, true);
+        $user = User::factory()->create();
 
-        $originalBase = $this->app->basePath();
-        $this->app->setBasePath($tmpDir);
+        $response = $this->actingAs($user)->post('/rebuild');
 
-        try {
-            $user = User::factory()->create();
-            $response = $this->actingAs($user)->post('/rebuild');
-
-            $response->assertRedirect(route('recovery.index'));
-            $this->assertStringContainsString('package.json not found', session('rebuild_status') ?? '');
-        } finally {
-            $this->app->setBasePath($originalBase);
-            // Clean up temp tree
-            $log = $tmpDir.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'logs'.DIRECTORY_SEPARATOR.'gwm-rebuild.log';
-            if (file_exists($log)) {
-                unlink($log);
-            }
-            @rmdir($tmpDir.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'logs');
-            @rmdir($tmpDir.DIRECTORY_SEPARATOR.'storage');
-            @rmdir($tmpDir);
-        }
+        $response->assertRedirect(route('recovery.index'));
+        $this->assertStringContainsString('Asset repair complete', session('repair_status') ?? '');
     }
 }

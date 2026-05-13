@@ -3,10 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Services\EnvBackupService;
-use App\Support\ConsoleOutput;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
-use Symfony\Component\Process\Process;
 
 class RecoveryController extends Controller
 {
@@ -16,7 +15,7 @@ class RecoveryController extends Controller
 
         return view('recovery', [
             'log' => $log,
-            'status' => session('rebuild_status'),
+            'status' => session('repair_status'),
             'envBackups' => $envBackup->list(),
             'envStatus' => session('env_backup_status'),
         ]);
@@ -60,86 +59,39 @@ class RecoveryController extends Controller
 
     public function rebuild(Request $request)
     {
-        $result = $this->runRebuild();
+        $result = $this->runRepair();
 
         return redirect()
             ->route('recovery.index')
-            ->with('rebuild_status', $result['message']);
+            ->with('repair_status', $result['message']);
     }
 
     /**
      * @return array{message: string, status: string}
      */
-    private function runRebuild(): array
+    private function runRepair(): array
     {
-        $root = base_path();
         $logPath = $this->logPath();
-        $output = [];
 
-        $this->appendLog($logPath, '=== Rebuild started at '.now()->format('Y-m-d H:i:s').' ===');
-
-        if (! is_file($root.DIRECTORY_SEPARATOR.'package.json')) {
-            $message = 'package.json not found. Skipping npm rebuild.';
-            $this->appendLog($logPath, $message);
-
-            return ['message' => $message, 'status' => 'failed'];
-        }
-
-        $nodeModules = $root.DIRECTORY_SEPARATOR.'node_modules';
-        $buildPath = $root.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'build';
-
-        if (is_dir($nodeModules)) {
-            File::deleteDirectory($nodeModules);
-            $this->appendLog($logPath, 'Removed node_modules.');
-        }
-
-        if (is_dir($buildPath)) {
-            File::deleteDirectory($buildPath);
-            $this->appendLog($logPath, 'Removed public/build.');
-        }
-
-        $npm = trim((string) config('gitmanager.npm_binary', 'npm'));
-        if ($npm === '') {
-            $npm = 'npm';
-        }
-
-        $installCommand = [$npm, is_file($root.DIRECTORY_SEPARATOR.'package-lock.json') ? 'ci' : 'install'];
-        $env = $this->buildProcessEnv($npm);
-
-        $commands = [
-            $installCommand,
-            [$npm, 'run', 'build'],
-        ];
+        $this->appendLog($logPath, '=== Asset repair started at '.now()->format('Y-m-d H:i:s').' ===');
 
         try {
-            foreach ($commands as $command) {
-                $this->appendLog($logPath, '$ '.implode(' ', $command));
-                $process = new Process($command, $root, $env);
-                $process->setTimeout(1200);
-                $process->run(function ($type, $buffer) use (&$output, $logPath) {
-                    $line = ConsoleOutput::withoutPhpWarnings(rtrim($buffer));
-                    if ($line === '') {
-                        return;
-                    }
-                    $output[] = $line;
-                    $this->appendLog($logPath, $line);
-                });
+            Artisan::call('optimize:clear');
+            $this->appendLog($logPath, trim(Artisan::output()));
 
-                if (! $process->isSuccessful()) {
-                    $message = 'Rebuild failed. Check the recovery log for details.';
-                    $this->appendLog($logPath, $message);
-
-                    return ['message' => $message, 'status' => 'failed'];
-                }
-            }
+            Artisan::call('vendor:publish', [
+                '--tag' => 'laravel-assets',
+                '--force' => true,
+            ]);
+            $this->appendLog($logPath, trim(Artisan::output()));
         } catch (\Throwable $exception) {
-            $message = 'Rebuild failed: '.$exception->getMessage();
+            $message = 'Asset repair failed: '.$exception->getMessage();
             $this->appendLog($logPath, $message);
 
             return ['message' => $message, 'status' => 'failed'];
         }
 
-        $message = 'Rebuild complete. Assets have been reinstalled.';
+        $message = 'Asset repair complete. Published assets and Laravel caches have been refreshed.';
         $this->appendLog($logPath, $message);
 
         return ['message' => $message, 'status' => 'success'];
@@ -148,39 +100,6 @@ class RecoveryController extends Controller
     private function logPath(): string
     {
         return storage_path('logs/gwm-rebuild.log');
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function buildProcessEnv(string $npmBinary): array
-    {
-        $env = getenv();
-        $env = is_array($env) ? $env : [];
-
-        $pathKey = array_key_exists('PATH', $env) ? 'PATH' : (array_key_exists('Path', $env) ? 'Path' : 'PATH');
-        $currentPath = $env[$pathKey] ?? '';
-
-        $prepend = [];
-        $extraPath = trim((string) config('gitmanager.process_path', ''));
-        $extraPath = trim($extraPath, "\"' ");
-        if ($extraPath !== '') {
-            $prepend[] = $extraPath;
-        }
-
-        $npmBinary = trim($npmBinary);
-        if ($npmBinary !== '' && str_contains($npmBinary, DIRECTORY_SEPARATOR)) {
-            $npmDir = dirname($npmBinary);
-            if ($npmDir !== '' && $npmDir !== '.' && ! str_contains($currentPath, $npmDir)) {
-                $prepend[] = $npmDir;
-            }
-        }
-
-        if ($prepend) {
-            $env[$pathKey] = implode(PATH_SEPARATOR, $prepend).PATH_SEPARATOR.$currentPath;
-        }
-
-        return $env;
     }
 
     private function appendLog(string $path, string $line): void
@@ -201,6 +120,6 @@ class RecoveryController extends Controller
 
         $slice = array_slice($lines, -$maxLines);
 
-        return ConsoleOutput::withoutPhpWarnings(implode("\n", $slice)) ?? '';
+        return implode("\n", $slice);
     }
 }

@@ -39,7 +39,7 @@ return [
 
     'smart_wire_keys' => false,
 
-    'pagination_theme' => 'tailwind',
+    'pagination_theme' => 'bootstrap',
 
     'release_token' => 'a',
 

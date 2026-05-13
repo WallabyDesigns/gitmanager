@@ -316,7 +316,7 @@ class SelfUpdateService
 
     /**
      * Start a self-update in a detached artisan process so the browser request
-     * is not responsible for long git/composer/npm work.
+     * is not responsible for long git/composer work.
      *
      * @return array{ok: bool, message: string}
      */
@@ -376,22 +376,6 @@ class SelfUpdateService
                 $output[] = 'Composer audit skipped: composer.json not found.';
             }
 
-            if (is_file(base_path('package.json'))) {
-                $output[] = 'Running npm audit for Git Web Manager.';
-                $process = $this->runProcess(['npm', 'audit', '--json'], $output, base_path(), false);
-                $npmRemaining = $this->countNpmVulnerabilities($process->getOutput());
-                $remaining += $npmRemaining;
-                $output[] = $npmRemaining > 0
-                    ? "Npm audit reported {$npmRemaining} vulnerability issue(s)."
-                    : 'Npm audit reported no vulnerability issues.';
-
-                if (($process->getExitCode() ?? 1) > 1) {
-                    $failed = true;
-                }
-            } else {
-                $output[] = 'Npm audit skipped: package.json not found.';
-            }
-
             if ($failed) {
                 return 'failed';
             }
@@ -408,37 +392,6 @@ class SelfUpdateService
             }
 
             $this->runProcess(['composer', 'update', '--no-interaction'], $output, base_path());
-
-            return 'success';
-        });
-    }
-
-    public function updateAppNpmDependencies(?User $user = null): AppUpdate
-    {
-        return $this->runAppDependencyAction($user, 'app_npm_update', 'App npm update', function (array &$output): string {
-            if (! is_file(base_path('package.json'))) {
-                throw new \RuntimeException('package.json not found.');
-            }
-
-            $this->runProcess(['npm', 'update'], $output, base_path());
-
-            return 'success';
-        });
-    }
-
-    public function fixAppNpmAudit(?User $user = null, bool $force = false): AppUpdate
-    {
-        return $this->runAppDependencyAction($user, $force ? 'app_npm_audit_fix_force' : 'app_npm_audit_fix', $force ? 'App npm audit fix --force' : 'App npm audit fix', function (array &$output) use ($force): string {
-            if (! is_file(base_path('package.json'))) {
-                throw new \RuntimeException('package.json not found.');
-            }
-
-            $command = ['npm', 'audit', 'fix'];
-            if ($force) {
-                $command[] = '--force';
-            }
-
-            $this->runProcess($command, $output, base_path());
 
             return 'success';
         });
@@ -1501,7 +1454,6 @@ class SelfUpdateService
         $paths = [
             'storage',
             'bootstrap/cache',
-            'node_modules',
         ];
 
         foreach ($paths as $path) {
@@ -1545,55 +1497,6 @@ class SelfUpdateService
         $enterpriseSync = $this->syncEnterprisePackage($repoPath, $output, true);
         $this->logEnterprisePackageSyncResult($enterpriseSync, $output);
         $this->ensureEnterprisePackageSyncResolved($enterpriseSync);
-
-        if (is_file(base_path('package.json'))) {
-            $this->applyPostUpdatePermissions($repoPath, $output);
-            if ($this->canRunNpm($output)) {
-                try {
-                    $shouldInstall = $this->shouldRunNpmInstall($repoPath, $fromHash, $toHash, $output);
-                    if ($shouldInstall) {
-                        $this->runProcess($this->npmInstallCommand($repoPath), $output, $repoPath);
-                    } else {
-                        $output[] = 'Skipping npm install: no package changes detected.';
-                    }
-
-                    if ($this->npmScriptExists('build')) {
-                        $manifestBackup = $this->backupBuildManifest($repoPath, $output);
-                        if ($this->shouldRunNpmBuild($repoPath, $fromHash, $toHash, $output)) {
-                            $this->prepareViteBuildDirectory($repoPath, $output);
-                            try {
-                                $this->runProcess(['npm', 'run', 'build'], $output, $repoPath);
-                            } catch (\Throwable $buildException) {
-                                if ($this->isBuildPermissionError($buildException)) {
-                                    $output[] = 'Build failed due to permissions; retrying after fixing build directory and node_modules.';
-                                    $this->applyPostUpdatePermissions($repoPath, $output);
-                                    $this->prepareViteBuildDirectory($repoPath, $output, true);
-                                    try {
-                                        $this->runProcess(['npm', 'run', 'build'], $output, $repoPath);
-                                    } catch (\Throwable $retryException) {
-                                        if ($this->isBuildPermissionError($retryException)) {
-                                            $output[] = 'Build still failing due to permissions. Skipping build to allow update to complete.';
-                                            $this->restoreBuildManifest($repoPath, $manifestBackup, $output);
-                                        } else {
-                                            throw $retryException;
-                                        }
-                                    }
-                                } else {
-                                    throw $buildException;
-                                }
-                            }
-                        } else {
-                            $output[] = 'Skipping npm build: no frontend changes detected.';
-                        }
-                    }
-                } catch (\Throwable $exception) {
-                    $this->logNpmDiagnostics($output);
-                    throw $exception;
-                }
-            } else {
-                $output[] = 'Skipping npm install: node/npm not available in PATH.';
-            }
-        }
 
         if (is_file(base_path('artisan'))) {
             $this->runProcess(['php', 'artisan', 'migrate', '--force'], $output, $repoPath);
@@ -1700,28 +1603,6 @@ class SelfUpdateService
                     $this->runProcess(['composer', 'install', '--no-dev', '--optimize-autoloader'], $output, $repoPath, false);
                 } else {
                     $output[] = 'Rollback recovery: composer install not required.';
-                }
-            }
-
-            if (is_file($repoPath.DIRECTORY_SEPARATOR.'package.json')) {
-                $this->applyPostUpdatePermissions($repoPath, $output);
-                if ($this->canRunNpm($output)) {
-                    if ($this->shouldRunNpmInstall($repoPath, $failedHash, $restoredHash, $output)) {
-                        $this->runProcess($this->npmInstallCommand($repoPath), $output, $repoPath, false);
-                    } else {
-                        $output[] = 'Rollback recovery: npm install not required.';
-                    }
-
-                    if ($this->npmScriptExists('build')) {
-                        if ($this->shouldRunNpmBuild($repoPath, $failedHash, $restoredHash, $output)) {
-                            $this->prepareViteBuildDirectory($repoPath, $output);
-                            $this->runProcess(['npm', 'run', 'build'], $output, $repoPath, false);
-                        } else {
-                            $output[] = 'Rollback recovery: npm build not required.';
-                        }
-                    }
-                } else {
-                    $output[] = 'Rollback recovery: node/npm not available in PATH.';
                 }
             }
 
@@ -2369,43 +2250,6 @@ class SelfUpdateService
         return $process->isSuccessful();
     }
 
-    private function npmScriptExists(string $script): bool
-    {
-        $packagePath = base_path('package.json');
-        if (! is_file($packagePath)) {
-            return false;
-        }
-
-        $payload = json_decode(file_get_contents($packagePath), true);
-        if (! is_array($payload)) {
-            return false;
-        }
-
-        $scripts = $payload['scripts'] ?? [];
-
-        return array_key_exists($script, $scripts);
-    }
-
-    private function canRunNpm(array &$output): bool
-    {
-        $npm = $this->npmBinary();
-        if (! $this->binaryAvailable($npm)) {
-            $output[] = 'npm binary not found: '.$npm;
-            $this->logNpmDiagnostics($output);
-
-            return false;
-        }
-
-        if (! $this->binaryAvailable('node')) {
-            $output[] = 'node binary not found in PATH.';
-            $this->logNpmDiagnostics($output);
-
-            return false;
-        }
-
-        return true;
-    }
-
     private function shouldRunComposerInstall(string $repoPath, ?string $fromHash, ?string $toHash, array &$output): bool
     {
         $vendor = $repoPath.DIRECTORY_SEPARATOR.'vendor';
@@ -2418,48 +2262,6 @@ class SelfUpdateService
         return $this->gitPathsChanged($repoPath, $fromHash, $toHash, [
             'composer.json',
             'composer.lock',
-        ]);
-    }
-
-    private function logNpmDiagnostics(array &$output): void
-    {
-        $env = $this->baseEnv();
-        $pathKey = array_key_exists('PATH', $env) ? 'PATH' : (array_key_exists('Path', $env) ? 'Path' : 'PATH');
-        $output[] = 'npm diagnostic: PATH='.($env[$pathKey] ?? '');
-
-        $npmPath = $this->resolveBinaryPath('npm');
-        $nodePath = $this->resolveBinaryPath('node');
-        $output[] = 'npm diagnostic: npm='.($npmPath ?: 'not found');
-        $output[] = 'npm diagnostic: node='.($nodePath ?: 'not found');
-
-        $this->runProcess(['npm', '--version'], $output, null, false);
-        $this->runProcess(['node', '--version'], $output, null, false);
-    }
-
-    private function shouldRunNpmInstall(string $repoPath, ?string $fromHash, ?string $toHash, array &$output): bool
-    {
-        $nodeModules = $repoPath.DIRECTORY_SEPARATOR.'node_modules';
-        if (! is_dir($nodeModules)) {
-            $output[] = 'npm install required: node_modules is missing.';
-
-            return true;
-        }
-
-        return $this->gitPathsChanged($repoPath, $fromHash, $toHash, [
-            'package.json',
-            'package-lock.json',
-            'pnpm-lock.yaml',
-            'yarn.lock',
-        ]);
-    }
-
-    private function shouldRunNpmBuild(string $repoPath, ?string $fromHash, ?string $toHash, array &$output): bool
-    {
-        return $this->gitPathsChanged($repoPath, $fromHash, $toHash, [
-            'resources',
-            'vite.config.js',
-            'tailwind.config.js',
-            'postcss.config.js',
         ]);
     }
 
@@ -2484,87 +2286,6 @@ class SelfUpdateService
         }
 
         return trim($process->getOutput()) !== '';
-    }
-
-    private function prepareViteBuildDirectory(string $repoPath, array &$output, bool $force = false): void
-    {
-        if (PHP_OS_FAMILY === 'Windows') {
-            return;
-        }
-
-        $buildPath = $repoPath.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'build';
-        if (! is_dir($buildPath)) {
-            if (@mkdir($buildPath, 0775, true)) {
-                $output[] = 'Created build directory at '.$buildPath;
-            }
-
-            return;
-        }
-
-        if (! is_writable($buildPath) || $force) {
-            $output[] = 'Ensuring build directory is writable: '.$buildPath;
-            $this->chmodRecursive($buildPath, 0775);
-            if ($force && is_dir($buildPath)) {
-                $this->deleteDirectory($buildPath);
-                if (@mkdir($buildPath, 0775, true)) {
-                    $output[] = 'Recreated build directory at '.$buildPath;
-                }
-            }
-        }
-    }
-
-    private function backupBuildManifest(string $repoPath, array &$output): ?string
-    {
-        $manifest = $repoPath.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'build'.DIRECTORY_SEPARATOR.'manifest.json';
-        if (! is_file($manifest)) {
-            return null;
-        }
-
-        $backupDir = storage_path('app/build-manifest-backups');
-        if (! is_dir($backupDir)) {
-            mkdir($backupDir, 0775, true);
-        }
-
-        $backupPath = $backupDir.DIRECTORY_SEPARATOR.'manifest-'.now()->format('Ymd_His').'.json';
-        if (@copy($manifest, $backupPath)) {
-            $output[] = 'Backed up build manifest.';
-
-            return $backupPath;
-        }
-
-        return null;
-    }
-
-    private function restoreBuildManifest(string $repoPath, ?string $backupPath, array &$output): void
-    {
-        if (! $backupPath || ! is_file($backupPath)) {
-            return;
-        }
-
-        $manifestDir = $repoPath.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'build';
-        if (! is_dir($manifestDir)) {
-            mkdir($manifestDir, 0775, true);
-        }
-
-        $manifest = $manifestDir.DIRECTORY_SEPARATOR.'manifest.json';
-        if (@copy($backupPath, $manifest)) {
-            $output[] = 'Restored build manifest from backup.';
-        }
-    }
-
-    private function isBuildPermissionError(\Throwable $exception): bool
-    {
-        $message = $exception->getMessage();
-        if ($message === '') {
-            return false;
-        }
-
-        $message = strtolower($message);
-
-        return str_contains($message, 'permission denied')
-            || str_contains($message, 'eacces')
-            || str_contains($message, 'public/build')
-            || str_contains($message, 'node_modules');
     }
 
     private function chmodRecursive(string $path, int $mode): void
@@ -2693,18 +2414,6 @@ class SelfUpdateService
         return $process->isSuccessful();
     }
 
-    /**
-     * @return array<int, string>
-     */
-    private function npmInstallCommand(string $path): array
-    {
-        if (is_file($path.DIRECTORY_SEPARATOR.'package-lock.json')) {
-            return ['npm', 'ci'];
-        }
-
-        return ['npm', 'install'];
-    }
-
     private function backupWorkingTree(string $repoPath, array &$output, bool $includeDependencies): string
     {
         $base = storage_path('app/self-update-backups');
@@ -2720,7 +2429,7 @@ class SelfUpdateService
 
         $output[] = 'Creating backup of working tree (excluding .git, storage/logs) at: '.$target;
         if (! $includeDependencies) {
-            $output[] = 'Skipping node_modules and vendor in backup (no package file changes detected).';
+            $output[] = 'Skipping vendor in backup (no Composer file changes detected).';
         }
 
         $backupRootRelative = ltrim(str_replace($repoPath, '', $base), DIRECTORY_SEPARATOR);
@@ -2774,9 +2483,6 @@ class SelfUpdateService
         }
 
         if (! $includeDependencies) {
-            if ($relative === 'node_modules' || str_starts_with($relative, 'node_modules'.DIRECTORY_SEPARATOR)) {
-                return true;
-            }
             if ($relative === 'vendor' || str_starts_with($relative, 'vendor'.DIRECTORY_SEPARATOR)) {
                 return true;
             }
@@ -2875,10 +2581,6 @@ class SelfUpdateService
         $targets = [
             'composer.json',
             'composer.lock',
-            'package.json',
-            'package-lock.json',
-            'pnpm-lock.yaml',
-            'yarn.lock',
         ];
 
         foreach (explode("\n", $status) as $line) {
@@ -3084,30 +2786,12 @@ class SelfUpdateService
         return $count;
     }
 
-    private function countNpmVulnerabilities(string $json): int
-    {
-        $decoded = json_decode($json, true);
-        if (! is_array($decoded)) {
-            return 0;
-        }
-
-        $total = $decoded['metadata']['vulnerabilities']['total'] ?? null;
-        if (is_numeric($total)) {
-            return (int) $total;
-        }
-
-        $vulnerabilities = $decoded['vulnerabilities'] ?? [];
-
-        return is_array($vulnerabilities) ? count($vulnerabilities) : 0;
-    }
-
     private function normalizeCommand(array $command): array
     {
         $binary = $command[0] ?? '';
         $command[0] = match ($binary) {
             'git' => $this->gitBinary(),
             'composer' => $this->composerBinary(),
-            'npm' => $this->npmBinary(),
             'php' => $this->phpBinary(),
             default => $binary,
         };
@@ -3129,14 +2813,6 @@ class SelfUpdateService
         $configured = trim($configured, "\"' ");
 
         return $configured !== '' ? $configured : 'composer';
-    }
-
-    private function npmBinary(): string
-    {
-        $configured = trim((string) config('gitmanager.npm_binary', 'npm'));
-        $configured = trim($configured, "\"' ");
-
-        return $configured !== '' ? $configured : 'npm';
     }
 
     private function phpBinary(): string

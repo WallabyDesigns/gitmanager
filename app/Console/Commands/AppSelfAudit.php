@@ -18,10 +18,9 @@ class AppSelfAudit extends Command
         $startedAt = now();
 
         $composer = $this->runComposerAudit();
-        $npm = $this->runNpmAudit();
-        $summary = $this->summarize($composer, $npm);
+        $summary = $this->summarize($composer);
 
-        $this->storeAuditState($settings, $startedAt, $composer, $npm, $summary);
+        $this->storeAuditState($settings, $startedAt, $composer, $summary);
 
         $this->line($summary['message']);
 
@@ -29,12 +28,6 @@ class AppSelfAudit extends Command
             $this->warn('Composer audit failed: '.$composer['message']);
         } elseif ($composer['status'] !== 'skipped') {
             $this->info('Composer advisories: '.$composer['remaining']);
-        }
-
-        if ($npm['status'] === 'failed') {
-            $this->warn('Npm audit failed: '.$npm['message']);
-        } elseif ($npm['status'] !== 'skipped') {
-            $this->info('Npm vulnerabilities: '.$npm['remaining']);
         }
 
         return self::SUCCESS;
@@ -103,85 +96,12 @@ class AppSelfAudit extends Command
     }
 
     /**
-     * @return array{status: string, remaining: int, message: string, output: string}
-     */
-    private function runNpmAudit(): array
-    {
-        $packageJson = base_path('package.json');
-        if (! is_file($packageJson)) {
-            return [
-                'status' => 'skipped',
-                'remaining' => 0,
-                'message' => 'package.json not found.',
-                'output' => '',
-            ];
-        }
-
-        $result = $this->runProcess([
-            'npm',
-            'audit',
-            '--json',
-        ], 300);
-
-        if (! $result['ran']) {
-            return [
-                'status' => 'failed',
-                'remaining' => 0,
-                'message' => $result['message'],
-                'output' => $result['output'],
-            ];
-        }
-
-        $decoded = json_decode($result['output'], true);
-        if (! is_array($decoded)) {
-            return [
-                'status' => 'failed',
-                'remaining' => 0,
-                'message' => 'Npm audit returned invalid JSON.',
-                'output' => $result['output'],
-            ];
-        }
-
-        $remaining = (int) (($decoded['metadata']['vulnerabilities']['total'] ?? null) ?? -1);
-        if ($remaining < 0) {
-            $remaining = $this->countLegacyNpmVulnerabilities((array) ($decoded['vulnerabilities'] ?? []));
-        }
-
-        return [
-            'status' => $remaining > 0 ? 'warning' : 'ok',
-            'remaining' => $remaining,
-            'message' => $remaining > 0
-                ? "Npm reported {$remaining} vulnerabilities."
-                : 'Npm reported no vulnerabilities.',
-            'output' => $result['output'],
-        ];
-    }
-
-    private function countLegacyNpmVulnerabilities(array $vulnerabilities): int
-    {
-        $count = 0;
-
-        foreach ($vulnerabilities as $entry) {
-            if (! is_array($entry)) {
-                continue;
-            }
-
-            $isVulnerable = (bool) ($entry['isDirect'] ?? true);
-            if ($isVulnerable) {
-                $count++;
-            }
-        }
-
-        return $count;
-    }
-
-    /**
      * @return array{status: string, remaining: int, message: string}
      */
-    private function summarize(array $composer, array $npm): array
+    private function summarize(array $composer): array
     {
-        $remaining = (int) ($composer['remaining'] ?? 0) + (int) ($npm['remaining'] ?? 0);
-        $hasFailure = in_array('failed', [(string) ($composer['status'] ?? ''), (string) ($npm['status'] ?? '')], true);
+        $remaining = (int) ($composer['remaining'] ?? 0);
+        $hasFailure = (string) ($composer['status'] ?? '') === 'failed';
 
         if ($hasFailure) {
             return [
@@ -206,7 +126,7 @@ class AppSelfAudit extends Command
         ];
     }
 
-    private function storeAuditState(SettingsService $settings, Carbon $startedAt, array $composer, array $npm, array $summary): void
+    private function storeAuditState(SettingsService $settings, Carbon $startedAt, array $composer, array $summary): void
     {
         try {
             $settings->set('system.self_audit_last_run_at', $startedAt->toIso8601String());
@@ -214,19 +134,12 @@ class AppSelfAudit extends Command
             $settings->set('system.self_audit_remaining', (int) ($summary['remaining'] ?? 0));
             $settings->set('system.self_audit_summary', (string) ($summary['message'] ?? 'Self-audit completed.'));
             $settings->set('system.self_audit_composer_remaining', (int) ($composer['remaining'] ?? 0));
-            $settings->set('system.self_audit_npm_remaining', (int) ($npm['remaining'] ?? 0));
             $settings->set('system.self_audit_composer_status', (string) ($composer['status'] ?? 'unknown'));
-            $settings->set('system.self_audit_npm_status', (string) ($npm['status'] ?? 'unknown'));
             $settings->set('system.self_audit_details', [
                 'composer' => [
                     'status' => (string) ($composer['status'] ?? 'unknown'),
                     'remaining' => (int) ($composer['remaining'] ?? 0),
                     'message' => (string) ($composer['message'] ?? ''),
-                ],
-                'npm' => [
-                    'status' => (string) ($npm['status'] ?? 'unknown'),
-                    'remaining' => (int) ($npm['remaining'] ?? 0),
-                    'message' => (string) ($npm['message'] ?? ''),
                 ],
             ]);
         } catch (\Throwable $exception) {

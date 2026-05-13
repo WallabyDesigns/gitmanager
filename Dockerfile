@@ -13,15 +13,6 @@ RUN mkdir -p bootstrap/cache \
     && chmod -R 775 bootstrap/cache storage
 RUN composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader
 
-FROM node:20-alpine AS assets
-WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
-COPY resources/ resources/
-COPY public/ public/
-COPY vite.config.js tailwind.config.js postcss.config.js ./
-RUN npm run build
-
 FROM php:8.2-fpm-bookworm AS app
 WORKDIR /var/www/html
 
@@ -54,7 +45,6 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=vendor /app /var/www/html
-COPY --from=assets /app/public/build /var/www/html/public/build
 
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh \

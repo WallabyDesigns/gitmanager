@@ -50,7 +50,7 @@
                 @include('partials.recovery-panel', [
                     'forceVisible' => false,
                     'overlay' => true,
-                    'status' => session('rebuild_status'),
+                    'status' => session('repair_status'),
                 ])
             @endauth
 

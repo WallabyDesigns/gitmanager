@@ -29,8 +29,6 @@ class Queue extends Component
 
     public string $search = '';
 
-    protected string $paginationTheme = 'tailwind';
-
     public function processNow(DeploymentQueueService $queue, SchedulerService $scheduler): void
     {
         $limit = (int) config('gitmanager.deploy_queue.batch_size', 0);
