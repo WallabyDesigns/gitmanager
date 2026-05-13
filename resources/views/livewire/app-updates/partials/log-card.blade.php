@@ -7,9 +7,6 @@
         'rollback' => __('Rollback'),
         'app_dependency_audit' => __('App Dependency Audit'),
         'app_composer_update' => __('App Composer Update'),
-        'app_npm_update' => __('App Npm Update'),
-        'app_npm_audit_fix' => __('App Npm Audit Fix'),
-        'app_npm_audit_fix_force' => __('App Npm Audit Fix (Force)'),
         default => ucfirst(str_replace('_', ' ', (string) ($action ?: 'update'))),
     };
     $statusPill = fn (?string $status): string => match ($status) {

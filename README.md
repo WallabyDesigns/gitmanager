@@ -40,14 +40,12 @@ To review the documentation for this project, click here: [documentation](https:
 
 ## Quick Start
 1. Copy `.env.example` to `.env` and configure required values.
-2. Install dependencies and build assets.
+2. Install PHP dependencies.
 3. Run migrations and start the app.
 
 ```bash
 composer install
 php artisan migrate
-npm install
-npm run build
 ```
 
 ## Enterprise Package Source
@@ -100,7 +98,7 @@ If any value in `.env` contains a `$`, wrap it in single quotes to avoid Compose
 ## Requirements
 - PHP 8.2+ with required extensions (mbstring, curl, etc).
 - Composer 2.
-- Node.js 18+ (or 20/22) for Vite builds.
+- Node.js is optional and only needed when deploying managed projects that run npm commands.
 - Git CLI available to the web user.
 - Queue worker for webhook deploys.
 - Scheduler for auto-deploy and security sync.

@@ -466,7 +466,7 @@
 
             @if ($deployments->hasPages())
                 <div class="mt-4">
-                    {{ $deployments->links() }}
+                    {{ $deployments->links('components.pagination') }}
                 </div>
             @endif
                 </div>

@@ -234,7 +234,7 @@
 
                 @if ($items->hasPages())
                     <div class="pt-4">
-                        {{ $items->links() }}
+                        {{ $items->links('components.pagination') }}
                     </div>
                 @endif
             </div>

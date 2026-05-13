@@ -8,13 +8,13 @@
     "require": {
         "php": "^8.2",
         "laravel/framework": "^12.0",
-        "laravel/tinker": "^2.10.1",
         "livewire/livewire": "^3.6.4",
         "livewire/volt": "^1.7.0",
         "stripe/stripe-php": "^16.0",
-        "wallabydesigns/gitmanager-enterprise": "^1.3.0"
+        "wallabydesigns/gitmanager-enterprise": "^1.3.3"
     },
     "require-dev": {
+        "laravel/tinker": "^2.10.1",
         "fakerphp/faker": "^1.23",
         "laravel/breeze": "^2.4",
         "laravel/pail": "^1.2.2",
@@ -42,12 +42,11 @@
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
             "@php artisan key:generate",
             "@php artisan migrate --force",
-            "npm install",
-            "npm run build"
+            "@php artisan vendor:publish --tag=laravel-assets --force"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1 --timeout=0\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite --kill-others"
+            "php artisan serve"
         ],
         "optimize": [
             "@php artisan config:cache",

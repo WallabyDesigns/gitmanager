@@ -38,8 +38,8 @@ class clearCache extends Command
         error_log('  [2/5] Optimizing Cache...');
         Artisan::call('optimize --quiet');
 
-        error_log('  [3/5] Building NPM Packages...');
-        exec('npm run build');
+        error_log('  [3/5] Publishing Assets...');
+        Artisan::call('vendor:publish --tag=laravel-assets --force --quiet');
 
         error_log('  [4/5] Dumping Autoload...');
         exec('composer dump-autoload -o --quiet');
