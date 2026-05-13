@@ -404,10 +404,7 @@ class Show extends Component
             $root = $this->findLaravelRoot($path) ?? $path;
         }
 
-        $envPath = $root.DIRECTORY_SEPARATOR.'.env';
-        $examplePath = $root.DIRECTORY_SEPARATOR.'.env.example';
-
-        return is_file($envPath) || is_file($examplePath);
+        return is_dir($root);
     }
 
     private function findLaravelRoot(string $path): ?string

@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class ProjectScreensTest extends TestCase
@@ -67,6 +69,48 @@ class ProjectScreensTest extends TestCase
             ->assertOk()
             ->assertSee('Latest Debug Logs')
             ->assertDontSee('refreshHealthStatus');
+    }
+
+    public function test_project_show_environment_tab_is_available_for_existing_project_path(): void
+    {
+        $user = User::factory()->create();
+        $path = storage_path('framework/testing/project-env-tab');
+        File::ensureDirectoryExists($path);
+
+        $project = Project::factory()->create([
+            'user_id' => $user->id,
+            'local_path' => $path,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('projects.show', $project));
+
+        $response
+            ->assertOk()
+            ->assertSee('Environment')
+            ->assertDontSee('No .env or .env.example detected');
+    }
+
+    public function test_project_env_editor_can_create_missing_env_file(): void
+    {
+        $user = User::factory()->create();
+        $path = storage_path('framework/testing/project-env-editor');
+        File::deleteDirectory($path);
+        File::ensureDirectoryExists($path);
+
+        $project = Project::factory()->create([
+            'user_id' => $user->id,
+            'local_path' => $path,
+            'project_type' => 'custom',
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(\App\Livewire\Projects\EnvEditor::class, ['project' => $project])
+            ->set('envContent', "APP_ENV=production\nAPP_DEBUG=false\n")
+            ->call('save')
+            ->assertDispatched('env-updated');
+
+        $this->assertFileExists($path.DIRECTORY_SEPARATOR.'.env');
+        $this->assertSame("APP_ENV=production\nAPP_DEBUG=false\n", file_get_contents($path.DIRECTORY_SEPARATOR.'.env'));
     }
 
     public function test_sub_user_can_see_and_manage_projects_created_by_other_users(): void

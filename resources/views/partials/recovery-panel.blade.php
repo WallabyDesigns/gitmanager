@@ -39,10 +39,10 @@
     <div style="{{ $panelStyle }}">
         <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
             <strong style="font-size: 1.2rem;">{{ __('Recovery Mode') }}</strong>
-            <span style="font-size: 0.8rem; color: #94a3b8;">{{ __('Published assets or caches need repair') }}</span>
+            <span style="font-size: 0.8rem; color: #94a3b8;">{{ __('Maintenance and recovery tools') }}</span>
         </div>
         <p style="margin: 0 0 1rem 0; line-height: 1.5;">
-            {{ __('Use the actions below to refresh Laravel caches and republish bundled assets.') }}
+            {{ __('Use these actions only when the app needs cache refreshes, published asset repair, rollback, or environment backup recovery.') }}
         </p>
 
         @if ($status)
