@@ -18,7 +18,7 @@ class ProjectsHealthCheck extends Command
     {
         $scheduler->recordHeartbeat('schedule');
 
-        $lock = Cache::lock('gwm_projects_health_check', 300);
+        $lock = Cache::lock('gwm_projects_health_check', 600);
         if (! $lock->get()) {
             $this->line('Health check already running.');
 
