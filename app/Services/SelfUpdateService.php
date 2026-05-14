@@ -1717,41 +1717,14 @@ class SelfUpdateService
             return;
         }
 
-        try {
-            if (! $this->artisanCommandExists($repoPath, 'app:clear-cache', $output)) {
-                $output[] = 'Skipping app:clear-cache (command not found).';
-
-                return;
-            }
-
-            $output[] = 'Running app:clear-cache.';
-            $this->runProcess(['php', 'artisan', 'app:clear-cache'], $output, $repoPath, false);
-        } catch (\Throwable $exception) {
-            $output[] = 'Warning: app:clear-cache failed: '.$exception->getMessage();
+        // Intentionally skip cache:clear — it would wipe withoutOverlapping mutexes
+        // for any scheduler commands currently running (including this self-update),
+        // which causes a second concurrent self-update to launch on the next cron tick
+        // and corrupts the application mid-update.
+        foreach (['config:clear', 'route:clear', 'event:clear'] as $command) {
+            $this->runProcess(['php', 'artisan', $command], $output, $repoPath, false);
         }
-    }
-
-    private function artisanCommandExists(string $path, string $command, array &$output): bool
-    {
-        $process = $this->runProcess(['php', 'artisan', 'list', '--format=json'], $output, $path, false);
-
-        if (! $process->isSuccessful()) {
-            return false;
-        }
-
-        $payload = json_decode($process->getOutput(), true);
-        if (! is_array($payload)) {
-            return false;
-        }
-
-        $commands = $payload['commands'] ?? [];
-        foreach ($commands as $entry) {
-            if (($entry['name'] ?? null) === $command) {
-                return true;
-            }
-        }
-
-        return false;
+        $this->runProcess(['php', 'artisan', 'optimize'], $output, $repoPath, false);
     }
 
     private function ensureGitRepository(string $repoPath): void

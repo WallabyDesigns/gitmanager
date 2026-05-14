@@ -41,7 +41,7 @@ Schedule::command('license:verify')->everyTenMinutes()->withoutOverlapping(10);
 Schedule::command('sitemap:generate')->daily();
 Schedule::command('app:self-audit')->cron($schedulerTaskCron('self_audit'))->withoutOverlapping(30);
 Schedule::command('projects:auto-deploy')->cron($schedulerTaskCron('project_health_checks'))->withoutOverlapping(120);
-Schedule::command('projects:health-check')->cron($schedulerTaskCron('project_health_checks'));
+Schedule::command('projects:health-check')->cron($schedulerTaskCron('project_health_checks'))->withoutOverlapping(10);
 
 if (config('gitmanager.deploy_queue.enabled', true)) {
     Schedule::command('deployments:process-queue')->cron($schedulerTaskCron('queue_processing'))->withoutOverlapping(60);
