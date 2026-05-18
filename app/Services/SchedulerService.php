@@ -74,12 +74,13 @@ class SchedulerService
 
     public function cronCommand(): string
     {
-        $php = $this->phpBinary();
+        $php = escapeshellarg($this->phpBinary());
 
         $base = base_path();
         $baseArg = escapeshellarg($base);
+        $logArg = escapeshellarg($this->cronLogPath());
 
-        return '* * * * * cd '.$baseArg.' && '.$php.' artisan scheduler:run >/dev/null 2>&1';
+        return '* * * * * cd '.$baseArg.' && '.$php.' artisan scheduler:run >> '.$logArg.' 2>&1';
     }
 
     /**
@@ -183,6 +184,8 @@ class SchedulerService
             ];
         }
 
+        $this->ensureCronLogFile();
+
         $lines = preg_split('/\r\n|\r|\n/', $current) ?: [];
         $updated = false;
         $basePath = base_path();
@@ -222,14 +225,27 @@ class SchedulerService
         }
 
         file_put_contents($tmp, $content);
-        $process = new Process(['crontab', $tmp]);
-        $process->run();
+
+        try {
+            $process = new Process(['crontab', $tmp]);
+            $process->run();
+        } catch (\Throwable $exception) {
+            @unlink($tmp);
+
+            return [
+                'success' => false,
+                'message' => 'Cron install failed: '.$exception->getMessage(),
+            ];
+        }
+
         @unlink($tmp);
 
         if (! $process->isSuccessful()) {
+            $output = trim($process->getErrorOutput()) ?: trim($process->getOutput());
+
             return [
                 'success' => false,
-                'message' => 'Cron install failed. Install the cron line manually.',
+                'message' => 'Cron install failed'.($output !== '' ? ': '.$output : '. Install the cron line manually.'),
             ];
         }
 
@@ -253,8 +269,12 @@ class SchedulerService
 
     private function readCrontab(): ?string
     {
-        $process = new Process(['crontab', '-l']);
-        $process->run();
+        try {
+            $process = new Process(['crontab', '-l']);
+            $process->run();
+        } catch (\Throwable $exception) {
+            return null;
+        }
 
         if (! $process->isSuccessful()) {
             return '';
@@ -322,6 +342,26 @@ class SchedulerService
     private function heartbeatPath(): string
     {
         return storage_path('logs/scheduler-heartbeat.json');
+    }
+
+    private function cronLogPath(): string
+    {
+        return storage_path('logs/scheduler-cron.log');
+    }
+
+    private function ensureCronLogFile(): void
+    {
+        $path = $this->cronLogPath();
+        $dir = dirname($path);
+        if (! is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+
+        if (! is_file($path)) {
+            @touch($path);
+        }
+
+        @chmod($path, 0664);
     }
 
     private function legacyHeartbeatPath(): string
