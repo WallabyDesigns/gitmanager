@@ -22,7 +22,6 @@ To review the documentation for this project, click here: [documentation](https:
 
 ## Feature Overview
 - **Project management:** Create and manage Git-backed projects with per-project settings, paths, branches, and deployment behavior.
-- **Path conflict awareness:** `local_path` values can be reused across projects (including FTP projects using common paths like `/public_html`), and the UI now shows a warning when a path is shared.
 - **Deploy workflows:** Run deploy, force deploy, and rollback actions with logs and status history.
 - **Task queue:** Queue and process background work in order (including deploy-related tasks and Enterprise audit jobs), with controls to reorder, cancel, and process now.
 - **Container control center:** Manage Docker nodes, runtime health, containers, and managed PostgreSQL/MySQL database containers from one workspace.
@@ -47,13 +46,6 @@ To review the documentation for this project, click here: [documentation](https:
 composer install
 php artisan migrate
 ```
-
-## Enterprise Package Source
-`wallabydesigns/gitmanager-enterprise` is intended to be installed by default because it contributes shared/free-version functionality as well as enterprise-only capabilities.
-
-- Premium access should be decided by the licensing website/API at runtime, not by prompting end users for repository credentials in the terminal.
-- The app no longer writes Composer auth to `auth.json` or tries to bootstrap terminal credentials itself.
-- If Composer is still prompting for `gitwebmanager.com` credentials, that indicates the remote package endpoint still needs to be adjusted to allow the default install flow without terminal authentication.
 
 ## Docker Installation
 Docker is required to run the container setup.
