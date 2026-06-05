@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Dashboard\Index as DashboardIndex;
+use App\Models\DeploymentQueueItem;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\DeploymentService;
@@ -102,6 +103,58 @@ class DashboardBulkActionsTest extends TestCase
             'action' => 'audit_project',
             'status' => 'queued',
         ]);
+    }
+
+    public function test_dashboard_replaces_total_projects_with_queued_item_count(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->create(['user_id' => $user->id]);
+
+        DeploymentQueueItem::create([
+            'project_id' => $project->id,
+            'queued_by' => $user->id,
+            'action' => 'deploy',
+            'status' => 'queued',
+            'position' => 1,
+        ]);
+        DeploymentQueueItem::create([
+            'project_id' => $project->id,
+            'queued_by' => $user->id,
+            'action' => 'audit_project',
+            'status' => 'queued',
+            'position' => 2,
+        ]);
+
+        $this->mockDashboardInfrastructure();
+
+        Livewire::actingAs($user)
+            ->test(DashboardIndex::class)
+            ->assertSee('Queued Items')
+            ->assertSeeInOrder(['Queued Items', '2'])
+            ->assertDontSee('Total Projects');
+    }
+
+    public function test_dashboard_process_queue_button_starts_queue_processor(): void
+    {
+        config()->set('gitmanager.deploy_queue.enabled', true);
+
+        $user = User::factory()->create();
+        $project = Project::factory()->create(['user_id' => $user->id]);
+
+        DeploymentQueueItem::create([
+            'project_id' => $project->id,
+            'queued_by' => $user->id,
+            'action' => 'deploy',
+            'status' => 'queued',
+            'position' => 1,
+        ]);
+
+        $this->mockDashboardInfrastructure();
+
+        Livewire::actingAs($user)
+            ->test(DashboardIndex::class)
+            ->call('processQueue')
+            ->assertDispatched('notify', message: 'Queue processor started.');
     }
 
     private function mockDashboardInfrastructure(): void

@@ -3,12 +3,14 @@
 namespace App\Livewire\Dashboard;
 
 use App\Models\Deployment;
+use App\Models\DeploymentQueueItem;
 use App\Models\Project;
 use App\Services\AuditService;
 use App\Services\DeploymentQueueService;
 use App\Services\DeploymentService;
 use App\Services\DockerService;
 use App\Services\EditionService;
+use App\Services\SchedulerService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -67,6 +69,40 @@ class Index extends Component
 
         $results = $audit->auditProjects($projects, Auth::user(), true, true);
         $this->dispatchAuditToast($results);
+    }
+
+    public function processQueue(DeploymentQueueService $queue, SchedulerService $scheduler): void
+    {
+        if (! $this->queueEnabled()) {
+            $this->dispatch('notify', message: 'Task queue is disabled in configuration.', type: 'warning');
+
+            return;
+        }
+
+        $queue->releaseStaleRunning();
+        if (DeploymentQueueItem::query()->where('status', 'running')->exists()) {
+            $this->dispatch('notify', message: 'Queue processor is already running.');
+
+            return;
+        }
+
+        if (! DeploymentQueueItem::query()->where('status', 'queued')->exists()) {
+            $this->dispatch('notify', message: 'No queued items to process.');
+
+            return;
+        }
+
+        $limit = (int) config('gitmanager.deploy_queue.batch_size', 0);
+        $started = $queue->startBackgroundProcessor($limit > 0 ? $limit : 1);
+        $scheduler->recordManualRun();
+
+        if (! $started) {
+            $this->dispatch('notify', message: 'Unable to start queue processor.', type: 'error');
+
+            return;
+        }
+
+        $this->dispatch('notify', message: 'Queue processor started.');
     }
 
     /**
@@ -155,11 +191,16 @@ class Index extends Component
             ->where('started_at', '>=', now()->startOfDay())
             ->count();
 
+        $queuedCount = DeploymentQueueItem::query()
+            ->where('status', 'queued')
+            ->count();
+        $queueRunningCount = DeploymentQueueItem::query()
+            ->where('status', 'running')
+            ->count();
         $infra = $this->loadInfrastructure();
         $projectTree = $this->buildProjectTree($allProjects);
 
         return view('livewire.dashboard.index', [
-            'totalProjects' => $allProjects->count(),
             'projectTree' => $projectTree,
             'monitoredProjects' => $monitoredProjects,
             'healthyCount' => $healthyCount,
@@ -169,6 +210,9 @@ class Index extends Component
             'recentDeployments' => $recentDeployments,
             'healthHistory' => $healthHistory,
             'deploymentsToday' => $deploymentsToday,
+            'queuedCount' => $queuedCount,
+            'queueRunningCount' => $queueRunningCount,
+            'queueEnabled' => $this->queueEnabled(),
             'infra' => $infra,
         ])->layout('layouts.app', [
             'title' => 'Dashboard',

@@ -44,6 +44,17 @@ class GitManagerSelfUpdate extends Command
         if ($this->option('force')) {
             $update = $service->forceUpdate($user);
         } else {
+            $status = $service->getUpdateStatus(true);
+            if (($status['status'] ?? 'unknown') !== 'update-available') {
+                $this->info(match ($status['status'] ?? 'unknown') {
+                    'up-to-date' => 'Self-update skipped: application is already up to date.',
+                    'blocked' => $status['deployment_guard']['message'] ?? 'Self-update skipped: pending update is blocked.',
+                    default => 'Self-update skipped: no update is currently available.',
+                });
+
+                return self::SUCCESS;
+            }
+
             $update = $service->updateSmart($user);
         }
 
