@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 
 class NavigationStateService
 {
-    private const CACHE_SECONDS = 1800;
+    private const CACHE_SECONDS = 300;
 
     private const SIDEBAR_CACHE_SECONDS = 60;
 
@@ -131,6 +131,27 @@ class NavigationStateService
         }
     }
 
+    public function flushBadges(?User $user): void
+    {
+        $userId = $user?->id;
+
+        foreach ([0, 1] as $isAdmin) {
+            $this->forget('shared-nav:'.($userId ?? 0).':'.$isAdmin);
+        }
+
+        if ($userId) {
+            $this->flushProjectsSidebar($userId);
+        }
+
+        foreach ([
+            'alert-counts:workspace',
+            'dependency-issues:workspace',
+            'latest-update-issue',
+        ] as $key) {
+            $this->forget($key);
+        }
+    }
+
     /**
      * @return array{
      *   openAlerts:int,
@@ -180,7 +201,7 @@ class NavigationStateService
                 'brandName' => $brandName,
                 'showLocalLicenseBadge' => InstallContext::isLocalInstall() && $licenseStatus !== 'valid',
             ];
-        });
+        }, self::SIDEBAR_CACHE_SECONDS);
     }
 
     /**
@@ -203,7 +224,7 @@ class NavigationStateService
                     ->where('status', 'open')
                     ->count(),
             ];
-        });
+        }, self::SIDEBAR_CACHE_SECONDS);
     }
 
     private function queueCount(?int $userId): int
@@ -250,14 +271,20 @@ class NavigationStateService
                         ->orWhereIn('last_npm_status', ['failed', 'warning']);
                 })
                 ->count();
-        });
+        }, self::SIDEBAR_CACHE_SECONDS);
     }
 
     private function latestUpdateIssueCount(): int
     {
         return $this->remember('latest-update-issue', function (): int {
             return AppUpdate::query()->latest('started_at')->value('status') === 'failed' ? 1 : 0;
-        });
+        }, self::SIDEBAR_CACHE_SECONDS);
+    }
+
+    private function forget(string $key): void
+    {
+        Cache::forget('navigation-state:'.$key);
+        unset(self::$requestCache[$key]);
     }
 
     private function remember(string $key, callable $callback, int $seconds = self::CACHE_SECONDS): mixed

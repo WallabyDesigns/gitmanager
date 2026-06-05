@@ -3,6 +3,7 @@
 namespace App\Livewire\AppUpdates;
 
 use App\Models\AppUpdate;
+use App\Services\NavigationStateService;
 use App\Services\SelfUpdateService;
 use App\Services\SettingsService;
 use App\Support\ConsoleOutput;
@@ -84,6 +85,7 @@ class Index extends Component
 
         $this->updateStatus = $service->getUpdateStatus(true);
         $this->loadPendingChanges($service);
+        $this->flushNavigationBadges();
         $this->resetExpandedUpdateLog();
         $this->dispatch('notify', message: $message, type: ($result['ok'] ?? false) ? 'success' : 'error');
         $this->redirectRoute('system.updates', navigate: false);
@@ -96,6 +98,7 @@ class Index extends Component
 
         $this->updateStatus = $service->getUpdateStatus(true);
         $this->loadPendingChanges($service);
+        $this->flushNavigationBadges();
         $this->resetExpandedUpdateLog();
         $this->dispatch('notify', message: $message, type: ($result['ok'] ?? false) ? 'success' : 'error');
         $this->redirectRoute('system.updates', navigate: false);
@@ -111,6 +114,7 @@ class Index extends Component
 
         $this->updateStatus = $service->getUpdateStatus(true);
         $this->loadPendingChanges($service);
+        $this->flushNavigationBadges();
         $this->resetExpandedUpdateLog();
 
         $message = match ($this->updateStatus['status'] ?? 'unknown') {
@@ -131,6 +135,7 @@ class Index extends Component
             'warning' => 'App dependency audit found issues. Review the logs.',
             default => 'App dependency audit failed. Review the logs.',
         });
+        $this->flushNavigationBadges();
         $this->resetExpandedUpdateLog();
     }
 
@@ -140,6 +145,7 @@ class Index extends Component
         $this->dispatch('notify', message: $update->status === 'success'
             ? 'App Composer dependencies updated.'
             : 'App Composer update failed. Review the logs.');
+        $this->flushNavigationBadges();
         $this->resetExpandedUpdateLog();
     }
 
@@ -207,6 +213,11 @@ class Index extends Component
         $this->expandedUpdateId = null;
         $this->expandedUpdateLog = null;
         $this->expandedUpdateLogTruncated = false;
+    }
+
+    private function flushNavigationBadges(): void
+    {
+        app(NavigationStateService::class)->flushBadges(Auth::user());
     }
 
     private function updateHistoryQuery(bool $includeOutputTail = false): Builder

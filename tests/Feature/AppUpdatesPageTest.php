@@ -7,6 +7,7 @@ use App\Models\AppUpdate;
 use App\Models\User;
 use App\Services\SelfUpdateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -103,7 +104,7 @@ class AppUpdatesPageTest extends TestCase
 
         $this->mock(SelfUpdateService::class, function ($mock): void {
             $mock->shouldReceive('getUpdateStatus')
-                ->once()
+                ->twice()
                 ->andReturn([
                     'status' => 'update-available',
                     'current' => 'aaa111',
@@ -121,5 +122,49 @@ class AppUpdatesPageTest extends TestCase
             ->test(AppUpdatesIndex::class)
             ->assertSeeHtml('wire:click="runUpdate"')
             ->assertDontSeeHtml('wire:click="runUpdate" wire:loading.attr="disabled" disabled');
+    }
+
+    public function test_refresh_update_status_flushes_navigation_badges(): void
+    {
+        $admin = User::factory()->create();
+
+        $this->mock(SelfUpdateService::class, function ($mock): void {
+            $mock->shouldReceive('getUpdateStatus')
+                ->times(3)
+                ->andReturn([
+                    'status' => 'up-to-date',
+                    'current' => 'aaa111',
+                    'latest' => 'aaa111',
+                    'update_allowed' => true,
+                ]);
+            $mock->shouldReceive('getPendingChanges')
+                ->twice()
+                ->andReturn([]);
+        });
+
+        Cache::put('navigation-state:shared-nav:'.$admin->id.':0', ['updateAvailable' => true], now()->addHour());
+        Cache::put('navigation-state:shared-nav:'.$admin->id.':1', ['updateAvailable' => true], now()->addHour());
+        Cache::put('navigation-state:projects-sidebar:'.$admin->id.':0', ['actionCenterCount' => 1], now()->addHour());
+        Cache::put('navigation-state:projects-sidebar:'.$admin->id.':1', ['actionCenterCount' => 1], now()->addHour());
+        Cache::put('navigation-state:alert-counts:workspace', ['security' => 1, 'audit' => 1], now()->addHour());
+        Cache::put('navigation-state:dependency-issues:workspace', 1, now()->addHour());
+        Cache::put('navigation-state:latest-update-issue', 1, now()->addHour());
+
+        Livewire::actingAs($admin)
+            ->test(AppUpdatesIndex::class)
+            ->call('refreshUpdateStatus')
+            ->assertDispatched('notify', message: 'Git Web Manager is up to date.');
+
+        foreach ([
+            'navigation-state:shared-nav:'.$admin->id.':0' => ['updateAvailable' => true],
+            'navigation-state:shared-nav:'.$admin->id.':1' => ['updateAvailable' => true],
+            'navigation-state:projects-sidebar:'.$admin->id.':0' => ['actionCenterCount' => 1],
+            'navigation-state:projects-sidebar:'.$admin->id.':1' => ['actionCenterCount' => 1],
+            'navigation-state:alert-counts:workspace' => ['security' => 1, 'audit' => 1],
+            'navigation-state:dependency-issues:workspace' => 1,
+            'navigation-state:latest-update-issue' => 1,
+        ] as $key => $staleValue) {
+            $this->assertNotSame($staleValue, Cache::get($key), "{$key} should not retain stale badge data.");
+        }
     }
 }
