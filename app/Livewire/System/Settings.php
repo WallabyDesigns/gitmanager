@@ -150,6 +150,7 @@ class Settings extends Component
             'lastSource' => $scheduler->lastSource(),
             'schedulerLog' => $scheduler->schedulerLogEntries(),
             'schedulerRuntime' => $scheduler->phpRuntimeStatus(),
+            'schedulerLocks' => $scheduler->getScheduleLockStatus(),
             'queueEnabled' => config('gitmanager.deploy_queue.enabled', true),
             'queueCount' => DeploymentQueueItem::query()
                 ->where('status', 'queued')
@@ -185,9 +186,24 @@ class Settings extends Component
 
     public function runScheduler(SchedulerService $scheduler): void
     {
+        $scheduler->clearAllScheduleLocks();
         $result = $scheduler->runScheduleNow();
         $scheduler->recordManualRun();
         $this->dispatch('notify', message: $result['message']);
+        $this->dispatch('$refresh');
+    }
+
+    public function clearScheduleLock(SchedulerService $scheduler, string $key): void
+    {
+        $scheduler->clearScheduleLock($key);
+        $this->dispatch('notify', message: 'Schedule lock cleared.');
+        $this->dispatch('$refresh');
+    }
+
+    public function clearAllScheduleLocks(SchedulerService $scheduler): void
+    {
+        $scheduler->clearAllScheduleLocks();
+        $this->dispatch('notify', message: 'All schedule locks cleared.');
         $this->dispatch('$refresh');
     }
 
@@ -210,6 +226,7 @@ class Settings extends Component
 
     public function installCron(SchedulerService $scheduler): void
     {
+        $scheduler->clearAllScheduleLocks();
         $result = $scheduler->installCron();
         $message = $result['message'] ?? 'Cron action completed.';
         $this->dispatch('notify', message: $message);

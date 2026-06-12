@@ -6,6 +6,7 @@ use App\Support\ConsoleOutput;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Symfony\Component\Process\Process;
 
@@ -415,10 +416,110 @@ class SchedulerService
     }
 
     /**
+     * Remove expired withoutOverlapping locks so a crashed process never silently blocks the next run.
+     */
+    public function releaseExpiredScheduleLocks(): void
+    {
+        try {
+            DB::table('cache_locks')
+                ->where('key', 'like', 'framework/schedule-%')
+                ->where('expiration', '<=', now()->unix())
+                ->delete();
+        } catch (\Throwable $exception) {
+            // Non-fatal: scheduler still runs, just without stale lock cleanup.
+        }
+    }
+
+    /**
+     * Remove all withoutOverlapping locks regardless of expiry. Used when the user
+     * explicitly triggers a run or reinstalls the cron, so stale locks don't block it.
+     */
+    public function clearAllScheduleLocks(): void
+    {
+        try {
+            DB::table('cache_locks')
+                ->where('key', 'like', 'framework/schedule-%')
+                ->delete();
+        } catch (\Throwable $exception) {
+            // Non-fatal.
+        }
+    }
+
+    /**
+     * Remove a single withoutOverlapping lock by its cache key. Only permits
+     * keys matching framework/schedule-* to prevent arbitrary lock deletion.
+     */
+    public function clearScheduleLock(string $key): void
+    {
+        if (! str_starts_with($key, 'framework/schedule-') && ! str_starts_with($key, 'framework'.DIRECTORY_SEPARATOR.'schedule-')) {
+            return;
+        }
+
+        try {
+            DB::table('cache_locks')->where('key', $key)->delete();
+        } catch (\Throwable $exception) {
+            // Non-fatal.
+        }
+    }
+
+    /**
+     * Return the currently active (non-expired) withoutOverlapping locks for
+     * registered schedule commands, mapped to human-readable command names.
+     *
+     * @return array<int, array{key: string, label: string, expires_at: int, expires_in_seconds: int}>
+     */
+    public function getScheduleLockStatus(): array
+    {
+        try {
+            $schedule = app(\Illuminate\Console\Scheduling\Schedule::class);
+            $events = $schedule->events();
+
+            $lockMap = [];
+            foreach ($events as $event) {
+                $mutexName = $event->mutexName();
+                $rawCommand = property_exists($event, 'command') ? (string) $event->command : '';
+                if (preg_match('/artisan\s+([\w:_-]+)/', $rawCommand, $m)) {
+                    $label = $m[1];
+                } else {
+                    $label = $rawCommand !== '' ? $rawCommand : $mutexName;
+                }
+                $lockMap[$mutexName] = $label;
+            }
+
+            if (empty($lockMap)) {
+                return [];
+            }
+
+            $now = now()->unix();
+            $rows = DB::table('cache_locks')
+                ->whereIn('key', array_keys($lockMap))
+                ->where('expiration', '>', $now)
+                ->orderBy('expiration')
+                ->get();
+
+            $result = [];
+            foreach ($rows as $row) {
+                $result[] = [
+                    'key' => $row->key,
+                    'label' => $lockMap[$row->key] ?? $row->key,
+                    'expires_at' => (int) $row->expiration,
+                    'expires_in_seconds' => max(0, (int) $row->expiration - $now),
+                ];
+            }
+
+            return $result;
+        } catch (\Throwable $exception) {
+            return [];
+        }
+    }
+
+    /**
      * @return array{success: bool, message: string, output?: string}
      */
     public function runSchedulerOnce(string $source = 'manual'): array
     {
+        $this->releaseExpiredScheduleLocks();
+
         // Record early so long-running scheduled commands don't make health checks look stale.
         $this->recordHeartbeat($source);
 

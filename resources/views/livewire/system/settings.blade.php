@@ -64,6 +64,57 @@
                         </div>
                     </div>
 
+                    @if (! empty($schedulerLocks))
+                        <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-amber-500/30 p-6 space-y-4">
+                            <div class="flex items-center justify-between gap-3">
+                                <div>
+                                    <h3 class="text-sm font-semibold text-amber-300">{{ __('Active Schedule Locks') }}</h3>
+                                    <p class="text-xs text-slate-400 mt-0.5">
+                                        {{ __('These withoutOverlapping locks are currently held. If a task stopped unexpectedly, its lock may be blocking the next run.') }}
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    wire:click="clearAllScheduleLocks"
+                                    class="shrink-0 px-3 py-1.5 text-xs rounded-md border border-amber-500/40 text-amber-200 hover:text-white hover:border-amber-400 inline-flex items-center gap-1.5"
+                                >
+                                    <x-loading-spinner target="clearAllScheduleLocks" />
+                                    {{ __('Clear All') }}
+                                </button>
+                            </div>
+                            <div class="space-y-2">
+                                @foreach ($schedulerLocks as $lock)
+                                    <div class="flex items-center justify-between gap-3 rounded-md border border-slate-700 bg-slate-950/50 px-4 py-2.5">
+                                        <div class="min-w-0">
+                                            <div class="text-sm font-mono text-slate-100 truncate">{{ $lock['label'] }}</div>
+                                            <div class="text-xs text-slate-400 mt-0.5">
+                                                {{ __('Expires in') }}
+                                                @if ($lock['expires_in_seconds'] < 60)
+                                                    {{ $lock['expires_in_seconds'] }}{{ __('s') }}
+                                                @elseif ($lock['expires_in_seconds'] < 3600)
+                                                    {{ (int) round($lock['expires_in_seconds'] / 60) }}{{ __('m') }}
+                                                @else
+                                                    {{ (int) round($lock['expires_in_seconds'] / 3600, 1) }}{{ __('h') }}
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            wire:click="clearScheduleLock('{{ $lock['key'] }}')"
+                                            title="{{ __('Clear this lock') }}"
+                                            class="shrink-0 p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+                                        >
+                                            <x-loading-spinner target="clearScheduleLock('{{ $lock['key'] }}')" />
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6 space-y-4">
                         <div>
                             <h3 class="text-lg font-semibold text-slate-100">{{ __('Task Frequency') }}</h3>
