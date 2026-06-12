@@ -10,13 +10,22 @@
 
     {{-- Stat cards --}}
     <div class="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div class="rounded-xl border border-slate-800 bg-slate-900 p-5">
-            <p class="text-xs font-medium uppercase tracking-wide text-slate-400">{{ __('Queued Items') }}</p>
-            <p class="mt-2 text-3xl font-bold {{ $queuedCount > 0 ? 'text-amber-300' : 'text-slate-100' }}">{{ $queuedCount }}</p>
-            @if ($queueRunningCount > 0)
-                <p class="mt-1 text-xs text-indigo-300">{{ __(':count running', ['count' => $queueRunningCount]) }}</p>
-            @endif
-        </div>
+        @if ($queuedCount > 0 || $queueRunningCount > 0)
+            <a href="{{ route('projects.queue') }}" class="group block rounded-xl border border-amber-500/30 bg-slate-900 p-5 hover:border-amber-400/60 hover:bg-slate-800/60 transition-colors">
+                <p class="text-xs font-medium uppercase tracking-wide text-slate-400 group-hover:text-slate-300">{{ __('Queued Items') }}</p>
+                <p class="mt-2 text-3xl font-bold text-amber-300">{{ $queuedCount }}</p>
+                @if ($queueRunningCount > 0)
+                    <p class="mt-1 text-xs text-indigo-300">{{ __(':count running', ['count' => $queueRunningCount]) }}</p>
+                @else
+                    <p class="mt-1 text-xs text-slate-500 group-hover:text-slate-400">{{ __('View queue →') }}</p>
+                @endif
+            </a>
+        @else
+            <div class="rounded-xl border border-slate-800 bg-slate-900 p-5">
+                <p class="text-xs font-medium uppercase tracking-wide text-slate-400">{{ __('Queued Items') }}</p>
+                <p class="mt-2 text-3xl font-bold text-slate-100">0</p>
+            </div>
+        @endif
         <div class="rounded-xl border border-slate-800 bg-slate-900 p-5">
             <p class="text-xs font-medium uppercase tracking-wide text-slate-400">{{ __('Healthy Sites') }}</p>
             <p class="mt-2 text-3xl font-bold text-emerald-400">{{ $healthyCount }}</p>
