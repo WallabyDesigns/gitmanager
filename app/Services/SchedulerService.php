@@ -416,6 +416,56 @@ class SchedulerService
     }
 
     /**
+     * Release withoutOverlapping locks that have been held longer than $stuckMinutes,
+     * even if they haven't expired yet. This catches processes that were killed mid-run
+     * before their TTL elapsed, which would otherwise block the task until expiry.
+     *
+     * Called on every scheduler:heartbeat tick so stuck locks self-correct within one minute.
+     */
+    public function releaseStuckScheduleLocks(int $stuckMinutes = 10): void
+    {
+        try {
+            $schedule = app(\Illuminate\Console\Scheduling\Schedule::class);
+            $events = $schedule->events();
+            $now = now()->unix();
+            $stuckThresholdSecs = $stuckMinutes * 60;
+
+            foreach ($events as $event) {
+                if (! $event->withoutOverlapping) {
+                    continue;
+                }
+
+                $ttlMinutes = 1440;
+                try {
+                    $ttlMinutes = (int) ($event->expiresAt ?? 1440);
+                } catch (\Throwable $exception) {
+                    // Property inaccessible in this Laravel version — use default.
+                }
+                $ttlSeconds = $ttlMinutes * 60;
+
+                $mutexName = $event->mutexName();
+                $lock = DB::table('cache_locks')
+                    ->where('key', $mutexName)
+                    ->where('expiration', '>', $now)
+                    ->first();
+
+                if (! $lock) {
+                    continue;
+                }
+
+                $acquiredAt = (int) $lock->expiration - $ttlSeconds;
+                $lockAgeSecs = $now - $acquiredAt;
+
+                if ($lockAgeSecs >= $stuckThresholdSecs) {
+                    DB::table('cache_locks')->where('key', $mutexName)->delete();
+                }
+            }
+        } catch (\Throwable $exception) {
+            // Non-fatal: scheduler still runs, just without stuck lock cleanup.
+        }
+    }
+
+    /**
      * Remove expired withoutOverlapping locks so a crashed process never silently blocks the next run.
      */
     public function releaseExpiredScheduleLocks(): void

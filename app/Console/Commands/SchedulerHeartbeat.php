@@ -13,6 +13,9 @@ class SchedulerHeartbeat extends Command
 
     public function handle(SchedulerService $scheduler): int
     {
+        // Release locks stuck longer than 10 minutes before recording the heartbeat
+        // so the next schedule:run dispatch finds them clear.
+        $scheduler->releaseStuckScheduleLocks(10);
         $scheduler->recordHeartbeat('schedule');
         $this->info('Scheduler heartbeat recorded.');
 
