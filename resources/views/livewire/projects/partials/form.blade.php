@@ -232,6 +232,28 @@
         </label>
     </div>
 
+    @php
+        $showRebuild = in_array($form['project_type'] ?? 'custom', ['static', 'node', 'react', 'nextjs'], true);
+    @endphp
+    @if ($showRebuild)
+        <div class="rounded-lg border border-slate-800 p-4">
+            <div class="text-sm font-semibold text-slate-100">{{ __('Scheduled Rebuild') }}</div>
+            <p class="mt-1 text-xs text-slate-400">{{ __('Automatically rebuild and deploy this project on a recurring schedule, even without new commits. Useful for static sites that pull external data at build time.') }}</p>
+            <label class="mt-3 flex items-center gap-2 text-sm text-slate-300">
+                <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.rebuild_enabled" />
+                {{ __('Enable scheduled rebuild') }}
+            </label>
+            @if ($form['rebuild_enabled'] ?? false)
+                <div class="mt-3 max-w-xs">
+                    <x-input-label for="rebuild_interval_hours" :value="__('Rebuild interval (hours)')" />
+                    <x-text-input id="rebuild_interval_hours" class="mt-1 block w-full" type="number" min="1" max="8760" wire:model.live="form.rebuild_interval_hours" />
+                    <p class="mt-1 text-xs text-slate-400">{{ __('Minimum 1 hour. The scheduler checks every 30 minutes.') }}</p>
+                    <x-input-error :messages="$errors->get('form.rebuild_interval_hours')" class="mt-2" />
+                </div>
+            @endif
+        </div>
+    @endif
+
     <div class="flex flex-wrap items-center gap-3">
         <x-primary-button wire:loading.attr="disabled" wire:target="{{ $submitAction }}">
             {{ $submitLabel }}

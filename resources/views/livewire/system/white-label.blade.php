@@ -6,32 +6,38 @@
                 <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6 space-y-4">
             <div class="flex items-center gap-2">
                 <h3 class="text-lg font-semibold text-slate-100">{{ __('White Label Branding') }}</h3>
-                <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-wide border-amber-500/50 bg-amber-500/10 text-amber-300">
-                    {{ __('Enterprise') }}
-                    <svg class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M10 1a4 4 0 00-4 4v2H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-1V5a4 4 0 00-4-4zm-2 6V5a2 2 0 114 0v2H8z" clip-rule="evenodd" />
-                    </svg>
-                </span>
             </div>
 
             @if ($isEnterprise)
                 <p class="text-sm text-slate-400">{{ __('Customize branding assets for your installation.') }}</p>
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div class="sm:col-span-2">
-                        <label class="text-xs uppercase tracking-wide text-slate-500">{{ __('Brand Name') }}</label>
-                        <input type="text" wire:model="whiteLabelName" class="mt-2 w-full rounded-md border p-2 text-sm border-slate-700 bg-slate-950 text-slate-100" placeholder="Your Brand Name" />
+                        <label for="wl-brand-name" class="text-xs uppercase tracking-wide text-slate-500">{{ __('Brand Name') }}</label>
+                        <input id="wl-brand-name" type="text" wire:model="whiteLabelName" class="mt-2 w-full rounded-md border p-2 text-sm border-slate-700 bg-slate-950 text-slate-100" placeholder="Your Brand Name" />
                         <x-input-error :messages="$errors->get('whiteLabelName')" class="mt-2" />
                     </div>
                     <div>
-                        <label class="text-xs uppercase tracking-wide text-slate-500">{{ __('Logo URL') }}</label>
-                        <input type="url" wire:model="whiteLabelLogoUrl" class="mt-2 w-full rounded-md border p-2 text-sm border-slate-700 bg-slate-950 text-slate-100" placeholder="https://example.com/logo.svg" />
+                        <label for="wl-logo-url" class="text-xs uppercase tracking-wide text-slate-500">{{ __('Logo URL') }}</label>
+                        <input id="wl-logo-url" type="text" wire:model="whiteLabelLogoUrl" class="mt-2 w-full rounded-md border p-2 text-sm border-slate-700 bg-slate-950 text-slate-100" placeholder="https://example.com/logo.svg or /storage/logo.svg" />
                         <x-input-error :messages="$errors->get('whiteLabelLogoUrl')" class="mt-2" />
                     </div>
                     <div>
-                        <label class="text-xs uppercase tracking-wide text-slate-500">{{ __('Favicon URL') }}</label>
-                        <input type="url" wire:model="whiteLabelFaviconUrl" class="mt-2 w-full rounded-md border p-2 text-sm border-slate-700 bg-slate-950 text-slate-100" placeholder="https://example.com/favicon.ico" />
+                        <label for="wl-favicon-url" class="text-xs uppercase tracking-wide text-slate-500">{{ __('Favicon URL') }}</label>
+                        <input id="wl-favicon-url" type="text" wire:model="whiteLabelFaviconUrl" class="mt-2 w-full rounded-md border p-2 text-sm border-slate-700 bg-slate-950 text-slate-100" placeholder="https://example.com/favicon.ico or /storage/favicon.ico" />
                         <x-input-error :messages="$errors->get('whiteLabelFaviconUrl')" class="mt-2" />
                     </div>
+                </div>
+
+                <div class="sm:col-span-2">
+                    <label for="wl-sub-heading" class="text-xs uppercase tracking-wide text-slate-500">{{ __('Sub Heading') }}</label>
+                    <input id="wl-sub-heading" type="text" wire:model="whiteLabelSubHeading" class="mt-2 w-full rounded-md border p-2 text-sm border-slate-700 bg-slate-950 text-slate-100" placeholder="{{ __('Leave blank to show the edition label') }}" maxlength="100" />
+                    <x-input-error :messages="$errors->get('whiteLabelSubHeading')" class="mt-2" />
+                    <p class="mt-1 text-xs text-slate-500">{{ __('Replaces the edition label beneath the brand name when set.') }}</p>
+                </div>
+
+                <div class="flex items-center gap-3 pt-1">
+                    <input type="checkbox" id="hide-edition-label" wire:model="hideEditionLabel" class="h-4 w-4 rounded border-slate-600 bg-slate-950 text-indigo-500 focus:ring-indigo-500" />
+                    <label for="hide-edition-label" class="text-sm text-slate-300 cursor-pointer select-none">{{ __('Hide edition label') }}</label>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-3" x-data="{ saved: false, timer: null }" x-on:white-label-saved.window="

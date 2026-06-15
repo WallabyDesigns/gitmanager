@@ -123,10 +123,12 @@ class NodeInstallService
             return $dir;
         }
 
-        // On Unix there is a single subdirectory
+        // On Unix the binary lives in the bin/ subdirectory inside the extracted tarball folder.
         $entries = glob($dir.DIRECTORY_SEPARATOR.'node-v*') ?: [];
 
-        return $entries[0] ?? $dir.DIRECTORY_SEPARATOR.'bin';
+        return isset($entries[0])
+            ? $entries[0].DIRECTORY_SEPARATOR.'bin'
+            : $dir.DIRECTORY_SEPARATOR.'bin';
     }
 
     private function bundledBinary(): string

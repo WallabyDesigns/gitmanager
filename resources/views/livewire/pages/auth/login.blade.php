@@ -2,6 +2,8 @@
 
 use App\Livewire\Forms\LoginForm;
 use App\Models\User;
+use App\Services\SettingsService;
+use App\Services\TurnstileService;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -10,8 +12,15 @@ new #[Layout('layouts.guest')] class extends Component
 {
     public LoginForm $form;
 
+    public bool $turnstileEnabled = false;
+    public string $turnstileSiteKey = '';
+
     public function mount(): void
     {
+        $turnstile = app(TurnstileService::class);
+        $settings = app(SettingsService::class);
+        $this->turnstileEnabled = $turnstile->isEnabled($settings);
+        $this->turnstileSiteKey = $turnstile->siteKey($settings);
         if (! User::query()->exists()) {
             $this->redirectRoute('register', navigate: true);
         }
@@ -63,6 +72,21 @@ new #[Layout('layouts.guest')] class extends Component
                 <span class="ms-2 text-sm text-gray-600">{{ __('Remember me') }}</span>
             </label>
         </div>
+
+        @if ($turnstileEnabled)
+            <div class="mt-4">
+                <div class="cf-turnstile" data-sitekey="{{ $turnstileSiteKey }}" data-callback="onTurnstileSuccess"></div>
+                <input type="hidden" wire:model="form.turnstileToken" id="turnstile-token" />
+                <x-input-error :messages="$errors->get('form.turnstileToken')" class="mt-2" />
+            </div>
+            <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+            <script>
+                function onTurnstileSuccess(token) {
+                    document.getElementById('turnstile-token').value = token;
+                    @this.set('form.turnstileToken', token);
+                }
+            </script>
+        @endif
 
         <div class="flex items-center justify-end mt-4">
             @if (Route::has('password.request'))

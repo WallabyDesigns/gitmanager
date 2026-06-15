@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Forms;
 
+use App\Services\SettingsService;
+use App\Services\TurnstileService;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -21,6 +23,8 @@ class LoginForm extends Form
     #[Validate('boolean')]
     public bool $remember = false;
 
+    public string $turnstileToken = '';
+
     /**
      * Attempt to authenticate the request's credentials.
      *
@@ -28,6 +32,14 @@ class LoginForm extends Form
      */
     public function authenticate(): void
     {
+        $settings = app(SettingsService::class);
+        $turnstile = app(TurnstileService::class);
+        if ($turnstile->isEnabled($settings) && ! $turnstile->verify($this->turnstileToken, $settings)) {
+            throw ValidationException::withMessages([
+                'form.turnstileToken' => 'Security verification failed. Please try again.',
+            ]);
+        }
+
         $this->ensureIsNotRateLimited();
 
         if (! Auth::attempt($this->only(['email', 'password']), $this->remember)) {

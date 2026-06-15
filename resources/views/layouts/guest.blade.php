@@ -32,6 +32,12 @@
 
         @php
             $editionLabel = $editionService->label();
+            $hideEditionLabel = $isEnterpriseEdition
+                ? (bool) $settingsService->get('system.white_label.hide_edition_label', false)
+                : false;
+            $subHeading = $isEnterpriseEdition
+                ? trim((string) $settingsService->get('system.white_label.sub_heading', ''))
+                : '';
         @endphp
         <link rel="stylesheet" href="{{ asset('css/app.css') }}">
         @if (class_exists(\GitManagerEnterprise\EnterpriseServiceProvider::class))
@@ -54,9 +60,15 @@
                         <h2 class="text-xl px-2 font-semibold text-slate-100">
                             {{ $brandName }}
                         </h2>
+                        @if ($subHeading !== '')
+                        <p class="px-2 -mt-1 text-[11px] uppercase tracking-[0.12em] text-slate-400">
+                            {{ $subHeading }}
+                        </p>
+                        @elseif (! $hideEditionLabel)
                         <p class="px-2 -mt-1 text-[11px] uppercase tracking-[0.12em] text-slate-400">
                             {{ $editionLabel }}
                         </p>
+                        @endif
                     </div>
                 </a>
             </div>

@@ -11,8 +11,10 @@ use App\Services\EnvManagerService;
 use App\Services\LicenseService;
 use App\Services\LogCleanupService;
 use App\Services\NodeInstallService;
+use App\Services\RuntimeDiagnosticsService;
 use App\Services\SchedulerService;
 use App\Services\SettingsService;
+use App\Services\TurnstileService;
 use App\Support\InstallContext;
 use App\Support\SchedulerTaskIntervals;
 use Composer\InstalledVersions;
@@ -33,6 +35,9 @@ class Settings extends Component
     public const SECTION_ENVIRONMENT = 'environment';
 
     public const SECTION_NODE = 'node';
+
+
+    public const SECTION_DIAGNOSTICS = 'diagnostics';
 
     // Legacy alias retained so older links continue to work.
     public const SECTION_REGIONAL = 'regional';
@@ -95,6 +100,13 @@ class Settings extends Component
 
     public bool $envSaveSuccess = false;
 
+    // Security / captcha
+    public bool $captchaEnabled = false;
+
+    public string $captchaSiteKey = '';
+
+    public string $captchaSecretKey = '';
+
     public function mount(): void
     {
         $this->settingsSection = $this->resolveRequestedSection();
@@ -139,12 +151,31 @@ class Settings extends Component
             $this->loadEnvironmentSection($envManager, $backupService);
         }
 
+        if ($this->settingsSection === self::SECTION_APPLICATION) {
+            $this->captchaEnabled = (bool) $settings->get('system.captcha.enabled', false);
+            $this->captchaSiteKey = (string) $settings->get('system.captcha.site_key', '');
+            $this->captchaSecretKey = ''; // never load the secret into state
+        }
+
         $this->loaded = true;
+    }
+
+    public function saveSecurity(SettingsService $settings): void
+    {
+        $settings->set('system.captcha.enabled', $this->captchaEnabled);
+        $settings->set('system.captcha.site_key', trim($this->captchaSiteKey));
+        if (trim($this->captchaSecretKey) !== '') {
+            $settings->setEncrypted('system.captcha.secret_key', trim($this->captchaSecretKey));
+        }
+        $this->captchaSecretKey = '';
+        $this->dispatch('notify', message: 'Security settings saved.');
     }
 
     public function render(EditionService $edition, SchedulerService $scheduler, NodeInstallService $nodeInstall): View
     {
         $schedulerGraceSeconds = max(600, (int) config('gitmanager.scheduler.stale_seconds', 600));
+
+        $settingsService = app(SettingsService::class);
 
         return view('livewire.system.settings', [
             'nodeStatus' => $nodeInstall->detect(),
@@ -164,6 +195,11 @@ class Settings extends Component
             'schedulerTaskDefinitions' => SchedulerTaskIntervals::definitions(),
             'schedulerTaskUnitOptions' => SchedulerTaskIntervals::unitOptions(),
             'schedulerTaskStatuses' => $this->schedulerTaskStatuses(),
+            'captchaEnabled' => (bool) $settingsService->get('system.captcha.enabled', false),
+            'captchaSiteKey' => (string) $settingsService->get('system.captcha.site_key', ''),
+            'runtimeDiagnostics' => $this->settingsSection === self::SECTION_DIAGNOSTICS
+                ? app(RuntimeDiagnosticsService::class)->detect()
+                : null,
         ])
             ->layout('layouts.app', [
                 'title' => 'System Settings',
@@ -425,6 +461,7 @@ class Settings extends Component
             'system.scheduler' => self::SECTION_SCHEDULER,
             'system.environment' => self::SECTION_ENVIRONMENT,
             'system.node' => self::SECTION_NODE,
+            'system.diagnostics' => self::SECTION_DIAGNOSTICS,
             default => self::SECTION_SCHEDULER,
         };
     }
@@ -443,6 +480,7 @@ class Settings extends Component
             self::SECTION_LICENSING,
             self::SECTION_ENVIRONMENT,
             self::SECTION_NODE,
+            self::SECTION_DIAGNOSTICS,
         ];
 
         return in_array($normalized, $allowed, true)

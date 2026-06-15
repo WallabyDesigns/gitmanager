@@ -47,6 +47,7 @@ if (config('gitmanager.deploy_queue.enabled', true)) {
     Schedule::command('deployments:process-queue')->cron($schedulerTaskCron('queue_processing'))->withoutOverlapping(5);
 }
 
+Schedule::command('projects:rebuild-static')->everyThirtyMinutes()->withoutOverlapping(15);
 Schedule::command('node:health-check')->everyMinute()->withoutOverlapping(5);
 Schedule::command('security:sync')->hourly()->withoutOverlapping(30);
 Schedule::command('dependabot:auto-merge')->hourly()->withoutOverlapping(30);

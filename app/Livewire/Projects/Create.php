@@ -117,6 +117,8 @@ class Create extends Component
             'ssh_root_path' => '',
             'ssh_commands' => '',
             'ignore_migration_table_exists' => false,
+            'rebuild_enabled' => false,
+            'rebuild_interval_hours' => 24,
         ];
 
         $this->applyProjectTypeDefaults('laravel');
@@ -473,6 +475,8 @@ class Create extends Component
             'form.ssh_root_path' => ['nullable', 'string', 'max:255'],
             'form.ssh_commands' => ['nullable', 'string'],
             'form.ignore_migration_table_exists' => ['boolean'],
+            'form.rebuild_enabled' => ['boolean'],
+            'form.rebuild_interval_hours' => ['nullable', 'integer', 'min:1', 'max:8760'],
         ];
     }
 

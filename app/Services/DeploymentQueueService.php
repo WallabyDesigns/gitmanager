@@ -678,6 +678,12 @@ class DeploymentQueueService
                     $deployment = $service->runCustomCommand($project, $user, (string) ($payload['command'] ?? ''));
                     $markFailed = $deployment->status === 'failed';
                     break;
+                case 'rebuild_static':
+                    $deployment = $service->deploy($project, $user, false);
+                    $project->last_rebuild_at = now();
+                    $project->save();
+                    $markFailed = $deployment->status !== 'success';
+                    break;
                 case 'deploy':
                 default:
                     $deployment = $service->deploy(

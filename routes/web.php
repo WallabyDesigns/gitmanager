@@ -94,6 +94,7 @@ Route::middleware(['auth', 'verified', EnsurePasswordChanged::class])->group(fun
         Route::get('/system/email', SystemEmailSettings::class)->name('system.email');
         Route::get('/system/environment', SystemSettings::class)->name('system.environment');
         Route::get('/system/node', SystemSettings::class)->name('system.node');
+        Route::get('/system/diagnostics', SystemSettings::class)->name('system.diagnostics');
         Route::get('/system/support', SystemSupport::class)->name('system.support');
         Route::get('/system/white-label', SystemWhiteLabel::class)->name('system.white-label');
         Route::get('/workflows', WorkflowsIndex::class)->name('workflows.index');
@@ -105,7 +106,7 @@ Route::middleware(['auth', 'verified', EnsurePasswordChanged::class])->group(fun
 
     $dockerSections = [
         'dashboard', 'overview', 'docker', 'containers', 'images', 'volumes', 'networks',
-        'swarm', 'databases', 'templates',
+        'swarm', 'templates',
         // enterprise sections
         'servers', 'nodes', 'audits', 'stacks', 'deployments',
         'builds', 'repos', 'procedures', 'actions', 'builders',

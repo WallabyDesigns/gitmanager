@@ -30,7 +30,7 @@ class NodeProcess extends Component
         $process = $this->loadProcess();
         $this->startCommand = $process->start_command;
         $this->port = $process->port;
-        $this->autoRestart = $process->auto_restart;
+        $this->autoRestart = (bool) ($process->auto_restart ?? true);
     }
 
     public function start(NodeProcessService $service): void
@@ -95,7 +95,7 @@ class NodeProcess extends Component
     {
         return NodeProcessModel::firstOrCreate(
             ['project_id' => $this->project->id],
-            ['status' => NodeProcessModel::STATUS_STOPPED, 'start_command' => 'npm start'],
+            ['status' => NodeProcessModel::STATUS_STOPPED, 'start_command' => 'npm start', 'auto_restart' => true],
         );
     }
 }

@@ -78,6 +78,8 @@ class Edit extends Component
             'ssh_root_path' => $project->ssh_root_path,
             'ssh_commands' => $project->ssh_commands,
             'ignore_migration_table_exists' => $project->ignore_migration_table_exists ?? false,
+            'rebuild_enabled' => $project->rebuild_enabled ?? false,
+            'rebuild_interval_hours' => $project->rebuild_interval_hours ?? 24,
         ];
         $this->lastAllowedProjectType = (string) ($project->project_type ?? 'custom');
         $this->refreshLocalPathUsageWarning();
@@ -271,6 +273,8 @@ class Edit extends Component
             'form.ssh_root_path' => ['nullable', 'string', 'max:255'],
             'form.ssh_commands' => ['nullable', 'string'],
             'form.ignore_migration_table_exists' => ['boolean'],
+            'form.rebuild_enabled' => ['boolean'],
+            'form.rebuild_interval_hours' => ['nullable', 'integer', 'min:1', 'max:8760'],
         ];
     }
 

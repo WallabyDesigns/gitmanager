@@ -133,7 +133,7 @@
                                 </div>
                             </div>
                             <details class="mt-4 rounded-lg border border-slate-800 bg-slate-950/40 p-4">
-                                <summary class="cursor-pointer text-sm font-semibold text-slate-200">{{ __('Pending commits') }} ({{ count($pendingChanges) }})</summary>
+                                <summary class="cursor-pointer text-sm font-semibold text-slate-200">{{ __('Pending updates') }} ({{ count($pendingChanges) }})</summary>
                                 <ul class="mt-3 space-y-2 text-xs">
                                     @foreach ($pendingChanges as $change)
                                         <li class="flex gap-2"><span class="font-mono text-slate-500">{{ $change['hash'] }}</span><span class="text-slate-200">{{ $change['subject'] }}</span></li>

@@ -429,6 +429,45 @@
                     </div>
                 @endif
 
+                @if ($settingsSection === 'diagnostics')
+                    <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6 space-y-6">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <h3 class="text-lg font-semibold text-slate-100">{{ __('Runtime & Build Tools') }}</h3>
+                                <p class="text-sm text-slate-400">{{ __('Detected runtimes and build tools available to this application.') }}</p>
+                            </div>
+                            <button type="button" wire:click="$refresh" class="shrink-0 px-3 py-1.5 text-xs rounded-md border border-slate-700 text-slate-200 hover:text-white inline-flex items-center gap-1.5">
+                                <x-loading-spinner target="$refresh" />
+                                {{ __('Re-check') }}
+                            </button>
+                        </div>
+
+                        @if ($runtimeDiagnostics)
+                            <div class="space-y-2">
+                                @foreach ($runtimeDiagnostics as $key => $tool)
+                                    <div class="rounded-md border border-slate-700 bg-slate-950/50 px-4 py-3 space-y-1">
+                                        <div class="flex items-center gap-3">
+                                            <span class="text-xs uppercase tracking-wide px-2 py-0.5 rounded-full {{ $tool['found'] ? 'bg-emerald-500/10 text-emerald-300' : 'bg-rose-500/10 text-rose-300' }}">
+                                                {{ $tool['found'] ? __('Detected') : __('Missing') }}
+                                            </span>
+                                            <span class="text-sm font-medium text-slate-100">{{ $tool['label'] }}</span>
+                                            @if ($tool['found'])
+                                                <span class="text-xs font-mono text-slate-400">v{{ $tool['version'] }}</span>
+                                            @endif
+                                        </div>
+                                        @if (! $tool['found'] && $tool['guidance'])
+                                            <div class="mt-2">
+                                                <p class="text-xs text-slate-500 mb-1">{{ __('Install guidance:') }}</p>
+                                                <code class="block text-xs font-mono text-amber-300 bg-slate-900 border border-slate-700 rounded px-3 py-2 whitespace-pre-wrap">{{ $tool['guidance'] }}</code>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                @endif
+
                 @if ($settingsSection === 'application')
                     <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6 space-y-6">
                         <div>
@@ -472,6 +511,65 @@
                         @if (! $githubSslVerify)
                             <div class="text-xs text-rose-400">{{ __('Warning: SSL verification is disabled. GitHub API calls are less secure.') }}</div>
                         @endif
+                    </div>
+
+                    <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6 space-y-6">
+                        <div>
+                            <h3 class="text-lg font-semibold text-slate-100">{{ __('Login Security') }}</h3>
+                            <p class="text-sm text-slate-400">{{ __('Configure Cloudflare Turnstile CAPTCHA to protect the login page from bots and brute-force attacks.') }}</p>
+                        </div>
+
+                        <div class="space-y-4">
+                            <label class="flex items-start gap-3">
+                                <input type="checkbox" wire:model="captchaEnabled" class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
+                                <span class="text-sm text-slate-300">
+                                    {{ __('Enable Turnstile CAPTCHA on login') }}
+                                    <span class="block text-xs text-slate-500">{{ __('Requires both a Site Key and Secret Key to be saved below.') }}</span>
+                                </span>
+                            </label>
+
+                            <div>
+                                <label class="block text-sm text-slate-300 mb-1" for="captcha-site-key-app">{{ __('Site Key') }}</label>
+                                <input
+                                    type="text"
+                                    id="captcha-site-key-app"
+                                    wire:model="captchaSiteKey"
+                                    class="block w-full rounded-md border border-slate-700 bg-slate-950 text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    placeholder="0x4AAAAAAA..."
+                                    autocomplete="off"
+                                />
+                            </div>
+
+                            <div>
+                                <label class="block text-sm text-slate-300 mb-1" for="captcha-secret-key-app">{{ __('Secret Key') }}</label>
+                                <input
+                                    type="password"
+                                    id="captcha-secret-key-app"
+                                    wire:model="captchaSecretKey"
+                                    class="block w-full rounded-md border border-slate-700 bg-slate-950 text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    placeholder="{{ $captchaEnabled && $captchaSiteKey !== '' ? '••••••••' : '' }}"
+                                    autocomplete="new-password"
+                                />
+                                @if ($captchaEnabled && $captchaSiteKey !== '')
+                                    <p class="mt-1 text-xs text-slate-500">{{ __('Leave blank to keep the existing secret key.') }}</p>
+                                @endif
+                            </div>
+                        </div>
+
+                        <div class="pt-2 flex items-center gap-4">
+                            <button type="button" wire:click="saveSecurity" class="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-500 inline-flex items-center">
+                                <x-loading-spinner target="saveSecurity" />
+                                {{ __('Save Security Settings') }}
+                            </button>
+                        </div>
+
+                        <div class="border-t border-slate-800 pt-4">
+                            <p class="text-xs text-slate-500">
+                                {{ __('Get your Turnstile Site Key and Secret Key from the') }}
+                                <a href="https://dash.cloudflare.com/?to=/:account/turnstile" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:text-indigo-300 underline">{{ __('Cloudflare Dashboard') }}</a>.
+                                {{ __('Choose "Managed" challenge type for best results.') }}
+                            </p>
+                        </div>
                     </div>
 
                     @if ($isLocalInstall)

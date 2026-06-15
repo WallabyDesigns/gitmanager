@@ -13,6 +13,8 @@ new class extends Component
     public string $editionLabel = 'Community Edition';
     public bool $isEnterprise = false;
     public string $brandName = 'Git Web Manager';
+    public bool $hideEditionLabel = false;
+    public string $subHeading = '';
 
     public function mount(NavigationStateService $navigationState): void
     {
@@ -22,6 +24,8 @@ new class extends Component
         $this->checkUpdatesEnabled = (bool) ($state['checkUpdatesEnabled'] ?? true);
         $this->editionLabel = (string) ($state['editionLabel'] ?? 'Community Edition');
         $this->isEnterprise = (bool) ($state['isEnterprise'] ?? false);
+        $this->hideEditionLabel = (bool) ($state['hideEditionLabel'] ?? false);
+        $this->subHeading = (string) ($state['subHeading'] ?? '');
         $brandName = (string) ($state['brandName'] ?? config('app.name', 'Git Web Manager'));
         $this->brandName = __($brandName);
 
@@ -52,9 +56,15 @@ new class extends Component
                             <h2 class="text-base sm:text-xl font-semibold text-slate-100 truncate">
                                 {{ __($brandName) }}
                             </h2>
+                            @if ($subHeading !== '')
+                            <p class="-mt-1 text-[11px] uppercase tracking-[0.12em] text-slate-400 truncate">
+                                {{ $subHeading }}
+                            </p>
+                            @elseif (! $hideEditionLabel)
                             <p class="-mt-1 text-[11px] uppercase tracking-[0.12em] text-slate-400 truncate">
                                 {{ __($editionLabel) }}
                             </p>
+                            @endif
                         </div>
                     </a>
                 </div>

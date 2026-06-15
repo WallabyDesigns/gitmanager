@@ -31,7 +31,9 @@ class NavigationStateService
      *   checkUpdatesEnabled:bool,
      *   editionLabel:string,
      *   isEnterprise:bool,
-     *   brandName:string
+     *   brandName:string,
+     *   hideEditionLabel:bool,
+     *   subHeading:string
      * }
      */
     public function topNavigationState(?User $user): array
@@ -47,6 +49,8 @@ class NavigationStateService
             'editionLabel' => $editionService->label(),
             'isEnterprise' => $validateEnterprise,
             'brandName' => $shared['brandName'],
+            'hideEditionLabel' => $shared['hideEditionLabel'],
+            'subHeading' => $shared['subHeading'],
         ];
     }
 
@@ -160,7 +164,9 @@ class NavigationStateService
      *   editionLabel:string,
      *   isEnterprise:bool,
      *   brandName:string,
-     *   showLocalLicenseBadge:bool
+     *   showLocalLicenseBadge:bool,
+     *   hideEditionLabel:bool,
+     *   subHeading:string
      * }
      */
     private function sharedState(?User $user): array
@@ -172,7 +178,8 @@ class NavigationStateService
         return $this->remember($cacheKey, function () use ($userId, $isAdmin): array {
             $counts = $this->alertCounts($userId);
             $updateIssueCount = $isAdmin ? $this->latestUpdateIssueCount() : 0;
-            $checkUpdatesEnabled = (bool) $this->settingsService()->get('system.check_updates', true);
+            $settingsService = $this->settingsService();
+            $checkUpdatesEnabled = (bool) $settingsService->get('system.check_updates', true);
             $updateAvailable = false;
             if ($checkUpdatesEnabled) {
                 $status = $this->selfUpdateService()->getUpdateStatus();
@@ -182,11 +189,15 @@ class NavigationStateService
             $editionService = $this->editionService();
             $isEnterprise = $editionService->current() === EditionService::ENTERPRISE;
             $brandName = (string) config('app.name', 'Git Web Manager');
+            $hideEditionLabel = false;
+            $subHeading = '';
             if ($isEnterprise) {
-                $customBrand = trim((string) $this->settingsService()->get('system.white_label.name', ''));
+                $customBrand = trim((string) $settingsService->get('system.white_label.name', ''));
                 if ($customBrand !== '') {
                     $brandName = $customBrand;
                 }
+                $hideEditionLabel = (bool) $settingsService->get('system.white_label.hide_edition_label', false);
+                $subHeading = trim((string) $settingsService->get('system.white_label.sub_heading', ''));
             }
 
             $licenseState = $this->licenseService()->state();
@@ -199,6 +210,8 @@ class NavigationStateService
                 'editionLabel' => $editionService->label(),
                 'isEnterprise' => $isEnterprise,
                 'brandName' => $brandName,
+                'hideEditionLabel' => $hideEditionLabel,
+                'subHeading' => $subHeading,
                 'showLocalLicenseBadge' => InstallContext::isLocalInstall() && $licenseStatus !== 'valid',
             ];
         }, self::SIDEBAR_CACHE_SECONDS);

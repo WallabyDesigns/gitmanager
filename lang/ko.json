@@ -850,6 +850,7 @@
     "Pending": "보류 중",
     "Pending commits": "보류 중인 커밋",
     "Pending Pods": "보류 중인 포드",
+    "Pending updates": "업데이트 대기 중",
     "Perform auto-updates": "자동 업데이트 수행",
     "Perform System Update": "시스템 업데이트 수행",
     "Permissions": "권한",
