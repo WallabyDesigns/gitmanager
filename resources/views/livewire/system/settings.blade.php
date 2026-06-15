@@ -332,6 +332,103 @@
                     </div>
                 @endif
 
+                @if ($settingsSection === 'node')
+                    {{-- Node.js Runtime Status --}}
+                    <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6 space-y-4">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ ($nodeStatus['found'] ?? false) ? 'bg-emerald-500/10 text-emerald-300' : 'bg-rose-500/10 text-rose-300' }}">
+                                        {{ ($nodeStatus['found'] ?? false) ? __('Detected') : __('Not found') }}
+                                    </span>
+                                    <h3 class="text-sm font-semibold text-slate-100">{{ __('Node.js Runtime') }}</h3>
+                                </div>
+                                @if ($nodeStatus['found'] ?? false)
+                                    <div class="mt-2 text-sm text-slate-300 space-y-1">
+                                        <div>{{ __('Version:') }} <span class="text-slate-100 font-mono">{{ $nodeStatus['version'] ?? '—' }}</span></div>
+                                        <div>{{ __('Source:') }} <span class="text-slate-100">{{ $nodeStatus['source'] === 'bundled' ? __('Bundled (app-managed)') : __('System PATH') }}</span></div>
+                                        <div class="text-xs text-slate-500 font-mono truncate">{{ $nodeStatus['binary'] ?? '' }}</div>
+                                    </div>
+                                @else
+                                    <p class="mt-1 text-sm text-slate-400">{{ __('Node.js was not found. Install it below to enable Node process management.') }}</p>
+                                @endif
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap gap-2 pt-1">
+                            @if (! ($nodeStatus['found'] ?? false))
+                                <button type="button" wire:click="installNode" class="px-3 py-2 text-xs rounded-md border border-emerald-500/40 text-emerald-200 hover:text-white inline-flex items-center gap-1.5">
+                                    <x-loading-spinner target="installNode" />
+                                    {{ __('Install Node.js LTS (Bundled)') }}
+                                </button>
+                            @else
+                                <button type="button" wire:click="installNode" class="px-3 py-2 text-xs rounded-md border border-slate-700 text-slate-200 hover:text-white inline-flex items-center gap-1.5">
+                                    <x-loading-spinner target="installNode" />
+                                    {{ __('Reinstall / Upgrade') }}
+                                </button>
+                                @if (($nodeStatus['source'] ?? '') === 'bundled')
+                                    <button
+                                        type="button"
+                                        wire:click="uninstallNode"
+                                        onclick="return confirm('{{ __('Remove the bundled Node.js runtime? Running processes will stop.') }}')"
+                                        class="px-3 py-2 text-xs rounded-md border border-rose-500/40 text-rose-200 hover:text-white inline-flex items-center gap-1.5"
+                                    >
+                                        <x-loading-spinner target="uninstallNode" />
+                                        {{ __('Remove Bundled Runtime') }}
+                                    </button>
+                                @endif
+                            @endif
+                        </div>
+
+                        <p class="text-xs text-slate-500">
+                            {{ __('The bundled runtime is downloaded from nodejs.org and stored in your app\'s storage directory — no root access required. If Node.js is already on your system PATH it will be used automatically.') }}
+                        </p>
+                    </div>
+
+                    {{-- Active Node Processes Summary --}}
+                    <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6 space-y-4">
+                        <div>
+                            <h3 class="text-lg font-semibold text-slate-100">{{ __('Active Processes') }}</h3>
+                            <p class="text-sm text-slate-400">{{ __('Node processes are configured per project in the project\'s Node tab.') }}</p>
+                        </div>
+                        @php
+                            $nodeProcesses = \App\Models\NodeProcess::query()
+                                ->with('project:id,name')
+                                ->whereIn('status', [\App\Models\NodeProcess::STATUS_RUNNING, \App\Models\NodeProcess::STATUS_STARTING, \App\Models\NodeProcess::STATUS_CRASHED])
+                                ->get();
+                        @endphp
+                        @if ($nodeProcesses->isEmpty())
+                            <p class="text-sm text-slate-400">{{ __('No active Node processes.') }}</p>
+                        @else
+                            <div class="space-y-2">
+                                @foreach ($nodeProcesses as $np)
+                                    <div class="flex items-center justify-between gap-3 rounded-md border border-slate-700 bg-slate-950/50 px-4 py-2.5">
+                                        <div class="min-w-0">
+                                            <div class="text-sm text-slate-100 truncate">{{ $np->project->name ?? "Project #{$np->project_id}" }}</div>
+                                            <div class="text-xs text-slate-400 font-mono">{{ $np->start_command }}</div>
+                                        </div>
+                                        <div class="flex items-center gap-3 shrink-0">
+                                            @if ($np->port)
+                                                <span class="text-xs text-slate-400">:{{ $np->port }}</span>
+                                            @endif
+                                            <span class="text-xs px-2 py-0.5 rounded-full
+                                                {{ $np->status === 'running' ? 'bg-emerald-500/10 text-emerald-300' : '' }}
+                                                {{ $np->status === 'starting' ? 'bg-indigo-500/10 text-indigo-300' : '' }}
+                                                {{ $np->status === 'crashed' ? 'bg-rose-500/10 text-rose-300' : '' }}
+                                            ">
+                                                {{ $np->status }}
+                                            </span>
+                                            @if ($np->crash_count > 0)
+                                                <span class="text-xs text-amber-400">{{ $np->crash_count }} crash{{ $np->crash_count !== 1 ? 'es' : '' }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                @endif
+
                 @if ($settingsSection === 'application')
                     <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6 space-y-6">
                         <div>

@@ -57,6 +57,7 @@ class LogCleanupService
         $appUpdates = $this->summarizeQuery($appUpdateQuery, 'app updates');
         $deployments = $this->summarizeQuery($deploymentQuery, 'deployments');
         $scheduler = $this->summarizeSchedulerLog($cutoff);
+        $nodeLogs = $this->summarizeNodeLogs($cutoff);
 
         $vacuumed = false;
 
@@ -73,6 +74,10 @@ class LogCleanupService
                 File::delete($this->schedulerLogPath());
             }
 
+            if ($nodeLogs['records'] > 0) {
+                $this->cleanupNodeLogs($cutoff);
+            }
+
             if ($vacuum && ($appUpdates['records'] > 0 || $deployments['records'] > 0)) {
                 $vacuumed = $this->vacuumIfSupported();
             }
@@ -85,9 +90,54 @@ class LogCleanupService
             'app_updates' => $appUpdates,
             'deployments' => $deployments,
             'scheduler_errors' => $scheduler,
-            'total_records' => $appUpdates['records'] + $deployments['records'] + $scheduler['records'],
-            'total_bytes' => $appUpdates['bytes'] + $deployments['bytes'] + $scheduler['bytes'],
+            'node_logs' => $nodeLogs,
+            'total_records' => $appUpdates['records'] + $deployments['records'] + $scheduler['records'] + $nodeLogs['records'],
+            'total_bytes' => $appUpdates['bytes'] + $deployments['bytes'] + $scheduler['bytes'] + $nodeLogs['bytes'],
         ];
+    }
+
+    private function summarizeNodeLogs(?CarbonInterface $cutoff): array
+    {
+        $baseDir = storage_path('logs/node-processes');
+        if (! is_dir($baseDir)) {
+            return ['label' => 'node process logs', 'records' => 0, 'bytes' => 0, 'path' => $baseDir];
+        }
+
+        $records = 0;
+        $bytes = 0;
+
+        foreach (glob($baseDir.DIRECTORY_SEPARATOR.'*'.DIRECTORY_SEPARATOR.'out.log') ?: [] as $logFile) {
+            if (! is_file($logFile)) {
+                continue;
+            }
+            $fileBytes = (int) (filesize($logFile) ?: 0);
+            if ($fileBytes === 0) {
+                continue;
+            }
+            if ($cutoff === null || filemtime($logFile) < $cutoff->getTimestamp()) {
+                $records++;
+                $bytes += $fileBytes;
+            }
+        }
+
+        return ['label' => 'node process logs', 'records' => $records, 'bytes' => $bytes, 'path' => $baseDir];
+    }
+
+    private function cleanupNodeLogs(?CarbonInterface $cutoff): void
+    {
+        $baseDir = storage_path('logs/node-processes');
+        if (! is_dir($baseDir)) {
+            return;
+        }
+
+        foreach (glob($baseDir.DIRECTORY_SEPARATOR.'*'.DIRECTORY_SEPARATOR.'out.log') ?: [] as $logFile) {
+            if (! is_file($logFile)) {
+                continue;
+            }
+            if ($cutoff === null || filemtime($logFile) < $cutoff->getTimestamp()) {
+                @file_put_contents($logFile, '');
+            }
+        }
     }
 
     private function queryForLogCleanup(Builder $query, ?CarbonInterface $cutoff): Builder

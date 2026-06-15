@@ -10,6 +10,7 @@ use App\Services\EnvBackupService;
 use App\Services\EnvManagerService;
 use App\Services\LicenseService;
 use App\Services\LogCleanupService;
+use App\Services\NodeInstallService;
 use App\Services\SchedulerService;
 use App\Services\SettingsService;
 use App\Support\InstallContext;
@@ -30,6 +31,8 @@ class Settings extends Component
     public const SECTION_LICENSING = 'licensing';
 
     public const SECTION_ENVIRONMENT = 'environment';
+
+    public const SECTION_NODE = 'node';
 
     // Legacy alias retained so older links continue to work.
     public const SECTION_REGIONAL = 'regional';
@@ -139,11 +142,12 @@ class Settings extends Component
         $this->loaded = true;
     }
 
-    public function render(EditionService $edition, SchedulerService $scheduler): View
+    public function render(EditionService $edition, SchedulerService $scheduler, NodeInstallService $nodeInstall): View
     {
         $schedulerGraceSeconds = max(600, (int) config('gitmanager.scheduler.stale_seconds', 600));
 
         return view('livewire.system.settings', [
+            'nodeStatus' => $nodeInstall->detect(),
             'schedulerHealthy' => $scheduler->isHealthy($schedulerGraceSeconds),
             'lastHeartbeat' => $scheduler->lastHeartbeat(),
             'lastManualRun' => $scheduler->lastManualRun(),
@@ -230,6 +234,20 @@ class Settings extends Component
         $result = $scheduler->installCron();
         $message = $result['message'] ?? 'Cron action completed.';
         $this->dispatch('notify', message: $message);
+        $this->dispatch('$refresh');
+    }
+
+    public function installNode(NodeInstallService $nodeInstall): void
+    {
+        $result = $nodeInstall->install();
+        $this->dispatch('notify', message: $result['message']);
+        $this->dispatch('$refresh');
+    }
+
+    public function uninstallNode(NodeInstallService $nodeInstall): void
+    {
+        $result = $nodeInstall->uninstall();
+        $this->dispatch('notify', message: $result['message']);
         $this->dispatch('$refresh');
     }
 
@@ -406,6 +424,7 @@ class Settings extends Component
             'system.licensing' => self::SECTION_LICENSING,
             'system.scheduler' => self::SECTION_SCHEDULER,
             'system.environment' => self::SECTION_ENVIRONMENT,
+            'system.node' => self::SECTION_NODE,
             default => self::SECTION_SCHEDULER,
         };
     }
@@ -423,6 +442,7 @@ class Settings extends Component
             self::SECTION_AUDITS,
             self::SECTION_LICENSING,
             self::SECTION_ENVIRONMENT,
+            self::SECTION_NODE,
         ];
 
         return in_array($normalized, $allowed, true)

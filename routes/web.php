@@ -93,6 +93,7 @@ Route::middleware(['auth', 'verified', EnsurePasswordChanged::class])->group(fun
         Route::get('/system/licensing', SystemSettings::class)->name('system.licensing');
         Route::get('/system/email', SystemEmailSettings::class)->name('system.email');
         Route::get('/system/environment', SystemSettings::class)->name('system.environment');
+        Route::get('/system/node', SystemSettings::class)->name('system.node');
         Route::get('/system/support', SystemSupport::class)->name('system.support');
         Route::get('/system/white-label', SystemWhiteLabel::class)->name('system.white-label');
         Route::get('/workflows', WorkflowsIndex::class)->name('workflows.index');

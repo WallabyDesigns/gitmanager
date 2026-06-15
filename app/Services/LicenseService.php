@@ -8,6 +8,7 @@ use GitManagerEnterprise\Support\CommerceRuntimeConfig;
 use GitManagerEnterprise\Support\LicenseRuntimeConfig;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
@@ -40,6 +41,10 @@ class LicenseService
     private const SETTING_ALLOW_INSECURE_LOCAL_TLS = 'system.license.allow_insecure_local_tls';
 
     private const SETTING_REQUEST_SIGNING_SECRET = 'system.license.request_signing_secret';
+
+    private const COMMUNITY_BOOTSTRAP_CACHE_KEY = 'license.community_bootstrap_last';
+
+    private const COMMUNITY_BOOTSTRAP_COOLDOWN_SECONDS = 600; // 10 minutes
 
     public function __construct(
         private readonly SettingsService $settings,
@@ -172,6 +177,11 @@ class LicenseService
         $this->installationUuid();
 
         if (! $this->keyConfigured()) {
+            // No license key — ensure this community installation is registered with the
+            // remote server even when no scheduler is running. The cooldown prevents an
+            // outbound HTTP call on every request; $forceRefresh bypasses it for manual checks.
+            $this->maybeBootstrapCommunity($forceRefresh);
+
             return self::EDITION_COMMUNITY;
         }
 
@@ -238,7 +248,18 @@ class LicenseService
                 }
             }
             if ($key === '') {
-                $this->clearLicense();
+                if ($bootstrapResponse !== null) {
+                    // Remote server acknowledged this community installation — treat it as valid community.
+                    $this->settings->set(self::SETTING_STATUS, 'valid');
+                    $this->settings->set(self::SETTING_MESSAGE, $bootstrapResponse['message'] ?? 'Community installation registered.');
+                    $this->settings->set(self::SETTING_EDITION, self::EDITION_COMMUNITY);
+                    $this->settings->set(self::SETTING_VERIFIED_AT, now()->toIso8601String());
+                } else {
+                    $this->clearLicense();
+                }
+
+                // Reset the action-attached cooldown so we don't double-bootstrap immediately after.
+                Cache::put(self::COMMUNITY_BOOTSTRAP_CACHE_KEY, true, self::COMMUNITY_BOOTSTRAP_COOLDOWN_SECONDS);
 
                 return $this->state();
             }
@@ -745,6 +766,24 @@ class LicenseService
 
         return is_array($initialJson)
             && str_contains((string) ($initialJson['message'] ?? ''), 'Bootstrap:');
+    }
+
+    private function maybeBootstrapCommunity(bool $force = false): void
+    {
+        if (! $force && Cache::has(self::COMMUNITY_BOOTSTRAP_CACHE_KEY)) {
+            return;
+        }
+
+        // Record the attempt before the HTTP call to prevent concurrent bootstraps.
+        Cache::put(self::COMMUNITY_BOOTSTRAP_CACHE_KEY, true, self::COMMUNITY_BOOTSTRAP_COOLDOWN_SECONDS);
+
+        $bootstrapResponse = $this->bootstrapCommunityConfig();
+        if ($bootstrapResponse !== null) {
+            $this->settings->set(self::SETTING_STATUS, 'valid');
+            $this->settings->set(self::SETTING_MESSAGE, $bootstrapResponse['message'] ?? 'Community installation registered.');
+            $this->settings->set(self::SETTING_EDITION, self::EDITION_COMMUNITY);
+            $this->settings->set(self::SETTING_VERIFIED_AT, now()->toIso8601String());
+        }
     }
 
     private function bootstrapCommunityConfig(): ?array

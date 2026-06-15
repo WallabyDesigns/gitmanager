@@ -4,12 +4,14 @@ namespace App\Livewire\Dashboard;
 
 use App\Models\Deployment;
 use App\Models\DeploymentQueueItem;
+use App\Models\NodeProcess;
 use App\Models\Project;
 use App\Services\AuditService;
 use App\Services\DeploymentQueueService;
 use App\Services\DeploymentService;
 use App\Services\DockerService;
 use App\Services\EditionService;
+use App\Services\NodeProcessService;
 use App\Services\SchedulerService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -200,6 +202,13 @@ class Index extends Component
         $infra = $this->loadInfrastructure();
         $projectTree = $this->buildProjectTree($allProjects);
 
+        $nodeProcesses = NodeProcess::query()
+            ->with('project:id,name,local_path')
+            ->whereIn('status', [NodeProcess::STATUS_RUNNING, NodeProcess::STATUS_STARTING, NodeProcess::STATUS_CRASHED, NodeProcess::STATUS_STOPPED])
+            ->orderByRaw("CASE status WHEN 'running' THEN 0 WHEN 'starting' THEN 1 WHEN 'crashed' THEN 2 ELSE 3 END")
+            ->get();
+        $nodeRunningCount = $nodeProcesses->whereIn('status', [NodeProcess::STATUS_RUNNING, NodeProcess::STATUS_STARTING, NodeProcess::STATUS_CRASHED])->count();
+
         return view('livewire.dashboard.index', [
             'projectTree' => $projectTree,
             'monitoredProjects' => $monitoredProjects,
@@ -214,6 +223,8 @@ class Index extends Component
             'queueRunningCount' => $queueRunningCount,
             'queueEnabled' => $this->queueEnabled(),
             'infra' => $infra,
+            'nodeProcesses' => $nodeProcesses,
+            'nodeRunningCount' => $nodeRunningCount,
         ])->layout('layouts.app', [
             'title' => 'Dashboard',
         ]);

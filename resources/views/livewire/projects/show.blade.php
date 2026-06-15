@@ -33,6 +33,9 @@
                     {{ __('Environment') }}
                 </button>
             @endif
+            <button type="button" @click="tab = 'node'" :class="tab === 'node' ? 'bg-slate-100 text-slate-900' : 'border border-slate-700 text-slate-300'" class="px-3 py-2 text-sm rounded-md">
+                {{ __('Node.js') }}
+            </button>
             <button type="button" @click="tab = 'debug'" :class="tab === 'debug' ? 'bg-slate-100 text-slate-900' : 'border border-slate-700 text-slate-300'" class="px-3 py-2 text-sm rounded-md">
                 {{ __('Debug') }}
             </button>
@@ -403,6 +406,10 @@
                 @livewire('projects.env-editor', ['project' => $project], key('env-editor-'.$project->id))
             </div>
         @endif
+
+        <div x-show="tab === 'node'" x-cloak class="min-w-0 bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6">
+            @livewire('projects.node-process', ['project' => $project], key('node-process-'.$project->id))
+        </div>
 
         <div x-show="tab === 'debug'" x-cloak class="min-w-0 bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6">
             <h3 class="text-lg font-semibold text-slate-100">{{ __('Debug Logs') }}</h3>

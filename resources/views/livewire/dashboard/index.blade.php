@@ -91,6 +91,7 @@
             >
                 <span>
                     @if ($tab === 'containers') {{ __('Containers') }}
+                    @elseif ($tab === 'node') {{ __('Node.js') }}
                     @else {{ __('Projects') }}
                     @endif
                 </span>
@@ -113,6 +114,9 @@
                 <button type="button" wire:click="setTab('projects')" @click="open = false"
                     class="flex w-full items-center px-4 py-3 text-sm transition {{ $tab === 'projects' ? 'bg-indigo-500/10 font-medium' : 'text-slate-200 hover:bg-slate-800' }}"
                     role="menuitem">{{ __('Projects') }}</button>
+                <button type="button" wire:click="setTab('node')" @click="open = false"
+                    class="flex w-full items-center px-4 py-3 text-sm transition border-t border-slate-800 {{ $tab === 'node' ? 'bg-indigo-500/10 font-medium' : 'text-slate-200 hover:bg-slate-800' }}"
+                    role="menuitem">{{ __('Node.js') }}</button>
                 <button type="button" wire:click="setTab('containers')" @click="open = false"
                     class="flex w-full items-center px-4 py-3 text-sm transition border-t border-slate-800 {{ $tab === 'containers' ? 'bg-indigo-500/10 font-medium' : 'text-slate-200 hover:bg-slate-800' }}"
                     role="menuitem">{{ __('Containers') }}</button>
@@ -157,6 +161,10 @@
             <button type="button" wire:click="setTab('projects')"
                 class="px-3 py-2 text-sm border-b-2 {{ $tab === 'projects' ? 'border-indigo-500' : 'border-transparent text-slate-400 hover:text-slate-200' }}">
                 {{ __('Projects') }}
+            </button>
+            <button type="button" wire:click="setTab('node')"
+                class="px-3 py-2 text-sm border-b-2 {{ $tab === 'node' ? 'border-indigo-500' : 'border-transparent text-slate-400 hover:text-slate-200' }}">
+                {{ __('Node.js') }}
             </button>
             <button type="button" wire:click="setTab('containers')"
                 class="px-3 py-2 text-sm border-b-2 {{ $tab === 'containers' ? 'border-indigo-500' : 'border-transparent text-slate-400 hover:text-slate-200' }}">
@@ -286,6 +294,70 @@
                 </div>
 
             </div>
+        </div>
+    @endif
+
+    {{-- Node.js tab --}}
+    @if ($tab === 'node')
+        <div class="space-y-4">
+            <div class="flex items-center justify-between gap-3">
+                <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400">{{ __('Node.js Processes') }}</h2>
+                <a href="{{ route('system.node') }}" class="text-xs text-indigo-400 hover:underline">{{ __('Manage Runtime') }} &rarr;</a>
+            </div>
+
+            @if ($nodeProcesses->isEmpty())
+                <div class="rounded-xl border border-slate-800 bg-slate-900 p-8 text-center space-y-3">
+                    <p class="text-sm text-slate-400">{{ __('No Node.js processes configured yet.') }}</p>
+                    <p class="text-xs text-slate-500">{{ __('Open a project and go to its Node.js tab to set up a process.') }}</p>
+                </div>
+            @else
+                <div class="space-y-3">
+                    @foreach ($nodeProcesses as $np)
+                        @php
+                            $statusColor = match($np->status) {
+                                'running'  => 'bg-emerald-500/10 text-emerald-300',
+                                'starting' => 'bg-indigo-500/10 text-indigo-300',
+                                'crashed'  => 'bg-rose-500/10 text-rose-300',
+                                default    => 'bg-slate-700/60 text-slate-400',
+                            };
+                            $borderColor = match($np->status) {
+                                'running'  => 'border-emerald-500/20',
+                                'crashed'  => 'border-rose-500/20',
+                                default    => 'border-slate-800',
+                            };
+                        @endphp
+                        <a href="{{ route('projects.show', $np->project) }}" class="group block rounded-xl border {{ $borderColor }} bg-slate-900 p-5 hover:border-slate-600 hover:bg-slate-800/60 transition-colors">
+                            <div class="flex items-center justify-between gap-4">
+                                <div class="min-w-0">
+                                    <div class="text-sm font-semibold text-slate-100 group-hover:text-white truncate">
+                                        {{ $np->project->name ?? "Project #{$np->project_id}" }}
+                                    </div>
+                                    <div class="mt-0.5 text-xs text-slate-500 font-mono truncate">{{ $np->start_command }}</div>
+                                </div>
+                                <div class="flex items-center gap-3 shrink-0">
+                                    @if ($np->port)
+                                        <span class="text-xs text-slate-400 font-mono">:{{ $np->port }}</span>
+                                    @endif
+                                    @if ($np->crash_count > 0)
+                                        <span class="text-xs text-amber-400">{{ $np->crash_count }}×</span>
+                                    @endif
+                                    <span class="text-xs px-2.5 py-1 rounded-full {{ $statusColor }}">{{ $np->status }}</span>
+                                </div>
+                            </div>
+                            @if ($np->pid && $np->isRunning())
+                                <div class="mt-2 text-xs text-slate-600">PID {{ $np->pid }}</div>
+                            @endif
+                        </a>
+                    @endforeach
+                </div>
+
+                @if (! $isEnterprise && $nodeRunningCount >= \App\Services\NodeProcessService::FREE_LIMIT)
+                    <div class="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs text-amber-300">
+                        {{ __('Free accounts are limited to :limit active Node processes.', ['limit' => \App\Services\NodeProcessService::FREE_LIMIT]) }}
+                        <a href="{{ route('system.licensing') }}" class="underline ml-1">{{ __('Upgrade to Enterprise') }}</a>
+                    </div>
+                @endif
+            @endif
         </div>
     @endif
 
