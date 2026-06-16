@@ -33,6 +33,7 @@ To review the documentation for this project, click here: [documentation](https:
 - **Dependency operations:** Run composer/npm actions with per-run logs and issue visibility.
 - **Per-project `.env` editor:** Edit each project's environment file directly from the UI without server access.
 - **FTP deploy targets:** Configure FTP accounts and deploy projects into managed FTP workspaces — useful for hosts that only expose FTP.
+- **Workflow automations:** Configure rule-based notifications and webhooks for deploy and audit events.
 
 ### Security & Auditing
 - **Security insights:** Review Dependabot and audit findings in one place, including remediation workflows.
@@ -59,7 +60,6 @@ To review the documentation for this project, click here: [documentation](https:
 ### Enterprise
 - **White label branding:** Customize the application name, logo, favicon, and sub-heading, and optionally hide the edition label — all from the System Control Center.
 - **Enterprise support portal:** Submit and manage support tickets directly from within the app.
-- **Workflow automations:** Configure rule-based notifications and webhooks for deploy and audit events.
 
 ## Quick Start
 1. Copy `.env.example` to `.env` and configure required values.
@@ -174,8 +174,6 @@ Translation files are stored in `lang/*.json` as Laravel JSON language files. To
 1. Edit the relevant `lang/<locale>.json` file
 2. Keep the key in English; translate only the value
 3. Submit a pull request with your changes
-
-The translation script (for maintainers) is located at `.local/translate-lang.php` and can be used to machine-translate new strings added to `en.json`.
 
 ## Scheduler & Queue
 Start a worker for webhook deployments:
