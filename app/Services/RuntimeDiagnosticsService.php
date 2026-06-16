@@ -6,7 +6,7 @@ use Symfony\Component\Process\Process;
 
 class RuntimeDiagnosticsService
 {
-    /** @return array<string, array{found: bool, version: ?string, path: ?string, label: string, guidance: ?string}> */
+    /** @return array<string, array{found: bool, version: ?string, path: ?string, label: string, guidance: ?string, installAction: ?string}> */
     public function detect(): array
     {
         return [
@@ -33,12 +33,12 @@ class RuntimeDiagnosticsService
             if ($process->isSuccessful() || $output !== '') {
                 $version = $this->extractVersion($output);
 
-                return ['found' => true, 'version' => $version, 'path' => $binary, 'label' => $label, 'guidance' => null];
+                return ['found' => true, 'version' => $version, 'path' => $binary, 'label' => $label, 'guidance' => null, 'installAction' => null];
             }
         } catch (\Throwable) {
         }
 
-        return ['found' => false, 'version' => null, 'path' => null, 'label' => $label, 'guidance' => $this->installGuidance($binary)];
+        return ['found' => false, 'version' => null, 'path' => null, 'label' => $label, 'guidance' => $this->installGuidance($binary), 'installAction' => $this->installAction($binary)];
     }
 
     private function probeFirstOf(array $candidates, string $versionFlag, string $label): array
@@ -50,7 +50,7 @@ class RuntimeDiagnosticsService
             }
         }
 
-        return ['found' => false, 'version' => null, 'path' => null, 'label' => $label, 'guidance' => $this->installGuidance($candidates[0])];
+        return ['found' => false, 'version' => null, 'path' => null, 'label' => $label, 'guidance' => $this->installGuidance($candidates[0]), 'installAction' => $this->installAction($candidates[0])];
     }
 
     private function extractVersion(string $output): string
@@ -62,19 +62,27 @@ class RuntimeDiagnosticsService
         return $output !== '' ? explode("\n", $output)[0] : 'unknown';
     }
 
+    private function installAction(string $binary): ?string
+    {
+        return match ($binary) {
+            'npm' => 'installNode',
+            default => null,
+        };
+    }
+
     private function installGuidance(string $binary): string
     {
         $os = PHP_OS_FAMILY;
 
         return match ($binary) {
             'composer' => $os === 'Windows'
-                ? 'Download from https://getcomposer.org/download/'
+                ? 'winget install Composer.Composer'
                 : 'curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer',
             'npm'      => $os === 'Windows'
-                ? 'Install Node.js from https://nodejs.org (npm is included)'
-                : 'apt install nodejs npm   # or use the GWM Node.js installer above',
+                ? 'winget install OpenJS.NodeJS.LTS'
+                : 'apt install nodejs npm',
             'python3', 'python' => $os === 'Windows'
-                ? 'Download from https://python.org/downloads/'
+                ? 'winget install Python.Python.3'
                 : 'apt install python3',
             'pip3', 'pip' => $os === 'Windows'
                 ? 'python -m ensurepip --upgrade'

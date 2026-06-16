@@ -445,7 +445,7 @@
                         @if ($runtimeDiagnostics)
                             <div class="space-y-2">
                                 @foreach ($runtimeDiagnostics as $key => $tool)
-                                    <div class="rounded-md border border-slate-700 bg-slate-950/50 px-4 py-3 space-y-1">
+                                    <div class="rounded-md border border-slate-700 bg-slate-950/50 px-4 py-3">
                                         <div class="flex items-center gap-3">
                                             <span class="text-xs uppercase tracking-wide px-2 py-0.5 rounded-full {{ $tool['found'] ? 'bg-emerald-500/10 text-emerald-300' : 'bg-rose-500/10 text-rose-300' }}">
                                                 {{ $tool['found'] ? __('Detected') : __('Missing') }}
@@ -455,10 +455,38 @@
                                                 <span class="text-xs font-mono text-slate-400">v{{ $tool['version'] }}</span>
                                             @endif
                                         </div>
-                                        @if (! $tool['found'] && $tool['guidance'])
-                                            <div class="mt-2">
-                                                <p class="text-xs text-slate-500 mb-1">{{ __('Install guidance:') }}</p>
-                                                <code class="block text-xs font-mono text-amber-300 bg-slate-900 border border-slate-700 rounded px-3 py-2 whitespace-pre-wrap">{{ $tool['guidance'] }}</code>
+                                        @if (! $tool['found'])
+                                            <div class="mt-3 space-y-3">
+                                                @if ($tool['installAction'] === 'installNode')
+                                                    <div class="flex flex-wrap items-center gap-3">
+                                                        <button type="button" wire:click="installNode" wire:loading.attr="disabled" wire:loading.class="opacity-60 cursor-not-allowed" class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-60 disabled:cursor-not-allowed">
+                                                            <x-loading-spinner target="installNode" />
+                                                            {{ __('Install Node.js + npm') }}
+                                                        </button>
+                                                        <span class="text-xs text-slate-500">{{ __('Downloads and installs the Node.js LTS runtime into GWM\'s storage directory.') }}</span>
+                                                    </div>
+                                                @endif
+                                                @if ($tool['guidance'])
+                                                    <div x-data="{ copied: false }">
+                                                        <p class="text-xs text-slate-500 mb-1">
+                                                            {{ $tool['installAction'] ? __('Or install manually:') : __('Install guidance:') }}
+                                                        </p>
+                                                        <div class="flex items-stretch gap-2">
+                                                            <code class="flex-1 text-xs font-mono text-amber-300 bg-slate-900 border border-slate-700 rounded px-3 py-2 whitespace-pre-wrap">{{ $tool['guidance'] }}</code>
+                                                            <button type="button"
+                                                                x-on:click="navigator.clipboard?.writeText('{{ addslashes($tool['guidance']) }}').then(() => { copied = true; setTimeout(() => copied = false, 1500); })"
+                                                                :title="copied ? '{{ __('Copied!') }}' : '{{ __('Copy command') }}'"
+                                                                class="shrink-0 flex items-center px-2.5 rounded border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500 transition-colors">
+                                                                <svg x-show="!copied" xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                                </svg>
+                                                                <svg x-show="copied" xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                @endif
                                             </div>
                                         @endif
                                     </div>
