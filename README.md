@@ -19,23 +19,47 @@ To review the documentation for this project, click here: [documentation](https:
 - Get per-project health checks and recent activity logs.
 - Spin up preview builds for any commit.
 - Keep dependencies and security alerts visible.
+- Deploy to FTP servers without giving them direct server access.
 
 ## Feature Overview
+
+### Core
 - **Project management:** Create and manage Git-backed projects with per-project settings, paths, branches, and deployment behavior.
 - **Deploy workflows:** Run deploy, force deploy, and rollback actions with logs and status history.
 - **Task queue:** Queue and process background work in order (including deploy-related tasks and Enterprise audit jobs), with controls to reorder, cancel, and process now.
-- **Container control center:** Manage Docker nodes, runtime health, containers, and managed PostgreSQL/MySQL database containers from one workspace.
-- **Tiered container licensing:** Community edition includes Docker with up to 3 nodes; Enterprise unlocks unlimited nodes and premium automation.
-- **Scheduler health:** Monitor heartbeat status, run scheduler actions manually, and manage cron setup from the UI.
-- **Auto deploy + webhooks:** Trigger updates from scheduled checks or GitHub webhook events.
+- **Auto deploy + webhooks:** Trigger deployments from scheduled checks or GitHub webhook events.
 - **Health monitoring:** Track project health endpoints with live state and last-checked visibility.
 - **Preview builds:** Generate preview builds for specific commits to validate changes safely.
 - **Dependency operations:** Run composer/npm actions with per-run logs and issue visibility.
-- **Enterprise audit automation:** Enable scheduled project dependency audits plus managed container runtime audits.
+- **Per-project `.env` editor:** Edit each project's environment file directly from the UI without server access.
+- **FTP deploy targets:** Configure FTP accounts and deploy projects into managed FTP workspaces — useful for hosts that only expose FTP.
+
+### Security & Auditing
 - **Security insights:** Review Dependabot and audit findings in one place, including remediation workflows.
-- **Workflow automations:** Configure rule-based notifications and webhooks for success/failure events.
-- **App self-update:** Update the manager itself with safe defaults and force-update recovery options.
-- **Admin controls:** Manage users, enforce first-login password changes, and configure system/email settings.
+- **Enterprise audit automation:** Enable scheduled project dependency audits plus managed container runtime audits.
+- **Audit log & alerts:** View a full activity log of system and deploy events, and configure rule-based email or webhook notifications for success/failure outcomes.
+
+### Infrastructure
+- **Container control center:** Manage Docker nodes, runtime health, containers, and managed PostgreSQL/MySQL database containers from one workspace.
+- **Tiered container licensing:** Community edition includes Docker with up to 3 nodes; Enterprise unlocks unlimited nodes and premium automation.
+- **Scheduler health:** Monitor heartbeat status, run scheduler actions manually, and manage cron setup from the UI.
+- **Runtime diagnostics:** Check the live status of PHP, Composer, Node.js/npm, Python, and pip directly from the System Control Center, with inline install actions for missing tools.
+- **Bundled Node.js runtime:** GWM can download and install a Node.js LTS runtime into its own storage directory — no system-level Node install required.
+
+### System & Administration
+- **App self-update:** Update the manager itself with safe defaults and force-update recovery options. Updates run under maintenance mode to prevent broken-state errors mid-deploy.
+- **Recovery tools:** Create, restore, and delete `.env` backups from the UI, and trigger a full app rebuild from the recovery page.
+- **Environment config editor:** Edit the application `.env` file and manage environment variables directly from the System Control Center.
+- **Email settings:** Configure the mail driver, SMTP credentials, sender address, and send test emails from the UI.
+- **GitHub OAuth:** Enable GitHub-based login as an authentication option, configured from App & Security settings.
+- **Cloudflare Turnstile:** Add bot protection to the login form without a traditional CAPTCHA, configured from App & Security settings.
+- **User management:** Manage users, enforce first-login password changes, and configure role-based access.
+- **Multi-language:** 14 languages supported out of the box with per-user or session-level switching.
+
+### Enterprise
+- **White label branding:** Customize the application name, logo, favicon, and sub-heading, and optionally hide the edition label — all from the System Control Center.
+- **Enterprise support portal:** Submit and manage support tickets directly from within the app.
+- **Workflow automations:** Configure rule-based notifications and webhooks for deploy and audit events.
 
 ## Quick Start
 1. Copy `.env.example` to `.env` and configure required values.
@@ -90,10 +114,10 @@ If any value in `.env` contains a `$`, wrap it in single quotes to avoid Compose
 ## Requirements
 - PHP 8.2+ with required extensions (mbstring, curl, etc).
 - Composer 2.
-- Node.js is optional and only needed when deploying managed projects that run npm commands.
 - Git CLI available to the web user.
 - Queue worker for webhook deploys.
 - Scheduler for auto-deploy and security sync.
+- Node.js is optional. It is only needed when deploying projects that run npm commands. GWM can install a bundled Node.js LTS runtime automatically via the Node.js page in System Control Center — no system-level install required.
 
 ## Permissions (Important)
 Git operations are performed by the web server user. For reliable updates, the PHP-FPM user should match the filesystem owner of the app and project directories. If they differ, git may fail to write to `.git/objects` or `.git/index`.
@@ -206,6 +230,14 @@ To publish docs on GitHub Pages:
 1. Open the `gitmanager-docs` repository settings → Pages.
 2. Select **Deploy from a branch**.
 3. Choose the docs repo `main` branch root.
+
+## FTP Deploy Targets
+Projects can be configured to deploy into a managed FTP workspace rather than a local path. Add FTP accounts under **FTP Accounts** in the main navigation, then assign one to a project. GWM syncs files from the Git workspace into the FTP target during each deploy.
+
+## Recovery
+The `/recovery` page provides:
+- Create, restore, and delete `.env` backups without server access.
+- Trigger a full application rebuild (clears caches, re-runs setup) from the UI.
 
 ## User Management & First Login
 - Registration is open only when there are no users (first admin setup).
