@@ -1,9 +1,9 @@
-<div class="py-10" wire:init="loadData">
+<div class="gwm-system-page py-10" wire:init="loadData">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid gap-6 lg:grid-cols-[260px,1fr]">
             @include('livewire.system.partials.tabs', ['systemTab' => $settingsSection])
 
-            <div class="space-y-6">
+            <div class="gwm-system-content space-y-6">
                 @if ($settingsSection === 'scheduler')
                     <div id="scheduler-settings" class="grid gap-6 lg:grid-cols-2 scroll-mt-24">
                         <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6 space-y-3">

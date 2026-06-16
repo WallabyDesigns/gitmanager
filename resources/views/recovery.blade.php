@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,13 +7,13 @@
 
         <title>Recovery | {{ config('app.name', 'Git Web Manager') }}</title>
 
-        <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+        <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
         @if (class_exists(\GitManagerEnterprise\EnterpriseServiceProvider::class))
-            <link rel="stylesheet" href="{{ asset('vendor/gitmanager-enterprise/gitmanager-enterprise.css') }}">
+            <link rel="stylesheet" href="{{ asset('vendor/gitmanager-enterprise/gitmanager-enterprise.css') }}?v={{ file_exists(public_path('vendor/gitmanager-enterprise/gitmanager-enterprise.css')) ? filemtime(public_path('vendor/gitmanager-enterprise/gitmanager-enterprise.css')) : time() }}">
         @endif
         <script src="{{ asset('js/app.js') }}" defer></script>
     </head>
-    <body class="bg-slate-950 text-slate-100 min-h-screen">
+    <body class="gwm-app gwm-recovery-page">
         @include('partials.recovery-panel', [
             'forceVisible' => true,
             'overlay' => false,

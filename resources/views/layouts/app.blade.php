@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}" class="h-full">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
     <head>
         <meta charset="utf-8">
 
@@ -31,9 +31,9 @@
         <meta name="color-scheme" content="dark">
 
 
-        <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+        <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
         @if (class_exists(\GitManagerEnterprise\EnterpriseServiceProvider::class))
-            <link rel="stylesheet" href="{{ asset('vendor/gitmanager-enterprise/gitmanager-enterprise.css') }}">
+            <link rel="stylesheet" href="{{ asset('vendor/gitmanager-enterprise/gitmanager-enterprise.css') }}?v={{ file_exists(public_path('vendor/gitmanager-enterprise/gitmanager-enterprise.css')) ? filemtime(public_path('vendor/gitmanager-enterprise/gitmanager-enterprise.css')) : time() }}">
         @endif
         <script src="{{ asset('js/app.js') }}" defer></script>
         @livewireStyles
@@ -44,8 +44,8 @@
             }
         </style>
     </head>
-    <body class="nonrenderhide opacity-100 font-sans antialiased h-full bg-slate-950 text-slate-100">
-        <div class="min-h-screen">
+    <body class="gwm-app nonrenderhide gwm-visible">
+        <div class="gwm-page-shell">
             @auth
                 @include('partials.recovery-panel', [
                     'forceVisible' => false,
@@ -60,18 +60,18 @@
 
             <!-- Page Heading -->
             @if (isset($header))
-                <header class="relative z-10 bg-slate-900/80 shadow backdrop-blur border-b border-slate-800">
-                    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                <header class="gwm-page-header">
+                    <div class="gwm-page-header-inner">
                         {!! $header !!}
                     </div>
                 </header>
             @endif
 
             <!-- Page Content -->
-            <main>
+            <main class="gwm-page-main">
                 {{ $slot }}
             </main>
-            <footer>
+            <footer class="gwm-page-footer">
                 <p class="footer-text">{{ __('Git Web Manager for Git') }} © 2026 <a style="text-decoration: underline;" href="https://wallabydesigns.com/" title="{{ __('Website built by Wallaby Designs') }}">{{ __('Wallaby Designs LLC') }}</a> • zlib License<br/>
                 <span class="footer-disclaimer">{{ __('Git Web Manager is not affiliated with, endorsed by, or sponsored by Git or its maintainers.') }}</span></p>
             </footer>

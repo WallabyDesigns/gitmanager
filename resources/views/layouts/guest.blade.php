@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}" class="h-full">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
     <head>
         <meta charset="utf-8">
 
@@ -39,9 +39,9 @@
                 ? trim((string) $settingsService->get('system.white_label.sub_heading', ''))
                 : '';
         @endphp
-        <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+        <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
         @if (class_exists(\GitManagerEnterprise\EnterpriseServiceProvider::class))
-            <link rel="stylesheet" href="{{ asset('vendor/gitmanager-enterprise/gitmanager-enterprise.css') }}">
+            <link rel="stylesheet" href="{{ asset('vendor/gitmanager-enterprise/gitmanager-enterprise.css') }}?v={{ file_exists(public_path('vendor/gitmanager-enterprise/gitmanager-enterprise.css')) ? filemtime(public_path('vendor/gitmanager-enterprise/gitmanager-enterprise.css')) : time() }}">
         @endif
         <script src="{{ asset('js/app.js') }}" defer></script>
         @livewireStyles
@@ -51,21 +51,21 @@
         </style>
         <noscript><style>body.gwm-preload { opacity: 1 !important; }</style></noscript>
     </head>
-    <body class="gwm-preload min-h-screen font-sans antialiased h-full bg-slate-950 text-slate-100">
-        <div class="h-full flex flex-col sm:justify-center items-center pt-6 sm:pt-0">
+    <body class="gwm-app gwm-preload">
+        <div class="gwm-guest-shell">
             <div>
-                <a href="/" class="flex items-center">
-                    <x-application-logo class="w-20 h-20 fill-current text-gray-500" />
+                <a href="/" class="gwm-guest-brand">
+                    <x-application-logo class="gwm-guest-logo" />
                     <div>
-                        <h2 class="text-xl px-2 font-semibold text-slate-100">
+                        <h2 class="gwm-guest-title">
                             {{ $brandName }}
                         </h2>
                         @if ($subHeading !== '')
-                        <p class="px-2 -mt-1 text-[11px] uppercase tracking-[0.12em] text-slate-400">
+                        <p class="gwm-guest-subtitle">
                             {{ $subHeading }}
                         </p>
                         @elseif (! $hideEditionLabel)
-                        <p class="px-2 -mt-1 text-[11px] uppercase tracking-[0.12em] text-slate-400">
+                        <p class="gwm-guest-subtitle">
                             {{ $editionLabel }}
                         </p>
                         @endif
@@ -73,7 +73,7 @@
                 </a>
             </div>
 
-            <div class="w-full sm:max-w-md mt-6 px-6 py-4 shadow-md overflow-hidden sm:rounded-lg bg-slate-900 border border-slate-800">
+            <div class="gwm-auth-card">
                 {{ $slot }}
             </div>
             <p class="footer-text">{{ __('Git Web Manager for Git') }} © 2026 <a style="text-decoration: underline;" href="https://wallabydesigns.com/" title="{{ __('Website built by Wallaby Designs') }}">{{ __('Wallaby Designs LLC') }}</a> • zlib License<br/>

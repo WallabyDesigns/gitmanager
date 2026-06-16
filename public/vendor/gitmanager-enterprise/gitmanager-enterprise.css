@@ -39,3 +39,266 @@
 .dark\:hover\:text-slate-200:hover{--tw-text-opacity:1;color:rgb(226 232 240/var(--tw-text-opacity,1))}
 .dark\:hover\:text-white:hover{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity,1))}
 
+/* Git Web Manager app-wide 2026 polish layer for Enterprise infrastructure pages. */
+.gme-infra-page {
+  --gme-surface: rgba(15, 23, 42, 0.9);
+  --gme-surface-strong: rgba(15, 23, 42, 0.98);
+  --gme-surface-deep: rgba(2, 6, 23, 0.76);
+  --gme-border: rgba(71, 85, 105, 0.64);
+  --gme-border-soft: rgba(51, 65, 85, 0.76);
+  --gme-focus: rgba(129, 140, 248, 0.42);
+  position: relative;
+  isolation: isolate;
+}
+
+.gme-infra-page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 16% 0%, rgba(20, 184, 166, 0.12), transparent 22rem),
+    radial-gradient(circle at 86% 4rem, rgba(99, 102, 241, 0.16), transparent 24rem),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.5), rgba(2, 6, 23, 0) 22rem);
+  pointer-events: none;
+}
+
+.gme-infra-page .bg-white,
+.gme-infra-page .dark\:bg-slate-900,
+.gme-infra-page .bg-slate-950\/90,
+.gme-infra-page .bg-slate-900\/70,
+.gme-infra-page .bg-slate-950\/50 {
+  border-color: var(--gme-border);
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(8, 13, 28, 0.97)),
+    var(--gme-surface);
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.gme-infra-page .rounded-xl,
+.gme-infra-page .rounded-lg,
+.gme-infra-page .rounded-md,
+.gme-infra-page .rounded-2xl {
+  border-radius: 0.875rem;
+}
+
+.gme-infra-page .rounded-2xl {
+  border-radius: 1rem;
+}
+
+.gme-infra-page .border-slate-200\/70,
+.gme-infra-page .dark\:border-slate-800,
+.gme-infra-page .border-slate-800,
+.gme-infra-page .border-slate-700,
+.gme-infra-page .divide-slate-200\/60 > :not([hidden]) ~ :not([hidden]),
+.gme-infra-page .dark\:divide-slate-800 > :not([hidden]) ~ :not([hidden]),
+.gme-infra-page .divide-y > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--gme-border-soft);
+}
+
+.gme-infra-page .gme-side-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.gme-infra-page .gme-side-nav-active {
+  border-color: rgba(129, 140, 248, 0.5);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.26), rgba(14, 165, 233, 0.1));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 24px rgba(2, 6, 23, 0.24);
+  color: rgb(224 231 255);
+}
+
+.gme-infra-page .gme-side-nav-idle {
+  color: rgb(203 213 225);
+}
+
+.gme-infra-page .gme-side-nav-idle:hover {
+  border-color: rgba(100, 116, 139, 0.65);
+  background-color: rgba(30, 41, 59, 0.72);
+  color: white;
+  transform: translateX(1px);
+}
+
+.gme-infra-page button,
+.gme-infra-page a,
+.gme-infra-page input,
+.gme-infra-page select,
+.gme-infra-page textarea {
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+}
+
+.gme-infra-page button[class*="border"],
+.gme-infra-page a[class*="border"] {
+  border-color: rgba(100, 116, 139, 0.64);
+  background-color: rgba(15, 23, 42, 0.42);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+.gme-infra-page button[class*="border"]:hover,
+.gme-infra-page a[class*="border"]:hover {
+  border-color: rgba(129, 140, 248, 0.62);
+  background-color: rgba(30, 41, 59, 0.82);
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.055);
+}
+
+.gme-infra-page button[class*="border-indigo"],
+.gme-infra-page a[class*="border-indigo"] {
+  border-color: rgba(129, 140, 248, 0.66);
+  color: rgb(199 210 254);
+}
+
+.gme-infra-page input:not([type="checkbox"]):not([type="radio"]),
+.gme-infra-page select,
+.gme-infra-page textarea {
+  border-color: rgba(100, 116, 139, 0.64);
+  background-color: rgba(2, 6, 23, 0.76);
+  color: rgb(241 245 249);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.gme-infra-page input:not([type="checkbox"]):not([type="radio"]):focus,
+.gme-infra-page select:focus,
+.gme-infra-page textarea:focus {
+  border-color: rgb(129 140 248);
+  box-shadow: 0 0 0 3px var(--gme-focus), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  outline: none;
+}
+
+.gme-infra-page input[type="checkbox"],
+.gme-infra-page input[type="radio"] {
+  border-color: rgba(100, 116, 139, 0.78);
+  background-color: rgba(15, 23, 42, 0.88);
+}
+
+.gme-infra-page input[type="checkbox"]:checked,
+.gme-infra-page input[type="radio"]:checked {
+  background-color: rgb(99 102 241);
+  border-color: rgb(129 140 248);
+}
+
+.gme-infra-page table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.gme-infra-page thead {
+  background: rgba(30, 41, 59, 0.66);
+}
+
+.gme-infra-page tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.gme-infra-page tbody tr:hover {
+  background-color: rgba(30, 41, 59, 0.42);
+}
+
+.gme-infra-page .text-slate-900,
+.gme-infra-page .dark\:text-slate-100 {
+  color: rgb(241 245 249);
+}
+
+.gme-infra-page .text-slate-700,
+.gme-infra-page .dark\:text-slate-200 {
+  color: rgb(226 232 240);
+}
+
+.gme-infra-page .text-slate-600,
+.gme-infra-page .dark\:text-slate-300 {
+  color: rgb(203 213 225);
+}
+
+.gme-infra-page .text-slate-500,
+.gme-infra-page .dark\:text-slate-400 {
+  color: rgb(148 163 184);
+}
+
+.gme-infra-page pre,
+.gme-infra-page code {
+  color: rgb(226 232 240);
+}
+
+.gme-infra-page .border-dashed {
+  background-color: rgba(15, 23, 42, 0.36);
+}
+
+.gme-infra-page .fixed .bg-white,
+.gme-infra-page .fixed .dark\:bg-slate-900 {
+  border-color: rgba(100, 116, 139, 0.72);
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(8, 13, 28, 0.98)),
+    rgb(15 23 42);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.055);
+}
+
+.gme-infra-page :is(div, nav)[class*="border-b"][class*="border-slate-800"]:has(> [class*="border-b-2"]) {
+  gap: 0.25rem;
+  border-color: rgba(51, 65, 85, 0.72);
+}
+
+.gme-infra-page button[class*="border-b-2"],
+.gme-infra-page a[class*="border-b-2"] {
+  border-top-color: transparent !important;
+  border-right-color: transparent !important;
+  border-left-color: transparent !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: rgb(148 163 184);
+  transform: none;
+}
+
+.gme-infra-page button[class*="border-b-2"][class*="border-indigo-500"],
+.gme-infra-page a[class*="border-b-2"][class*="border-indigo-500"] {
+  border-bottom-color: rgb(129 140 248) !important;
+  color: rgb(199 210 254) !important;
+  font-weight: 600;
+}
+
+.gme-infra-page button[class*="border-b-2"][class*="border-transparent"],
+.gme-infra-page a[class*="border-b-2"][class*="border-transparent"] {
+  border-bottom-color: transparent !important;
+}
+
+.gme-infra-page button[class*="border-b-2"]:hover,
+.gme-infra-page a[class*="border-b-2"]:hover {
+  border-bottom-color: rgba(100, 116, 139, 0.9) !important;
+  color: rgb(226 232 240) !important;
+}
+
+.gme-infra-page button[class*="border-b-2"][class*="border-indigo-500"]:hover,
+.gme-infra-page a[class*="border-b-2"][class*="border-indigo-500"]:hover {
+  border-bottom-color: rgb(129 140 248) !important;
+  color: rgb(224 231 255) !important;
+}
+
+.gme-infra-page input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.gme-infra-page select,
+.gme-infra-page textarea {
+  border-color: rgba(71, 85, 105, 0.9) !important;
+  background: rgb(8 13 28) !important;
+  color: rgb(241 245 249);
+  box-shadow: none !important;
+}
+
+.gme-infra-page input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+.gme-infra-page select:focus,
+.gme-infra-page textarea:focus {
+  border-color: rgb(129 140 248) !important;
+  background: rgb(8 13 28) !important;
+  box-shadow: 0 0 0 2px var(--gme-focus) !important;
+  outline: none;
+}
+
+.gme-infra-page input::placeholder,
+.gme-infra-page textarea::placeholder {
+  color: rgb(100 116 139);
+}

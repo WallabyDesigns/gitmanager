@@ -233,6 +233,7 @@ class SelfUpdateService
             }
 
             $this->protectHtaccess($repoPath, $output);
+            $rollbackMaintenanceActive = $this->enableMaintenanceModeForUpdate($output);
             $output[] = 'Rolling back to '.$target.'.';
             $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', $target], $output);
             $this->runGitClean($repoPath, $this->forceCleanExcludePaths(), $output);
@@ -270,6 +271,10 @@ class SelfUpdateService
             $this->restoreProtectedHtaccess($repoPath, $protectedHtaccess, $output);
             $this->removeExcludedPaths($repoPath, $output);
 
+            if ($rollbackMaintenanceActive) {
+                $this->disableMaintenanceModeAfterUpdate($output);
+            }
+
             $update->status = 'success';
             $update->from_hash = $fromHash;
             $update->to_hash = $toHash ?: $target;
@@ -296,6 +301,10 @@ class SelfUpdateService
             $this->restoreProtectedHtaccess($repoPath, $protectedHtaccess, $output);
             $this->removeExcludedPaths($repoPath, $output);
             $this->recoverAfterFailedUpdate($repoPath, $toHash, $fromHash, $output);
+
+            if ($rollbackMaintenanceActive ?? false) {
+                $this->disableMaintenanceModeAfterUpdate($output);
+            }
 
             $update->status = 'failed';
             $update->from_hash = $fromHash;
@@ -416,6 +425,8 @@ class SelfUpdateService
             $allowDirty = true;
         }
 
+        $maintenanceModeActive = false;
+
         for ($attempt = 1; $attempt <= 2; $attempt++) {
             $fromHash = null;
             $toHash = null;
@@ -524,6 +535,10 @@ class SelfUpdateService
                     }
                 }
 
+                if (! $maintenanceModeActive) {
+                    $maintenanceModeActive = $this->enableMaintenanceModeForUpdate($output);
+                }
+
                 if ($forceUpdate) {
                     $output[] = 'Force updating working tree to origin/'.$branch.'.';
                     $this->runProcess(['git', '-C', $repoPath, 'reset', '--hard', 'origin/'.$branch], $output);
@@ -573,6 +588,11 @@ class SelfUpdateService
                 $this->restoreProtectedHtaccess($repoPath, $protectedHtaccess, $output);
                 $this->removeExcludedPaths($repoPath, $output);
 
+                if ($maintenanceModeActive) {
+                    $this->disableMaintenanceModeAfterUpdate($output);
+                    $maintenanceModeActive = false;
+                }
+
                 $update->status = 'success';
                 $update->from_hash = $fromHash;
                 $update->to_hash = $toHash ?: $remoteHash;
@@ -604,6 +624,11 @@ class SelfUpdateService
                     $output[] = 'Update failed. Retrying once.';
 
                     continue;
+                }
+
+                if ($maintenanceModeActive) {
+                    $this->disableMaintenanceModeAfterUpdate($output);
+                    $maintenanceModeActive = false;
                 }
 
                 $status = 'failed';
@@ -711,6 +736,52 @@ class SelfUpdateService
                 'enterprise_package' => $enterprisePackage,
                 'deployment_guard' => $deploymentGuard,
             ];
+        }
+    }
+
+    private function enableMaintenanceModeForUpdate(array &$output): bool
+    {
+        $artisan = base_path('artisan');
+        if (! is_file($artisan)) {
+            return false;
+        }
+
+        try {
+            $process = new Process([$this->phpBinary(), $artisan, 'down', '--no-interaction'], base_path(), $this->baseEnv());
+            $process->setTimeout(30);
+            $process->run();
+
+            if ($process->isSuccessful()) {
+                $output[] = 'Maintenance mode enabled for update.';
+
+                return true;
+            }
+
+            $output[] = 'Warning: could not enable maintenance mode — '.trim($process->getErrorOutput() ?: $process->getOutput()).'.';
+        } catch (\Throwable $e) {
+            $output[] = 'Warning: could not enable maintenance mode — '.$e->getMessage().'.';
+        }
+
+        return false;
+    }
+
+    private function disableMaintenanceModeAfterUpdate(array &$output): void
+    {
+        $artisan = base_path('artisan');
+        if (! is_file($artisan)) {
+            return;
+        }
+
+        try {
+            $process = new Process([$this->phpBinary(), $artisan, 'up', '--no-interaction'], base_path(), $this->baseEnv());
+            $process->setTimeout(30);
+            $process->run();
+
+            $output[] = $process->isSuccessful()
+                ? 'Maintenance mode lifted.'
+                : 'Warning: could not lift maintenance mode. Run `php artisan up` manually.';
+        } catch (\Throwable $e) {
+            $output[] = 'Warning: could not lift maintenance mode ('.$e->getMessage().'). Run `php artisan up` manually.';
         }
     }
 
