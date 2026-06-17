@@ -44,8 +44,7 @@ To review the documentation for this project, click here: [documentation](https:
 - **Container control center:** Manage Docker nodes, runtime health, containers, and managed PostgreSQL/MySQL database containers from one workspace.
 - **Tiered container licensing:** Community edition includes Docker with up to 3 nodes; Enterprise unlocks unlimited nodes and premium automation.
 - **Scheduler health:** Monitor heartbeat status, run scheduler actions manually, and manage cron setup from the UI.
-- **Runtime diagnostics:** Check the live status of PHP, Composer, Node.js/npm, Python, and pip directly from the System Control Center, with inline install actions for missing tools.
-- **Bundled Node.js runtime:** GWM can download and install a Node.js LTS runtime into its own storage directory — no system-level Node install required.
+- **Runtime diagnostics:** Check the live status of PHP, Composer, Node.js/npm, Python, and pip directly from the System Control Center, with inline install actions for missing tools. Also manages the bundled Node.js LTS runtime — GWM can download and install Node.js into its own storage directory with no system-level install required.
 
 ### System & Administration
 - **App self-update:** Update the manager itself with safe defaults and force-update recovery options. Updates run under maintenance mode to prevent broken-state errors mid-deploy.
@@ -117,7 +116,7 @@ If any value in `.env` contains a `$`, wrap it in single quotes to avoid Compose
 - Git CLI available to the web user.
 - Queue worker for webhook deploys.
 - Scheduler for auto-deploy and security sync.
-- Node.js is optional. It is only needed when deploying projects that run npm commands. GWM can install a bundled Node.js LTS runtime automatically via the Node.js page in System Control Center — no system-level install required.
+- Node.js is optional. It is only needed when deploying projects that run npm commands. GWM can install a bundled Node.js LTS runtime automatically via the Runtime Diagnostics page in System Control Center — no system-level install required.
 
 ## Permissions (Important)
 Git operations are performed by the web server user. For reliable updates, the PHP-FPM user should match the filesystem owner of the app and project directories. If they differ, git may fail to write to `.git/objects` or `.git/index`.

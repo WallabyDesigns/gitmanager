@@ -1088,18 +1088,18 @@
   box-shadow: none !important;
 }
 
-/* Slate/orange theme alignment with the public Git Web Manager site. */
+/* Slate/cyan theme. */
 .gwm-app {
-  --gwm-accent: rgb(234 88 12);
-  --gwm-accent-hover: rgb(249 115 22);
-  --gwm-accent-soft: rgba(234, 88, 12, 0.16);
-  --gwm-accent-border: rgba(251, 146, 60, 0.58);
-  --gwm-focus-ring: rgba(249, 115, 22, 0.36);
+  --gwm-accent: rgb(6, 182, 212);
+  --gwm-accent-hover: rgb(34, 211, 238);
+  --gwm-accent-soft: rgba(6, 182, 212, 0.14);
+  --gwm-accent-border: rgba(34, 211, 238, 0.5);
+  --gwm-focus-ring: rgba(6, 182, 212, 0.34);
   --gwm-surface: rgba(15, 23, 42, 0.9);
   --gwm-surface-strong: rgba(15, 23, 42, 0.98);
   --gwm-surface-soft: rgba(30, 41, 59, 0.56);
   background:
-    radial-gradient(circle at 14% -10%, rgba(234, 88, 12, 0.12), transparent 22rem),
+    radial-gradient(circle at 14% -10%, rgba(6, 182, 212, 0.1), transparent 22rem),
     radial-gradient(circle at 92% 2rem, rgba(51, 65, 85, 0.42), transparent 28rem),
     linear-gradient(180deg, rgb(8, 13, 24), rgb(2, 6, 23) 24rem);
   background-attachment: fixed;
@@ -1114,10 +1114,10 @@
 .gwm-app button[class*="bg-indigo-600"],
 .gwm-app a[class*="bg-indigo-600"],
 .gwm-btn-primary {
-  border-color: rgba(194, 65, 12, 0.85) !important;
+  border-color: rgba(8, 145, 178, 0.85) !important;
   background: var(--gwm-accent) !important;
-  color: #fff !important;
-  box-shadow: 0 10px 22px rgba(154, 52, 18, 0.24) !important;
+  color: rgb(8 13 28) !important;
+  box-shadow: 0 10px 22px rgba(6, 182, 212, 0.2) !important;
 }
 
 .gwm-app main button[class*="bg-indigo-600"]:hover,
@@ -1135,31 +1135,31 @@
 .gwm-app main aside nav button.group[class*="bg-indigo-500"] {
   border-color: var(--gwm-accent-border) !important;
   background: var(--gwm-accent-soft) !important;
-  color: rgb(255 237 213) !important;
+  color: rgb(207 250 254) !important;
   box-shadow: none !important;
 }
 
 .gwm-app main aside nav a.group[class*="bg-indigo-500"]:hover,
 .gwm-app main aside nav button.group[class*="bg-indigo-500"]:hover {
-  background: rgba(234, 88, 12, 0.2) !important;
+  background: rgba(6, 182, 212, 0.18) !important;
 }
 
 .gwm-app main button[class*="border-b-2"][class*="border-indigo-500"],
 .gwm-app main a[class*="border-b-2"][class*="border-indigo-500"] {
   border-bottom-color: var(--gwm-accent) !important;
-  color: rgb(255 237 213) !important;
+  color: rgb(207 250 254) !important;
 }
 
 .gwm-app main button[class*="border-b-2"][class*="border-indigo-500"]:hover,
 .gwm-app main a[class*="border-b-2"][class*="border-indigo-500"]:hover {
   border-bottom-color: var(--gwm-accent-hover) !important;
-  color: rgb(255 247 237) !important;
+  color: rgb(236 254 255) !important;
 }
 
 .gwm-app .text-indigo-300,
 .gwm-app .text-indigo-400,
 .gwm-app .hover\:text-indigo-600:hover {
-  color: rgb(251 146 60) !important;
+  color: rgb(34 211 238) !important;
 }
 
 .gwm-app .border-indigo-400\/60,
@@ -1289,11 +1289,11 @@
   margin-top: 0.5rem;
 }
 
-/* Keep active side navigation calm: slate surface with a small orange cue. */
+/* Keep active side navigation calm: slate surface with a small cyan cue. */
 .gwm-system-nav-active {
   border-color: rgba(71, 85, 105, 0.72) !important;
   background: rgba(30, 41, 59, 0.58) !important;
-  color: rgb(255 247 237) !important;
+  color: rgb(207 250 254) !important;
 }
 
 .gwm-system-nav-active:hover {
@@ -1305,5 +1305,5 @@
 .gwm-mobile-nav-link-active {
   border-color: rgba(100, 116, 139, 0.72) !important;
   background: rgba(30, 41, 59, 0.48) !important;
-  color: rgb(255 237 213) !important;
+  color: rgb(207 250 254) !important;
 }
