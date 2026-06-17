@@ -1,6 +1,8 @@
 @php
     $update = $update ?? null;
     $showOutput = (bool) ($showOutput ?? false);
+    $embedded = (bool) ($embedded ?? false);
+    $hideAction = (bool) ($hideAction ?? false);
     $actionLabel = fn (?string $action): string => match ($action) {
         'self_update' => __('App Update'),
         'force_update' => __('Force Update'),
@@ -21,10 +23,12 @@
 @if (! $update)
     <p class="mt-3 text-sm text-slate-400">{{ __('No entries yet.') }}</p>
 @else
-    <div class="mt-3 min-w-0 rounded-lg border border-slate-800 p-4">
+    <div class="{{ $embedded ? 'mt-4 min-w-0' : 'mt-3 min-w-0 rounded-lg border border-slate-800 p-4' }}">
         <div class="flex flex-wrap items-center justify-between gap-2">
             <div>
-                <div class="text-sm font-semibold text-slate-100">{{ $actionLabel($update->action ?? null) }}</div>
+                @if (! $hideAction)
+                    <div class="text-sm font-semibold text-slate-100">{{ $actionLabel($update->action ?? null) }}</div>
+                @endif
                 <div class="text-xs text-slate-500">{{ \App\Support\DateFormatter::forUser($update->started_at, 'M j, Y g:i a', __('Queued')) }}</div>
             </div>
             <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $statusPill($update->status ?? null) }}">
@@ -32,7 +36,7 @@
             </span>
         </div>
 
-        <div class="mt-2 text-xs text-slate-500">
+        <div class="mt-2 text-xs text-slate-500 break-all">
             {{ $update->from_hash ?? 'n/a' }} -> {{ $update->to_hash ?? 'n/a' }}
         </div>
 

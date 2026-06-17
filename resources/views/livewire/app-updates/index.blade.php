@@ -25,12 +25,12 @@
     };
 @endphp
 
-<div class="py-10" wire:poll.10s>
+<div class="gwm-system-page py-10" wire:poll.10s>
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid gap-6 lg:grid-cols-[260px,1fr]">
             @include('livewire.system.partials.tabs', ['systemTab' => 'updates'])
 
-            <div class="min-w-0 space-y-6">
+            <div class="gwm-system-content min-w-0 space-y-6">
                 <div>
                     <div class="sm:hidden relative" x-data="{ open: false }" @click.outside="open = false" @keydown.escape="open = false">
                         <button
@@ -145,7 +145,7 @@
 
                     <div class="min-w-0 bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6">
                         <h3 class="text-lg font-semibold text-slate-100">{{ __('Latest Update') }}</h3>
-                        @include('livewire.app-updates.partials.log-card', ['update' => $latest, 'showOutput' => true])
+                        @include('livewire.app-updates.partials.log-card', ['update' => $latest, 'showOutput' => true, 'embedded' => true, 'hideAction' => true])
                     </div>
                 @endif
 
@@ -165,7 +165,7 @@
 
                     <div class="min-w-0 bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6">
                         <h3 class="text-lg font-semibold text-slate-100">{{ __('Latest Dependency Log') }}</h3>
-                        @include('livewire.app-updates.partials.log-card', ['update' => $latestDependencyLog, 'showOutput' => true])
+                        @include('livewire.app-updates.partials.log-card', ['update' => $latestDependencyLog, 'showOutput' => true, 'embedded' => true])
                     </div>
                 @endif
 

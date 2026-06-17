@@ -6,13 +6,13 @@ use Symfony\Component\Process\Process;
 
 class RuntimeDiagnosticsService
 {
-    /** @return array<string, array{found: bool, version: ?string, path: ?string, label: string, guidance: ?string, installAction: ?string}> */
+    /** @return array<string, array{found: bool, version: ?string, path: ?string, label: string, guidance: ?string, installAction: ?string, note?: string}> */
     public function detect(): array
     {
         return [
             'php'      => $this->probe('php', '--version', 'PHP'),
             'composer' => $this->probe('composer', '--version', 'Composer'),
-            'npm'      => $this->probe('npm', '--version', 'npm'),
+            'npm'      => $this->probe('npm', '--version', 'System npm (PATH)', 'Checks the host PATH only. App-managed Node.js is configured under App Node Runtime.'),
             'python'   => $this->probeFirstOf(['python3', 'python'], '--version', 'Python'),
             'pip'      => $this->probeFirstOf(['pip3', 'pip'], '--version', 'pip'),
         ];
@@ -23,7 +23,7 @@ class RuntimeDiagnosticsService
         return $this->detect();
     }
 
-    private function probe(string $binary, string $versionFlag, string $label): array
+    private function probe(string $binary, string $versionFlag, string $label, ?string $note = null): array
     {
         try {
             $process = new Process([$binary, $versionFlag]);
@@ -33,12 +33,12 @@ class RuntimeDiagnosticsService
             if ($process->isSuccessful() || $output !== '') {
                 $version = $this->extractVersion($output);
 
-                return ['found' => true, 'version' => $version, 'path' => $binary, 'label' => $label, 'guidance' => null, 'installAction' => null];
+                return ['found' => true, 'version' => $version, 'path' => $binary, 'label' => $label, 'guidance' => null, 'installAction' => null, 'note' => $note];
             }
         } catch (\Throwable) {
         }
 
-        return ['found' => false, 'version' => null, 'path' => null, 'label' => $label, 'guidance' => $this->installGuidance($binary), 'installAction' => $this->installAction($binary)];
+        return ['found' => false, 'version' => null, 'path' => null, 'label' => $label, 'guidance' => $this->installGuidance($binary), 'installAction' => $this->installAction($binary), 'note' => $note];
     }
 
     private function probeFirstOf(array $candidates, string $versionFlag, string $label): array
@@ -65,7 +65,6 @@ class RuntimeDiagnosticsService
     private function installAction(string $binary): ?string
     {
         return match ($binary) {
-            'npm' => 'installNode',
             default => null,
         };
     }

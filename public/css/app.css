@@ -324,7 +324,6 @@
 .gwm-system-nav-active {
   border-color: rgba(129, 140, 248, 0.5);
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.26), rgba(14, 165, 233, 0.1));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 24px rgba(15, 23, 42, 0.28);
   color: rgb(224 231 255);
 }
 
@@ -917,4 +916,224 @@
 .gwm-system-search input[type="search"] {
   background: transparent !important;
   box-shadow: none !important;
+}
+
+/* Slate/orange theme alignment with the public Git Web Manager site. */
+.gwm-app {
+  --gwm-accent: rgb(234 88 12);
+  --gwm-accent-hover: rgb(249 115 22);
+  --gwm-accent-soft: rgba(234, 88, 12, 0.16);
+  --gwm-accent-border: rgba(251, 146, 60, 0.58);
+  --gwm-focus-ring: rgba(249, 115, 22, 0.36);
+  --gwm-surface: rgba(15, 23, 42, 0.9);
+  --gwm-surface-strong: rgba(15, 23, 42, 0.98);
+  --gwm-surface-soft: rgba(30, 41, 59, 0.56);
+  background:
+    radial-gradient(circle at 14% -10%, rgba(234, 88, 12, 0.12), transparent 22rem),
+    radial-gradient(circle at 92% 2rem, rgba(51, 65, 85, 0.42), transparent 28rem),
+    linear-gradient(180deg, rgb(8, 13, 24), rgb(2, 6, 23) 24rem);
+  background-attachment: fixed;
+}
+
+#gwm-nav-bar {
+  background: var(--gwm-accent);
+}
+
+.gwm-app main button[class*="bg-indigo-600"],
+.gwm-app main a[class*="bg-indigo-600"],
+.gwm-app button[class*="bg-indigo-600"],
+.gwm-app a[class*="bg-indigo-600"],
+.gwm-btn-primary {
+  border-color: rgba(194, 65, 12, 0.85) !important;
+  background: var(--gwm-accent) !important;
+  color: #fff !important;
+  box-shadow: 0 10px 22px rgba(154, 52, 18, 0.24) !important;
+}
+
+.gwm-app main button[class*="bg-indigo-600"]:hover,
+.gwm-app main a[class*="bg-indigo-600"]:hover,
+.gwm-app button[class*="bg-indigo-600"]:hover,
+.gwm-app a[class*="bg-indigo-600"]:hover,
+.gwm-btn-primary:hover {
+  background: var(--gwm-accent-hover) !important;
+}
+
+.gwm-system-nav-active,
+.gwm-top-nav-link-active,
+.gwm-mobile-nav-link-active,
+.gwm-app main aside nav a.group[class*="bg-indigo-500"],
+.gwm-app main aside nav button.group[class*="bg-indigo-500"] {
+  border-color: var(--gwm-accent-border) !important;
+  background: var(--gwm-accent-soft) !important;
+  color: rgb(255 237 213) !important;
+  box-shadow: none !important;
+}
+
+.gwm-app main aside nav a.group[class*="bg-indigo-500"]:hover,
+.gwm-app main aside nav button.group[class*="bg-indigo-500"]:hover {
+  background: rgba(234, 88, 12, 0.2) !important;
+}
+
+.gwm-app main button[class*="border-b-2"][class*="border-indigo-500"],
+.gwm-app main a[class*="border-b-2"][class*="border-indigo-500"] {
+  border-bottom-color: var(--gwm-accent) !important;
+  color: rgb(255 237 213) !important;
+}
+
+.gwm-app main button[class*="border-b-2"][class*="border-indigo-500"]:hover,
+.gwm-app main a[class*="border-b-2"][class*="border-indigo-500"]:hover {
+  border-bottom-color: var(--gwm-accent-hover) !important;
+  color: rgb(255 247 237) !important;
+}
+
+.gwm-app .text-indigo-300,
+.gwm-app .text-indigo-400,
+.gwm-app .hover\:text-indigo-600:hover {
+  color: rgb(251 146 60) !important;
+}
+
+.gwm-app .border-indigo-400\/60,
+.gwm-app .border-indigo-400\/50,
+.gwm-app .border-indigo-500 {
+  border-color: var(--gwm-accent-border) !important;
+}
+
+.gwm-app .bg-indigo-500\/10,
+.gwm-app .bg-indigo-500\/20 {
+  background-color: var(--gwm-accent-soft) !important;
+}
+
+.gwm-app input[type="checkbox"]:checked,
+.gwm-app input[type="radio"]:checked {
+  background-color: var(--gwm-accent) !important;
+  border-color: var(--gwm-accent-border) !important;
+}
+
+.gwm-app input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+.gwm-app select:focus,
+.gwm-app textarea:focus,
+.gwm-field:focus {
+  border-color: var(--gwm-accent-border) !important;
+  box-shadow: 0 0 0 2px var(--gwm-focus-ring) !important;
+}
+
+.gwm-system-search {
+  border-color: rgba(71, 85, 105, 0.9) !important;
+}
+
+.gwm-system-search:focus-within {
+  border-color: var(--gwm-accent-border) !important;
+}
+
+.gwm-system-content,
+.gwm-system-page,
+.gwm-env-section,
+.gwm-env-section > *,
+.gwm-app pre,
+.gwm-app code,
+.gwm-app table {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.gwm-app pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.gwm-env-section .font-mono,
+.gwm-env-section code,
+.gwm-env-section td,
+.gwm-env-section input {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+@media (max-width: 639px) {
+  .gwm-system-page {
+    padding-top: 1rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .gwm-system-page .max-w-7xl {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .gwm-system-page .gwm-system-content > .bg-slate-900,
+  .gwm-system-page .gwm-system-content .bg-slate-900.shadow-sm,
+  .gwm-system-page aside > .rounded-xl {
+    border-radius: 0.75rem;
+  }
+
+  .gwm-system-page .p-6 {
+    padding: 1rem;
+  }
+
+  .gwm-env-section .px-6 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .gwm-env-section .py-4 {
+    padding-top: 0.875rem;
+    padding-bottom: 0.875rem;
+  }
+
+  .gwm-env-section button,
+  .gwm-system-page button {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .gwm-env-section table {
+    min-width: 42rem;
+  }
+
+  .gwm-env-section .flex.items-center.gap-3 {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .gwm-env-section .w-48 {
+    width: 100%;
+  }
+}
+
+/* Reduce card-inside-card chrome in settings panels. */
+.gwm-system-page .gwm-system-content > .bg-slate-900 :is(div, section, article)[class*="rounded"][class*="border"][class*="bg-slate-950"],
+.gwm-system-page .gwm-system-content .bg-slate-900.shadow-sm :is(div, section, article)[class*="rounded"][class*="border"][class*="bg-slate-950"] {
+  border-color: transparent !important;
+  background: rgba(2, 6, 23, 0.24) !important;
+  box-shadow: none !important;
+}
+
+.gwm-system-page .gwm-system-content > .bg-slate-900 :is(div, section, article)[class*="rounded"][class*="border"][class*="bg-slate-950"]:not(:last-child),
+.gwm-system-page .gwm-system-content .bg-slate-900.shadow-sm :is(div, section, article)[class*="rounded"][class*="border"][class*="bg-slate-950"]:not(:last-child) {
+  border-bottom: 1px solid rgba(51, 65, 85, 0.54) !important;
+  border-radius: 0.75rem !important;
+}
+
+.gwm-system-page .gwm-system-content > .bg-slate-900 :is(div, section, article)[class*="rounded"][class*="border"][class*="bg-slate-950"] + :is(div, section, article)[class*="rounded"][class*="border"][class*="bg-slate-950"],
+.gwm-system-page .gwm-system-content .bg-slate-900.shadow-sm :is(div, section, article)[class*="rounded"][class*="border"][class*="bg-slate-950"] + :is(div, section, article)[class*="rounded"][class*="border"][class*="bg-slate-950"] {
+  margin-top: 0.5rem;
+}
+
+/* Keep active side navigation calm: slate surface with a small orange cue. */
+.gwm-system-nav-active {
+  border-color: rgba(71, 85, 105, 0.72) !important;
+  background: rgba(30, 41, 59, 0.58) !important;
+  color: rgb(255 247 237) !important;
+}
+
+.gwm-system-nav-active:hover {
+  border-color: rgba(100, 116, 139, 0.78) !important;
+  background: rgba(30, 41, 59, 0.72) !important;
+}
+
+.gwm-top-nav-link-active,
+.gwm-mobile-nav-link-active {
+  border-color: rgba(100, 116, 139, 0.72) !important;
+  background: rgba(30, 41, 59, 0.48) !important;
+  color: rgb(255 237 213) !important;
 }

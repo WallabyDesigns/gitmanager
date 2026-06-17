@@ -3,7 +3,7 @@
         <div class="grid gap-6 lg:grid-cols-[260px,1fr]">
             @include('livewire.system.partials.tabs', ['systemTab' => $settingsSection])
 
-            <div class="gwm-system-content space-y-6">
+            <div class="gwm-system-content min-w-0 space-y-6">
                 @if ($settingsSection === 'scheduler')
                     <div id="scheduler-settings" class="grid gap-6 lg:grid-cols-2 scroll-mt-24">
                         <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6 space-y-3">
@@ -459,12 +459,11 @@
                                             <div class="mt-3 space-y-3">
                                                 @if ($tool['installAction'] === 'installNode')
                                                     <div class="flex flex-wrap items-center gap-3">
-                                                        <button type="button" wire:click="installNode" wire:loading.attr="disabled" wire:loading.class="opacity-60 cursor-not-allowed" class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-60 disabled:cursor-not-allowed">
-                                                            <x-loading-spinner target="installNode" />
-                                                            {{ __('Install Node.js + npm') }}
-                                                        </button>
-                                                        <span class="text-xs text-slate-500">{{ __('Downloads and installs the Node.js LTS runtime into GWM\'s storage directory.') }}</span>
+                                                        <span class="text-xs text-slate-500">{{ __('This diagnostics panel checks only host PATH tools. Use App Node Runtime for the bundled app-managed Node.js install.') }}</span>
                                                     </div>
+                                                @endif
+                                                @if (! empty($tool['note']))
+                                                    <p class="text-xs text-slate-500">{{ __($tool['note']) }}</p>
                                                 @endif
                                                 @if ($tool['guidance'])
                                                     <div x-data="{ copied: false }">
@@ -836,7 +835,7 @@
                 @endif
 
                 @if ($settingsSection === 'environment')
-                    <div class="space-y-6">
+                    <div class="gwm-env-section space-y-6">
                         {{-- GWM Keys --}}
                         <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 overflow-hidden">
                             <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
