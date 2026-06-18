@@ -2969,8 +2969,15 @@ class SelfUpdateService
 
     private function gitEnv(): array
     {
+        $identityName = trim((string) config('gitmanager.self_update.git_identity.name', 'Git Web Manager Updater'));
+        $identityEmail = trim((string) config('gitmanager.self_update.git_identity.email', 'updater@gitwebmanager.local'));
+
         $env = [
             'GIT_TERMINAL_PROMPT' => '0',
+            'GIT_AUTHOR_NAME' => $identityName !== '' ? $identityName : 'Git Web Manager Updater',
+            'GIT_AUTHOR_EMAIL' => $identityEmail !== '' ? $identityEmail : 'updater@gitwebmanager.local',
+            'GIT_COMMITTER_NAME' => $identityName !== '' ? $identityName : 'Git Web Manager Updater',
+            'GIT_COMMITTER_EMAIL' => $identityEmail !== '' ? $identityEmail : 'updater@gitwebmanager.local',
         ];
 
         $token = trim((string) config('services.github.token', env('GITHUB_TOKEN')));

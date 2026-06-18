@@ -49,7 +49,7 @@
                 <div>
 
                     @forelse ($users as $user)
-                        <div class="rounded-lg border border-slate-800 bg-slate-900 p-4">
+                        <div class="rounded-lg border mt-3 border-slate-800 bg-slate-900 p-4">
                             <div class="flex flex-wrap items-center justify-between gap-3">
                                 <div>
                                     <div class="text-sm font-semibold text-slate-100">{{ $user->name }}</div>

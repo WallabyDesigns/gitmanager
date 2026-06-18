@@ -87,6 +87,25 @@ class SelfUpdateServiceTest extends TestCase
         $this->assertContains('System package: composer binary not available, skipping.', $output);
     }
 
+    public function test_self_update_git_environment_always_has_a_committer_identity(): void
+    {
+        config([
+            'gitmanager.self_update.git_identity.name' => '',
+            'gitmanager.self_update.git_identity.email' => '',
+        ]);
+
+        $service = app(SelfUpdateService::class);
+        $method = new \ReflectionMethod($service, 'gitEnv');
+        $method->setAccessible(true);
+
+        $environment = $method->invoke($service);
+
+        $this->assertSame('Git Web Manager Updater', $environment['GIT_AUTHOR_NAME']);
+        $this->assertSame('updater@gitwebmanager.local', $environment['GIT_AUTHOR_EMAIL']);
+        $this->assertSame('Git Web Manager Updater', $environment['GIT_COMMITTER_NAME']);
+        $this->assertSame('updater@gitwebmanager.local', $environment['GIT_COMMITTER_EMAIL']);
+    }
+
     public function test_deployment_guard_blocks_failed_github_report(): void
     {
         config([
