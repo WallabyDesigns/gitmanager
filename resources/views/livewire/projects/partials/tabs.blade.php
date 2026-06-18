@@ -17,6 +17,9 @@
         || request()->routeIs('ftp-accounts.*');
     $queueCount = (int) ($projectNavState['queueCount'] ?? 0);
     $actionCenterCount = (int) ($projectNavState['actionCenterCount'] ?? 0);
+    $navItem = 'gwm-system-nav-item';
+    $activeNav = 'gwm-system-nav-active';
+    $idleNav = 'gwm-system-nav-idle';
 
     $currentTabLabel = match ($tab) {
         'create' => __('Create Project'),
@@ -62,11 +65,35 @@
                 <div class="text-xs text-slate-400">{{ __('Deploys, action items, queue operations, and remote access.') }}</div>
             </div>
 
-            <nav class="mt-4 space-y-1.5" aria-label="{{ __('Projects navigation') }}">
+            @if ($showBulkActions && $tab === 'list' && ! $isFtpRoute)
+                <label class="mt-3 block">
+                    <span class="sr-only">{{ __('Search projects') }}</span>
+                    <span class="gwm-system-search flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 transition-colors focus-within:border-indigo-400/60">
+                        <svg class="h-3.5 w-3.5 shrink-0 text-slate-500 pointer-events-none" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd"/>
+                        </svg>
+                        <input
+                            type="search"
+                            wire:model.live.debounce.300ms="search"
+                            placeholder="{{ __('Search projects…') }}"
+                            aria-label="{{ __('Search projects') }}"
+                            class="min-w-0 flex-1 border-0 bg-transparent p-0 text-xs text-slate-300 placeholder-slate-500 focus:outline-none focus:ring-0"
+                        />
+                        @if ($search !== '')
+                            <button type="button" wire:click="$set('search', '')" class="shrink-0 text-slate-500 transition-colors hover:text-slate-300" aria-label="{{ __('Clear search') }}">
+                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        @endif
+                    </span>
+                </label>
+            @endif
+
+            <nav class="mt-3 space-y-1.5" aria-label="{{ __('Projects navigation') }}">
                 <a
                     href="{{ route('projects.create') }}"
-                    
-                    class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'create' && ! $isFtpRoute ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
+                    class="{{ $navItem }} {{ $tab === 'create' && ! $isFtpRoute ? $activeNav : $idleNav }}"
                 >
                     <svg class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -75,16 +102,14 @@
                 </a>
                 <a
                     href="{{ route('projects.index') }}"
-                    
-                    class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'list' && ! $isFtpRoute ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
+                    class="{{ $navItem }} {{ $tab === 'list' && ! $isFtpRoute ? $activeNav : $idleNav }}"
                 >
                     <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" /></svg>
                     {{ __('Projects') }}
                 </a>
                 <a
                     href="{{ route('projects.queue') }}"
-                    
-                    class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'queue' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
+                    class="{{ $navItem }} {{ $tab === 'queue' ? $activeNav : $idleNav }}"
                 >
                     <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" /></svg>
                     <span class="inline-flex items-center gap-2">
@@ -96,8 +121,7 @@
                 </a>
                 <a
                     href="{{ route('projects.action-center') }}"
-                    
-                    class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'action-center' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
+                    class="{{ $navItem }} {{ $tab === 'action-center' ? $activeNav : $idleNav }}"
                 >
                     <svg class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
@@ -114,8 +138,7 @@
                 @if ($isAdmin)
                         <a
                             href="{{ route('ftp-accounts.index') }}"
-                            
-                            class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $isFtpRoute ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
+                            class="{{ $navItem }} {{ $isFtpRoute ? $activeNav : $idleNav }}"
                         >
                         <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg>
                         {{ __('Remote Access') }}
@@ -195,27 +218,24 @@
                 <nav class="p-4 space-y-1.5" aria-label="{{ __('Projects navigation') }}">
                     <a
                         href="{{ route('projects.create') }}"
-                        
                         @click="open = false"
-                        class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'create' && ! $isFtpRoute ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
+                        class="{{ $navItem }} {{ $tab === 'create' && ! $isFtpRoute ? $activeNav : $idleNav }}"
                     >
                         <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         {{ __('Create Project') }}
                     </a>
                     <a
                         href="{{ route('projects.index') }}"
-                        
                         @click="open = false"
-                        class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'list' && ! $isFtpRoute ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
+                        class="{{ $navItem }} {{ $tab === 'list' && ! $isFtpRoute ? $activeNav : $idleNav }}"
                     >
                         <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" /></svg>
                         {{ __('Projects') }}
                     </a>
                     <a
                         href="{{ route('projects.queue') }}"
-                        
                         @click="open = false"
-                        class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'queue' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
+                        class="{{ $navItem }} {{ $tab === 'queue' ? $activeNav : $idleNav }}"
                     >
                         <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" /></svg>
                         <span class="inline-flex items-center gap-2">
@@ -227,9 +247,8 @@
                     </a>
                     <a
                         href="{{ route('projects.action-center') }}"
-                        
                         @click="open = false"
-                        class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $tab === 'action-center' ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
+                        class="{{ $navItem }} {{ $tab === 'action-center' ? $activeNav : $idleNav }}"
                     >
                         <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10.34 3.94c.09-.542.56-.94 1.11-.94h1.1c.55 0 1.02.398 1.11.94l.154.925c.062.374.312.686.643.87.128.071.255.145.378.223.324.205.72.266 1.075.133l.88-.33a1.125 1.125 0 011.37.49l.55.952a1.125 1.125 0 01-.26 1.43l-.726.598c-.292.24-.437.613-.43.991.003.149.003.298 0 .447-.007.378.138.75.43.99l.726.599c.424.35.534.954.26 1.43l-.55.952a1.125 1.125 0 01-1.37.49l-.88-.33c-.355-.133-.751-.072-1.075.133-.123.078-.25.152-.378.223-.331.184-.581.496-.643.87l-.154.925c-.09.542-.56.94-1.11.94h-1.1c-.55 0-1.02-.398-1.11-.94l-.154-.925a1.125 1.125 0 00-.643-.87 6.343 6.343 0 01-.378-.223c-.324-.205-.72-.266-1.075-.133l-.88.33a1.125 1.125 0 01-1.37-.49l-.55-.952a1.125 1.125 0 01.26-1.43l.726-.598c.292-.24.437-.613.43-.991a9.079 9.079 0 010-.447c.007-.378-.138-.75-.43-.99l-.726-.599a1.125 1.125 0 01-.26-1.43l.55-.952a1.125 1.125 0 011.37-.49l.88.33c.355.133.751.072 1.075-.133.123-.078.25-.152.378-.223.331-.184.581-.496.643-.87l.154-.925z" /><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 12a2.25 2.25 0 104.5 0 2.25 2.25 0 00-4.5 0z" /></svg>
                         <span class="inline-flex items-center gap-2">
@@ -242,9 +261,8 @@
                     @if ($isAdmin)
                         <a
                             href="{{ route('ftp-accounts.index') }}"
-                            
                             @click="open = false"
-                            class="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition {{ $isFtpRoute ? 'border-indigo-400/40 bg-indigo-500/20 text-indigo-100' : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/70 hover:text-white' }}"
+                            class="{{ $navItem }} {{ $isFtpRoute ? $activeNav : $idleNav }}"
                         >
                             <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg>
                             {{ __('Remote Access') }}

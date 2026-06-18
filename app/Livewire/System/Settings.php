@@ -178,7 +178,9 @@ class Settings extends Component
         $settingsService = app(SettingsService::class);
 
         return view('livewire.system.settings', [
-            'nodeStatus' => $nodeInstall->detect(),
+            'nodeStatus' => in_array($this->settingsSection, [self::SECTION_NODE, self::SECTION_DIAGNOSTICS], true)
+                ? $nodeInstall->detect()
+                : ['found' => false, 'version' => null, 'source' => null, 'binary' => null],
             'schedulerHealthy' => $scheduler->isHealthy($schedulerGraceSeconds),
             'lastHeartbeat' => $scheduler->lastHeartbeat(),
             'lastManualRun' => $scheduler->lastManualRun(),
@@ -213,6 +215,11 @@ class Settings extends Component
     public function refreshSchedulerStatus(): void
     {
         $this->dispatch('$refresh');
+    }
+
+    public function recheckDiagnostics(): void
+    {
+        app(RuntimeDiagnosticsService::class)->recheck();
     }
 
     public function selectSettingsSection(string $section, ?EnvManagerService $envManager = null, ?EnvBackupService $backupService = null): void

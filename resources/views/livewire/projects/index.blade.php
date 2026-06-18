@@ -6,13 +6,13 @@
             
             <div class="mt-6 sm:mt-0 space-y-4">
                 <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-200 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 flex-1">
+                    <div class="grid gap-3 sm:grid-cols-2 flex-1 lg:hidden">
                         <label class="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-400">
                             {{ __('Search') }}
                             <input type="text" wire:model.live.debounce.300ms="search" placeholder="{{ __('Project name or path') }}" class="w-full rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none">
                         </label>
                     </div>
-                    <div class="flex flex-wrap gap-2">
+                    <div class="flex flex-wrap gap-2 lg:ms-auto">
                         <button type="button" wire:click="$set('filter','all')" class="px-3 py-2 text-xs rounded-md border {{ $filter === 'all' ? 'border-emerald-400 text-emerald-200' : 'border-slate-700 text-slate-200 hover:text-white hover:border-slate-500' }}">
                             {{ __('All') }} ({{ $counts['all'] ?? 0 }})
                         </button>

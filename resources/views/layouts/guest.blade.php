@@ -101,15 +101,10 @@
                 }
             })();
         </script>
-        <script data-navigate-once="true">
-            var Alpine = window.Alpine || {};
-            Alpine.navigate = Alpine.navigate || { disableProgressBar() {} };
-            window.Alpine = Alpine;
-        </script>
         @livewireScripts
         <script data-navigate-once="true">
             document.addEventListener('livewire:init', () => {
-                window.Alpine?.navigate?.disableProgressBar?.();
+                window.Alpine.navigate.disableProgressBar();
             }, { once: true });
         </script>
     </body>

@@ -332,7 +332,7 @@
                     </div>
                 @endif
 
-                @if ($settingsSection === 'node')
+                @if ($settingsSection === 'diagnostics' || $settingsSection === 'node')
                     {{-- Node.js Runtime Status --}}
                     <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6 space-y-4">
                         <div class="flex items-center justify-between gap-3">
@@ -385,7 +385,7 @@
                         </p>
                     </div>
 
-                    {{-- Active Node Processes Summary --}}
+                    {{-- Active Node Processes --}}
                     <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6 space-y-4">
                         <div>
                             <h3 class="text-lg font-semibold text-slate-100">{{ __('Active Processes') }}</h3>
@@ -427,17 +427,16 @@
                             </div>
                         @endif
                     </div>
-                @endif
 
-                @if ($settingsSection === 'diagnostics')
+                    {{-- Runtime & Build Tools --}}
                     <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6 space-y-6">
                         <div class="flex items-center justify-between gap-3">
                             <div>
                                 <h3 class="text-lg font-semibold text-slate-100">{{ __('Runtime & Build Tools') }}</h3>
                                 <p class="text-sm text-slate-400">{{ __('Detected runtimes and build tools available to this application.') }}</p>
                             </div>
-                            <button type="button" wire:click="$refresh" class="shrink-0 px-3 py-1.5 text-xs rounded-md border border-slate-700 text-slate-200 hover:text-white inline-flex items-center gap-1.5">
-                                <x-loading-spinner target="$refresh" />
+                            <button type="button" wire:click="recheckDiagnostics" class="shrink-0 px-3 py-1.5 text-xs rounded-md border border-slate-700 text-slate-200 hover:text-white inline-flex items-center gap-1.5">
+                                <x-loading-spinner target="recheckDiagnostics" />
                                 {{ __('Re-check') }}
                             </button>
                         </div>
@@ -466,7 +465,7 @@
                                             <div class="mt-3 space-y-3">
                                                 @if ($tool['installAction'] === 'installNode')
                                                     <div class="flex flex-wrap items-center gap-3">
-                                                        <span class="text-xs text-slate-500">{{ __('This diagnostics panel checks only host PATH tools. Use App Node Runtime for the bundled app-managed Node.js install.') }}</span>
+                                                        <span class="text-xs text-slate-500">{{ __('Use the Node.js Runtime section above to install the bundled app-managed Node.js runtime.') }}</span>
                                                     </div>
                                                 @endif
                                                 @if (! empty($tool['note']))
@@ -641,8 +640,8 @@
                             <p class="text-sm text-slate-400">{{ __('Sets the default timezone used throughout the app.') }}</p>
                         </div>
                         <div>
-                            <label class="text-xs uppercase tracking-wide text-slate-500">{{ __('Timezone') }}</label>
-                            <select wire:model.live="timezone" wire:key="system-timezone-{{ $timezone }}" class="mt-2 w-full rounded-md border p-2 text-sm border-slate-700 bg-slate-950 text-slate-100">
+                            <label for="system-timezone" class="text-xs uppercase tracking-wide text-slate-500">{{ __('Timezone') }}</label>
+                            <select id="system-timezone" wire:model.live="timezone" wire:key="system-timezone-{{ $timezone }}" class="mt-2 w-full rounded-md border p-2 text-sm border-slate-700 bg-slate-950 text-slate-100">
                                 @foreach ($timezones as $tz)
                                     <option value="{{ $tz }}">{{ $tz }}</option>
                                 @endforeach
@@ -813,8 +812,8 @@
                         </div>
 
                         <div>
-                            <label class="text-xs uppercase tracking-wide text-slate-500">{{ __('License Key') }}</label>
-                            <input type="text" wire:model.lazy="enterpriseLicenseKey" class="mt-2 w-full rounded-md border p-2 text-xs border-slate-700 bg-slate-950 text-slate-100" placeholder="{{ __('Enter new license key to set or rotate') }}" />
+                            <label for="enterprise-license-key" class="text-xs uppercase tracking-wide text-slate-500">{{ __('License Key') }}</label>
+                            <input id="enterprise-license-key" type="text" wire:model.lazy="enterpriseLicenseKey" class="mt-2 w-full rounded-md border p-2 text-xs border-slate-700 bg-slate-950 text-slate-100" placeholder="{{ __('Enter new license key to set or rotate') }}" />
                             <x-input-error :messages="$errors->get('enterpriseLicenseKey')" class="mt-2" />
                             <p class="mt-1 text-xs text-slate-500">{{ __('Leave blank to keep the current saved key.') }}</p>
                         </div>

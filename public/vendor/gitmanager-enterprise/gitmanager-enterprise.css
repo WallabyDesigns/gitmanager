@@ -100,7 +100,6 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  width: 100%;
   border: 1px solid transparent;
   border-radius: 0.625rem;
   padding: 0.625rem 0.75rem;
@@ -372,7 +371,6 @@
   border-color: rgba(71, 85, 105, 0.72) !important;
   background: rgba(30, 41, 59, 0.58) !important;
   color: rgb(255 247 237) !important;
-  box-shadow: inset 3px 0 0 rgba(249, 115, 22, 0.78) !important;
 }
 
 .gme-infra-page .gme-side-nav-active:hover,

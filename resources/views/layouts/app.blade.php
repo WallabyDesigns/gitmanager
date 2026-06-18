@@ -31,7 +31,7 @@
         <meta name="color-scheme" content="dark">
 
 
-        <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
+        <link rel="stylesheet" href="{{ asset('css/app.min.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
         @if (class_exists(\GitManagerEnterprise\EnterpriseServiceProvider::class))
             <link rel="stylesheet" href="{{ asset('vendor/gitmanager-enterprise/gitmanager-enterprise.css') }}?v={{ file_exists(public_path('vendor/gitmanager-enterprise/gitmanager-enterprise.css')) ? filemtime(public_path('vendor/gitmanager-enterprise/gitmanager-enterprise.css')) : time() }}">
         @endif
@@ -198,16 +198,11 @@
             });
 
         </script>
-        <script data-navigate-once="true">
-            var Alpine = window.Alpine || {};
-            Alpine.navigate = Alpine.navigate || { disableProgressBar() {} };
-            window.Alpine = Alpine;
-        </script>
         @livewireScripts
-        {{-- <script data-navigate-once="true">
+        <script data-navigate-once="true">
             document.addEventListener('livewire:init', () => {
-                window.Alpine?.navigate?.disableProgressBar?.();
+                window.Alpine.navigate.disableProgressBar();
             }, { once: true });
-        </script> --}}
+        </script>
     </body>
 </html>

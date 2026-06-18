@@ -2,27 +2,36 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Symfony\Component\Process\Process;
 
 class RuntimeDiagnosticsService
 {
     private const VERSION_FLAG = '--version';
+    private const CACHE_KEY = 'runtime_diagnostics';
+    private const CACHE_TTL = 120;
 
     /** @return array<string, array{found: bool, version: ?string, path: ?string, label: string, guidance: ?string, installAction: ?string, note?: string, error: ?string}> */
     public function detect(): array
     {
-        return [
-            'php'      => $this->probe('php', self::VERSION_FLAG, 'PHP'),
-            'composer' => $this->probe('composer', self::VERSION_FLAG, 'Composer'),
-            'npm'      => $this->probeNpm(),
-            'python'   => $this->probeFirstOf(['python3', 'python'], self::VERSION_FLAG, 'Python'),
-            'pip'      => $this->probePip(),
-        ];
+        return Cache::remember(self::CACHE_KEY, self::CACHE_TTL, fn () => $this->run());
     }
 
     public function recheck(): array
     {
+        Cache::forget(self::CACHE_KEY);
+
         return $this->detect();
+    }
+
+    private function run(): array
+    {
+        return [
+            'php'      => $this->probe('php', self::VERSION_FLAG, 'PHP'),
+            'composer' => $this->probe('composer', self::VERSION_FLAG, 'Composer'),
+            'python'   => $this->probeFirstOf(['python3', 'python'], self::VERSION_FLAG, 'Python'),
+            'pip'      => $this->probePip(),
+        ];
     }
 
     /**
@@ -101,68 +110,6 @@ class RuntimeDiagnosticsService
         }
 
         return $this->missing('pip', 'pip', null);
-    }
-
-    /**
-     * Probe npm. On Windows, npm may crash during subprocess initialization due to
-     * CryptAPI restrictions when running under a web-server process account. If the
-     * binary invocation fails, fall back to reading the version from npm's own
-     * package.json, which requires no subprocess crypto.
-     */
-    private function probeNpm(): array
-    {
-        $note = 'Checks the host PATH only. App-managed Node.js is configured under Runtime Diagnostics.';
-
-        $result = $this->probe('npm', '-v', 'System npm (PATH)', $note);
-        if ($result['found'] && $result['error'] === null) {
-            return $result;
-        }
-
-        $version = $this->npmVersionFromPackageJson();
-        if ($version !== null) {
-            return $this->detected('npm', 'System npm (PATH)', $note, $version);
-        }
-
-        return $result;
-    }
-
-    private function npmVersionFromPackageJson(): ?string
-    {
-        try {
-            // Locate the npm executable on PATH.
-            $locator = PHP_OS_FAMILY === 'Windows' ? ['where', 'npm'] : ['which', 'npm'];
-            $where = new Process($locator, null, $this->buildEnv());
-            $where->setTimeout(5);
-            $where->run();
-
-            if (! $where->isSuccessful()) {
-                return null;
-            }
-
-            $npmBin = trim(explode("\n", $where->getOutput())[0]);
-
-            // Resolve the npm package.json relative to where the binary lives.
-            // Standard Node.js installs place npm at:
-            //   Windows: <nodejs_dir>\npm.cmd  → <nodejs_dir>\node_modules\npm\package.json
-            //   POSIX:   <prefix>/bin/npm      → <prefix>/lib/node_modules/npm/package.json
-            $dir = dirname(realpath($npmBin) ?: $npmBin);
-            $candidates = [
-                $dir . DIRECTORY_SEPARATOR . 'node_modules' . DIRECTORY_SEPARATOR . 'npm' . DIRECTORY_SEPARATOR . 'package.json',
-                dirname($dir) . DIRECTORY_SEPARATOR . 'lib' . DIRECTORY_SEPARATOR . 'node_modules' . DIRECTORY_SEPARATOR . 'npm' . DIRECTORY_SEPARATOR . 'package.json',
-            ];
-
-            foreach ($candidates as $path) {
-                if (is_file($path)) {
-                    $data = json_decode(file_get_contents($path), true);
-
-                    return $data['version'] ?? null;
-                }
-            }
-        } catch (\Throwable) {
-            // Fall through.
-        }
-
-        return null;
     }
 
     private function probeFirstOf(array $candidates, string $versionFlag, string $label): array
