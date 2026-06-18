@@ -223,11 +223,6 @@ php artisan gitmanager:self-update
 php artisan gitmanager:self-update --force
 ```
 
-To publish docs on GitHub Pages:
-1. Open the `gitmanager-docs` repository settings → Pages.
-2. Select **Deploy from a branch**.
-3. Choose the docs repo `main` branch root.
-
 ## FTP Deploy Targets
 Projects can be configured to deploy into a managed FTP workspace rather than a local path. Add FTP accounts under **FTP Accounts** in the main navigation, then assign one to a project. GWM syncs files from the Git workspace into the FTP target during each deploy.
 
