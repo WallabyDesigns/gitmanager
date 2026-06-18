@@ -50,7 +50,7 @@
 .gwm-app {
   --gwm-accent: rgb(234 88 12);
   --gwm-accent-hover: rgb(249 115 22);
-  --gwm-accent-soft: rgba(234, 88, 12, 0.16);
+  --gwm-accent-soft: rgba(12, 99, 234, 0.16);
   --gwm-accent-border: rgba(251, 146, 60, 0.58);
   --gwm-surface: rgba(15, 23, 42, 0.9);
   --gwm-surface-strong: rgba(15, 23, 42, 0.98);

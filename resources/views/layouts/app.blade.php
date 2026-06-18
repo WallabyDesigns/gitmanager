@@ -199,10 +199,5 @@
 
         </script>
         @livewireScripts
-        <script data-navigate-once="true">
-            document.addEventListener('livewire:init', () => {
-                window.Alpine.navigate.disableProgressBar();
-            }, { once: true });
-        </script>
     </body>
 </html>
