@@ -923,7 +923,7 @@
   --gwm-accent: rgb(234 88 12);
   --gwm-accent-hover: rgb(249 115 22);
   --gwm-accent-soft: rgba(75, 146, 255, 0.16);
-  --gwm-accent-border: rgba(251, 146, 60, 0.58);
+  --gwm-accent-border: rgba(60, 135, 251, 0.58);
   --gwm-focus-ring: rgba(249, 115, 22, 0.36);
   --gwm-surface: rgba(15, 23, 42, 0.9);
   --gwm-surface-strong: rgba(15, 23, 42, 0.98);
@@ -971,7 +971,7 @@
 
 .gwm-app main aside nav a.group[class*="bg-indigo-500"]:hover,
 .gwm-app main aside nav button.group[class*="bg-indigo-500"]:hover {
-  background: rgba(234, 88, 12, 0.2) !important;
+  background: rgba(54, 79, 177, 0.2) !important
 }
 
 .gwm-app main button[class*="border-b-2"][class*="border-indigo-500"],

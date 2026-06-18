@@ -445,16 +445,23 @@
                         @if ($runtimeDiagnostics)
                             <div class="space-y-2">
                                 @foreach ($runtimeDiagnostics as $key => $tool)
-                                    <div class="rounded-md border border-slate-700 bg-slate-950/50 px-4 py-3">
+                                    <div class="rounded-md border {{ ($tool['found'] && $tool['error']) ? 'border-amber-700/60' : 'border-slate-700' }} bg-slate-950/50 px-4 py-3">
                                         <div class="flex items-center gap-3">
-                                            <span class="text-xs uppercase tracking-wide px-2 py-0.5 rounded-full {{ $tool['found'] ? 'bg-emerald-500/10 text-emerald-300' : 'bg-rose-500/10 text-rose-300' }}">
-                                                {{ $tool['found'] ? __('Detected') : __('Missing') }}
-                                            </span>
+                                            @if ($tool['found'] && ! $tool['error'])
+                                                <span class="text-xs uppercase tracking-wide px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300">{{ __('Detected') }}</span>
+                                            @elseif ($tool['found'] && $tool['error'])
+                                                <span class="text-xs uppercase tracking-wide px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300">{{ __('Error') }}</span>
+                                            @else
+                                                <span class="text-xs uppercase tracking-wide px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-300">{{ __('Missing') }}</span>
+                                            @endif
                                             <span class="text-sm font-medium text-slate-100">{{ $tool['label'] }}</span>
-                                            @if ($tool['found'])
+                                            @if ($tool['found'] && ! $tool['error'])
                                                 <span class="text-xs font-mono text-slate-400">v{{ $tool['version'] }}</span>
                                             @endif
                                         </div>
+                                        @if ($tool['found'] && $tool['error'])
+                                            <pre class="mt-2 text-xs font-mono text-amber-300/80 bg-slate-900/60 rounded px-3 py-2 overflow-x-auto whitespace-pre-wrap break-all">{{ $tool['error'] }}</pre>
+                                        @endif
                                         @if (! $tool['found'])
                                             <div class="mt-3 space-y-3">
                                                 @if ($tool['installAction'] === 'installNode')
