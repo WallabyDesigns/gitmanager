@@ -7,15 +7,14 @@ use Tests\TestCase;
 
 class SchedulerServiceTest extends TestCase
 {
-    public function test_cron_command_quotes_paths_and_keeps_output_for_diagnostics(): void
+    public function test_cron_command_uses_cron_php_script_and_keeps_output_for_diagnostics(): void
     {
-        config()->set('gitmanager.php_binary', '/opt/php 8.2/bin/php');
-
         $command = app(SchedulerService::class)->cronCommand();
 
-        $this->assertStringStartsWith('* * * * * cd '.escapeshellarg(base_path()).' && ', $command);
-        $this->assertStringContainsString(escapeshellarg('/opt/php 8.2/bin/php').' artisan scheduler:run', $command);
+        $this->assertStringStartsWith('* * * * * php ', $command);
+        $this->assertStringContainsString('php '.escapeshellarg(base_path('cron.php')), $command);
         $this->assertStringContainsString(' >> '.escapeshellarg(storage_path('logs/scheduler-cron.log')).' 2>&1', $command);
+        $this->assertStringNotContainsString('artisan', $command);
         $this->assertStringNotContainsString('/dev/null', $command);
     }
 }

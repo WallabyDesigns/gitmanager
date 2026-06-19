@@ -95,9 +95,7 @@
         </style>
     </head>
     <body style="display: flex; flex-direction: column;">
-        <div class="spinner"></div>
         <div class="card">
-
             <div class="logo">
                 <svg viewBox="0 0 341.41 340.88" xmlns="http://www.w3.org/2000/svg" style="width:48px;height:48px;" aria-hidden="true">
                     <path d="M100.6,221.15l-18.54,37.88L5.73,182.7c-6-6-6-15.74,0-21.74l34.79-34.79,56.51,64.84c-2.69,3.68-4.28,8.22-4.28,13.14,0,6.81,3.05,12.91,7.85,17Z" style="fill:#f15a29;"/>
@@ -110,17 +108,18 @@
             <div class="retry">Retrying in <span id="countdown">10</span>s</div>
 
             @auth
-            <div class="recovery" id="recovery-btn">
-                <a href="/recovery">Open Recovery Page</a>
-            </div>
+                <div class="recovery" id="recovery-btn">
+                    <a href="/recovery">Open Recovery Page</a>
+                </div>
+                <div class="log-wrap">
+                    <details>
+                        <summary>Update log</summary>
+                        <div id="log-body">Waiting for app to respond…</div>
+                    </details>
+                </div>
             @endauth
 
-            <div class="log-wrap">
-                <details>
-                    <summary>Update log</summary>
-                    <div id="log-body">Waiting for app to respond…</div>
-                </details>
-            </div>
+            <div class="spinner"></div>
         </div>
 
         <script>

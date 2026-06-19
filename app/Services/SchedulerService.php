@@ -75,13 +75,10 @@ class SchedulerService
 
     public function cronCommand(): string
     {
-        $php = escapeshellarg($this->phpBinary());
-
-        $base = base_path();
-        $baseArg = escapeshellarg($base);
+        $scriptArg = escapeshellarg(base_path('cron.php'));
         $logArg = escapeshellarg($this->cronLogPath());
 
-        return '* * * * * cd '.$baseArg.' && '.$php.' artisan scheduler:run >> '.$logArg.' 2>&1';
+        return '* * * * * php '.$scriptArg.' >> '.$logArg.' 2>&1';
     }
 
     /**
@@ -717,6 +714,6 @@ class SchedulerService
     private function isManagedSchedulerCronLine(string $line, string $basePath): bool
     {
         return Str::contains($line, $basePath)
-            && (Str::contains($line, 'schedule:run') || Str::contains($line, 'scheduler:run'));
+            && (Str::contains($line, 'cron.php') || Str::contains($line, 'schedule:run') || Str::contains($line, 'scheduler:run'));
     }
 }
