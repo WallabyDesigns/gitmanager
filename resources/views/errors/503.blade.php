@@ -19,7 +19,7 @@
             body {
                 min-height: 100vh;
                 font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-                background: radial-gradient(circle at top, rgba(30,41,59,0.9), rgba(2,6,23,0.95));
+                background: radial-gradient(circle at top, rgba(30,41,59,0.2), rgba(2,6,23,0.2));
                 color: #e2e8f0;
                 display: flex;
                 align-items: center;

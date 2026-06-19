@@ -268,24 +268,33 @@
                     @endif
                 </div>
 
-                {{-- Recent deployments --}}
+                {{-- Queued items --}}
                 <div>
-                    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-3">{{ __('Recent Deployments') }}</h2>
-                    @if ($recentDeployments->isEmpty())
+                    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-3">{{ __('Task Queue') }}</h2>
+                    @if ($queueItems->isEmpty())
                         <div class="rounded-xl border border-slate-800 bg-slate-900 p-5 text-center">
-                            <p class="text-sm text-slate-400">{{ __('No deployments yet.') }}</p>
+                            <p class="text-sm text-slate-400">{{ __('No items in the queue.') }}</p>
                         </div>
                     @else
                         <div class="rounded-xl border border-slate-800 bg-slate-900 divide-y divide-slate-800 overflow-hidden">
-                            @foreach ($recentDeployments as $deployment)
-                                <a href="{{ route('projects.show', $deployment->project) }}" class="flex items-center gap-3 px-4 py-3 hover:bg-slate-800/50 transition">
-                                    <span class="inline-block h-2 w-2 shrink-0 rounded-full {{ $deployment->status === 'success' ? 'bg-emerald-500' : ($deployment->status === 'running' ? 'bg-indigo-500 animate-pulse' : 'bg-rose-500') }}"></span>
+                            @foreach ($queueItems as $item)
+                                @php
+                                    $actionLabel = match($item->action) {
+                                        'deploy'          => __('Deploy'),
+                                        'audit_project'   => __('Audit'),
+                                        'check_health'    => __('Health check'),
+                                        'check_updates'   => __('Update check'),
+                                        default           => ucfirst(str_replace('_', ' ', $item->action)),
+                                    };
+                                @endphp
+                                <a href="{{ route('projects.show', $item->project) }}" class="flex items-center gap-3 px-4 py-3 hover:bg-slate-800/50 transition">
+                                    <span class="inline-block h-2 w-2 shrink-0 rounded-full {{ $item->status === 'running' ? 'bg-indigo-500 animate-pulse' : 'bg-slate-500' }}"></span>
                                     <div class="min-w-0 flex-1">
-                                        <p class="truncate text-sm text-slate-200">{{ $deployment->project?->name }}</p>
-                                        <p class="text-xs text-slate-500">{{ $deployment->started_at?->diffForHumans() }}</p>
+                                        <p class="truncate text-sm text-slate-200">{{ $item->project?->name }}</p>
+                                        <p class="text-xs text-slate-500">{{ $actionLabel }}</p>
                                     </div>
-                                    <span class="shrink-0 text-xs font-medium capitalize {{ $deployment->status === 'success' ? 'text-emerald-600' : ($deployment->status === 'running' ? 'text-indigo-600' : 'text-rose-400') }}">
-                                        {{ $deployment->status }}
+                                    <span class="shrink-0 text-xs font-medium capitalize {{ $item->status === 'running' ? 'text-indigo-400' : 'text-slate-400' }}">
+                                        {{ $item->status }}
                                     </span>
                                 </a>
                             @endforeach

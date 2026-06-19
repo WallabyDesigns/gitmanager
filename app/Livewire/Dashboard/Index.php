@@ -166,12 +166,12 @@ class Index extends Component
 
         $projectIds = $allProjects->pluck('id')->all();
 
-        $recentDeployments = $projectIds === [] ? collect() : Deployment::query()
+        $queueItems = $projectIds === [] ? collect() : DeploymentQueueItem::query()
             ->whereIn('project_id', $projectIds)
-            ->where('action', 'deploy')
-            ->latest('started_at')
-            ->limit(10)
-            ->with(['project', 'triggeredBy'])
+            ->whereIn('status', ['queued', 'running'])
+            ->orderBy('position')
+            ->limit(15)
+            ->with('project:id,name')
             ->get();
 
         $healthHistory = [];
@@ -204,6 +204,7 @@ class Index extends Component
 
         $nodeProcesses = NodeProcess::query()
             ->with('project:id,name,local_path')
+            ->whereHas('project', fn ($q) => $q->whereIn('project_type', ['node', 'nextjs', 'react']))
             ->whereIn('status', [NodeProcess::STATUS_RUNNING, NodeProcess::STATUS_STARTING, NodeProcess::STATUS_CRASHED, NodeProcess::STATUS_STOPPED])
             ->orderByRaw("CASE status WHEN 'running' THEN 0 WHEN 'starting' THEN 1 WHEN 'crashed' THEN 2 ELSE 3 END")
             ->get();
@@ -216,7 +217,7 @@ class Index extends Component
             'healthIssues' => $healthIssues,
             'updatesAvailable' => $updatesAvailable,
             'vulnerableProjects' => $vulnerableProjects,
-            'recentDeployments' => $recentDeployments,
+            'queueItems' => $queueItems,
             'healthHistory' => $healthHistory,
             'deploymentsToday' => $deploymentsToday,
             'queuedCount' => $queuedCount,
