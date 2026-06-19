@@ -106,7 +106,7 @@ Route::middleware(['auth', 'verified', EnsurePasswordChanged::class])->group(fun
 
     $dockerSections = [
         'dashboard', 'overview', 'docker', 'containers', 'images', 'volumes', 'networks',
-        'swarm', 'templates',
+        'swarm', 'templates', 'databases',
         // enterprise sections
         'servers', 'nodes', 'audits', 'stacks', 'deployments',
         'builds', 'repos', 'procedures', 'actions', 'builders',
