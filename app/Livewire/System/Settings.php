@@ -56,6 +56,8 @@ class Settings extends Component
 
     public bool $auditAutoCommit = false;
 
+    public int $auditNotificationCooldown = 24;
+
     public bool $mailConfigured = false;
 
     public string $edition = EditionService::COMMUNITY;
@@ -125,6 +127,7 @@ class Settings extends Component
         $this->auditEnabled = (bool) ($settings->get('system.audit_enabled', false));
         $this->auditEmailEnabled = (bool) ($settings->get('system.audit_email_enabled', false));
         $this->auditAutoCommit = (bool) ($settings->get('system.audit_auto_commit', false));
+        $this->auditNotificationCooldown = max(0, (int) ($settings->get('system.audit_notification_cooldown', 24)));
         $this->mailConfigured = $settings->isMailConfigured();
         $this->edition = $edition->current();
         $this->isEnterprise = $this->edition === EditionService::ENTERPRISE;
@@ -435,6 +438,7 @@ class Settings extends Component
         $settings->set('system.audit_enabled', $this->auditEnabled);
         $settings->set('system.audit_email_enabled', $this->auditEmailEnabled);
         $settings->set('system.audit_auto_commit', $this->auditAutoCommit);
+        $settings->set('system.audit_notification_cooldown', max(0, $this->auditNotificationCooldown));
         $settings->set('system.timezone', $this->timezone);
         $settings->set(SchedulerTaskIntervals::SETTINGS_KEY, $this->schedulerTaskIntervals);
         $settings->set('system.logs.cleanup_enabled', $this->logCleanupEnabled);

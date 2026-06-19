@@ -33,6 +33,11 @@
                     {{ __('Environment') }}
                 </button>
             @endif
+            @if ($packagesTabEnabled)
+                <button type="button" @click="tab = 'packages'" :class="tab === 'packages' ? 'bg-slate-100 text-slate-900' : 'border border-slate-700 text-slate-300'" class="px-3 py-2 text-sm rounded-md">
+                    {{ __('Packages') }}
+                </button>
+            @endif
             <button type="button" @click="tab = 'node'" :class="tab === 'node' ? 'bg-slate-100 text-slate-900' : 'border border-slate-700 text-slate-300'" class="px-3 py-2 text-sm rounded-md">
                 {{ __('Node.js') }}
             </button>
@@ -404,6 +409,12 @@
         @if ($envTabEnabled)
             <div x-show="tab === 'env'" x-cloak class="min-w-0 bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6">
                 @livewire('projects.env-editor', ['project' => $project], key('env-editor-'.$project->id))
+            </div>
+        @endif
+
+        @if ($packagesTabEnabled)
+            <div x-show="tab === 'packages'" x-cloak class="min-w-0 bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6">
+                @livewire('projects.package-editor', ['project' => $project], key('package-editor-'.$project->id))
             </div>
         @endif
 

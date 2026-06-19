@@ -12,6 +12,8 @@ class AuditService
 {
     private ?bool $auditTimestampAvailable = null;
 
+    private ?bool $lastEmailedColumnAvailable = null;
+
     public function __construct(
         private readonly DeploymentService $deployments,
         private readonly SettingsService $settings
@@ -99,11 +101,6 @@ class AuditService
             return ['opened' => false, 'resolved' => false, 'notification' => null];
         }
 
-        $latest = AuditIssue::query()
-            ->where('project_id', $project->id)
-            ->where('tool', $tool)
-            ->orderByDesc('id')
-            ->first();
         $openIssue = AuditIssue::query()
             ->where('project_id', $project->id)
             ->where('tool', $tool)
@@ -136,6 +133,10 @@ class AuditService
                 'detected_at' => now(),
                 'last_seen_at' => now(),
             ]);
+
+            if ($this->wasRecentlyEmailed($project, $tool, $issue->id)) {
+                return ['opened' => true, 'resolved' => false, 'notification' => null];
+            }
 
             return [
                 'opened' => true,
@@ -256,10 +257,68 @@ class AuditService
                 Mail::raw($body, function ($message) use ($group, $subject) {
                     $message->to($group['recipients'])->subject($subject);
                 });
+                $this->stampEmailedAt(array_merge($resolved, $current));
             } catch (\Throwable $exception) {
                 // Swallow mail errors to avoid blocking audits.
             }
         }
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $entries
+     */
+    private function stampEmailedAt(array $entries): void
+    {
+        if (! $this->hasLastEmailedColumn()) {
+            return;
+        }
+
+        $ids = [];
+        foreach ($entries as $entry) {
+            $issue = $entry['issue'] ?? null;
+            if ($issue instanceof AuditIssue) {
+                $ids[] = $issue->id;
+            }
+        }
+
+        if ($ids !== []) {
+            AuditIssue::whereIn('id', $ids)->update(['last_emailed_at' => now()]);
+        }
+    }
+
+    private function wasRecentlyEmailed(Project $project, string $tool, int $excludeIssueId): bool
+    {
+        if (! $this->hasLastEmailedColumn()) {
+            return false;
+        }
+
+        $cooldownHours = (int) $this->settings->get('system.audit_notification_cooldown', 24);
+        if ($cooldownHours <= 0) {
+            return false;
+        }
+
+        return AuditIssue::query()
+            ->where('project_id', $project->id)
+            ->where('tool', $tool)
+            ->where('id', '!=', $excludeIssueId)
+            ->whereNotNull('last_emailed_at')
+            ->where('last_emailed_at', '>=', now()->subHours($cooldownHours))
+            ->exists();
+    }
+
+    private function hasLastEmailedColumn(): bool
+    {
+        if ($this->lastEmailedColumnAvailable !== null) {
+            return $this->lastEmailedColumnAvailable;
+        }
+
+        try {
+            $this->lastEmailedColumnAvailable = Schema::hasColumn('audit_issues', 'last_emailed_at');
+        } catch (\Throwable $exception) {
+            $this->lastEmailedColumnAvailable = false;
+        }
+
+        return $this->lastEmailedColumnAvailable;
     }
 
     /**

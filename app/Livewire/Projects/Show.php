@@ -99,6 +99,7 @@ class Show extends Component
             'lastSuccessfulDeploy' => $lastSuccessfulDeploy,
             'rollbackAvailable' => $rollbackAvailable,
             'envTabEnabled' => $this->envTabEnabled(),
+            'packagesTabEnabled' => $this->packagesTabEnabled(),
             'securityOpenCount' => $securityOpenCount,
             'auditOpenCount' => $auditOpenCount,
             'composerIssue' => $composerIssue,
@@ -405,6 +406,22 @@ class Show extends Component
         }
 
         return is_dir($root);
+    }
+
+    private function packagesTabEnabled(): bool
+    {
+        $path = trim((string) ($this->project->local_path ?? ''));
+        if ($path === '' || ! is_dir($path)) {
+            return false;
+        }
+
+        foreach (['package.json', 'composer.json'] as $filename) {
+            if (is_file($path.DIRECTORY_SEPARATOR.$filename)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function findLaravelRoot(string $path): ?string

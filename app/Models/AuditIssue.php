@@ -20,12 +20,14 @@ class AuditIssue extends Model
         'detected_at',
         'resolved_at',
         'last_seen_at',
+        'last_emailed_at',
     ];
 
     protected $casts = [
         'detected_at' => 'datetime',
         'resolved_at' => 'datetime',
         'last_seen_at' => 'datetime',
+        'last_emailed_at' => 'datetime',
     ];
 
     public function project(): BelongsTo

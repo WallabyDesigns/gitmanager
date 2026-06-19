@@ -679,6 +679,14 @@
                                     <span class="block text-xs text-slate-500">{{ __('Pushes dependency lockfile changes when audits resolve all vulnerabilities.') }}</span>
                                 </span>
                             </label>
+                            @if ($auditEmailEnabled)
+                                <div>
+                                    <label for="audit-notification-cooldown" class="block text-sm text-slate-300 mb-1">{{ __('Notification cooldown (hours)') }}</label>
+                                    <input id="audit-notification-cooldown" type="number" wire:model="auditNotificationCooldown" min="0" max="168" step="1"
+                                        class="w-28 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 focus:border-indigo-500 focus:ring-indigo-500" />
+                                    <p class="mt-1 text-xs text-slate-500">{{ __('Minimum hours before re-emailing about the same vulnerability. Set to 0 to always email.') }}</p>
+                                </div>
+                            @endif
                             @if (! $mailConfigured)
                                 <div class="text-xs text-rose-400">{{ __('Email is not configured. Set SMTP details in System → Email Settings to enable audit emails.') }}</div>
                             @endif
