@@ -6,7 +6,10 @@ use App\Models\Deployment;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\FtpService;
+use App\Support\ConsoleOutput;
 use Symfony\Component\Process\Exception\ProcessFailedException;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
+use Symfony\Component\Process\Process;
 
 trait ManagesDependencies
 {
@@ -1095,10 +1098,10 @@ trait ManagesDependencies
     private function npmInstallCommand(string $path): array
     {
         if (is_file($path.DIRECTORY_SEPARATOR.'package-lock.json')) {
-            return ['npm', 'ci'];
+            return ['npm', 'ci', '--no-audit'];
         }
 
-        return ['npm', 'install'];
+        return ['npm', 'install', '--no-audit'];
     }
 
     private function attemptNpmCleanReinstall(string $path, array &$output, string $label, array $command, string $managerLabel = 'Npm'): void
@@ -1209,10 +1212,15 @@ trait ManagesDependencies
 
     private function runNpmProjectProcess(array $command, array &$output, string $path): void
     {
+        $wrappedCommand = $this->wrapNpmWithSetsid($command);
+
         try {
-            $this->runProjectProcess($command, $output, $path);
+            $this->runNpmProcessInternal($wrappedCommand, $output, $path, $this->baseNpmEnv());
 
             return;
+        } catch (ProcessTimedOutException $exception) {
+            $output[] = 'Npm timed out. Any orphaned child processes have been signalled.';
+            throw $exception;
         } catch (ProcessFailedException $exception) {
             if (! $this->isNpmProcessLimitFailure($exception)) {
                 throw $exception;
@@ -1222,7 +1230,10 @@ trait ManagesDependencies
         }
 
         try {
-            $this->runProjectProcessWithEnv($command, $output, $path, $this->lowConcurrencyNpmEnv());
+            $this->runNpmProcessInternal($wrappedCommand, $output, $path, $this->lowConcurrencyNpmEnv());
+        } catch (ProcessTimedOutException $exception) {
+            $output[] = 'Npm (low-concurrency retry) timed out. Any orphaned child processes have been signalled.';
+            throw $exception;
         } catch (ProcessFailedException $exception) {
             if ($this->isNpmProcessLimitFailure($exception)) {
                 $output[] = 'Npm is still blocked by the host process/thread limit after the low-concurrency retry. Increase the account max user processes/ulimit, use a less restricted Node runtime, disable npm install for this project, or commit/sync prebuilt assets.';
@@ -1232,19 +1243,99 @@ trait ManagesDependencies
         }
     }
 
-    private function lowConcurrencyNpmEnv(): array
+    private function runNpmProcessInternal(array $command, array &$output, string $path, array $extraEnv): void
+    {
+        $env = array_merge($this->projectEnvForPath($path), $extraEnv);
+        $timeout = method_exists($this, 'resolveProcessTimeout')
+            ? (int) $this->resolveProcessTimeout()
+            : (int) config('gitmanager.process_timeout', 600);
+
+        $process = new Process($command, $path, $env);
+        if ($timeout > 0) {
+            $process->setTimeout($timeout);
+        } else {
+            $process->setTimeout(null);
+        }
+
+        $process->start(function ($type, $buffer) use (&$output) {
+            $line = ConsoleOutput::withoutPhpWarnings(trim($buffer));
+            if ($line !== null && $line !== '') {
+                $output[] = $line;
+            }
+        });
+
+        try {
+            $process->wait();
+        } catch (ProcessTimedOutException $exception) {
+            $this->killNpmProcessGroup($process, $output);
+            throw $exception;
+        }
+
+        if (! $process->isSuccessful()) {
+            throw new ProcessFailedException($process);
+        }
+    }
+
+    private function killNpmProcessGroup(Process $process, array &$output): void
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            return;
+        }
+
+        $pid = $process->getPid();
+        if ($pid === null) {
+            return;
+        }
+
+        // Kill the process group. Works when command was wrapped with setsid
+        // (npm becomes the session/group leader), ensuring all spawned node
+        // workers receive SIGKILL even if npm already exited.
+        if (function_exists('posix_kill')) {
+            posix_kill(-$pid, SIGKILL);
+        } else {
+            @shell_exec('kill -9 -- -'.(int) $pid.' 2>/dev/null');
+        }
+
+        $output[] = 'Sent SIGKILL to npm process group (PID '.$pid.').';
+    }
+
+    private function wrapNpmWithSetsid(array $command): array
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            return $command;
+        }
+
+        $setsid = is_executable('/usr/bin/setsid') ? '/usr/bin/setsid'
+            : (is_executable('/bin/setsid') ? '/bin/setsid' : null);
+
+        if ($setsid === null) {
+            return $command;
+        }
+
+        return array_merge([$setsid], $command);
+    }
+
+    private function baseNpmEnv(): array
     {
         return [
-            'CHILD_CONCURRENCY' => '1',
-            'GOMAXPROCS' => '1',
             'NPM_CONFIG_AUDIT' => 'false',
             'NPM_CONFIG_FUND' => 'false',
-            'NPM_CONFIG_JOBS' => '1',
+            'NPM_CONFIG_FETCH_TIMEOUT' => '30000',
+            'NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT' => '10000',
             'npm_config_audit' => 'false',
             'npm_config_fund' => 'false',
+        ];
+    }
+
+    private function lowConcurrencyNpmEnv(): array
+    {
+        return array_merge($this->baseNpmEnv(), [
+            'CHILD_CONCURRENCY' => '1',
+            'GOMAXPROCS' => '1',
+            'NPM_CONFIG_JOBS' => '1',
             'npm_config_jobs' => '1',
             'UV_THREADPOOL_SIZE' => '1',
-        ];
+        ]);
     }
 
     private function isNpmProcessLimitFailure(ProcessFailedException $exception): bool
