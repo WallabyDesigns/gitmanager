@@ -64,15 +64,9 @@ Route::middleware(['auth', 'verified', EnsurePasswordChanged::class])->group(fun
     Route::post('/recovery/env-backup/{filename}/delete', [RecoveryController::class, 'deleteEnvBackup'])->name('recovery.env-backup.delete');
 
     Route::get('/env/migrate', EnvMigration::class)->name('env.migrate');
-    Route::get('/preview/500', function () {
-        $exception = new RuntimeException('Preview error: this is a sample message for the 500 page.');
-
-        return response()
-            ->view('errors.500', ['exception' => $exception], 500);
-    })->name('errors.preview.500');
-
-    Route::middleware(EnsureAdminUser::class)->group(function () {
+Route::middleware(EnsureAdminUser::class)->group(function () {
         Route::get('/update', [SelfUpdateController::class, 'update'])->name('system.update.manual');
+        Route::get('/update/status', [SelfUpdateController::class, 'status'])->name('system.update.status');
         Route::get('/rollback', [SelfUpdateController::class, 'rollback'])->name('system.update.rollback');
         Route::get('/system', AppUpdatesIndex::class)->name('system.updates');
         Route::get('/system/security', SecurityIndex::class)->name('system.security');

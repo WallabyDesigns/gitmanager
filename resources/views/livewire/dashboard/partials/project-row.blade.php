@@ -20,10 +20,8 @@
                 @endif
                 <span class="truncate text-sm font-medium text-slate-100">{{ $project->name }}</span>
             </div>
-            @if ($project->site_url || $project->health_url)
-                <p class="mt-0.5 ml-4 text-xs text-slate-500 truncate">{{ $project->health_url ?: $project->site_url }}</p>
-            @elseif ($project->local_path)
-                <p class="mt-0.5 ml-4 text-xs text-slate-500 truncate">{{ $project->local_path }}</p>
+            @if ($project->site_url)
+                <p class="mt-0.5 ml-4 text-xs text-slate-500 truncate">{{ $project->site_url }}</p>
             @endif
         </div>
         <div class="shrink-0 flex items-center gap-4">

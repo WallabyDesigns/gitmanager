@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Request;
 
 class SelfUpdateController extends Controller
 {
+    private const CONTENT_TYPE = 'text/plain; charset=UTF-8';
+
     public function update(SelfUpdateService $service): Response
     {
         $running = $this->runningManualUpdate();
@@ -29,30 +31,12 @@ class SelfUpdateController extends Controller
             $result['message'] ?? '',
         ];
 
-        if ($update) {
-            $lines = array_merge($lines, [
-                '',
-                'Update status: '.$update->status,
-                'Started: '.($update->started_at?->toDateTimeString() ?? 'pending'),
-                'Finished: '.($update->finished_at?->toDateTimeString() ?? 'running'),
-                'From: '.($update->from_hash ?? 'pending'),
-                'To: '.($update->to_hash ?? 'pending'),
-                '',
-                'Log:',
-                $update->output_log ?: 'Waiting for update output...',
-            ]);
-        } else {
-            $lines = array_merge($lines, [
-                '',
-                'Update status: starting',
-                '',
-                'Log:',
-                'Waiting for the background updater to create its log entry...',
-            ]);
-        }
+        $lines = array_merge($lines, $update
+            ? $this->updateLines($update, 'Update status')
+            : ['', 'Update status: starting', '', 'Log:', 'Waiting for the background updater to create its log entry...']
+        );
 
-        $response = response(implode("\n", $lines), 200)
-            ->header('Content-Type', 'text/plain; charset=UTF-8');
+        $response = $this->plainText(implode("\n", $lines));
 
         if ($launchStarted && (! $update || $update->status === 'running')) {
             $response->header('Refresh', '2');
@@ -61,29 +45,43 @@ class SelfUpdateController extends Controller
         return $response;
     }
 
+    public function status(): Response
+    {
+        $update = $this->latestManualUpdate();
+
+        if (! $update) {
+            return $this->plainText("No update record found.\n");
+        }
+
+        return $this->plainText(implode("\n", $this->updateLines($update, 'Status')));
+    }
+
     public function rollback(SelfUpdateService $service): Response
     {
         $target = trim((string) Request::query('hash', ''));
         $update = $service->rollback(Auth::user(), $target !== '' ? $target : null);
 
-        return $this->plainResponse('Rollback', $update);
+        return $this->plainText(implode("\n", $this->updateLines($update, 'Rollback status', '—', 'No output captured.')));
     }
 
-    private function plainResponse(string $label, AppUpdate $update): Response
+    private function updateLines(AppUpdate $update, string $statusLabel, string $missingPlaceholder = 'pending', string $noLogMessage = 'Waiting for update output...'): array
     {
-        $lines = [
-            $label.' status: '.$update->status,
-            'Started: '.($update->started_at?->toDateTimeString() ?? '—'),
-            'Finished: '.($update->finished_at?->toDateTimeString() ?? '—'),
-            'From: '.($update->from_hash ?? '—'),
-            'To: '.($update->to_hash ?? '—'),
+        return [
+            '',
+            $statusLabel.': '.$update->status,
+            'Started: '.($update->started_at?->toDateTimeString() ?? $missingPlaceholder),
+            'Finished: '.($update->finished_at?->toDateTimeString() ?? ($missingPlaceholder === 'pending' ? 'running' : $missingPlaceholder)),
+            'From: '.($update->from_hash ?? $missingPlaceholder),
+            'To: '.($update->to_hash ?? $missingPlaceholder),
             '',
             'Log:',
-            $update->output_log ?: 'No output captured.',
+            $update->output_log ?: $noLogMessage,
         ];
+    }
 
-        return response(implode("\n", $lines), 200)
-            ->header('Content-Type', 'text/plain; charset=UTF-8');
+    private function plainText(string $content): Response
+    {
+        return response($content, 200)->header('Content-Type', self::CONTENT_TYPE);
     }
 
     private function latestManualUpdate(): ?AppUpdate

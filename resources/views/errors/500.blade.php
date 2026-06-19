@@ -29,6 +29,15 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         <meta charset="utf-8">
+
+        <link rel="icon" type="image/x-icon" href="/favicons/favicon.ico" >
+        <link rel="icon" type="image/png" href="/favicons/favicon-96x96.png" sizes="96x96" />
+        <link rel="icon" type="image/svg+xml" href="/favicons/favicon.svg" />
+        <link rel="shortcut icon" href="/favicons/favicon.ico" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-touch-icon.png" />
+        <meta name="apple-mobile-web-app-title" content="GWM" />
+        <link rel="manifest" href="/favicons/site.webmanifest" />
+
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ __('Something went wrong') }} | {{ config('app.name', 'Git Web Manager') }}</title>
         <style>
@@ -99,7 +108,7 @@
                 border-color: rgba(56, 189, 248, 0.6);
             }
             .btn.primary {
-                background: linear-gradient(135deg, #22d3ee, #3b82f6);
+                background: #F15A29;
                 color: #0f172a;
                 border-color: transparent;
             }
@@ -139,8 +148,15 @@
     </head>
     <body>
         <div class="card">
-            <div class="eyebrow">Git Web Manager</div>
-            <h1>{{ __('Something went wrong') }}</h1>
+            <div class="logo" style="display: flex; flex-direction: row; gap: 10px; margin-bottom: 15px;">
+                <svg viewBox="0 0 341.41 340.88" xmlns="http://www.w3.org/2000/svg" style="width:48px;height:48px;" aria-hidden="true">
+                    <path d="M100.6,221.15l-18.54,37.88L5.73,182.7c-6-6-6-15.74,0-21.74l34.79-34.79,56.51,64.84c-2.69,3.68-4.28,8.22-4.28,13.14,0,6.81,3.05,12.91,7.85,17Z" style="fill:#f15a29;"/>
+                    <path d="M334.83,182.7l-48.42,48.42-11.61-27.88,36.75-.64-82.46-82.46-.13,113.23,26.02-24.67,15.98,37.86-89.82,89.82c-6,6-15.73,6-21.73,0l-68.38-68.38,20.47-41.8c1.17.19,2.37.29,3.59.29,3.82,0,7.41-.96,10.55-2.65l25.98,29.81c-2.33,3.52-3.68,7.74-3.68,12.28,0,12.33,10,22.33,22.34,22.33s22.34-10,22.34-22.33-10.01-22.34-22.34-22.34c-3.44,0-6.71.78-9.62,2.17l-26.35-30.23c1.98-3.33,3.12-7.22,3.12-11.38,0-6.46-2.75-12.29-7.14-16.35l41.27-84.3c1.32.25,2.68.38,4.07.38,12.33,0,22.33-10,22.33-22.34s-10-22.34-22.33-22.34-22.34,10-22.34,22.34c0,6.64,2.89,12.6,7.49,16.69l-41.15,84.05c-1.46-.3-2.98-.46-4.54-.46-3.06,0-5.98.62-8.64,1.74l-57.43-65.89L159.41,7.28c6-6,15.73-6,21.73,0l153.69,153.68c6,6,6,15.74,0,21.74Z" style="fill:#f15a29;"/>
+                </svg>
+                <div>
+                    <h1>{{ __('Something went wrong') }}</h1>
+                </div>
+            </div>
             <p>
                 {{ __('The application hit an unexpected error. If this happened after an update, you can roll back to the previous version and get back online quickly.') }}
             </p>
