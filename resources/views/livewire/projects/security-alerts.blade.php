@@ -309,7 +309,7 @@
 
             <div class="mt-4">
                 <label class="text-xs uppercase tracking-wide text-slate-500">{{ __('Commit Message') }}</label>
-                <input type="text" wire:model.live="pushCommitMessage" class="mt-2 w-full rounded-md border p-2 text-sm border-slate-700 bg-slate-950 text-slate-100" />
+                <input type="text" wire:model="pushCommitMessage" class="mt-2 w-full rounded-md border p-2 text-sm border-slate-700 bg-slate-950 text-slate-100" />
             </div>
 
             <div class="mt-6 flex flex-wrap justify-end gap-2">

@@ -2,12 +2,12 @@
     <div class="grid gap-4 sm:grid-cols-2">
         <div>
             <x-input-label for="name" :value="__('Project Name')" />
-            <x-text-input id="name" class="mt-1 block w-full" wire:model.live="form.name" />
+            <x-text-input id="name" class="mt-1 block w-full" wire:model="form.name" />
             <x-input-error :messages="$errors->get('form.name')" class="mt-2" />
         </div>
         <div>
             <x-input-label for="directory_path" :value="__('Project Directory (optional)')" />
-            <x-text-input id="directory_path" class="mt-1 block w-full" wire:model.live="form.directory_path" placeholder="Clients/Acme/Website" />
+            <x-text-input id="directory_path" class="mt-1 block w-full" wire:model="form.directory_path" placeholder="Clients/Acme/Website" />
             <p class="mt-1 text-xs text-slate-500">{{ __('Use nested folders to organize projects. Leave blank to keep this project at the root level.') }}</p>
             <x-input-error :messages="$errors->get('form.directory_path')" class="mt-2" />
         </div>
@@ -43,18 +43,18 @@
         </div>
         <div>
             <x-input-label for="repo_url" :value="__('Repository URL')" />
-            <x-text-input id="repo_url" class="mt-1 block w-full" wire:model.live="form.repo_url" />
+            <x-text-input id="repo_url" class="mt-1 block w-full" wire:model="form.repo_url" />
             <x-input-error :messages="$errors->get('form.repo_url')" class="mt-2" />
         </div>
         <div>
             <x-input-label for="site_url" :value="__('Site URL')" />
-            <x-text-input id="site_url" class="mt-1 block w-full" wire:model.live="form.site_url" placeholder="https://example.com" />
+            <x-text-input id="site_url" class="mt-1 block w-full" wire:model="form.site_url" placeholder="https://example.com" />
             <p class="mt-1 text-xs text-slate-500">{{ __('Main domain for this project. Used for quick links and as the default health check when Health Check URL is blank.') }}</p>
             <x-input-error :messages="$errors->get('form.site_url')" class="mt-2" />
         </div>
         <div>
             <x-input-label for="local_path" :value="__('Local Path')" />
-            <x-text-input id="local_path" class="mt-1 block w-full" wire:model.live="form.local_path" placeholder="/home/user/testwebsite" />
+            <x-text-input id="local_path" class="mt-1 block w-full" wire:model="form.local_path" placeholder="/home/user/testwebsite" />
             <p class="mt-1 text-xs text-slate-500">{{ __('For FTP-only deploys, this is the project directory under FTP Root Path. Builds run in a managed local workspace and sync to that remote directory.') }}</p>
             @if ($localPathUsageWarning ?? null)
                 <div class="mt-2 rounded-md border px-3 py-2 text-xs border-amber-500/30 bg-amber-500/10 text-amber-300">
@@ -65,12 +65,12 @@
         </div>
         <div>
             <x-input-label for="default_branch" :value="__('Default Branch')" />
-            <x-text-input id="default_branch" class="mt-1 block w-full" wire:model.live="form.default_branch" />
+            <x-text-input id="default_branch" class="mt-1 block w-full" wire:model="form.default_branch" />
             <x-input-error :messages="$errors->get('form.default_branch')" class="mt-2" />
         </div>
         <div>
             <x-input-label for="health_url" :value="__('Health Check URL')" />
-            <x-text-input id="health_url" class="mt-1 block w-full" wire:model.live="form.health_url" />
+            <x-text-input id="health_url" class="mt-1 block w-full" wire:model="form.health_url" />
             @if (($form['project_type'] ?? 'custom') === 'laravel')
                 <p class="mt-1 text-xs text-slate-500">{{ __('Laravel apps often expose /up. Use a full URL or just /up to read APP_URL from the project, or leave blank to use the Site URL (defaults to /up).') }}</p>
             @else
@@ -80,23 +80,23 @@
         </div>
         <div>
             <x-input-label for="build_command" :value="__('Build Command')" />
-            <x-text-input id="build_command" class="mt-1 block w-full" wire:model.live="form.build_command" />
+            <x-text-input id="build_command" class="mt-1 block w-full" wire:model="form.build_command" />
             <x-input-error :messages="$errors->get('form.build_command')" class="mt-2" />
         </div>
         <div>
             <x-input-label for="test_command" :value="__('Test Command')" />
-            <x-text-input id="test_command" class="mt-1 block w-full" wire:model.live="form.test_command" />
+            <x-text-input id="test_command" class="mt-1 block w-full" wire:model="form.test_command" />
             <x-input-error :messages="$errors->get('form.test_command')" class="mt-2" />
         </div>
         <div class="sm:col-span-2">
             <x-input-label for="exclude_paths" :value="__('Excluded Paths')" />
-            <textarea id="exclude_paths" rows="4" class="mt-1 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border-slate-700 bg-slate-900 text-slate-100" wire:model.live="form.exclude_paths" placeholder="storage/app/uploads&#10;public/uploads&#10;cache/*"></textarea>
+            <textarea id="exclude_paths" rows="4" class="mt-1 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border-slate-700 bg-slate-900 text-slate-100" wire:model="form.exclude_paths" placeholder="storage/app/uploads&#10;public/uploads&#10;cache/*"></textarea>
             <p class="mt-1 text-xs text-slate-500">{{ __('One entry per line. These paths are preserved during force deploy cleanup. The storage folder is always excluded.') }}</p>
             <x-input-error :messages="$errors->get('form.exclude_paths')" class="mt-2" />
         </div>
         <div class="sm:col-span-2">
             <x-input-label for="whitelist_paths" :value="__('Whitelist Paths')" />
-            <textarea id="whitelist_paths" rows="4" class="mt-1 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border-slate-700 bg-slate-900 text-slate-100" wire:model.live="form.whitelist_paths" placeholder="public/build&#10;public/assets&#10;index.php"></textarea>
+            <textarea id="whitelist_paths" rows="4" class="mt-1 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border-slate-700 bg-slate-900 text-slate-100" wire:model="form.whitelist_paths" placeholder="public/build&#10;public/assets&#10;index.php"></textarea>
             <p class="mt-1 text-xs text-slate-500">{{ __('One entry per line. If empty, all project paths are allowed. When set, FTPS deploy sync only uploads matching files/directories.') }}</p>
             <x-input-error :messages="$errors->get('form.whitelist_paths')" class="mt-2" />
         </div>
@@ -137,7 +137,7 @@
                     </div>
                     <div>
                         <x-input-label for="ftp_root_path" value="{{ __('Remote Root Path (optional)') }}" />
-                        <x-text-input id="ftp_root_path" class="mt-1 block w-full" wire:model.live="form.ftp_root_path" placeholder="/public_html" {{ ($form['ftp_enabled'] ?? false) ? '' : 'disabled' }} />
+                        <x-text-input id="ftp_root_path" class="mt-1 block w-full" wire:model="form.ftp_root_path" placeholder="/public_html" {{ ($form['ftp_enabled'] ?? false) ? '' : 'disabled' }} />
                         <x-input-error :messages="$errors->get('form.ftp_root_path')" class="mt-2" />
                     </div>
                 </div>
@@ -174,18 +174,18 @@
                     <div class="grid gap-3 sm:grid-cols-2">
                         <div>
                             <x-input-label for="ssh_port" value="{{ __('SSH Port') }}" />
-                            <x-text-input id="ssh_port" class="mt-1 block w-full" wire:model.live="form.ssh_port" placeholder="22" {{ ($form['ssh_enabled'] ?? false) ? '' : 'disabled' }} />
+                            <x-text-input id="ssh_port" class="mt-1 block w-full" wire:model="form.ssh_port" placeholder="22" {{ ($form['ssh_enabled'] ?? false) ? '' : 'disabled' }} />
                             <x-input-error :messages="$errors->get('form.ssh_port')" class="mt-2" />
                         </div>
                         <div>
                             <x-input-label for="ssh_root_path" value="{{ __('SSH Root Path (optional)') }}" />
-                            <x-text-input id="ssh_root_path" class="mt-1 block w-full" wire:model.live="form.ssh_root_path" placeholder="/home/user/public_html" {{ ($form['ssh_enabled'] ?? false) ? '' : 'disabled' }} />
+                            <x-text-input id="ssh_root_path" class="mt-1 block w-full" wire:model="form.ssh_root_path" placeholder="/home/user/public_html" {{ ($form['ssh_enabled'] ?? false) ? '' : 'disabled' }} />
                             <x-input-error :messages="$errors->get('form.ssh_root_path')" class="mt-2" />
                         </div>
                     </div>
                     <div>
                         <x-input-label for="ssh_commands" value="{{ __('SSH Commands (one per line)') }}" />
-                        <textarea id="ssh_commands" rows="4" class="mt-1 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border-slate-700 bg-slate-900 text-slate-100" wire:model.live="form.ssh_commands" placeholder="composer install --no-dev&#10;npm install&#10;npm run build" {{ ($form['ssh_enabled'] ?? false) ? '' : 'disabled' }}></textarea>
+                        <textarea id="ssh_commands" rows="4" class="mt-1 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border-slate-700 bg-slate-900 text-slate-100" wire:model="form.ssh_commands" placeholder="composer install --no-dev&#10;npm install&#10;npm run build" {{ ($form['ssh_enabled'] ?? false) ? '' : 'disabled' }}></textarea>
                         <x-input-error :messages="$errors->get('form.ssh_commands')" class="mt-2" />
                     </div>
                     <p class="text-xs text-slate-400">{{ __('Password-based SSH uses a built-in askpass helper by default. You can optionally configure :sshpass per remote access record or via :passBinary; use a per-record key path or :keyPath for key-based auth.', ['sshpass' => '<code>sshpass</code>', 'passBinary' => '<code>GWM_SSH_PASS_BINARY</code>', 'keyPath' => '<code>GWM_SSH_KEY_PATH</code>']) }}</p>
@@ -246,7 +246,7 @@
             @if ($form['rebuild_enabled'] ?? false)
                 <div class="mt-3 max-w-xs">
                     <x-input-label for="rebuild_interval_hours" :value="__('Rebuild interval (hours)')" />
-                    <x-text-input id="rebuild_interval_hours" class="mt-1 block w-full" type="number" min="1" max="8760" wire:model.live="form.rebuild_interval_hours" />
+                    <x-text-input id="rebuild_interval_hours" class="mt-1 block w-full" type="number" min="1" max="8760" wire:model="form.rebuild_interval_hours" />
                     <p class="mt-1 text-xs text-slate-400">{{ __('Minimum 1 hour. The scheduler checks every 30 minutes.') }}</p>
                     <x-input-error :messages="$errors->get('form.rebuild_interval_hours')" class="mt-2" />
                 </div>

@@ -384,7 +384,7 @@
                 <h4 class="text-sm font-semibold text-slate-100">{{ __('Preview Build') }}</h4>
                 <p class="text-xs text-slate-400">{{ __('Create a preview from any commit or branch.') }}</p>
                 <div class="mt-3 flex flex-wrap gap-3">
-                    <x-text-input id="preview_commit" class="block w-full sm:max-w-md {{ $actionDisabledClass }}" wire:model.live="previewCommit" placeholder="origin/main or commit hash" {{ $permissionsLocked ? 'disabled' : '' }} />
+                    <x-text-input id="preview_commit" class="block w-full sm:max-w-md {{ $actionDisabledClass }}" wire:model="previewCommit" placeholder="origin/main or commit hash" {{ $permissionsLocked ? 'disabled' : '' }} />
                     <button type="button" wire:click="createPreview" class="px-3 py-2 text-sm rounded-md hover:bg-slate-700 bg-slate-100 text-slate-900 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
                         <x-loading-spinner target="createPreview" />
                         {{ __('Create Preview') }}

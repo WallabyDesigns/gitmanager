@@ -15,37 +15,37 @@
                         <div class="grid gap-4 sm:grid-cols-2">
                             <div>
                                 <x-input-label for="ftp_name" :value="__('Account Name')" />
-                                <x-text-input id="ftp_name" class="mt-1 block w-full" wire:model.live="form.name" />
+                                <x-text-input id="ftp_name" class="mt-1 block w-full" wire:model="form.name" />
                                 <x-input-error :messages="$errors->get('form.name')" class="mt-2" />
                             </div>
                             <div>
                                 <x-input-label for="ftp_host" :value="__('Host')" />
-                                <x-text-input id="ftp_host" class="mt-1 block w-full" wire:model.live="form.host" placeholder="ftp.example.com" />
+                                <x-text-input id="ftp_host" class="mt-1 block w-full" wire:model="form.host" placeholder="ftp.example.com" />
                                 <x-input-error :messages="$errors->get('form.host')" class="mt-2" />
                             </div>
                             <div>
                                 <x-input-label for="ftp_port" :value="__('Port')" />
-                                <x-text-input id="ftp_port" class="mt-1 block w-full" wire:model.live="form.port" />
+                                <x-text-input id="ftp_port" class="mt-1 block w-full" wire:model="form.port" />
                                 <x-input-error :messages="$errors->get('form.port')" class="mt-2" />
                             </div>
                             <div>
                                 <x-input-label for="ssh_port" :value="__('SSH Port (optional)')" />
-                                <x-text-input id="ssh_port" class="mt-1 block w-full" wire:model.live="form.ssh_port" placeholder="22" />
+                                <x-text-input id="ssh_port" class="mt-1 block w-full" wire:model="form.ssh_port" placeholder="22" />
                                 <x-input-error :messages="$errors->get('form.ssh_port')" class="mt-2" />
                             </div>
                             <div>
                                 <x-input-label for="ftp_username" :value="__('Username')" />
-                                <x-text-input id="ftp_username" class="mt-1 block w-full" wire:model.live="form.username" />
+                                <x-text-input id="ftp_username" class="mt-1 block w-full" wire:model="form.username" />
                                 <x-input-error :messages="$errors->get('form.username')" class="mt-2" />
                             </div>
                             <div>
                                 <x-input-label for="ftp_password" :value="$editingId ? __('Password (leave blank to keep)') : __('Password')" />
-                                <x-text-input id="ftp_password" class="mt-1 block w-full" wire:model.live="form.password" type="password" />
+                                <x-text-input id="ftp_password" class="mt-1 block w-full" wire:model="form.password" type="password" />
                                 <x-input-error :messages="$errors->get('form.password')" class="mt-2" />
                             </div>
                             <div>
                                 <x-input-label for="ftp_root" :value="__('Default Remote Root Path (optional)')" />
-                                <x-text-input id="ftp_root" class="mt-1 block w-full" wire:model.live="form.root_path" placeholder="/public_html" />
+                                <x-text-input id="ftp_root" class="mt-1 block w-full" wire:model="form.root_path" placeholder="/public_html" />
                                 <x-input-error :messages="$errors->get('form.root_path')" class="mt-2" />
                             </div>
                         </div>
@@ -56,12 +56,12 @@
                             <div class="grid gap-4 sm:grid-cols-2">
                                 <div>
                                     <x-input-label for="ssh_pass_binary" :value="__('SSH Pass Binary (optional)')" />
-                                    <x-text-input id="ssh_pass_binary" class="mt-1 block w-full" wire:model.live="form.ssh_pass_binary" placeholder="/usr/bin/sshpass" />
+                                    <x-text-input id="ssh_pass_binary" class="mt-1 block w-full" wire:model="form.ssh_pass_binary" placeholder="/usr/bin/sshpass" />
                                     <x-input-error :messages="$errors->get('form.ssh_pass_binary')" class="mt-2" />
                                 </div>
                                 <div>
                                     <x-input-label for="ssh_key_path" :value="__('SSH Key Path (optional)')" />
-                                    <x-text-input id="ssh_key_path" class="mt-1 block w-full" wire:model.live="form.ssh_key_path" placeholder="/home/user/.ssh/id_rsa" />
+                                    <x-text-input id="ssh_key_path" class="mt-1 block w-full" wire:model="form.ssh_key_path" placeholder="/home/user/.ssh/id_rsa" />
                                     <x-input-error :messages="$errors->get('form.ssh_key_path')" class="mt-2" />
                                 </div>
                             </div>
@@ -78,7 +78,7 @@
                             </label>
                             <div>
                                 <x-input-label for="ftp_timeout" :value="__('Timeout (seconds)')" />
-                                <x-text-input id="ftp_timeout" class="mt-1 block w-full" wire:model.live="form.timeout" />
+                                <x-text-input id="ftp_timeout" class="mt-1 block w-full" wire:model="form.timeout" />
                                 <x-input-error :messages="$errors->get('form.timeout')" class="mt-2" />
                             </div>
                         </div>

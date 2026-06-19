@@ -76,12 +76,12 @@
             <div class="mt-3 grid gap-3 sm:grid-cols-[minmax(0,0.6fr)_minmax(0,1.4fr)_auto]">
                 <div>
                     <label class="sr-only" for="custom_action_name">{{ __('Action Name') }}</label>
-                    <input id="custom_action_name" type="text" wire:model.live="newCustomActionName" placeholder="{{ __('Action name') }}" class="w-full rounded-md border-slate-700 bg-slate-900 text-slate-100 focus:border-indigo-500 focus:ring-indigo-500" />
+                    <input id="custom_action_name" type="text" wire:model="newCustomActionName" placeholder="{{ __('Action name') }}" class="w-full rounded-md border-slate-700 bg-slate-900 text-slate-100 focus:border-indigo-500 focus:ring-indigo-500" />
                     <x-input-error :messages="$errors->get('newCustomActionName')" class="mt-2" />
                 </div>
                 <div>
                     <label class="sr-only" for="custom_action_command">{{ __('Command') }}</label>
-                    <input id="custom_action_command" type="text" wire:model.live="newCustomActionCommand" placeholder="php artisan queue:restart" class="w-full rounded-md border-slate-700 bg-slate-900 text-slate-100 focus:border-indigo-500 focus:ring-indigo-500" />
+                    <input id="custom_action_command" type="text" wire:model="newCustomActionCommand" placeholder="php artisan queue:restart" class="w-full rounded-md border-slate-700 bg-slate-900 text-slate-100 focus:border-indigo-500 focus:ring-indigo-500" />
                     <x-input-error :messages="$errors->get('newCustomActionCommand')" class="mt-2" />
                 </div>
                 <button type="button" wire:click="addCustomAction" class="self-start px-3 py-2 text-sm rounded-md border border-slate-700 text-slate-300 hover:text-slate-100">
@@ -115,7 +115,7 @@
                 id="custom_command"
                 type="text"
                 class="w-full sm:flex-1 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm border-slate-700 bg-slate-900 text-slate-100 {{ $actionDisabledClass }}"
-                wire:model.live="customCommand"
+                wire:model="customCommand"
                 placeholder="npm run build"
                 {{ $permissionsLocked ? 'disabled' : '' }}
             />
@@ -247,7 +247,7 @@
 
                 <div class="mt-4">
                     <label class="text-xs uppercase tracking-wide text-slate-500">{{ __('Commit Message') }}</label>
-                    <input type="text" wire:model.live="pushCommitMessage" class="mt-2 w-full rounded-md border p-2 text-sm border-slate-700 bg-slate-950 text-slate-100" />
+                    <input type="text" wire:model="pushCommitMessage" class="mt-2 w-full rounded-md border p-2 text-sm border-slate-700 bg-slate-950 text-slate-100" />
                 </div>
 
                 <div class="mt-6 flex flex-wrap justify-end gap-2">

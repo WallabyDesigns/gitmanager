@@ -14,17 +14,17 @@
                     <div class="mt-4 grid gap-4 sm:grid-cols-2">
                         <div>
                             <x-input-label for="user_name" :value="__('Name')" />
-                            <x-text-input id="user_name" class="mt-1 block w-full" wire:model.live="userForm.name" />
+                            <x-text-input id="user_name" class="mt-1 block w-full" wire:model="userForm.name" />
                             <x-input-error :messages="$errors->get('userForm.name')" class="mt-2" />
                         </div>
                         <div>
                             <x-input-label for="user_email" :value="__('Email')" />
-                            <x-text-input id="user_email" class="mt-1 block w-full" wire:model.live="userForm.email" />
+                            <x-text-input id="user_email" class="mt-1 block w-full" wire:model="userForm.email" />
                             <x-input-error :messages="$errors->get('userForm.email')" class="mt-2" />
                         </div>
                         <div>
                             <x-input-label for="user_password" :value="__('Temporary Password (optional)')" />
-                            <x-text-input id="user_password" class="mt-1 block w-full" wire:model.live="userForm.password" />
+                            <x-text-input id="user_password" class="mt-1 block w-full" wire:model="userForm.password" />
                             <x-input-error :messages="$errors->get('userForm.password')" class="mt-2" />
                         </div>
                         <div class="flex items-center gap-2 pt-6">
