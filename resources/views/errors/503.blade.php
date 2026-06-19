@@ -37,6 +37,7 @@
             }
             .logo { margin: 0 auto 1.5rem; display: flex; justify-content: center; }
             .spinner {
+                margin-top: 15px;
                 width: 44px;
                 height: 44px;
                 border: 3px solid rgba(255,255,255,0.15);
