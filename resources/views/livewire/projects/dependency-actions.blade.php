@@ -5,69 +5,110 @@
 
     <div>
         <h3 class="text-lg font-semibold text-slate-100">{{ __('Dependency Actions') }}</h3>
-        <p class="mt-1 text-sm text-slate-400">{{ __('Run composer/npm actions on demand.') }}</p>
+        <p class="mt-1 text-sm text-slate-400">{{ __('Actions are based on the project type and can be customized below.') }}</p>
 
         <div class="mt-4 grid gap-4 sm:grid-cols-2">
-            @if ($hasComposer)
+            @foreach ($actionGroups as $group => $actions)
                 <div class="rounded-lg border border-slate-800 p-4">
-                    <div class="text-sm font-semibold text-slate-100">{{ __('Composer') }}</div>
+                    <div class="text-sm font-semibold text-slate-100">{{ __($group) }}</div>
                     <div class="mt-3 flex flex-wrap gap-2">
-                        <button type="button" wire:click="composerInstall" class="px-3 py-2 text-sm rounded-md border border-slate-700 text-slate-300 hover:text-slate-100 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
-                            <x-loading-spinner target="composerInstall" />
-                            {{ __('Install') }}
-                        </button>
-                        <button type="button" wire:click="composerUpdate" class="px-3 py-2 text-sm rounded-md border hover:text-indigo-800 border-indigo-500/50 text-indigo-300 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
-                            <x-loading-spinner target="composerUpdate" />
-                            {{ __('Update') }}
-                        </button>
-                        <button type="button" wire:click="composerAudit" class="px-3 py-2 text-sm rounded-md border hover:text-emerald-800 border-emerald-500/40 text-emerald-300 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
-                            <x-loading-spinner target="composerAudit" />
-                            {{ __('Audit') }}
-                        </button>
-                        <button type="button" wire:click="appClearCache" class="px-3 py-2 text-sm rounded-md border border-slate-700 text-slate-300 hover:text-slate-100 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
-                            <x-loading-spinner target="appClearCache" />
-                            {{ __('Clear Cache') }}
-                        </button>
-                        @if ($hasLaravel)
-                            <button type="button" wire:click="laravelMigrate" class="px-3 py-2 text-sm rounded-md border hover:text-sky-900 border-sky-500/50 text-sky-300 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
-                                <x-loading-spinner target="laravelMigrate" />
-                                {{ __('Migrate') }}
+                        @foreach ($actions as $key => $action)
+                            <button
+                                type="button"
+                                wire:click="{{ $action['method'] }}"
+                                @if ($action['destructive'] ?? false)
+                                    onclick="return confirm('{{ __('Force audit fix can introduce breaking changes. Continue?') }}') || event.stopImmediatePropagation()"
+                                @endif
+                                class="px-3 py-2 text-sm rounded-md border {{ ($action['destructive'] ?? false) ? 'border-rose-600/60 text-rose-300 hover:text-rose-200' : 'border-slate-700 text-slate-300 hover:text-slate-100' }} {{ $actionDisabledClass }} inline-flex items-center"
+                                {{ $permissionsLocked ? 'disabled' : '' }}
+                            >
+                                <x-loading-spinner :target="$action['method']" />
+                                {{ __($action['label']) }}
                             </button>
-                        @endif
+                        @endforeach
                     </div>
                 </div>
-            @endif
-            @if ($hasNpm)
+            @endforeach
+
+            @if (! empty($customActions))
                 <div class="rounded-lg border border-slate-800 p-4">
-                    <div class="text-sm font-semibold text-slate-100">{{ __('Npm') }}</div>
+                    <div class="text-sm font-semibold text-slate-100">{{ __('Custom') }}</div>
                     <div class="mt-3 flex flex-wrap gap-2">
-                        <button type="button" wire:click="npmInstall" class="px-3 py-2 text-sm rounded-md border border-slate-700 text-slate-300 hover:text-slate-100 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
-                            <x-loading-spinner target="npmInstall" />
-                            {{ __('Install') }}
-                        </button>
-                        <button type="button" wire:click="npmUpdate" class="px-3 py-2 text-sm rounded-md border hover:text-indigo-800 border-indigo-500/50 text-indigo-300 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
-                            <x-loading-spinner target="npmUpdate" />
-                            {{ __('Update') }}
-                        </button>
-                        <button type="button" wire:click="npmAuditFix" class="px-3 py-2 text-sm rounded-md border hover:text-emerald-800 border-emerald-500/40 text-emerald-300 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
-                            <x-loading-spinner target="npmAuditFix" />
-                            {{ __('Audit Fix') }}
-                        </button>
-                        <button type="button" wire:click="npmAuditFixForce" onclick="return confirm('{{ __('Force audit fix can introduce breaking changes. Continue?') }}') || event.stopImmediatePropagation()" class="px-3 py-2 text-sm rounded-md border hover:text-rose-700 border-rose-600/60 text-rose-300 {{ $actionDisabledClass }} inline-flex items-center" {{ $permissionsLocked ? 'disabled' : '' }}>
-                            <x-loading-spinner target="npmAuditFixForce" />
-                            {{ __('Audit Fix (Force)') }}
-                        </button>
+                        @foreach ($customActions as $action)
+                            <button type="button" wire:click="runSavedCustomAction('{{ $action['id'] }}')" class="px-3 py-2 text-sm rounded-md border border-indigo-500/50 text-indigo-300 hover:text-indigo-200 {{ $actionDisabledClass }} inline-flex items-center" title="{{ $action['command'] }}" {{ $permissionsLocked ? 'disabled' : '' }}>
+                                <x-loading-spinner target="runSavedCustomAction('{{ $action['id'] }}')" />
+                                {{ $action['name'] }}
+                            </button>
+                        @endforeach
                     </div>
                 </div>
             @endif
         </div>
-        @if (! $hasComposer && ! $hasNpm)
-            <p class="mt-3 text-sm text-slate-400">{{ __('No composer.json or package.json detected. Use manual commands below.') }}</p>
+        @if (empty($actionGroups) && empty($customActions))
+            <p class="mt-3 text-sm text-slate-400">{{ __('No dependency actions are enabled for this project.') }}</p>
         @endif
     </div>
 
+    <details class="rounded-lg border border-slate-800 p-4">
+        <summary class="cursor-pointer text-sm font-semibold text-slate-100">{{ __('Configure Dependency Actions') }}</summary>
+        <p class="mt-2 text-xs text-slate-400">{{ __('Defaults come from the project type. Select which built-in actions should appear in this tab.') }}</p>
+
+        <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            @foreach ($actionDefinitions as $key => $action)
+                <label class="flex items-center gap-2 text-sm text-slate-300">
+                    <input type="checkbox" class="rounded border-slate-600 bg-slate-900 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="enabledActions.{{ $key }}" />
+                    {{ $action['group'] }}: {{ __($action['label']) }}
+                </label>
+            @endforeach
+        </div>
+
+        <div class="mt-4 flex flex-wrap gap-2">
+            <button type="button" wire:click="saveActionSettings" class="px-3 py-2 text-sm rounded-md bg-indigo-600 text-white hover:bg-indigo-500">
+                {{ __('Save Actions') }}
+            </button>
+            <button type="button" wire:click="resetActionSettings" class="px-3 py-2 text-sm rounded-md border border-slate-700 text-slate-300 hover:text-slate-100">
+                {{ __('Reset to Project Type Defaults') }}
+            </button>
+        </div>
+
+        <div class="mt-6 border-t border-slate-800 pt-5">
+            <div class="text-sm font-semibold text-slate-100">{{ __('Custom Dependency Actions') }}</div>
+            <div class="mt-3 grid gap-3 sm:grid-cols-[minmax(0,0.6fr)_minmax(0,1.4fr)_auto]">
+                <div>
+                    <label class="sr-only" for="custom_action_name">{{ __('Action Name') }}</label>
+                    <input id="custom_action_name" type="text" wire:model.live="newCustomActionName" placeholder="{{ __('Action name') }}" class="w-full rounded-md border-slate-700 bg-slate-900 text-slate-100 focus:border-indigo-500 focus:ring-indigo-500" />
+                    <x-input-error :messages="$errors->get('newCustomActionName')" class="mt-2" />
+                </div>
+                <div>
+                    <label class="sr-only" for="custom_action_command">{{ __('Command') }}</label>
+                    <input id="custom_action_command" type="text" wire:model.live="newCustomActionCommand" placeholder="php artisan queue:restart" class="w-full rounded-md border-slate-700 bg-slate-900 text-slate-100 focus:border-indigo-500 focus:ring-indigo-500" />
+                    <x-input-error :messages="$errors->get('newCustomActionCommand')" class="mt-2" />
+                </div>
+                <button type="button" wire:click="addCustomAction" class="self-start px-3 py-2 text-sm rounded-md border border-slate-700 text-slate-300 hover:text-slate-100">
+                    {{ __('Add Action') }}
+                </button>
+            </div>
+
+            @if (! empty($customActions))
+                <div class="mt-4 space-y-2">
+                    @foreach ($customActions as $action)
+                        <div class="flex items-center justify-between gap-3 rounded-md border border-slate-800 bg-slate-950/30 px-3 py-2">
+                            <div class="min-w-0">
+                                <div class="text-sm text-slate-200">{{ $action['name'] }}</div>
+                                <div class="truncate font-mono text-xs text-slate-500">{{ $action['command'] }}</div>
+                            </div>
+                            <button type="button" wire:click="removeCustomAction('{{ $action['id'] }}')" class="text-xs text-rose-300 hover:text-rose-200">
+                                {{ __('Remove') }}
+                            </button>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+    </details>
+
     <div>
-        <h4 class="text-sm font-semibold text-slate-100">{{ __('Manual Command') }}</h4>
+        <h4 class="text-sm font-semibold text-slate-100">{{ __('One-off Command') }}</h4>
         <div class="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
             <label class="sr-only" for="custom_command">{{ __('Command') }}</label>
             <input

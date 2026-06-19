@@ -5,7 +5,9 @@ namespace App\Livewire\Projects;
 use App\Models\Project;
 use App\Services\DeploymentQueueService;
 use App\Services\DeploymentService;
+use App\Support\ProjectDependencyActions;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Livewire\Component;
 
 class DependencyActions extends Component
@@ -14,11 +16,13 @@ class DependencyActions extends Component
 
     public string $customCommand = '';
 
-    public bool $hasComposer = false;
+    public array $enabledActions = [];
 
-    public bool $hasNpm = false;
+    public array $customActions = [];
 
-    public bool $hasLaravel = false;
+    public string $newCustomActionName = '';
+
+    public string $newCustomActionCommand = '';
 
     public bool $showPushModal = false;
 
@@ -42,12 +46,12 @@ class DependencyActions extends Component
     {
         $this->project = $project;
         $this->pushCommitMessage = $this->commitMessageForContext('audit');
+        $this->loadActionSettings();
     }
 
     public function render()
     {
         $dependencyActions = $this->dependencyActions();
-        [$this->hasComposer, $this->hasNpm, $this->hasLaravel] = $this->detectProjectFeatures();
 
         $dependencyLogs = $this->project->deployments()
             ->whereIn('action', $dependencyActions)
@@ -58,13 +62,80 @@ class DependencyActions extends Component
         return view('livewire.projects.dependency-actions', [
             'dependencyLogs' => $dependencyLogs,
             'latestDependencyLog' => $dependencyLogs->first(),
-            'hasComposer' => $this->hasComposer,
-            'hasNpm' => $this->hasNpm,
-            'hasLaravel' => $this->hasLaravel,
+            'actionDefinitions' => ProjectDependencyActions::definitions(),
+            'actionGroups' => $this->actionGroups(),
             'permissionsLocked' => ! $this->project->ftp_enabled
                 && ! $this->project->ssh_enabled
                 && (bool) $this->project->permissions_locked,
         ]);
+    }
+
+    public function saveActionSettings(): void
+    {
+        $selected = array_keys(array_filter(
+            $this->enabledActions,
+            static fn ($enabled): bool => (bool) $enabled
+        ));
+
+        $this->project->dependency_actions = ProjectDependencyActions::resolve(
+            (string) $this->project->project_type,
+            $selected
+        );
+        $this->project->save();
+
+        $this->dispatch('notify', message: 'Dependency actions updated.');
+    }
+
+    public function resetActionSettings(): void
+    {
+        $this->project->dependency_actions = null;
+        $this->project->save();
+        $this->loadActionSettings();
+
+        $this->dispatch('notify', message: 'Dependency actions reset to project type defaults.');
+    }
+
+    public function addCustomAction(): void
+    {
+        $validated = $this->validate([
+            'newCustomActionName' => ['required', 'string', 'max:80'],
+            'newCustomActionCommand' => ['required', 'string', 'max:1000'],
+        ]);
+
+        $this->customActions[] = [
+            'id' => (string) Str::uuid(),
+            'name' => trim($validated['newCustomActionName']),
+            'command' => trim($validated['newCustomActionCommand']),
+        ];
+        $this->saveCustomActions();
+
+        $this->newCustomActionName = '';
+        $this->newCustomActionCommand = '';
+        $this->resetValidation(['newCustomActionName', 'newCustomActionCommand']);
+        $this->dispatch('notify', message: 'Custom dependency action added.');
+    }
+
+    public function removeCustomAction(string $id): void
+    {
+        $this->customActions = array_values(array_filter(
+            $this->customActions,
+            static fn (array $action): bool => ($action['id'] ?? '') !== $id
+        ));
+        $this->saveCustomActions();
+
+        $this->dispatch('notify', message: 'Custom dependency action removed.');
+    }
+
+    public function runSavedCustomAction(string $id, DeploymentService $service): void
+    {
+        $action = collect($this->customActions)->firstWhere('id', $id);
+        if (! is_array($action)) {
+            $this->dispatch('notify', message: 'Custom dependency action not found.');
+
+            return;
+        }
+
+        $this->runCommand($service, (string) ($action['command'] ?? ''), (string) ($action['name'] ?? 'Custom action'));
     }
 
     public function updateDependencies(DeploymentService $service): void
@@ -315,19 +386,7 @@ class DependencyActions extends Component
 
     public function runCustomCommand(DeploymentService $service): void
     {
-        if ($this->blockIfPermissionsLocked('custom commands')) {
-            return;
-        }
-
-        if ($this->enqueueIfEnabled('custom_command', ['command' => $this->customCommand])) {
-            return;
-        }
-
-        $deployment = $service->runCustomCommand($this->project, Auth::user(), $this->customCommand);
-        $this->project->refresh();
-        $this->dispatch('notify', message: $deployment->status === 'success'
-            ? 'Command completed.'
-            : 'Command failed. Check logs below.');
+        $this->runCommand($service, $this->customCommand, 'Command');
     }
 
     private function enqueueIfEnabled(string $action, array $payload = []): bool
@@ -398,6 +457,74 @@ class DependencyActions extends Component
             'npm_audit_fix_force',
             'custom_command',
         ];
+    }
+
+    private function loadActionSettings(): void
+    {
+        $selected = ProjectDependencyActions::resolve(
+            (string) $this->project->project_type,
+            $this->project->dependency_actions
+        );
+
+        $this->enabledActions = [];
+        foreach (ProjectDependencyActions::definitions() as $key => $definition) {
+            $this->enabledActions[$key] = in_array($key, $selected, true);
+        }
+
+        $this->customActions = collect($this->project->custom_dependency_actions ?? [])
+            ->filter(static fn ($action): bool => is_array($action)
+                && trim((string) ($action['id'] ?? '')) !== ''
+                && trim((string) ($action['name'] ?? '')) !== ''
+                && trim((string) ($action['command'] ?? '')) !== '')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<string, array<string, array{label: string, group: string, method: string, destructive?: bool}>>
+     */
+    private function actionGroups(): array
+    {
+        $groups = [];
+        foreach (ProjectDependencyActions::definitions() as $key => $definition) {
+            if (! ($this->enabledActions[$key] ?? false)) {
+                continue;
+            }
+
+            $groups[$definition['group']][$key] = $definition;
+        }
+
+        return $groups;
+    }
+
+    private function saveCustomActions(): void
+    {
+        $this->project->custom_dependency_actions = $this->customActions;
+        $this->project->save();
+    }
+
+    private function runCommand(DeploymentService $service, string $command, string $label): void
+    {
+        $command = trim($command);
+        if ($command === '') {
+            $this->addError('customCommand', 'Enter a command to run.');
+
+            return;
+        }
+
+        if ($this->blockIfPermissionsLocked('custom commands')) {
+            return;
+        }
+
+        if ($this->enqueueIfEnabled('custom_command', ['command' => $command])) {
+            return;
+        }
+
+        $deployment = $service->runCustomCommand($this->project, Auth::user(), $command);
+        $this->project->refresh();
+        $this->dispatch('notify', message: $deployment->status === 'success'
+            ? "{$label} completed."
+            : "{$label} failed. Check logs below.");
     }
 
     private function maybePromptPush(DeploymentService $service, bool $shouldCheck, string $context, ?string $outputLog = null): void
@@ -549,43 +676,4 @@ class DependencyActions extends Component
         return array_values(array_unique($matched));
     }
 
-    /**
-     * @return array{0: bool, 1: bool, 2: bool}
-     */
-    private function detectProjectFeatures(): array
-    {
-        $path = trim((string) ($this->project->local_path ?? ''));
-        if ($path === '' || ! is_dir($path)) {
-            return [false, false, false];
-        }
-
-        $laravelRoot = $this->findLaravelRoot($path);
-        $root = $laravelRoot ?? $path;
-
-        $hasComposer = is_file($root.DIRECTORY_SEPARATOR.'composer.json');
-        $hasNpm = is_file($root.DIRECTORY_SEPARATOR.'package.json');
-        $hasLaravel = $laravelRoot !== null;
-
-        return [$hasComposer, $hasNpm, $hasLaravel];
-    }
-
-    private function findLaravelRoot(string $path): ?string
-    {
-        $cursor = $path;
-
-        while (true) {
-            if (is_file($cursor.DIRECTORY_SEPARATOR.'artisan')) {
-                return $cursor;
-            }
-
-            $parent = dirname($cursor);
-            if (! $parent || $parent === $cursor) {
-                break;
-            }
-
-            $cursor = $parent;
-        }
-
-        return null;
-    }
 }
