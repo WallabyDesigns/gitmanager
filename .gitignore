@@ -17,6 +17,7 @@
 /worktrees
 /storage/*.key
 /storage/pail
+/storage/node-runtime
 /vendor
 Homestead.json
 Homestead.yaml
