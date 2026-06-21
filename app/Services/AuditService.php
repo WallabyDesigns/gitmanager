@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AuditIssue;
+use App\Models\DeploymentQueueItem;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
@@ -16,6 +17,7 @@ class AuditService
 
     public function __construct(
         private readonly DeploymentService $deployments,
+        private readonly DeploymentQueueService $queue,
         private readonly SettingsService $settings
     ) {}
 
@@ -54,7 +56,8 @@ class AuditService
      */
     public function auditProject(Project $project, ?User $user = null, bool $autoFix = true, bool $sendEmail = false): array
     {
-        $results = $this->deployments->auditDependencies($project, $user, $autoFix);
+        // Scan only — fixes are queued separately so they don't block the scheduler.
+        $results = $this->deployments->auditDependencies($project, $user, false);
         $notifications = [];
 
         foreach ($results as $tool => $result) {
@@ -62,13 +65,12 @@ class AuditService
                 continue;
             }
 
-            $record = $this->recordAuditIssue($project, $tool, $result);
+            $record = $this->recordAuditIssue($project, $tool, $result, $autoFix);
             if (! empty($record['notification'])) {
                 $notifications[] = $record['notification'];
             }
         }
 
-        $this->maybeAutoCommitFixes($project, $results);
         $this->markAuditTimestamp($project);
 
         if ($sendEmail && $notifications !== []) {
@@ -87,20 +89,13 @@ class AuditService
      * @param  array<string, mixed>  $result
      * @return array{opened: bool, resolved: bool, notification?: array<string, mixed>|null}
      */
-    private function recordAuditIssue(Project $project, string $tool, array $result): array
+    private function recordAuditIssue(Project $project, string $tool, array $result, bool $queueFix = true): array
     {
-        $status = (string) ($result['status'] ?? '');
-        $remaining = $result['remaining'] ?? null;
-        $found = $result['found'] ?? null;
-        $fixed = $result['fixed'] ?? null;
-        $summary = $result['summary'] ?? null;
-        $fixSummary = $result['fix_summary'] ?? null;
-        $severity = $result['severity'] ?? null;
-
-        if ($status === 'failed') {
+        if ((string) ($result['status'] ?? '') === 'failed') {
             return ['opened' => false, 'resolved' => false, 'notification' => null];
         }
 
+        $remaining = $result['remaining'] ?? null;
         $openIssue = AuditIssue::query()
             ->where('project_id', $project->id)
             ->where('tool', $tool)
@@ -109,75 +104,192 @@ class AuditService
             ->first();
 
         if ($remaining !== null && $remaining > 0) {
-            if ($openIssue) {
-                $openIssue->summary = $summary;
-                $openIssue->severity = $severity;
-                $openIssue->found_count = is_int($found) ? $found : null;
-                $openIssue->fixed_count = is_int($fixed) ? $fixed : null;
-                $openIssue->remaining_count = is_int($remaining) ? $remaining : null;
-                $openIssue->last_seen_at = now();
-                $openIssue->save();
+            return $openIssue
+                ? $this->handleOpenIssueWithRemaining($project, $tool, $result, $openIssue, $queueFix)
+                : $this->handleNewIssue($project, $tool, $result, $queueFix);
+        }
 
-                return ['opened' => false, 'resolved' => false, 'notification' => null];
-            }
+        return $this->handleResolved($project, $tool, $result, $openIssue);
+    }
 
-            $issue = AuditIssue::create([
-                'project_id' => $project->id,
+    /**
+     * @param  array<string, mixed>  $result
+     * @return array{opened: bool, resolved: bool, notification?: array<string, mixed>|null}
+     */
+    private function handleOpenIssueWithRemaining(Project $project, string $tool, array $result, AuditIssue $openIssue, bool $queueFix): array
+    {
+        $remaining = $result['remaining'] ?? null;
+        $found = $result['found'] ?? null;
+        $fixed = $result['fixed'] ?? null;
+        $summary = $result['summary'] ?? null;
+        $severity = $result['severity'] ?? null;
+
+        $openIssue->summary = $summary;
+        $openIssue->severity = $severity;
+        $openIssue->found_count = is_int($found) ? $found : null;
+        $openIssue->fixed_count = is_int($fixed) ? $fixed : null;
+        $openIssue->remaining_count = is_int($remaining) ? $remaining : null;
+        $openIssue->last_seen_at = now();
+        $openIssue->save();
+
+        // A fix is still queued or running — let it finish before notifying.
+        if ($queueFix && $this->hasPendingFix($project, $tool)) {
+            return ['opened' => false, 'resolved' => false, 'notification' => null];
+        }
+
+        // No pending fix and cooldown still active — stay silent.
+        if ($this->wasRecentlyEmailed($project, $tool, $openIssue->id)) {
+            return ['opened' => false, 'resolved' => false, 'notification' => null];
+        }
+
+        return [
+            'opened' => false,
+            'resolved' => false,
+            'notification' => [
+                'type' => 'open',
+                'project' => $project,
                 'tool' => $tool,
-                'status' => 'open',
-                'severity' => $severity,
                 'summary' => $summary,
-                'found_count' => is_int($found) ? $found : null,
-                'fixed_count' => is_int($fixed) ? $fixed : null,
-                'remaining_count' => is_int($remaining) ? $remaining : null,
-                'detected_at' => now(),
-                'last_seen_at' => now(),
-            ]);
+                'remaining' => $remaining,
+                'severity' => $severity,
+                'issue' => $openIssue,
+            ],
+        ];
+    }
 
-            if ($this->wasRecentlyEmailed($project, $tool, $issue->id)) {
-                return ['opened' => true, 'resolved' => false, 'notification' => null];
-            }
+    /**
+     * @param  array<string, mixed>  $result
+     * @return array{opened: bool, resolved: bool, notification?: array<string, mixed>|null}
+     */
+    private function handleNewIssue(Project $project, string $tool, array $result, bool $queueFix): array
+    {
+        $remaining = $result['remaining'] ?? null;
+        $found = $result['found'] ?? null;
+        $fixed = $result['fixed'] ?? null;
+        $summary = $result['summary'] ?? null;
+        $severity = $result['severity'] ?? null;
 
-            return [
-                'opened' => true,
-                'resolved' => false,
-                'notification' => [
-                    'type' => 'open',
-                    'project' => $project,
-                    'tool' => $tool,
-                    'summary' => $summary,
-                    'remaining' => $remaining,
-                    'severity' => $severity,
-                    'issue' => $issue,
-                ],
-            ];
+        $issue = AuditIssue::create([
+            'project_id' => $project->id,
+            'tool' => $tool,
+            'status' => 'open',
+            'severity' => $severity,
+            'summary' => $summary,
+            'found_count' => is_int($found) ? $found : null,
+            'fixed_count' => is_int($fixed) ? $fixed : null,
+            'remaining_count' => is_int($remaining) ? $remaining : null,
+            'detected_at' => now(),
+            'last_seen_at' => now(),
+        ]);
+
+        // Queue the fix first — hold notification until we know the outcome.
+        if ($queueFix && $this->queueFixForTool($project, $tool)) {
+            return ['opened' => true, 'resolved' => false, 'notification' => null];
         }
 
-        if ($openIssue) {
-            $openIssue->status = 'resolved';
-            $openIssue->fix_summary = $fixSummary ?: $summary;
-            $openIssue->found_count = is_int($found) ? $found : $openIssue->found_count;
-            $openIssue->fixed_count = is_int($fixed) ? $fixed : $openIssue->fixed_count;
-            $openIssue->remaining_count = 0;
-            $openIssue->resolved_at = now();
-            $openIssue->last_seen_at = now();
-            $openIssue->save();
-
-            return [
-                'opened' => false,
-                'resolved' => true,
-                'notification' => [
-                    'type' => 'resolved',
-                    'project' => $project,
-                    'tool' => $tool,
-                    'summary' => $summary,
-                    'fix_summary' => $openIssue->fix_summary,
-                    'issue' => $openIssue,
-                ],
-            ];
+        // Queue unavailable or autoFix off — notify immediately (with cooldown).
+        if ($this->wasRecentlyEmailed($project, $tool, $issue->id)) {
+            return ['opened' => true, 'resolved' => false, 'notification' => null];
         }
 
-        return ['opened' => false, 'resolved' => false, 'notification' => null];
+        return [
+            'opened' => true,
+            'resolved' => false,
+            'notification' => [
+                'type' => 'open',
+                'project' => $project,
+                'tool' => $tool,
+                'summary' => $summary,
+                'remaining' => $remaining,
+                'severity' => $severity,
+                'issue' => $issue,
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $result
+     * @return array{opened: bool, resolved: bool, notification?: array<string, mixed>|null}
+     */
+    private function handleResolved(Project $project, string $tool, array $result, ?AuditIssue $openIssue): array
+    {
+        if (! $openIssue) {
+            return ['opened' => false, 'resolved' => false, 'notification' => null];
+        }
+
+        $found = $result['found'] ?? null;
+        $fixed = $result['fixed'] ?? null;
+        $summary = $result['summary'] ?? null;
+        $fixSummary = $result['fix_summary'] ?? null;
+
+        $openIssue->status = 'resolved';
+        $openIssue->fix_summary = $fixSummary ?: $summary;
+        $openIssue->found_count = is_int($found) ? $found : $openIssue->found_count;
+        $openIssue->fixed_count = is_int($fixed) ? $fixed : $openIssue->fixed_count;
+        $openIssue->remaining_count = 0;
+        $openIssue->resolved_at = now();
+        $openIssue->last_seen_at = now();
+        $openIssue->save();
+
+        return [
+            'opened' => false,
+            'resolved' => true,
+            'notification' => [
+                'type' => 'resolved',
+                'project' => $project,
+                'tool' => $tool,
+                'summary' => $summary,
+                'fix_summary' => $openIssue->fix_summary,
+                'issue' => $openIssue,
+            ],
+        ];
+    }
+
+    /**
+     * Queue the appropriate fix action for a tool.
+     * Returns true if a fix was enqueued, false if the queue is disabled or no fix action exists.
+     */
+    private function queueFixForTool(Project $project, string $tool): bool
+    {
+        if (! config('gitmanager.deploy_queue.enabled', true)) {
+            return false;
+        }
+
+        $action = match ($tool) {
+            'npm' => 'npm_audit_fix',
+            'composer' => 'composer_update',
+            default => null,
+        };
+
+        if ($action === null) {
+            return false;
+        }
+
+        $this->queue->enqueue($project, $action, ['reason' => 'audit_fix']);
+
+        return true;
+    }
+
+    /**
+     * Returns true if a relevant fix job is queued or running for the given project and tool.
+     */
+    private function hasPendingFix(Project $project, string $tool): bool
+    {
+        $actions = match ($tool) {
+            'npm' => ['npm_audit_fix', 'npm_audit_fix_force', 'dependency_update'],
+            'composer' => ['composer_update', 'dependency_update'],
+            default => [],
+        };
+
+        if ($actions === []) {
+            return false;
+        }
+
+        return DeploymentQueueItem::query()
+            ->where('project_id', $project->id)
+            ->whereIn('status', ['queued', 'running'])
+            ->whereIn('action', $actions)
+            ->exists();
     }
 
     /**
@@ -288,22 +400,17 @@ class AuditService
 
     private function wasRecentlyEmailed(Project $project, string $tool, int $excludeIssueId): bool
     {
-        if (! $this->hasLastEmailedColumn()) {
-            return false;
-        }
-
         $cooldownHours = (int) $this->settings->get('system.audit_notification_cooldown', 24);
-        if ($cooldownHours <= 0) {
-            return false;
-        }
 
-        return AuditIssue::query()
-            ->where('project_id', $project->id)
-            ->where('tool', $tool)
-            ->where('id', '!=', $excludeIssueId)
-            ->whereNotNull('last_emailed_at')
-            ->where('last_emailed_at', '>=', now()->subHours($cooldownHours))
-            ->exists();
+        return $cooldownHours > 0
+            && $this->hasLastEmailedColumn()
+            && AuditIssue::query()
+                ->where('project_id', $project->id)
+                ->where('tool', $tool)
+                ->where('id', '!=', $excludeIssueId)
+                ->whereNotNull('last_emailed_at')
+                ->where('last_emailed_at', '>=', now()->subHours($cooldownHours))
+                ->exists();
     }
 
     private function hasLastEmailedColumn(): bool
@@ -411,110 +518,6 @@ class AuditService
         }
 
         return array_values(array_unique(array_filter($recipients)));
-    }
-
-    /**
-     * @param  array<string, array<string, mixed>>  $results
-     */
-    private function maybeAutoCommitFixes(Project $project, array $results): void
-    {
-        if (! $this->settings->get('system.audit_auto_commit', false)) {
-            return;
-        }
-
-        $fixSummaries = [];
-        foreach ($results as $result) {
-            if (! is_array($result)) {
-                continue;
-            }
-
-            if (! ($result['fix_applied'] ?? false)) {
-                continue;
-            }
-
-            if (($result['remaining'] ?? null) !== 0) {
-                continue;
-            }
-
-            $found = $result['found'] ?? null;
-            if (is_numeric($found) && (int) $found === 0) {
-                continue;
-            }
-
-            $summary = (string) ($result['fix_summary'] ?? $result['summary'] ?? '');
-            if ($summary !== '') {
-                $fixSummaries[] = $summary;
-            }
-        }
-
-        if ($fixSummaries === []) {
-            return;
-        }
-
-        $changes = $this->deployments->getWorkingTreeChanges($project);
-        if (! ($changes['dirty'] ?? false)) {
-            return;
-        }
-
-        $paths = $this->filterDependencyFiles($changes['files'] ?? []);
-        if ($paths === []) {
-            return;
-        }
-
-        $message = $this->buildAuditCommitMessage($fixSummaries);
-
-        try {
-            $this->deployments->commitAndPush($project, $message, $paths);
-        } catch (\Throwable $exception) {
-            // Swallow git errors to avoid failing audits.
-        }
-    }
-
-    /**
-     * @param  array<int, string>  $files
-     * @return array<int, string>
-     */
-    private function filterDependencyFiles(array $files): array
-    {
-        $targets = [
-            'composer.json',
-            'composer.lock',
-            'package.json',
-            'package-lock.json',
-            'npm-shrinkwrap.json',
-            'pnpm-lock.yaml',
-            'yarn.lock',
-        ];
-
-        $matched = [];
-        foreach ($files as $file) {
-            $file = trim((string) $file);
-            if ($file === '') {
-                continue;
-            }
-            $normalized = str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $file);
-            $base = strtolower(basename($normalized));
-            if (in_array($base, $targets, true)) {
-                $matched[] = $normalized;
-            }
-        }
-
-        return array_values(array_unique($matched));
-    }
-
-    /**
-     * @param  array<int, string>  $summaries
-     */
-    private function buildAuditCommitMessage(array $summaries): string
-    {
-        $summary = trim(implode('; ', array_filter(array_map('trim', $summaries))));
-        $summary = preg_replace('/\s+/', ' ', $summary) ?? $summary;
-
-        if (strlen($summary) > 120) {
-            $summary = substr($summary, 0, 117).'...';
-        }
-
-        return 'Git Web Manager Vulnerability fixes: '.$summary;
     }
 
     private function markAuditTimestamp(Project $project): void
