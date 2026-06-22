@@ -13,7 +13,7 @@ use App\Livewire\Infra\Containers as InfraContainers;
 use App\Livewire\Projects\Create as ProjectsCreate;
 use App\Livewire\Projects\Edit as ProjectsEdit;
 use App\Livewire\Projects\Index as ProjectsIndex;
-use App\Livewire\Projects\Queue as ProjectsQueue;
+use App\Livewire\Processes\Queue as ProcessesQueue;
 use App\Livewire\Projects\Show as ProjectsShow;
 use App\Livewire\Security\Index as SecurityIndex;
 use App\Livewire\System\EmailSettings as SystemEmailSettings;
@@ -52,7 +52,7 @@ Route::post('/language', [LanguageController::class, 'update'])
 Route::middleware(['auth', 'verified', EnsurePasswordChanged::class])->group(function () {
     Route::get('/dashboard', DashboardIndex::class)->name('dashboard');
     Route::get('/projects', ProjectsIndex::class)->name('projects.index');
-    Route::get('/projects/queue', ProjectsQueue::class)->name('projects.queue');
+    Route::redirect('/projects/queue', '/processes/queue', 301)->name('projects.queue');
     Route::get('/projects/action-center', SecurityIndex::class)->name('projects.action-center');
     Route::redirect('/projects/scheduler', '/system/scheduler', 301)->name('projects.scheduler');
     Route::get('/projects/new', ProjectsCreate::class)->name('projects.create');
@@ -95,6 +95,7 @@ Route::middleware(EnsureAdminUser::class)->group(function () {
         Route::get('/system/white-label', SystemWhiteLabel::class)->name('system.white-label');
         Route::get('/system/plugins', SystemPlugins::class)->name('system.plugins');
         Route::get('/processes', SystemProcesses::class)->name('processes.index');
+        Route::get('/processes/queue', ProcessesQueue::class)->name('processes.queue');
         Route::get('/workflows', WorkflowsIndex::class)->name('workflows.index');
         Route::get('/ftp-accounts', FtpAccountsIndex::class)->name('ftp-accounts.index');
     });

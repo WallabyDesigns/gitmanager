@@ -3,11 +3,9 @@
 
     $showBulkActions = $showBulkActions ?? false;
     $explicitProjectsTab = $projectsTab ?? null;
-    $tab = $explicitProjectsTab ?? (request()->routeIs('projects.queue')
-        ? 'queue'
-        : (request()->routeIs('projects.create')
-            ? 'create'
-            : (request()->routeIs('projects.action-center') ? 'action-center' : 'list')));
+    $tab = $explicitProjectsTab ?? (request()->routeIs('projects.create')
+        ? 'create'
+        : (request()->routeIs('projects.action-center') ? 'action-center' : 'list'));
     $projectNavState = app(NavigationStateService::class)->projectsSidebarState(auth()->user());
     $isAdmin = (bool) ($projectNavState['isAdmin'] ?? false);
     $isEnterprise = (bool) ($projectNavState['isEnterprise'] ?? false);
@@ -15,7 +13,6 @@
     $isFtpRoute = ($isFtpRoute ?? false)
         || $explicitProjectsTab === 'ftp-accounts'
         || request()->routeIs('ftp-accounts.*');
-    $queueCount = (int) ($projectNavState['queueCount'] ?? 0);
     $actionCenterCount = (int) ($projectNavState['actionCenterCount'] ?? 0);
     $navItem = 'gwm-system-nav-item';
     $activeNav = 'gwm-system-nav-active';
@@ -23,7 +20,6 @@
 
     $currentTabLabel = match ($tab) {
         'create' => __('Create Project'),
-        'queue' => __('Task Queue'),
         'action-center' => __('Action Center'),
         default => $isFtpRoute ? __('Remote Access') : __('Projects'),
     };
@@ -44,9 +40,7 @@
                 </svg>
                 <span class="text-xs uppercase tracking-[0.16em] text-slate-400">{{ __('Projects') }}</span>
                 <span class="font-medium text-white">{{ $currentTabLabel }}</span>
-                @if ($tab === 'queue' && $queueCount > 0)
-                    <span class="inline-flex items-center justify-center rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] uppercase tracking-wide text-amber-200">{{ $queueCount }}</span>
-                @elseif ($tab === 'action-center' && $actionCenterCount > 0)
+                @if ($tab === 'action-center' && $actionCenterCount > 0)
                     <span class="inline-flex items-center justify-center rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] uppercase tracking-wide text-rose-200">{{ $actionCenterCount }}</span>
                 @endif
             </span>
@@ -106,18 +100,6 @@
                 >
                     <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" /></svg>
                     {{ __('Projects') }}
-                </a>
-                <a
-                    href="{{ route('projects.queue') }}"
-                    class="{{ $navItem }} {{ $tab === 'queue' ? $activeNav : $idleNav }}"
-                >
-                    <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" /></svg>
-                    <span class="inline-flex items-center gap-2">
-                        {{ __('Task Queue') }}
-                        @if ($queueCount > 0)
-                            <span class="inline-flex items-center justify-center rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] uppercase tracking-wide text-amber-200">{{ $queueCount }}</span>
-                        @endif
-                    </span>
                 </a>
                 <a
                     href="{{ route('projects.action-center') }}"
@@ -231,19 +213,6 @@
                     >
                         <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" /></svg>
                         {{ __('Projects') }}
-                    </a>
-                    <a
-                        href="{{ route('projects.queue') }}"
-                        @click="open = false"
-                        class="{{ $navItem }} {{ $tab === 'queue' ? $activeNav : $idleNav }}"
-                    >
-                        <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" /></svg>
-                        <span class="inline-flex items-center gap-2">
-                            {{ __('Task Queue') }}
-                            @if ($queueCount > 0)
-                                <span class="inline-flex items-center justify-center rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] uppercase tracking-wide text-amber-200">{{ $queueCount }}</span>
-                            @endif
-                        </span>
                     </a>
                     <a
                         href="{{ route('projects.action-center') }}"

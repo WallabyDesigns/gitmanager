@@ -11,7 +11,7 @@
     {{-- Stat cards --}}
     <div class="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         @if ($queuedCount > 0 || $queueRunningCount > 0)
-            <a href="{{ route('projects.queue') }}" class="group block rounded-xl border border-amber-500/30 bg-slate-900 p-5 hover:border-amber-400/60 hover:bg-slate-800/60 transition-colors">
+            <a href="{{ route('processes.queue') }}" class="group block rounded-xl border border-amber-500/30 bg-slate-900 p-5 hover:border-amber-400/60 hover:bg-slate-800/60 transition-colors">
                 <p class="text-xs font-medium uppercase tracking-wide text-slate-400 group-hover:text-slate-300">{{ __('Queued Items') }}</p>
                 <p class="mt-2 text-3xl font-bold text-amber-300">{{ $queuedCount }}</p>
                 @if ($queueRunningCount > 0)

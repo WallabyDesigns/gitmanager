@@ -1,5 +1,7 @@
 <div class="py-10">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        @include('livewire.processes.partials.tabs')
+
         {{-- Header --}}
         <div class="flex items-center justify-between gap-4">
             @if ($totalActive > 0)
