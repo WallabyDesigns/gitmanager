@@ -3,7 +3,6 @@
 namespace App\Livewire\System;
 
 use App\Models\DeploymentQueueItem;
-use App\Models\NodeProcess;
 use App\Models\User;
 use App\Services\DeploymentQueueService;
 use App\Services\EditionService;
@@ -12,7 +11,6 @@ use App\Services\EnvManagerService;
 use App\Services\LicenseService;
 use App\Services\LogCleanupService;
 use App\Services\NodeInstallService;
-use App\Services\NodeProcessService;
 use App\Services\RuntimeDiagnosticsService;
 use App\Services\SchedulerService;
 use App\Services\SettingsService;
@@ -225,23 +223,6 @@ class Settings extends Component
     public function recheckDiagnostics(): void
     {
         app(RuntimeDiagnosticsService::class)->recheck();
-    }
-
-    public function stopNodeProcess(int $id, NodeProcessService $service): void
-    {
-        $process = NodeProcess::find($id);
-        if ($process) {
-            $service->stop($process);
-        }
-    }
-
-    public function cancelQueueItem(int $id, DeploymentQueueService $queue): void
-    {
-        $item = DeploymentQueueItem::find($id);
-        if ($item) {
-            $queue->forceCancel($item);
-            $this->dispatch('notify', message: 'Task cancelled.');
-        }
     }
 
     public function selectSettingsSection(string $section, ?EnvManagerService $envManager = null, ?EnvBackupService $backupService = null): void

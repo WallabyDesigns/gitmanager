@@ -22,6 +22,7 @@
         request()->routeIs('system.environment') => 'environment',
         request()->routeIs('system.email') => 'email',
         request()->routeIs('system.white-label') => 'white-label',
+        request()->routeIs('system.plugins') => 'plugins',
         default => null,
     };
     $isSystemTab = fn (string $tab): bool => $currentSystemTab === $tab;
@@ -38,6 +39,7 @@
         $isSystemTab('environment') => 'Environment Config',
         $isSystemTab('email') => 'Email Settings',
         $isSystemTab('white-label') => 'White Label',
+        $isSystemTab('plugins') => 'Plugins',
         default => 'System',
     };
 
@@ -85,6 +87,10 @@
         ['label' => 'Logo & Favicon', 'section' => 'White Label', 'url' => route('system.white-label'), 'keys' => 'logo favicon icon image brand upload custom'],
         ['label' => 'Sub-heading', 'section' => 'White Label', 'url' => route('system.white-label'), 'keys' => 'sub heading subtitle tagline brand text'],
         ['label' => 'Hide Edition Label', 'section' => 'White Label', 'url' => route('system.white-label'), 'keys' => 'hide edition label community enterprise badge'],
+        // Plugins
+        ['label' => 'Plugins', 'section' => 'Plugins', 'url' => route('system.plugins'), 'keys' => 'plugins node nodejs npm pm2 runtime install update vulnerability extensions'],
+        ['label' => 'Node.js Runtime', 'section' => 'Plugins', 'url' => route('system.plugins'), 'keys' => 'node nodejs runtime install version lts bundled managed'],
+        ['label' => 'PM2 Process Manager', 'section' => 'Plugins', 'url' => route('system.plugins'), 'keys' => 'pm2 process manager node daemon restart supervisor'],
         // Enterprise Support
         ['label' => 'Submit Support Ticket', 'section' => 'Enterprise Support', 'url' => route('system.support'), 'keys' => 'support ticket help enterprise contact bug'],
     ];
@@ -252,6 +258,11 @@
                 <a href="{{ route('system.email') }}" class="{{ $navItem }} {{ $isSystemTab('email') ? $activeNav : $idleNav }}">
                     <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
                     {{ __('Email Settings') }}
+                </a>
+
+                <a href="{{ route('system.plugins') }}" class="{{ $navItem }} {{ $isSystemTab('plugins') ? $activeNav : $idleNav }}">
+                    <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.25 6.087c0-.355.186-.676.401-.959.221-.29.349-.634.349-1.003 0-1.036-1.007-1.875-2.25-1.875s-2.25.84-2.25 1.875c0 .369.128.713.349 1.003.215.283.401.604.401.959v0a.64.64 0 0 1-.657.643 48.39 48.39 0 0 1-4.163-.3c.186 1.613.293 3.25.315 4.907a.656.656 0 0 1-.658.663v0c-.355 0-.676-.186-.959-.401a1.647 1.647 0 0 0-1.003-.349c-1.036 0-1.875 1.007-1.875 2.25s.84 2.25 1.875 2.25c.369 0 .713-.128 1.003-.349.283-.215.604-.401.959-.401v0c.31 0 .555.26.532.57a48.039 48.039 0 0 1-.642 5.056c1.518.19 3.058.309 4.616.354a.64.64 0 0 0 .657-.643v0c0-.355-.186-.676-.401-.959a1.647 1.647 0 0 1-.349-1.003c0-1.035 1.008-1.875 2.25-1.875 1.243 0 2.25.84 2.25 1.875 0 .369-.128.713-.349 1.003-.215.283-.401.604-.401.959v0c0 .333.277.599.61.58a48.1 48.1 0 0 0 5.427-.63 48.05 48.05 0 0 0 .582-4.717.532.532 0 0 0-.533-.57v0c-.355 0-.676.186-.959.401-.29.221-.634.349-1.003.349-1.036 0-1.875-1.007-1.875-2.25s.84-2.25 1.875-2.25c.37 0 .713.128 1.003.349.283.215.604.401.959.401v0a.656.656 0 0 0 .658-.663 48.422 48.422 0 0 0-.37-5.36c-1.886.342-3.81.574-5.766.689a.578.578 0 0 1-.61-.58v0Z" /></svg>
+                    {{ __('Plugins') }}
                 </a>
 
                 @if ($isEnterprise)

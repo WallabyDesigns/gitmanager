@@ -19,6 +19,7 @@ class Deployment extends Model
         'output_log',
         'started_at',
         'finished_at',
+        'pid',
     ];
 
     protected $casts = [

@@ -191,6 +191,7 @@ class DeploymentService
             'action' => 'deploy',
             'status' => 'running',
             'started_at' => now(),
+            'pid' => getmypid(),
         ]);
         $this->beginDeploymentStream($deployment);
 
@@ -344,6 +345,12 @@ class DeploymentService
                 $this->ensureProjectHtaccess($project, $executionPath, $output);
 
                 $ftpPlan = $this->planFtpOnlyDependencySync($project, $executionPath, $output);
+
+                if (! $project->ftp_enabled || $project->ssh_enabled) {
+                    $diffSkips = $this->diffBasedSkips($repoPath, $fromHash, $toHash, $executionPath, $output);
+                    $ftpPlan['skipComposerInstall'] = $diffSkips['skipComposerInstall'];
+                    $ftpPlan['skipNpmInstall'] = $diffSkips['skipNpmInstall'];
+                }
 
                 if (! $permissionsStep && ! $forceStaged && $this->permissionService->needsPermissionFix($project, $executionPath)) {
                     $output[] = 'Permission issues detected. Running Fix Permissions.';
@@ -532,6 +539,7 @@ class DeploymentService
             'action' => 'rollback',
             'status' => 'running',
             'started_at' => now(),
+            'pid' => getmypid(),
         ]);
         $this->beginDeploymentStream($deployment);
 
@@ -961,6 +969,7 @@ class DeploymentService
             'action' => $action,
             'status' => 'running',
             'started_at' => now(),
+            'pid' => getmypid(),
         ]);
         $this->beginDeploymentStream($deployment);
 
@@ -1787,6 +1796,63 @@ class DeploymentService
         }
 
         return null;
+    }
+
+    /**
+     * Use git diff to detect whether dependency manifests changed between two commits.
+     * Returns skip flags that can be merged into the ftpPlan array.
+     * Falls back to "run everything" when the diff cannot be obtained.
+     *
+     * @return array{skipComposerInstall: bool, skipNpmInstall: bool}
+     */
+    private function diffBasedSkips(string $repoPath, ?string $fromHash, ?string $toHash, string $executionPath, array &$output): array
+    {
+        $skips = ['skipComposerInstall' => false, 'skipNpmInstall' => false];
+
+        if (! $fromHash || ! $toHash || $fromHash === $toHash) {
+            return $skips;
+        }
+
+        $process = new Process(['git', '-C', $repoPath, 'diff', '--name-only', $fromHash.'..'.$toHash]);
+        $process->setTimeout(15);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            return $skips;
+        }
+
+        $changed = array_filter(
+            preg_split('/\r?\n/', trim($process->getOutput())) ?: [],
+            static fn (string $f): bool => $f !== ''
+        );
+
+        $composerTriggers = ['composer.json', 'composer.lock'];
+        $npmTriggers = ['package.json', 'package-lock.json', 'yarn.lock', 'npm-shrinkwrap.json'];
+
+        $composerChanged = false;
+        $npmChanged = false;
+
+        foreach ($changed as $file) {
+            $base = basename($file);
+            if (in_array($base, $composerTriggers, true)) {
+                $composerChanged = true;
+            }
+            if (in_array($base, $npmTriggers, true)) {
+                $npmChanged = true;
+            }
+        }
+
+        if (! $composerChanged && is_dir($executionPath.DIRECTORY_SEPARATOR.'vendor')) {
+            $output[] = 'Smart deploy: composer manifests unchanged — skipping composer install.';
+            $skips['skipComposerInstall'] = true;
+        }
+
+        if (! $npmChanged && is_dir($executionPath.DIRECTORY_SEPARATOR.'node_modules')) {
+            $output[] = 'Smart deploy: npm manifests unchanged — skipping npm install.';
+            $skips['skipNpmInstall'] = true;
+        }
+
+        return $skips;
     }
 
     private function isAbsolutePath(string $path): bool

@@ -50,6 +50,7 @@ if (config('gitmanager.deploy_queue.enabled', true)) {
 Schedule::command('projects:rebuild-static')->everyThirtyMinutes()->withoutOverlapping(15);
 Schedule::command('node:health-check')->everyMinute()->withoutOverlapping(5);
 Schedule::command('security:sync')->hourly()->withoutOverlapping(30);
+Schedule::command('plugins:check-updates')->dailyAt('03:00')->withoutOverlapping(60);
 Schedule::command('dependabot:auto-merge')->hourly()->withoutOverlapping(30);
 Schedule::command('workspaces:clean')->weekly()->withoutOverlapping(120);
 

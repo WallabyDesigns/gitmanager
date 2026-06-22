@@ -385,127 +385,20 @@
                         </p>
                     </div>
 
-                    {{-- Running Processes --}}
-                    @php
-                        $runningQueueItems = \App\Models\DeploymentQueueItem::query()
-                            ->with('project:id,name')
-                            ->where('status', 'running')
-                            ->orderBy('started_at')
-                            ->get();
-                        $activeNodeProcesses = \App\Models\NodeProcess::query()
-                            ->with('project:id,name')
-                            ->whereIn('status', [\App\Models\NodeProcess::STATUS_RUNNING, \App\Models\NodeProcess::STATUS_STARTING, \App\Models\NodeProcess::STATUS_CRASHED])
-                            ->orderBy('last_started_at')
-                            ->get();
-                        $actionLabels = [
-                            'deploy'        => 'Deploy',
-                            'audit_project' => 'Project Audit',
-                            'npm_install'   => 'npm install',
-                            'npm_ci'        => 'npm ci (clean install)',
-                        ];
-                    @endphp
-                    <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6 space-y-5">
+                    {{-- Running Processes (moved to dedicated page) --}}
+                    <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6">
                         <div class="flex items-center justify-between gap-3">
                             <div>
                                 <h3 class="text-lg font-semibold text-slate-100">{{ __('Running Processes') }}</h3>
-                                <p class="text-sm text-slate-400">{{ __('Tasks and Node services currently active. Use Stop or Cancel to terminate a stuck process.') }}</p>
+                                <p class="text-sm text-slate-400">{{ __('Monitor and manage active deployments and Node services.') }}</p>
                             </div>
-                            @if ($runningQueueItems->isNotEmpty() || $activeNodeProcesses->isNotEmpty())
-                                <span class="shrink-0 text-xs px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300">
-                                    {{ $runningQueueItems->count() + $activeNodeProcesses->count() }} active
-                                </span>
-                            @endif
+                            <a href="{{ route('system.processes') }}" wire:navigate class="shrink-0 px-3 py-1.5 text-xs rounded-md border border-slate-700 text-slate-200 hover:text-white hover:border-slate-600 transition-colors inline-flex items-center gap-1.5">
+                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+                                </svg>
+                                {{ __('View Processes') }}
+                            </a>
                         </div>
-
-                        @if ($runningQueueItems->isNotEmpty())
-                            <div>
-                                <p class="text-xs uppercase tracking-wide text-slate-500 mb-2">{{ __('Queue Tasks') }}</p>
-                                <div class="space-y-2">
-                                    @foreach ($runningQueueItems as $qi)
-                                        @php
-                                            $qiLabel = $actionLabels[$qi->action] ?? str_replace('_', ' ', ucfirst($qi->action));
-                                            $qiDuration = $qi->started_at ? $qi->started_at->diffForHumans(null, true, false, 2) : null;
-                                        @endphp
-                                        <div class="flex items-center justify-between gap-3 rounded-md border border-slate-700 bg-slate-950/50 px-4 py-2.5">
-                                            <div class="min-w-0">
-                                                <div class="text-sm text-slate-100 truncate">{{ $qi->project->name ?? "Project #{$qi->project_id}" }}</div>
-                                                <div class="flex items-center gap-2 mt-0.5">
-                                                    <span class="text-xs text-slate-400">{{ $qiLabel }}</span>
-                                                    @if ($qiDuration)
-                                                        <span class="text-xs text-slate-500">· running {{ $qiDuration }}</span>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                wire:click="cancelQueueItem({{ $qi->id }})"
-                                                wire:confirm="{{ __('Force-cancel this running task? The process will be marked cancelled immediately.') }}"
-                                                class="shrink-0 px-2.5 py-1 text-xs rounded border border-rose-500/40 text-rose-300 hover:text-white hover:border-rose-400 transition-colors inline-flex items-center gap-1"
-                                            >
-                                                <x-loading-spinner target="cancelQueueItem({{ $qi->id }})" />
-                                                {{ __('Cancel') }}
-                                            </button>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endif
-
-                        @if ($activeNodeProcesses->isNotEmpty())
-                            <div>
-                                <p class="text-xs uppercase tracking-wide text-slate-500 mb-2">{{ __('Node Services') }}</p>
-                                <div class="space-y-2">
-                                    @foreach ($activeNodeProcesses as $np)
-                                        @php
-                                            $npDuration = $np->last_started_at ? $np->last_started_at->diffForHumans(null, true, false, 2) : null;
-                                        @endphp
-                                        <div class="flex items-center justify-between gap-3 rounded-md border border-slate-700 bg-slate-950/50 px-4 py-2.5">
-                                            <div class="min-w-0">
-                                                <div class="flex items-center gap-2">
-                                                    <span class="text-sm text-slate-100 truncate">{{ $np->project->name ?? "Project #{$np->project_id}" }}</span>
-                                                    @if ($np->port)
-                                                        <span class="text-xs text-slate-500 font-mono shrink-0">:{{ $np->port }}</span>
-                                                    @endif
-                                                </div>
-                                                <div class="flex items-center gap-2 mt-0.5">
-                                                    <span class="text-xs font-mono text-slate-400 truncate">{{ $np->start_command }}</span>
-                                                    @if ($npDuration)
-                                                        <span class="text-xs text-slate-500 shrink-0">· {{ $npDuration }}</span>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                            <div class="flex items-center gap-2 shrink-0">
-                                                <span class="text-xs px-2 py-0.5 rounded-full
-                                                    {{ $np->status === 'running' ? 'bg-emerald-500/10 text-emerald-300' : '' }}
-                                                    {{ $np->status === 'starting' ? 'bg-indigo-500/10 text-indigo-300' : '' }}
-                                                    {{ $np->status === 'crashed' ? 'bg-rose-500/10 text-rose-300' : '' }}
-                                                ">{{ $np->status }}</span>
-                                                @if ($np->crash_count > 0)
-                                                    <span class="text-xs text-amber-400">{{ $np->crash_count }}×</span>
-                                                @endif
-                                                @if ($np->status !== 'crashed')
-                                                    <button
-                                                        type="button"
-                                                        wire:click="stopNodeProcess({{ $np->id }})"
-                                                        wire:confirm="{{ __('Stop this Node process?') }}"
-                                                        class="px-2.5 py-1 text-xs rounded border border-rose-500/40 text-rose-300 hover:text-white hover:border-rose-400 transition-colors inline-flex items-center gap-1"
-                                                    >
-                                                        <x-loading-spinner target="stopNodeProcess({{ $np->id }})" />
-                                                        {{ __('Stop') }}
-                                                    </button>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endif
-
-                        @if ($runningQueueItems->isEmpty() && $activeNodeProcesses->isEmpty())
-                            <p class="text-sm text-slate-500">{{ __('No processes currently running.') }}</p>
-                        @endif
-
-                        <p class="text-xs text-slate-600">{{ __('Node services are configured per project in the project\'s Node tab. Deployment tasks are managed by the scheduler or triggered manually.') }}</p>
                     </div>
 
                     {{-- Runtime & Build Tools --}}

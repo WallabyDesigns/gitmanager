@@ -137,8 +137,8 @@ class AuditService
             return ['opened' => false, 'resolved' => false, 'notification' => null];
         }
 
-        // No pending fix and cooldown still active — stay silent.
-        if ($this->wasRecentlyEmailed($project, $tool, $openIssue->id)) {
+        // Cooldown: check if this specific issue was emailed recently.
+        if ($this->issueWasRecentlyEmailed($openIssue)) {
             return ['opened' => false, 'resolved' => false, 'notification' => null];
         }
 
@@ -411,6 +411,16 @@ class AuditService
                 ->whereNotNull('last_emailed_at')
                 ->where('last_emailed_at', '>=', now()->subHours($cooldownHours))
                 ->exists();
+    }
+
+    private function issueWasRecentlyEmailed(AuditIssue $issue): bool
+    {
+        $cooldownHours = (int) $this->settings->get('system.audit_notification_cooldown', 24);
+
+        return $cooldownHours > 0
+            && $this->hasLastEmailedColumn()
+            && $issue->last_emailed_at !== null
+            && $issue->last_emailed_at->gte(now()->subHours($cooldownHours));
     }
 
     private function hasLastEmailedColumn(): bool
