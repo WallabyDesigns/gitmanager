@@ -264,15 +264,20 @@
                     </svg>
                 </div>
                 <div class="gwm-uo-spinner"></div>
-                <p class="gwm-uo-title">Update in Progress</p>
-                <p class="gwm-uo-sub">Waiting for the app to come back online&hellip;</p>
-                <div class="gwm-uo-retry">Retrying in <span id="gwm-uo-countdown">10</span>s</div>
-                <div class="gwm-uo-recovery" id="gwm-uo-recovery">
+                <p class="gwm-uo-title">Temporarily Unavailable</p>
+                <p class="gwm-uo-sub">The app is restarting &mdash; this can happen during a deployment, queue task, or update. It will reload automatically.</p>
+                <div class="gwm-uo-retry">Retrying in <span id="gwm-uo-countdown">5</span>s</div>
+                <div style="margin-top:0.5rem;font-size:0.72rem;color:#64748b;">
+                    <a href="/processes/queue" style="color:#818cf8;text-decoration:none;">View Task Queue</a>
+                    &nbsp;&middot;&nbsp;
+                    <a href="/recovery" style="color:#64748b;text-decoration:none;">Recovery Page</a>
+                </div>
+                <div class="gwm-uo-recovery" id="gwm-uo-recovery" style="display:none;">
                     <a href="/recovery">Open Recovery Page</a>
                 </div>
                 <div class="gwm-uo-log">
                     <details>
-                        <summary>Update log</summary>
+                        <summary>Activity log</summary>
                         <div id="gwm-uo-log-body">Waiting…</div>
                     </details>
                 </div>
@@ -287,7 +292,7 @@
                 var recovery  = document.getElementById('gwm-uo-recovery');
                 var visible   = false;
                 var elapsed   = 0;
-                var retryIn   = 10;
+                var retryIn   = 5;
                 var tickTimer = null;
 
                 function setLog(text) {
@@ -317,7 +322,7 @@
                         if (elapsed === 60 && recovery) {
                             recovery.style.display = 'block';
                         }
-                        if (retryIn <= 0) { retryIn = 10; checkOnline(); fetchLog(); }
+                        if (retryIn <= 0) { retryIn = 5; checkOnline(); fetchLog(); }
                         if (countEl) countEl.textContent = retryIn;
                     }, 1000);
                 }

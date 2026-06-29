@@ -59,12 +59,7 @@
   --gwm-border: rgba(71, 85, 105, 0.62);
   --gwm-border-soft: rgba(51, 65, 85, 0.72);
   --gwm-focus-ring: rgba(249, 115, 22, 0.36);
-  background:
-    radial-gradient(circle at 14% -10%, rgba(234, 88, 12, 0.12), transparent 22rem),
-    radial-gradient(circle at 92% 2rem, rgba(51, 65, 85, 0.42), transparent 28rem),
-    linear-gradient(180deg, rgb(8, 13, 24), rgb(2, 6, 23) 24rem);
-  background-attachment: fixed;
-  background-color: rgb(2, 6, 23);
+  background-color: rgb(8, 13, 24);
   min-height: 100dvh;
   color: rgb(241 245 249);
   font-family: Figtree, ui-sans-serif, system-ui, sans-serif;
@@ -72,18 +67,6 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-.gwm-app::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background-image:
-    linear-gradient(rgba(148, 163, 184, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.035) 1px, transparent 1px);
-  background-size: 44px 44px;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.75), transparent 72%);
-  pointer-events: none;
-}
 
 .gwm-app main,
 .gwm-app .min-h-screen {
@@ -133,10 +116,8 @@
 .gwm-app main .bg-slate-950\/90,
 .gwm-app > div > .bg-slate-900 {
   border-color: var(--gwm-border);
-  background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(8, 13, 28, 0.96)),
-    var(--gwm-surface);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  background: rgb(15, 23, 42);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .gwm-app main .rounded-xl,
@@ -181,25 +162,10 @@
 .gwm-app main button[class*="border"]:hover,
 .gwm-app main a[class*="border"]:hover,
 .gwm-app nav button[class*="border"]:hover {
-  border-color: rgba(129, 140, 248, 0.62);
-  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.055);
+  border-color: var(--gwm-accent-border);
+  box-shadow: none;
 }
 
-.gwm-app main button[class*="bg-indigo-600"],
-.gwm-app main a[class*="bg-indigo-600"],
-.gwm-app button[class*="bg-indigo-600"],
-.gwm-app a[class*="bg-indigo-600"] {
-  border-color: rgba(129, 140, 248, 0.62);
-  background: linear-gradient(135deg, rgb(79, 70, 229), rgb(14, 165, 233));
-  box-shadow: 0 14px 32px rgba(79, 70, 229, 0.25);
-}
-
-.gwm-app main button[class*="bg-indigo-600"]:hover,
-.gwm-app main a[class*="bg-indigo-600"]:hover,
-.gwm-app button[class*="bg-indigo-600"]:hover,
-.gwm-app a[class*="bg-indigo-600"]:hover {
-  background: linear-gradient(135deg, rgb(99, 102, 241), rgb(56, 189, 248));
-}
 
 .gwm-app input:not([type="checkbox"]):not([type="radio"]),
 .gwm-app select,
@@ -250,10 +216,8 @@
 .gwm-app .gwm-dropdown-content {
   border: 1px solid rgba(71, 85, 105, 0.7);
   border-radius: 0.75rem;
-  background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(8, 13, 28, 0.98)),
-    rgb(15 23 42);
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  background: rgb(15, 23, 42);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.36);
 }
 
 .gwm-app .footer-text {
@@ -325,8 +289,8 @@
 }
 
 .gwm-system-nav-active {
-  border-color: rgba(129, 140, 248, 0.5);
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.26), rgba(14, 165, 233, 0.1));
+  border-color: rgba(100, 116, 139, 0.6);
+  background: rgba(30, 41, 59, 0.58);
   color: rgb(224 231 255);
 }
 
@@ -353,28 +317,14 @@
   isolation: isolate;
 }
 
-.gwm-system-page::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background:
-    radial-gradient(circle at 18% 0%, rgba(20, 184, 166, 0.13), transparent 22rem),
-    radial-gradient(circle at 82% 4rem, rgba(99, 102, 241, 0.18), transparent 24rem),
-    linear-gradient(180deg, rgba(15, 23, 42, 0.72), rgba(2, 6, 23, 0) 20rem),
-    linear-gradient(135deg, rgba(20, 184, 166, 0.1), rgba(99, 102, 241, 0.08) 44%, rgba(2, 6, 23, 0));
-  pointer-events: none;
-}
 
 .gwm-system-page .gwm-system-content > .bg-slate-900,
 .gwm-system-page .gwm-system-content .bg-slate-900.shadow-sm,
 .gwm-system-page aside > .rounded-xl {
   border-color: var(--gwm-panel-border);
   border-radius: 1rem;
-  background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(8, 13, 28, 0.96)),
-    var(--gwm-panel);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  background: rgb(15, 23, 42);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .gwm-system-page .gwm-system-content > .bg-slate-900,
@@ -383,15 +333,6 @@
   overflow: hidden;
 }
 
-.gwm-system-page .gwm-system-content > .bg-slate-900::before,
-.gwm-system-page .gwm-system-content .bg-slate-900.shadow-sm::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto;
-  height: 3px;
-  background: linear-gradient(90deg, rgb(20 184 166), rgb(99 102 241), rgb(14 165 233));
-  opacity: 0.86;
-}
 
 .gwm-system-page .rounded-lg.border.bg-slate-950\/40,
 .gwm-system-page .rounded-md.border.bg-slate-950\/40,
@@ -426,24 +367,13 @@
 .gwm-system-page a[class*="border"] {
   min-height: 2.25rem;
   border-color: rgba(100, 116, 139, 0.68);
-  background: linear-gradient(180deg, rgba(30, 41, 59, 0.72), rgba(15, 23, 42, 0.62));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055), 0 8px 18px rgba(2, 6, 23, 0.18);
+  background: rgba(15, 23, 42, 0.72);
 }
 
 .gwm-system-page button[class*="border"]:hover,
 .gwm-system-page a[class*="border"]:hover {
-  border-color: rgba(129, 140, 248, 0.65);
+  border-color: var(--gwm-accent-border);
   background-color: var(--gwm-control-hover);
-  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.045);
-}
-
-.gwm-system-page button[class*="bg-indigo-600"] {
-  background: linear-gradient(135deg, rgb(79, 70, 229), rgb(14, 165, 233));
-  box-shadow: 0 14px 28px rgba(79, 70, 229, 0.25);
-}
-
-.gwm-system-page button[class*="bg-indigo-600"]:hover {
-  background: linear-gradient(135deg, rgb(99, 102, 241), rgb(56, 189, 248));
 }
 
 .gwm-system-page button:disabled {
@@ -578,16 +508,13 @@
 .gwm-system-page aside > .rounded-xl {
   border-color: var(--gwm-border);
   border-radius: 0.875rem;
-  background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(8, 13, 28, 0.96)),
-    var(--gwm-surface);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  background: rgb(15, 23, 42);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .gwm-system-page button[class*="border"]:not([class*="border-b-2"]),
 .gwm-system-page a[class*="border"]:not([class*="border-b-2"]) {
-  background: rgba(15, 23, 42, 0.42);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  background: rgba(15, 23, 42, 0.72);
 }
 
 .gwm-status-success {
@@ -773,9 +700,8 @@
 
 .gwm-app main aside nav a.group[class*="bg-indigo-500"],
 .gwm-app main aside nav button.group[class*="bg-indigo-500"] {
-  border-color: rgba(129, 140, 248, 0.5) !important;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.26), rgba(14, 165, 233, 0.1)) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 24px rgba(15, 23, 42, 0.28) !important;
+  border-color: rgba(100, 116, 139, 0.5) !important;
+  background: rgba(30, 41, 59, 0.58) !important;
   color: rgb(224 231 255) !important;
 }
 
@@ -788,8 +714,8 @@
 
 .gwm-app main aside nav a.group[class*="bg-indigo-500"]:hover,
 .gwm-app main aside nav button.group[class*="bg-indigo-500"]:hover {
-  border-color: rgba(129, 140, 248, 0.58) !important;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(14, 165, 233, 0.14)) !important;
+  border-color: rgba(100, 116, 139, 0.6) !important;
+  background: rgba(30, 41, 59, 0.72) !important;
 }
 
 .gwm-system-search {
@@ -909,10 +835,8 @@
   margin-top: 1.5rem;
   overflow: hidden;
   border: 1px solid var(--gwm-border-soft);
-  background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(8, 13, 28, 0.96)),
-    var(--gwm-surface);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  background: rgb(15, 23, 42);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.32);
   padding: 1rem 1.5rem;
 }
 

@@ -51,17 +51,6 @@
   isolation: isolate;
 }
 
-.gme-infra-page::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background:
-    radial-gradient(circle at 16% 0%, rgba(20, 184, 166, 0.12), transparent 22rem),
-    radial-gradient(circle at 86% 4rem, rgba(99, 102, 241, 0.16), transparent 24rem),
-    linear-gradient(180deg, rgba(15, 23, 42, 0.5), rgba(2, 6, 23, 0) 22rem);
-  pointer-events: none;
-}
 
 .gme-infra-page .bg-white,
 .gme-infra-page .dark\:bg-slate-900,
@@ -69,10 +58,8 @@
 .gme-infra-page .bg-slate-900\/70,
 .gme-infra-page .bg-slate-950\/50 {
   border-color: var(--gme-border);
-  background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(8, 13, 28, 0.97)),
-    var(--gme-surface);
-  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  background: rgb(15, 23, 42);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .gme-infra-page .rounded-xl,
@@ -109,9 +96,8 @@
 }
 
 .gme-infra-page .gme-side-nav-active {
-  border-color: rgba(129, 140, 248, 0.5);
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.26), rgba(14, 165, 233, 0.1));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 24px rgba(2, 6, 23, 0.24);
+  border-color: rgba(100, 116, 139, 0.5);
+  background: rgba(30, 41, 59, 0.58);
   color: rgb(224 231 255);
 }
 
@@ -143,9 +129,8 @@
 
 .gme-infra-page button[class*="border"]:hover,
 .gme-infra-page a[class*="border"]:hover {
-  border-color: rgba(129, 140, 248, 0.62);
+  border-color: var(--gme-accent-border);
   background-color: rgba(30, 41, 59, 0.82);
-  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.055);
 }
 
 .gme-infra-page button[class*="border-indigo"],
@@ -232,10 +217,8 @@
 .gme-infra-page .fixed .bg-white,
 .gme-infra-page .fixed .dark\:bg-slate-900 {
   border-color: rgba(100, 116, 139, 0.72);
-  background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(8, 13, 28, 0.98)),
-    rgb(15 23 42);
-  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.055);
+  background: rgb(15, 23, 42);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.42);
 }
 
 .gme-infra-page :is(div, nav)[class*="border-b"][class*="border-slate-800"]:has(> [class*="border-b-2"]) {
@@ -311,12 +294,6 @@
   --gme-focus: rgba(249, 115, 22, 0.36);
 }
 
-.gme-infra-page::before {
-  background:
-    radial-gradient(circle at 16% 0%, rgba(234, 88, 12, 0.1), transparent 22rem),
-    radial-gradient(circle at 86% 4rem, rgba(51, 65, 85, 0.38), transparent 24rem),
-    linear-gradient(180deg, rgba(15, 23, 42, 0.5), rgba(2, 6, 23, 0) 22rem);
-}
 
 .gme-infra-page button[class*="bg-indigo-600"],
 .gme-infra-page a[class*="bg-indigo-600"] {

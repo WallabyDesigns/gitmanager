@@ -44,6 +44,11 @@
             <button type="button" @click="tab = 'debug'" :class="tab === 'debug' ? 'bg-slate-100 text-slate-900' : 'border border-slate-700 text-slate-300'" class="px-3 py-2 text-sm rounded-md">
                 {{ __('Debug') }}
             </button>
+            @if (!empty($availableLogFiles))
+                <button type="button" @click="tab = 'logs'" :class="tab === 'logs' ? 'bg-slate-100 text-slate-900' : 'border border-slate-700 text-slate-300'" class="px-3 py-2 text-sm rounded-md">
+                    {{ __('Logs') }}
+                </button>
+            @endif
                 </div>
 
         @php
@@ -491,6 +496,47 @@
             </div>
         </div>
     </div>
+
+        <div x-show="tab === 'logs'" x-cloak class="min-w-0 bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6 space-y-5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <h3 class="text-lg font-semibold text-slate-100">{{ __('Log Files') }}</h3>
+                @if ($selectedLogFile && $logContent !== null)
+                    <button type="button"
+                            wire:click="clearLog('{{ $selectedLogFile }}')"
+                            onclick="return confirm('{{ __('Clear :file? This cannot be undone.', ['file' => $selectedLogFile]) }}') || event.stopImmediatePropagation()"
+                            class="px-3 py-1.5 text-xs rounded-md border border-rose-600/50 text-rose-300 hover:text-rose-100 hover:bg-rose-500/10 inline-flex items-center gap-1">
+                        <x-loading-spinner target="clearLog" />
+                        {{ __('Clear :file', ['file' => $selectedLogFile]) }}
+                    </button>
+                @endif
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+                @foreach ($availableLogFiles as $logFile)
+                    <button type="button"
+                            wire:click="loadLog('{{ $logFile }}')"
+                            class="px-3 py-1.5 text-xs rounded-md border {{ $selectedLogFile === $logFile ? 'border-indigo-500 text-indigo-200 bg-indigo-500/10' : 'border-slate-700 text-slate-300 hover:text-slate-100' }} inline-flex items-center gap-1">
+                        <x-loading-spinner target="loadLog" />
+                        {{ $logFile }}
+                    </button>
+                @endforeach
+            </div>
+
+            @if ($selectedLogFile && $logContent !== null)
+                <div class="text-xs text-slate-500">
+                    {{ __('Showing last 50 log entries from :file', ['file' => $selectedLogFile]) }}
+                </div>
+                @if ($logContent === '')
+                    <div class="rounded-lg border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-400">
+                        {{ __('Log file is empty.') }}
+                    </div>
+                @else
+                    <pre class="rounded-lg border border-slate-800 bg-slate-950/60 p-4 text-xs text-slate-300 overflow-x-auto overflow-y-auto max-h-[600px] whitespace-pre-wrap break-words leading-relaxed font-mono">{{ $logContent }}</pre>
+                @endif
+            @elseif (!empty($availableLogFiles))
+                <p class="text-sm text-slate-400">{{ __('Select a log file above to view its last 50 entries.') }}</p>
+            @endif
+        </div>
 
     <div
         x-show="deleteOpen"

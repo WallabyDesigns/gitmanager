@@ -94,8 +94,9 @@ Route::middleware(EnsureAdminUser::class)->group(function () {
         Route::get('/system/support', SystemSupport::class)->name('system.support');
         Route::get('/system/white-label', SystemWhiteLabel::class)->name('system.white-label');
         Route::get('/system/plugins', SystemPlugins::class)->name('system.plugins');
-        Route::get('/processes', SystemProcesses::class)->name('processes.index');
+        Route::redirect('/processes', '/processes/queue', 302)->name('processes.index');
         Route::get('/processes/queue', ProcessesQueue::class)->name('processes.queue');
+        Route::get('/processes/active', SystemProcesses::class)->name('processes.active');
         Route::get('/workflows', WorkflowsIndex::class)->name('workflows.index');
         Route::get('/ftp-accounts', FtpAccountsIndex::class)->name('ftp-accounts.index');
     });

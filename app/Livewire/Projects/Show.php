@@ -30,6 +30,10 @@ class Show extends Component
 
     public string $previewCommit = '';
 
+    public string $selectedLogFile = '';
+
+    public ?string $logContent = null;
+
     private bool $staleReleased = false;
 
     public function mount(Project $project): void
@@ -109,6 +113,7 @@ class Show extends Component
             'isEnterprise' => $this->isEnterpriseEdition(),
             'envSeedPending' => $envSeedPending,
             'htaccessSeedPending' => $htaccessSeedPending,
+            'availableLogFiles' => $this->listLogFiles(),
         ])->layout('layouts.app', [
             'header' => view('livewire.projects.partials.show-header', [
                 'project' => $this->project,
@@ -163,7 +168,15 @@ class Show extends Component
         app(DeploymentQueueService::class)->cancelQueuedGroup($this->project, 'force_deploy');
         if ($this->queueEnabled()) {
             $result = app(DeploymentQueueService::class)->enqueueForImmediateProcessing($this->project, 'force_deploy', ['reason' => 'manual_force_deploy'], Auth::user());
-            $this->dispatch('notify', message: $result['started'] ? 'Force deployment started.' : 'Force deployment queued.');
+
+            if ($result['existing']) {
+                $this->dispatch('notify', message: 'A task is already running for this project. Please wait or use Stop Task.');
+            } elseif ($result['started']) {
+                $this->dispatch('notify', message: 'Force deployment started.');
+            } else {
+                $this->dispatch('notify', message: 'Force deployment queued.');
+            }
+
             $this->dispatch('reload-page', delay: 300);
 
             return;
@@ -422,6 +435,111 @@ class Show extends Component
         }
 
         return false;
+    }
+
+    public function loadLog(string $filename): void
+    {
+        $this->authorize('view', $this->project);
+
+        $path = $this->resolveLogFile($filename);
+        if ($path === null) {
+            $this->dispatch('notify', message: 'Log file not found.');
+
+            return;
+        }
+
+        $this->selectedLogFile = $filename;
+        $this->logContent = $this->readLastLogEntries($path, 50);
+    }
+
+    public function clearLog(string $filename): void
+    {
+        $this->authorize('update', $this->project);
+
+        $path = $this->resolveLogFile($filename);
+        if ($path === null) {
+            $this->dispatch('notify', message: 'Log file not found.');
+
+            return;
+        }
+
+        file_put_contents($path, '');
+        $this->logContent = null;
+        $this->selectedLogFile = '';
+        $this->dispatch('notify', message: 'Log cleared.');
+    }
+
+    private function listLogFiles(): array
+    {
+        $dir = $this->resolveLogDirectory();
+        if ($dir === null) {
+            return [];
+        }
+
+        $files = glob($dir.DIRECTORY_SEPARATOR.'*.log') ?: [];
+
+        return array_map('basename', $files);
+    }
+
+    private function resolveLogDirectory(): ?string
+    {
+        $projectPath = trim((string) ($this->project->local_path ?? ''));
+        if ($projectPath === '' || ! is_dir($projectPath)) {
+            return null;
+        }
+
+        $root = $this->findLaravelRoot($projectPath) ?? $projectPath;
+        $logDir = $root.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'logs';
+
+        return is_dir($logDir) ? $logDir : null;
+    }
+
+    private function resolveLogFile(string $filename): ?string
+    {
+        if ($filename === '' || str_contains($filename, '/') || str_contains($filename, '\\') || str_contains($filename, '..')) {
+            return null;
+        }
+
+        $dir = $this->resolveLogDirectory();
+        if ($dir === null) {
+            return null;
+        }
+
+        $path = $dir.DIRECTORY_SEPARATOR.$filename;
+
+        return is_file($path) ? $path : null;
+    }
+
+    private function readLastLogEntries(string $path, int $limit): string
+    {
+        $maxBytes = 1024 * 1024; // read at most 1 MB from the end
+        $size = @filesize($path);
+
+        $handle = @fopen($path, 'r');
+        if ($handle === false) {
+            return '';
+        }
+
+        try {
+            if ($size !== false && $size > $maxBytes) {
+                fseek($handle, -$maxBytes, SEEK_END);
+            }
+            $content = stream_get_contents($handle);
+        } finally {
+            fclose($handle);
+        }
+
+        if ($content === false || $content === '') {
+            return '';
+        }
+
+        $entries = preg_split('/(?=\[\d{4}-\d{2}-\d{2})/', $content, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        if (empty($entries)) {
+            return $content;
+        }
+
+        return implode('', array_slice($entries, -$limit));
     }
 
     private function findLaravelRoot(string $path): ?string
