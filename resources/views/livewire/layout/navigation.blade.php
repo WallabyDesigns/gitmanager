@@ -15,6 +15,7 @@ new class extends Component
     public string $brandName = 'Git Web Manager';
     public bool $hideEditionLabel = false;
     public string $subHeading = '';
+    public int $queueCount = 0;
 
     public function mount(NavigationStateService $navigationState): void
     {
@@ -26,9 +27,9 @@ new class extends Component
         $this->isEnterprise = (bool) ($state['isEnterprise'] ?? false);
         $this->hideEditionLabel = (bool) ($state['hideEditionLabel'] ?? false);
         $this->subHeading = (string) ($state['subHeading'] ?? '');
+        $this->queueCount = (int) ($state['queueCount'] ?? 0);
         $brandName = (string) ($state['brandName'] ?? config('app.name', 'Git Web Manager'));
         $this->brandName = __($brandName);
-
     }
     /**
      * Log the current user out of the application.
@@ -127,10 +128,19 @@ new class extends Component
                         </x-nav-link>
                         <x-nav-link :href="route('processes.index')" :active="request()->routeIs('processes.*')">
                             <span class="flex items-center gap-1.5">
-                                <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
-                                </svg>
+                                @if ($queueCount > 0)
+                                    <svg class="h-4 w-4 shrink-0 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                    </svg>
+                                @else
+                                    <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+                                    </svg>
+                                @endif
                                 {{ __('Processes') }}
+                                @if ($queueCount > 0)
+                                    <span class="inline-flex items-center justify-center rounded-full bg-orange-500/20 px-1.5 py-0.5 text-xs text-orange-300">{{ $queueCount }}</span>
+                                @endif
                             </span>
                         </x-nav-link>
                         <x-nav-link :href="route('system.updates')" :active="request()->routeIs('system.*') && ! request()->routeIs('processes.*')">
@@ -347,10 +357,19 @@ new class extends Component
                         </x-responsive-nav-link>
                         <x-responsive-nav-link :href="route('processes.index')" :active="request()->routeIs('processes.*')">
                             <span class="flex items-center gap-3">
-                                <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
-                                </svg>
+                                @if ($queueCount > 0)
+                                    <svg class="h-5 w-5 shrink-0 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                    </svg>
+                                @else
+                                    <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+                                    </svg>
+                                @endif
                                 {{ __('Processes') }}
+                                @if ($queueCount > 0)
+                                    <span class="ml-auto inline-flex items-center justify-center rounded-full bg-orange-500/20 px-1.5 py-0.5 text-xs text-orange-300">{{ $queueCount }}</span>
+                                @endif
                             </span>
                         </x-responsive-nav-link>
                         <x-responsive-nav-link :href="route('system.updates')" :active="request()->routeIs('system.*') && ! request()->routeIs('processes.*')">

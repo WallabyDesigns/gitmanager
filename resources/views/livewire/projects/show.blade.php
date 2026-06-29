@@ -494,8 +494,6 @@
             @endif
                 </div>
             </div>
-        </div>
-    </div>
 
         <div x-show="tab === 'logs'" x-cloak class="min-w-0 bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6 space-y-5">
             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -537,6 +535,9 @@
                 <p class="text-sm text-slate-400">{{ __('Select a log file above to view its last 50 entries.') }}</p>
             @endif
         </div>
+
+        </div>
+    </div>
 
     <div
         x-show="deleteOpen"
