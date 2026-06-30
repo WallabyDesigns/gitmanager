@@ -570,7 +570,7 @@
                             </div>
                         @else
                             <pre
-                                class="rounded-lg border border-slate-800 bg-slate-950/60 p-4 text-xs text-slate-300 overflow-x-auto overflow-y-auto max-h-[600px] whitespace-pre-wrap break-words leading-relaxed font-mono">{{ $logContent }}</pre>
+                                class="rounded-lg border border-slate-800 bg-slate-950/60 p-4 text-xs text-slate-300 overflow-x-auto overflow-y-scroll h-[500px] whitespace-pre-wrap break-words leading-relaxed font-mono">{{ $logContent }}</pre>
                         @endif
                     @elseif (!empty($availableLogFiles))
                         <p class="text-sm text-slate-400">
