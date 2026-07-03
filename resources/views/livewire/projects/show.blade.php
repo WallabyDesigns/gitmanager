@@ -143,11 +143,11 @@
                                 </span>
                             @endif
                             @php
-                                $healthHistory = array_slice($project->healthHistory(), -30);
+                                $healthSparkline = array_slice($project->healthHistory(), -30);
                             @endphp
-                            @if (count($healthHistory) >= 2)
+                            @if (count($healthSparkline) >= 2)
                                 <span class="inline-flex items-end gap-px h-4" title="{{ __('Health history (oldest to newest)') }}">
-                                    @foreach ($healthHistory as $check)
+                                    @foreach ($healthSparkline as $check)
                                         @php
                                             $checkOk = ($check['status'] ?? '') === 'ok';
                                             $checkTitle = trim(($check['checked_at'] ?? '').' — '.($check['summary'] ?? ($check['status'] ?? '')));
