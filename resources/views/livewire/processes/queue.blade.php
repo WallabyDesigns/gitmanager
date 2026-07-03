@@ -155,6 +155,16 @@
                             @if ($timestampValue)
                                 • {{ $timestampLabel }}: {{ \App\Support\DateFormatter::forUser($timestampValue, 'M j, Y g:i a') }}
                             @endif
+                            @php
+                                $avgForAction = $avgDurations[$item->action] ?? null;
+                            @endphp
+                            @if ($item->status === 'queued' && $avgForAction)
+                                • {{ __('Typically ~:duration', ['duration' => $this->formatDuration($avgForAction)]) }}
+                            @elseif ($item->status === 'running' && $item->started_at)
+                                • {{ __('Running for :duration', ['duration' => $this->formatDuration((int) $item->started_at->diffInSeconds(now()))]) }}
+                            @elseif (in_array($item->status, ['completed', 'failed'], true) && $item->started_at && $item->finished_at)
+                                • {{ __('Took :duration', ['duration' => $this->formatDuration((int) $item->started_at->diffInSeconds($item->finished_at))]) }}
+                            @endif
                         </div>
                     </div>
                     <div class="flex flex-wrap gap-2">

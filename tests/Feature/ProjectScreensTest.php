@@ -138,11 +138,20 @@ class ProjectScreensTest extends TestCase
             ->assertSee('Edit '.$project->name);
     }
 
+    public function test_legacy_queue_route_redirects_to_processes_queue(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get(route('projects.queue'))
+            ->assertRedirect('/processes/queue');
+    }
+
     public function test_queue_screen_loads(): void
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->get(route('projects.queue'));
+        $response = $this->actingAs($user)->get(route('processes.queue'));
 
         $response
             ->assertOk()

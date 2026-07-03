@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Webhooks;
 use App\Http\Controllers\Controller;
 use App\Jobs\DeployProjectFromWebhook;
 use App\Models\Project;
+use App\Services\DeploymentQueueService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -57,7 +58,17 @@ class GitHubWebhookController extends Controller
             return response('Auto deploy disabled.', 202);
         }
 
-        DeployProjectFromWebhook::dispatch($project->id);
+        if (config('gitmanager.deploy_queue.enabled', true)) {
+            // Enqueue directly into the app's own task queue — a Laravel queue
+            // worker is not guaranteed to exist on typical installs.
+            app(DeploymentQueueService::class)->enqueueForImmediateProcessing($project, 'deploy', [
+                'source' => 'github_webhook',
+            ]);
+        } else {
+            // Runs after the 202 response is sent, so no queue worker is needed
+            // and GitHub's delivery timeout is not at risk.
+            DeployProjectFromWebhook::dispatchAfterResponse($project->id);
+        }
 
         return response('Queued.', 202);
     }

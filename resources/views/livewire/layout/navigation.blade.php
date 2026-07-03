@@ -31,6 +31,17 @@ new class extends Component
         $brandName = (string) ($state['brandName'] ?? config('app.name', 'Git Web Manager'));
         $this->brandName = __($brandName);
     }
+
+    /**
+     * Lightweight poll target: refresh only the queue badge count.
+     */
+    public function refreshQueueCount(NavigationStateService $navigationState): void
+    {
+        $state = $navigationState->topNavigationState(Auth::user());
+        $this->queueCount = (int) ($state['queueCount'] ?? 0);
+        $this->openAlerts = (int) ($state['openAlerts'] ?? 0);
+        $this->updateAvailable = (bool) ($state['updateAvailable'] ?? false);
+    }
     /**
      * Log the current user out of the application.
      */
@@ -44,7 +55,7 @@ new class extends Component
 
 
 
-<nav x-data="{ open: false }" x-effect="document.body.classList.toggle('overflow-hidden', open)" @keydown.escape.window="open = false" x-on:livewire:navigating.window="open = false" class="relative z-[1000] bg-slate-900/80 border-b border-slate-800 backdrop-blur">
+<nav x-data="{ open: false }" x-effect="document.body.classList.toggle('overflow-hidden', open)" @keydown.escape.window="open = false" x-on:livewire:navigating.window="open = false" wire:poll.15s="refreshQueueCount" class="relative z-[1000] bg-slate-900/80 border-b border-slate-800 backdrop-blur">
     <!-- Primary Navigation Menu -->
     <div class="mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
@@ -133,8 +144,8 @@ new class extends Component
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                                     </svg>
                                 @else
-                                    <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+                                    <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/>
                                     </svg>
                                 @endif
                                 {{ __('Processes') }}
@@ -179,8 +190,9 @@ new class extends Component
                 <x-dropdown align="right" >
                     <x-slot name="trigger">
                         <button class="inline-flex h-9 w-9 items-center justify-center rounded-lg border shadow-sm transition focus:outline-none border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white">
-                            <svg class="h-5 w-5 {{ auth()->user()?->isAdmin() ? 'text-amber-300' : '' }}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                                <path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clip-rule="evenodd" />
+                            <svg class="h-5 w-5 stroke-2 {{ auth()->user()?->isAdmin() ? 'text-amber-300' : '' }}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+                                <path d="M16 7C16 9.20914 14.2091 11 12 11C9.79086 11 8 9.20914 8 7C8 4.79086 9.79086 3 12 3C14.2091 3 16 4.79086 16 7Z" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="--darkreader-inline-stroke: var(--darkreader-text-000000, #e8e6e3);" data-darkreader-inline-stroke=""></path> 
+                                <path d="M12 14C8.13401 14 5 17.134 5 21H19C19 17.134 15.866 14 12 14Z" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" data-darkreader-inline-stroke=""></path>
                             </svg>
                         </button>
                     </x-slot>

@@ -142,6 +142,21 @@
                                     {{ __('Laravel check') }}: {{ $project->health_issue_message }}
                                 </span>
                             @endif
+                            @php
+                                $healthHistory = array_slice($project->healthHistory(), -30);
+                            @endphp
+                            @if (count($healthHistory) >= 2)
+                                <span class="inline-flex items-end gap-px h-4" title="{{ __('Health history (oldest to newest)') }}">
+                                    @foreach ($healthHistory as $check)
+                                        @php
+                                            $checkOk = ($check['status'] ?? '') === 'ok';
+                                            $checkTitle = trim(($check['checked_at'] ?? '').' — '.($check['summary'] ?? ($check['status'] ?? '')));
+                                        @endphp
+                                        <span class="w-1 rounded-sm {{ $checkOk ? 'h-4 bg-emerald-500/70' : 'h-2.5 bg-rose-500/80' }}"
+                                              title="{{ $checkTitle }}"></span>
+                                    @endforeach
+                                </span>
+                            @endif
                         </div>
                         <div class="flex flex-wrap gap-2">
                             <button type="button" wire:click="deploy"

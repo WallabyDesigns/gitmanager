@@ -29,8 +29,8 @@ class Queue extends Component
 
     public function processNow(DeploymentQueueService $queue, SchedulerService $scheduler): void
     {
-        $limit = (int) config('gitmanager.deploy_queue.batch_size', 0);
-        $started = $queue->startBackgroundProcessor($limit > 0 ? $limit : 1);
+        // Limit 0 = drain the queue until empty.
+        $started = $queue->startBackgroundProcessor(0);
         $scheduler->recordManualRun();
 
         if (! $started) {
@@ -194,10 +194,52 @@ class Queue extends Component
             'items' => $items,
             'runningDeployments' => $runningDeployments,
             'staleSeconds' => (int) config('gitmanager.deploy_queue.stale_seconds', 900),
+            'avgDurations' => $this->averageDurationsByAction(),
         ])->layout('layouts.app', [
             'title' => 'Task Queue',
             'header' => view('livewire.processes.partials.header'),
         ]);
+    }
+
+    /**
+     * Average completed-run duration per action over the last 7 days, in seconds.
+     *
+     * @return array<string, int>
+     */
+    private function averageDurationsByAction(): array
+    {
+        return DeploymentQueueItem::query()
+            ->where('status', 'completed')
+            ->whereNotNull('started_at')
+            ->whereNotNull('finished_at')
+            ->where('finished_at', '>=', now()->subDays(7))
+            ->latest('finished_at')
+            ->limit(200)
+            ->get(['action', 'started_at', 'finished_at'])
+            ->groupBy('action')
+            ->map(fn ($group) => (int) round($group->avg(
+                fn ($row) => max(1, $row->started_at->diffInSeconds($row->finished_at))
+            )))
+            ->all();
+    }
+
+    public function formatDuration(int $seconds): string
+    {
+        if ($seconds < 60) {
+            return $seconds.'s';
+        }
+
+        $minutes = intdiv($seconds, 60);
+        if ($minutes < 60) {
+            $remainder = $seconds % 60;
+
+            return $remainder > 0 ? $minutes.'m '.$remainder.'s' : $minutes.'m';
+        }
+
+        $hours = intdiv($minutes, 60);
+        $minutes %= 60;
+
+        return $minutes > 0 ? $hours.'h '.$minutes.'m' : $hours.'h';
     }
 
     public function cancel(int $id, DeploymentQueueService $queue): void

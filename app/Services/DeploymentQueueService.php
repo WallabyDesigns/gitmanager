@@ -34,31 +34,37 @@ class DeploymentQueueService
     public function enqueue(Project $project, string $action, array $payload = [], ?User $user = null): DeploymentQueueItem
     {
         $actionGroup = $this->actionGroup($action);
-        $existing = DeploymentQueueItem::query()
-            ->where('project_id', $project->id)
-            ->whereIn('status', ['queued', 'running'])
-            ->whereIn('action', $actionGroup)
-            ->orderByDesc('position')
-            ->first();
 
-        if ($existing) {
-            return $existing;
+        $item = DB::transaction(function () use ($project, $action, $actionGroup, $payload, $user) {
+            $existing = DeploymentQueueItem::query()
+                ->where('project_id', $project->id)
+                ->whereIn('status', ['queued', 'running'])
+                ->whereIn('action', $actionGroup)
+                ->orderByDesc('position')
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing) {
+                return $existing;
+            }
+
+            $position = (int) DeploymentQueueItem::query()
+                ->where('status', 'queued')
+                ->max('position');
+
+            return DeploymentQueueItem::create([
+                'project_id' => $project->id,
+                'queued_by' => $user?->id,
+                'action' => $action,
+                'payload' => $payload,
+                'status' => 'queued',
+                'position' => $position + 1,
+            ]);
+        });
+
+        if ($item->wasRecentlyCreated) {
+            $this->normalizeQueuedPositions();
         }
-
-        $position = (int) DeploymentQueueItem::query()
-            ->where('status', 'queued')
-            ->max('position');
-
-        $item = DeploymentQueueItem::create([
-            'project_id' => $project->id,
-            'queued_by' => $user?->id,
-            'action' => $action,
-            'payload' => $payload,
-            'status' => 'queued',
-            'position' => $position + 1,
-        ]);
-
-        $this->normalizeQueuedPositions();
 
         return $item;
     }
@@ -74,7 +80,9 @@ class DeploymentQueueService
         $started = false;
 
         if ($wasIdle && ! $existing) {
-            $started = $this->startBackgroundProcessor(1);
+            // Limit 0 = drain until empty, so items enqueued while this one
+            // runs are picked up without waiting for the next scheduler tick.
+            $started = $this->startBackgroundProcessor(0);
         }
 
         return [
@@ -98,6 +106,13 @@ class DeploymentQueueService
 
             $this->runItem($item);
             $processed++;
+        }
+
+        // Auto-advance: if this run made progress but items remain (batch limit
+        // reached, or items unblocked while running), hand off to a new drain
+        // worker. Requiring progress prevents respawn loops on stuck queues.
+        if ($processed > 0 && DeploymentQueueItem::query()->where('status', 'queued')->exists()) {
+            $this->startBackgroundProcessor(0);
         }
 
         return $processed;
@@ -141,12 +156,17 @@ class DeploymentQueueService
         $this->runItem($reserved);
         $this->normalizeQueuedPositions();
 
+        // Continue draining remaining items in a background worker.
+        if (DeploymentQueueItem::query()->where('status', 'queued')->exists()) {
+            $this->startBackgroundProcessor(0);
+        }
+
         return true;
     }
 
-    public function startBackgroundProcessor(int $limit = 1): bool
+    public function startBackgroundProcessor(int $limit = 0): bool
     {
-        $limit = max(1, $limit);
+        $limit = max(0, $limit);
 
         if (app()->runningUnitTests()) {
             return true;
@@ -202,20 +222,42 @@ class DeploymentQueueService
             ->orderBy('position')
             ->orderBy('created_at')
             ->orderBy('id')
-            ->get();
+            ->get(['id', 'position']);
 
         if ($items->count() < 2) {
             return;
         }
 
+        $changes = [];
         $position = 1;
         foreach ($items as $item) {
             if ($item->position !== $position) {
-                $item->position = $position;
-                $item->save();
+                $changes[$item->id] = $position;
             }
             $position++;
         }
+
+        if ($changes === []) {
+            return;
+        }
+
+        // Single UPDATE keeps SQLite write-lock time minimal versus per-row saves.
+        $cases = [];
+        $bindings = [];
+        foreach ($changes as $id => $newPosition) {
+            $cases[] = 'WHEN ? THEN ?';
+            $bindings[] = $id;
+            $bindings[] = $newPosition;
+        }
+
+        $ids = array_keys($changes);
+        $table = (new DeploymentQueueItem)->getTable();
+        $placeholders = implode(', ', array_fill(0, count($ids), '?'));
+
+        DB::update(
+            "UPDATE {$table} SET position = CASE id ".implode(' ', $cases)." END WHERE id IN ({$placeholders})",
+            [...$bindings, ...$ids]
+        );
     }
 
     public function purgeDuplicatesForUser(User $user): int
@@ -629,6 +671,12 @@ class DeploymentQueueService
                     $audit = $this->runAuditItem($project, $user, $payload);
                     $deployment = $audit['deployment'];
                     $markFailed = $audit['failed'];
+
+                    // Send one digest covering every project once the final
+                    // pending audit finishes, instead of one email per item.
+                    if (($payload['send_email'] ?? true) && ! $this->hasOtherPendingAudits($item)) {
+                        app(AuditService::class)->sendPendingDigest();
+                    }
                     break;
                 case 'dependency_update':
                     $deployment = $service->updateDependencies($project, $user);
@@ -700,6 +748,18 @@ class DeploymentQueueService
                 $item->deployment_id = $deployment->id;
             }
 
+            // Verify automated audit fixes with a follow-up scan: the issue is
+            // either marked resolved, or escalates to an email now that no fix
+            // is pending. auto_fix stays off to avoid a fix/audit loop.
+            if (($payload['reason'] ?? '') === 'audit_fix'
+                && in_array($item->action, ['npm_audit_fix', 'npm_audit_fix_force', 'composer_update'], true)) {
+                $this->enqueue($project, 'audit_project', [
+                    'reason' => 'post_fix_verification',
+                    'auto_fix' => false,
+                    'send_email' => true,
+                ]);
+            }
+
             $item->status = $markFailed ? 'failed' : 'completed';
         } catch (\Throwable $exception) {
             $item->status = 'failed';
@@ -714,10 +774,18 @@ class DeploymentQueueService
             app(NavigationStateService::class)->flushProjectsSidebar($userId);
         }
 
-        // Auto-advance: if more items are waiting, kick off the next processor.
-        if (DeploymentQueueItem::query()->where('status', 'queued')->exists()) {
-            $this->startBackgroundProcessor(1);
+        if ($item->status === 'failed') {
+            app(DeploymentFailureNotifier::class)->notify($item);
         }
+    }
+
+    private function hasOtherPendingAudits(DeploymentQueueItem $item): bool
+    {
+        return DeploymentQueueItem::query()
+            ->where('id', '!=', $item->id)
+            ->where('action', 'audit_project')
+            ->whereIn('status', ['queued', 'running'])
+            ->exists();
     }
 
     private function applyItemRuntimeBudget(): void
@@ -743,8 +811,9 @@ class DeploymentQueueService
     private function runAuditItem(Project $project, ?User $user, array $payload): array
     {
         $autoFix = (bool) ($payload['auto_fix'] ?? true);
-        $sendEmail = (bool) ($payload['send_email'] ?? true);
-        $auditPayload = app(AuditService::class)->auditProject($project, $user, $autoFix, $sendEmail);
+        // Never email per item — a single digest is sent once the last pending
+        // audit finishes (see the audit_project case in runItem).
+        $auditPayload = app(AuditService::class)->auditProject($project, $user, $autoFix, false);
         $results = $auditPayload['results'] ?? [];
 
         $failed = false;

@@ -33,7 +33,8 @@ class NavigationStateService
      *   isEnterprise:bool,
      *   brandName:string,
      *   hideEditionLabel:bool,
-     *   subHeading:string
+     *   subHeading:string,
+     *   queueCount:int
      * }
      */
     public function topNavigationState(?User $user): array
@@ -51,6 +52,8 @@ class NavigationStateService
             'brandName' => $shared['brandName'],
             'hideEditionLabel' => $shared['hideEditionLabel'],
             'subHeading' => $shared['subHeading'],
+            // Bypasses the shared cache so the Processes badge stays current.
+            'queueCount' => $this->queueCount($user?->id),
         ];
     }
 

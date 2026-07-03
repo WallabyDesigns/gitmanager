@@ -6,7 +6,7 @@ use App\Jobs\DeployProjectFromWebhook;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
@@ -113,9 +113,34 @@ class WebhookGitHubTest extends TestCase
         $this->webhook($payload, 'push')->assertStatus(202);
     }
 
-    public function test_valid_push_queues_deploy_job(): void
+    public function test_valid_push_enqueues_deploy_task(): void
     {
-        Queue::fake();
+        $user = User::factory()->create();
+        $project = Project::factory()->create([
+            'user_id' => $user->id,
+            'repo_url' => 'https://github.com/org/repo.git',
+            'default_branch' => 'main',
+            'auto_deploy' => true,
+        ]);
+
+        $payload = json_encode([
+            'ref' => 'refs/heads/main',
+            'repository' => ['html_url' => $project->repo_url],
+        ]);
+
+        $this->webhook($payload, 'push')->assertStatus(202);
+
+        $this->assertDatabaseHas('deployment_queue_items', [
+            'project_id' => $project->id,
+            'action' => 'deploy',
+            'status' => 'queued',
+        ]);
+    }
+
+    public function test_valid_push_with_queue_disabled_dispatches_job_after_response(): void
+    {
+        config(['gitmanager.deploy_queue.enabled' => false]);
+        Bus::fake();
 
         $user = User::factory()->create();
         $project = Project::factory()->create([
@@ -132,6 +157,9 @@ class WebhookGitHubTest extends TestCase
 
         $this->webhook($payload, 'push')->assertStatus(202);
 
-        Queue::assertPushed(DeployProjectFromWebhook::class, fn ($job) => $job->projectId === $project->id);
+        Bus::assertDispatchedAfterResponse(DeployProjectFromWebhook::class, fn ($job) => $job->projectId === $project->id);
+        $this->assertDatabaseMissing('deployment_queue_items', [
+            'project_id' => $project->id,
+        ]);
     }
 }

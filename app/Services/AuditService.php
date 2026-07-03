@@ -86,6 +86,83 @@ class AuditService
     }
 
     /**
+     * Send one digest email covering all projects: open issues that are not
+     * awaiting an automated fix and have cleared the email cooldown, plus
+     * recently resolved issues that have not been announced yet.
+     */
+    public function sendPendingDigest(): void
+    {
+        $notifications = [];
+        $this->collectNotifications($this->pendingDigestEntries(), $notifications);
+        $this->sendNotifications($notifications);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function pendingDigestEntries(): array
+    {
+        if (! $this->hasLastEmailedColumn()) {
+            return [];
+        }
+
+        $cooldownHours = (int) $this->settings->get('system.audit_notification_cooldown', 24);
+        $entries = [];
+
+        $openIssues = AuditIssue::query()
+            ->with('project.user')
+            ->where('status', 'open')
+            ->where('remaining_count', '>', 0)
+            ->when($cooldownHours > 0, fn ($query) => $query->where(function ($q) use ($cooldownHours) {
+                $q->whereNull('last_emailed_at')
+                    ->orWhere('last_emailed_at', '<', now()->subHours($cooldownHours));
+            }))
+            ->get();
+
+        foreach ($openIssues as $issue) {
+            if (! $issue->project || $this->hasPendingFix($issue->project, $issue->tool)) {
+                continue;
+            }
+
+            $entries[] = [
+                'type' => 'open',
+                'project' => $issue->project,
+                'tool' => $issue->tool,
+                'summary' => $issue->summary,
+                'remaining' => $issue->remaining_count,
+                'severity' => $issue->severity,
+                'issue' => $issue,
+            ];
+        }
+
+        $resolvedIssues = AuditIssue::query()
+            ->with('project.user')
+            ->where('status', 'resolved')
+            ->where('resolved_at', '>=', now()->subDays(2))
+            ->where(function ($q) {
+                $q->whereNull('last_emailed_at')->orWhereColumn('last_emailed_at', '<', 'resolved_at');
+            })
+            ->get();
+
+        foreach ($resolvedIssues as $issue) {
+            if (! $issue->project) {
+                continue;
+            }
+
+            $entries[] = [
+                'type' => 'resolved',
+                'project' => $issue->project,
+                'tool' => $issue->tool,
+                'summary' => $issue->summary,
+                'fix_summary' => $issue->fix_summary,
+                'issue' => $issue,
+            ];
+        }
+
+        return $entries;
+    }
+
+    /**
      * @param  array<string, mixed>  $result
      * @return array{opened: bool, resolved: bool, notification?: array<string, mixed>|null}
      */
