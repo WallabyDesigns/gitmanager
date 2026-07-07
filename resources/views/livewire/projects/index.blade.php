@@ -1,7 +1,7 @@
 <div class="py-10" wire:poll.60s="$refresh">
     
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid gap-6 lg:grid-cols-[260px,1fr]">
+        <div class="space-y-6">
             @include('livewire.projects.partials.tabs', ['showBulkActions' => true])
             
             <div class="mt-6 sm:mt-0 space-y-4">

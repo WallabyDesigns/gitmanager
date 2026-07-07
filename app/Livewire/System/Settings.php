@@ -58,6 +58,15 @@ class Settings extends Component
 
     public int $auditNotificationCooldown = 24;
 
+    /**
+     * True when reached via /security/settings — renders the Security tab
+     * shell instead of the System settings sidebar. Captured once in mount()
+     * since request()->routeIs() only reflects the initial page load; a
+     * wire:init or wire:click round-trip hits Livewire's own endpoint and
+     * would otherwise flip this back to false on re-render.
+     */
+    public bool $securityShell = false;
+
     public bool $mailConfigured = false;
 
     public string $edition = EditionService::COMMUNITY;
@@ -112,6 +121,7 @@ class Settings extends Component
     public function mount(): void
     {
         $this->settingsSection = $this->resolveRequestedSection();
+        $this->securityShell = request()->routeIs('security.settings');
         $this->initializeTimezone();
     }
 
@@ -207,11 +217,13 @@ class Settings extends Component
                 : null,
         ])
             ->layout('layouts.app', [
-                'title' => 'System Settings',
-                'header' => view('livewire.system.partials.header', [
-                    'title' => 'System',
-                    'subtitle' => 'Manage app updates, security checks, settings, and email.',
-                ]),
+                'title' => $this->securityShell ? 'Security Settings' : 'System Settings',
+                'header' => $this->securityShell
+                    ? view('livewire.security.partials.header-settings')
+                    : view('livewire.system.partials.header', [
+                        'title' => 'System',
+                        'subtitle' => 'Manage app updates, security checks, settings, and email.',
+                    ]),
             ]);
     }
 
@@ -467,7 +479,9 @@ class Settings extends Component
 
         return match ($routeName) {
             'system.application' => self::SECTION_APPLICATION,
-            'system.audits' => self::SECTION_AUDITS,
+            // 'system.audits' is now a redirect to security.settings (see routes/web.php)
+            // and never reaches this component directly; kept out of this match on purpose.
+            'security.settings' => self::SECTION_AUDITS,
             'system.licensing' => self::SECTION_LICENSING,
             'system.scheduler' => self::SECTION_SCHEDULER,
             'system.environment' => self::SECTION_ENVIRONMENT,

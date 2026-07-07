@@ -53,7 +53,8 @@ Route::middleware(['auth', 'verified', EnsurePasswordChanged::class])->group(fun
     Route::get('/dashboard', DashboardIndex::class)->name('dashboard');
     Route::get('/projects', ProjectsIndex::class)->name('projects.index');
     Route::redirect('/projects/queue', '/processes/queue', 301)->name('projects.queue');
-    Route::get('/projects/action-center', SecurityIndex::class)->name('projects.action-center');
+    Route::get('/security', SecurityIndex::class)->name('security.index');
+    Route::redirect('/projects/action-center', '/security', 301)->name('projects.action-center');
     Route::redirect('/projects/scheduler', '/system/scheduler', 301)->name('projects.scheduler');
     Route::get('/projects/new', ProjectsCreate::class)->name('projects.create');
     Route::get('/projects/{project}/edit', ProjectsEdit::class)->name('projects.edit');
@@ -76,7 +77,7 @@ Route::middleware(EnsureAdminUser::class)->group(function () {
             $section = strtolower(trim((string) request()->query('section', SystemSettings::SECTION_SCHEDULER)));
             $target = match ($section) {
                 SystemSettings::SECTION_APPLICATION, SystemSettings::SECTION_REGIONAL => 'system.application',
-                SystemSettings::SECTION_AUDITS => 'system.audits',
+                SystemSettings::SECTION_AUDITS => 'security.settings',
                 SystemSettings::SECTION_LICENSING => 'system.licensing',
                 default => 'system.scheduler',
             };
@@ -85,7 +86,9 @@ Route::middleware(EnsureAdminUser::class)->group(function () {
         })->name('system.settings');
         Route::get('/system/scheduler', SystemSettings::class)->name('system.scheduler');
         Route::get('/system/application', SystemSettings::class)->name('system.application');
-        Route::get('/system/audits', SystemSettings::class)->name('system.audits');
+        // Legacy path: Audits & Alerts now lives under Security, not System Settings.
+        Route::redirect('/system/audits', '/security/settings', 301)->name('system.audits');
+        Route::get('/security/settings', SystemSettings::class)->name('security.settings');
         Route::get('/system/licensing', SystemSettings::class)->name('system.licensing');
         Route::get('/system/email', SystemEmailSettings::class)->name('system.email');
         Route::get('/system/environment', SystemSettings::class)->name('system.environment');
@@ -102,7 +105,6 @@ Route::middleware(EnsureAdminUser::class)->group(function () {
     });
 
     Route::redirect('/app-updates', '/system')->name('app-updates.index');
-    Route::redirect('/security', '/system/security')->name('security.index');
 
     $dockerSections = [
         'dashboard', 'overview', 'docker', 'containers', 'images', 'volumes', 'networks',

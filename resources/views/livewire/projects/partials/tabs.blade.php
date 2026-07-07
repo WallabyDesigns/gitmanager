@@ -3,66 +3,43 @@
 
     $showBulkActions = $showBulkActions ?? false;
     $explicitProjectsTab = $projectsTab ?? null;
-    $tab = $explicitProjectsTab ?? (request()->routeIs('projects.create')
-        ? 'create'
-        : (request()->routeIs('projects.action-center') ? 'action-center' : 'list'));
+    $tab = $explicitProjectsTab ?? (request()->routeIs('projects.create') ? 'create' : 'list');
     $projectNavState = app(NavigationStateService::class)->projectsSidebarState(auth()->user());
     $isAdmin = (bool) ($projectNavState['isAdmin'] ?? false);
     $isEnterprise = (bool) ($projectNavState['isEnterprise'] ?? false);
-    
+
     $isFtpRoute = ($isFtpRoute ?? false)
         || $explicitProjectsTab === 'ftp-accounts'
         || request()->routeIs('ftp-accounts.*');
-    $actionCenterCount = (int) ($projectNavState['actionCenterCount'] ?? 0);
-    $navItem = 'gwm-system-nav-item';
-    $activeNav = 'gwm-system-nav-active';
-    $idleNav = 'gwm-system-nav-idle';
 
-    $currentTabLabel = match ($tab) {
-        'create' => __('Create Project'),
-        'action-center' => __('Action Center'),
-        default => $isFtpRoute ? __('Remote Access') : __('Projects'),
-    };
+    $activeTabClass = 'border-indigo-500 text-white';
+    $idleTabClass = 'border-transparent text-slate-400 hover:text-slate-200';
 @endphp
 
-<div x-data="{ open: false }" class="contents" @keydown.escape.window="open = false" x-on:livewire:navigating.window="open = false" x-effect="document.body.classList.toggle('overflow-hidden', open)">
+<div class="min-w-0">
+    <div class="flex flex-wrap items-end justify-between gap-2 border-b border-slate-800">
+        <nav class="flex flex-wrap gap-1" aria-label="{{ __('Projects navigation') }}">
+            <a href="{{ route('projects.index') }}"
+               class="px-3 py-2 text-sm border-b-2 -mb-px {{ $tab === 'list' && ! $isFtpRoute ? $activeTabClass : $idleTabClass }}">
+                {{ __('Projects') }}
+            </a>
+            <a href="{{ route('projects.create') }}"
+               class="px-3 py-2 text-sm border-b-2 -mb-px {{ $tab === 'create' && ! $isFtpRoute ? $activeTabClass : $idleTabClass }}">
+                {{ __('Create Project') }}
+            </a>
+            @if ($isAdmin)
+                <a href="{{ route('ftp-accounts.index') }}"
+                   class="px-3 py-2 text-sm border-b-2 -mb-px {{ $isFtpRoute ? $activeTabClass : $idleTabClass }}">
+                    {{ __('Remote Access') }}
+                </a>
+            @endif
+        </nav>
 
-    {{-- Mobile trigger (hidden on lg+) --}}
-    <div class="lg:hidden">
-        <button
-            type="button"
-            @click="open = true"
-            class="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-700 bg-slate-950/90 px-4 py-3 text-sm text-slate-200 hover:border-slate-600 hover:text-white transition"
-        >
-            <span class="flex items-center gap-2">
-                <svg class="h-4 w-4 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                </svg>
-                <span class="text-xs uppercase tracking-[0.16em] text-slate-400">{{ __('Projects') }}</span>
-                <span class="font-medium text-white">{{ $currentTabLabel }}</span>
-                @if ($tab === 'action-center' && $actionCenterCount > 0)
-                    <span class="inline-flex items-center justify-center rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] uppercase tracking-wide text-rose-200">{{ $actionCenterCount }}</span>
-                @endif
-            </span>
-            <svg class="h-4 w-4 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-        </button>
-    </div>
-
-    {{-- Desktop aside (hidden on mobile) --}}
-    <aside class="hidden lg:block space-y-4">
-        <div class="rounded-xl border border-slate-800 bg-slate-950/90 p-4 text-slate-200">
-            <div>
-                <div class="text-xs uppercase tracking-[0.16em] text-slate-400">{{ __('Projects') }}</div>
-                <div class="mt-1 text-lg font-semibold text-white">{{ __('Workspace') }}</div>
-                <div class="text-xs text-slate-400">{{ __('Deploys, action items, queue operations, and remote access.') }}</div>
-            </div>
-
-            @if ($showBulkActions && $tab === 'list' && ! $isFtpRoute)
-                <label class="mt-3 block">
+        @if ($showBulkActions && $tab === 'list' && ! $isFtpRoute)
+            <div class="flex flex-wrap items-center gap-2 pb-2">
+                <label class="block">
                     <span class="sr-only">{{ __('Search projects') }}</span>
-                    <span class="gwm-system-search flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 transition-colors focus-within:border-indigo-400/60">
+                    <span class="gwm-system-search flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 transition-colors focus-within:border-indigo-400/60">
                         <svg class="h-3.5 w-3.5 shrink-0 text-slate-500 pointer-events-none" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                             <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd"/>
                         </svg>
@@ -71,7 +48,7 @@
                             wire:model.live.debounce.300ms="search"
                             placeholder="{{ __('Search projects…') }}"
                             aria-label="{{ __('Search projects') }}"
-                            class="min-w-0 flex-1 border-0 bg-transparent p-0 text-xs text-slate-300 placeholder-slate-500 focus:outline-none focus:ring-0"
+                            class="min-w-0 w-36 border-0 bg-transparent p-0 text-xs text-slate-300 placeholder-slate-500 focus:outline-none focus:ring-0"
                         />
                         @if ($search !== '')
                             <button type="button" wire:click="$set('search', '')" class="shrink-0 text-slate-500 transition-colors hover:text-slate-300" aria-label="{{ __('Clear search') }}">
@@ -82,189 +59,28 @@
                         @endif
                     </span>
                 </label>
-            @endif
-
-            <nav class="mt-3 space-y-1.5" aria-label="{{ __('Projects navigation') }}">
-                <a
-                    href="{{ route('projects.create') }}"
-                    class="{{ $navItem }} {{ $tab === 'create' && ! $isFtpRoute ? $activeNav : $idleNav }}"
-                >
-                    <svg class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                    {{ __('Create Project') }}
-                </a>
-                <a
-                    href="{{ route('projects.index') }}"
-                    class="{{ $navItem }} {{ $tab === 'list' && ! $isFtpRoute ? $activeNav : $idleNav }}"
-                >
-                    <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" /></svg>
-                    {{ __('Projects') }}
-                </a>
-                <a
-                    href="{{ route('projects.action-center') }}"
-                    class="{{ $navItem }} {{ $tab === 'action-center' ? $activeNav : $idleNav }}"
-                >
-                    <svg class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                    </svg>
-
-                    <span class="inline-flex items-center gap-2">
-                        {{ __('Action Center') }}
-                        @if ($actionCenterCount > 0)
-                            <span class="inline-flex items-center justify-center rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] uppercase tracking-wide text-rose-200">{{ $actionCenterCount }}</span>
-                        @endif
-                    </span>
-                </a>
-                @if ($isAdmin)
-                        <a
-                            href="{{ route('ftp-accounts.index') }}"
-                            class="{{ $navItem }} {{ $isFtpRoute ? $activeNav : $idleNav }}"
-                        >
-                        <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg>
-                        {{ __('Remote Access') }}
-                    </a>
-                @endif
-            </nav>
-
-            @if ($showBulkActions && $tab === 'list' && ! $isFtpRoute)
-                <div class="mt-4 border-t border-slate-800 pt-4 space-y-2">
-                    <div class="text-xs uppercase tracking-[0.12em] text-slate-500">{{ __('Bulk Actions') }}</div>
-                    <button type="button" wire:click="checkAllHealth" wire:loading.attr="disabled" class="w-full px-3 py-2 text-xs rounded-md border border-emerald-400/50 text-emerald-200 hover:text-white hover:border-emerald-300 inline-flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed">
-                        <x-loading-spinner target="checkAllHealth" size="w-3 h-3" class="mr-1" />
-                        {{ __('Check Health') }}
+                <button type="button" wire:click="checkAllHealth" wire:loading.attr="disabled" class="px-3 py-1.5 text-xs rounded-md border border-emerald-400/50 text-emerald-200 hover:text-white hover:border-emerald-300 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
+                    <x-loading-spinner target="checkAllHealth" size="w-3 h-3" class="mr-1" />
+                    {{ __('Check Health') }}
+                </button>
+                <button type="button" wire:click="checkAllUpdates" wire:loading.attr="disabled" class="px-3 py-1.5 text-xs rounded-md border border-indigo-400/50 text-indigo-200 hover:text-white hover:border-indigo-300 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
+                    <x-loading-spinner target="checkAllUpdates" size="w-3 h-3" class="mr-1" />
+                    {{ __('Check Updates') }}
+                </button>
+                @if ($isEnterprise)
+                    <button type="button" wire:click="auditAllProjects" wire:loading.attr="disabled" class="px-3 py-1.5 text-xs rounded-md border border-emerald-400/50 text-emerald-200 hover:text-white hover:border-emerald-300 inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
+                        <x-loading-spinner target="auditAllProjects" size="w-3 h-3" class="mr-1" />
+                        {{ __('Audit Projects') }}
                     </button>
-                    <button type="button" wire:click="checkAllUpdates" wire:loading.attr="disabled" class="w-full px-3 py-2 text-xs rounded-md border border-indigo-400/50 text-indigo-200 hover:text-white hover:border-indigo-300 inline-flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed">
-                        <x-loading-spinner target="checkAllUpdates" size="w-3 h-3" class="mr-1" />
-                        {{ __('Check Updates') }}
-                    </button>
-                    @if ($isEnterprise)
-                        <button type="button" wire:click="auditAllProjects" wire:loading.attr="disabled" class="w-full px-3 py-2 text-xs rounded-md border border-emerald-400/50 text-emerald-200 hover:text-white hover:border-emerald-300 inline-flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed">
-                            <x-loading-spinner target="auditAllProjects" size="w-3 h-3" class="mr-1" />
-                            {{ __('Audit Projects') }}
-                        </button>
-                    @else
-                        <button type="button" onclick="window.dispatchEvent(new CustomEvent('gwm-open-enterprise-modal', { detail: { feature: 'Automatic Project & Container Audits' } }));" class="w-full px-3 py-2 text-xs rounded-md border border-amber-400/50 text-amber-200 hover:text-amber-100 hover:border-amber-300 inline-flex items-center justify-center">
-                            <svg class="h-3.5 w-3.5 mr-1.5 shrink-0 text-amber-300" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                <path fill-rule="evenodd" d="M10 1a4 4 0 00-4 4v2H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-1V5a4 4 0 00-4-4zm-2 6V5a2 2 0 114 0v2H8z" clip-rule="evenodd"></path>
-                            </svg>
-                            {{ __('Audit Projects') }}
-                        </button>
-                    @endif
-                </div>
-            @endif
-        </div>
-    </aside>
-
-    {{-- Mobile drawer (teleported to body) --}}
-    <template x-teleport="body">
-        <div
-            x-show="open"
-            x-cloak
-            class="lg:hidden fixed inset-0 z-[1100]"
-            aria-hidden="true"
-        >
-            <div
-                class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
-                @click="open = false"
-                x-transition:enter="transition-opacity ease-out duration-200"
-                x-transition:enter-start="opacity-0"
-                x-transition:enter-end="opacity-100"
-                x-transition:leave="transition-opacity ease-in duration-150"
-                x-transition:leave-start="opacity-100"
-                x-transition:leave-end="opacity-0"
-            ></div>
-            <div
-                class="absolute inset-y-0 left-0 w-[22rem] max-w-[90vw] bg-slate-950 border-r border-slate-800 flex flex-col overflow-y-auto"
-                x-transition:enter="transition-transform ease-out duration-250"
-                x-transition:enter-start="-translate-x-full"
-                x-transition:enter-end="translate-x-0"
-                x-transition:leave="transition-transform ease-in duration-200"
-                x-transition:leave-start="translate-x-0"
-                x-transition:leave-end="-translate-x-full"
-            >
-                <div class="flex items-start justify-between px-4 py-4 border-b border-slate-800">
-                    <div>
-                        <div class="text-xs uppercase tracking-[0.16em] text-slate-400">{{ __('Projects') }}</div>
-                        <div class="mt-1 text-lg font-semibold text-white">{{ __('Workspace') }}</div>
-                        <div class="text-xs text-slate-400">{{ __('Deploys, action items, queue operations, and remote access.') }}</div>
-                    </div>
-                    <button type="button" @click="open = false" class="mt-0.5 rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition shrink-0">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                @else
+                    <button type="button" onclick="window.dispatchEvent(new CustomEvent('gwm-open-enterprise-modal', { detail: { feature: 'Automatic Project & Container Audits' } }));" class="px-3 py-1.5 text-xs rounded-md border border-amber-400/50 text-amber-200 hover:text-amber-100 hover:border-amber-300 inline-flex items-center">
+                        <svg class="h-3.5 w-3.5 mr-1.5 shrink-0 text-amber-300" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M10 1a4 4 0 00-4 4v2H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-1V5a4 4 0 00-4-4zm-2 6V5a2 2 0 114 0v2H8z" clip-rule="evenodd"></path>
                         </svg>
+                        {{ __('Audit Projects') }}
                     </button>
-                </div>
-
-                <nav class="p-4 space-y-1.5" aria-label="{{ __('Projects navigation') }}">
-                    <a
-                        href="{{ route('projects.create') }}"
-                        @click="open = false"
-                        class="{{ $navItem }} {{ $tab === 'create' && ! $isFtpRoute ? $activeNav : $idleNav }}"
-                    >
-                        <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        {{ __('Create Project') }}
-                    </a>
-                    <a
-                        href="{{ route('projects.index') }}"
-                        @click="open = false"
-                        class="{{ $navItem }} {{ $tab === 'list' && ! $isFtpRoute ? $activeNav : $idleNav }}"
-                    >
-                        <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" /></svg>
-                        {{ __('Projects') }}
-                    </a>
-                    <a
-                        href="{{ route('projects.action-center') }}"
-                        @click="open = false"
-                        class="{{ $navItem }} {{ $tab === 'action-center' ? $activeNav : $idleNav }}"
-                    >
-                        <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10.34 3.94c.09-.542.56-.94 1.11-.94h1.1c.55 0 1.02.398 1.11.94l.154.925c.062.374.312.686.643.87.128.071.255.145.378.223.324.205.72.266 1.075.133l.88-.33a1.125 1.125 0 011.37.49l.55.952a1.125 1.125 0 01-.26 1.43l-.726.598c-.292.24-.437.613-.43.991.003.149.003.298 0 .447-.007.378.138.75.43.99l.726.599c.424.35.534.954.26 1.43l-.55.952a1.125 1.125 0 01-1.37.49l-.88-.33c-.355-.133-.751-.072-1.075.133-.123.078-.25.152-.378.223-.331.184-.581.496-.643.87l-.154.925c-.09.542-.56.94-1.11.94h-1.1c-.55 0-1.02-.398-1.11-.94l-.154-.925a1.125 1.125 0 00-.643-.87 6.343 6.343 0 01-.378-.223c-.324-.205-.72-.266-1.075-.133l-.88.33a1.125 1.125 0 01-1.37-.49l-.55-.952a1.125 1.125 0 01.26-1.43l.726-.598c.292-.24.437-.613.43-.991a9.079 9.079 0 010-.447c.007-.378-.138-.75-.43-.99l-.726-.599a1.125 1.125 0 01-.26-1.43l.55-.952a1.125 1.125 0 011.37-.49l.88.33c.355.133.751.072 1.075-.133.123-.078.25-.152.378-.223.331-.184.581-.496.643-.87l.154-.925z" /><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 12a2.25 2.25 0 104.5 0 2.25 2.25 0 00-4.5 0z" /></svg>
-                        <span class="inline-flex items-center gap-2">
-                            {{ __('Action Center') }}
-                            @if ($actionCenterCount > 0)
-                                <span class="inline-flex items-center justify-center rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] uppercase tracking-wide text-rose-200">{{ $actionCenterCount }}</span>
-                            @endif
-                        </span>
-                    </a>
-                    @if ($isAdmin)
-                        <a
-                            href="{{ route('ftp-accounts.index') }}"
-                            @click="open = false"
-                            class="{{ $navItem }} {{ $isFtpRoute ? $activeNav : $idleNav }}"
-                        >
-                            <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg>
-                            {{ __('Remote Access') }}
-                        </a>
-                    @endif
-                    @if ($tab === 'list' && ! $isFtpRoute)
-                        <div class="mt-8 border-t border-slate-800 pt-4 space-y-2">
-                            <div class="text-xs uppercase tracking-[0.12em] text-slate-500">{{ __('Bulk Actions') }}</div>
-                            <button type="button" wire:click="checkAllHealth" wire:loading.attr="disabled" class="w-full px-3 py-2 text-xs rounded-md border border-emerald-400/50 text-emerald-200 hover:text-white hover:border-emerald-300 inline-flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed">
-                                <x-loading-spinner target="checkAllHealth" size="w-3 h-3" class="mr-1" />
-                                {{ __('Check Health') }}
-                            </button>
-                            <button type="button" wire:click="checkAllUpdates" wire:loading.attr="disabled" class="w-full px-3 py-2 text-xs rounded-md border border-indigo-400/50 text-indigo-200 hover:text-white hover:border-indigo-300 inline-flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed">
-                                <x-loading-spinner target="checkAllUpdates" size="w-3 h-3" class="mr-1" />
-                                {{ __('Check Updates') }}
-                            </button>
-                            @if ($isEnterprise)
-                                <button type="button" wire:click="auditAllProjects" wire:loading.attr="disabled" class="w-full px-3 py-2 text-xs rounded-md border border-emerald-400/50 text-emerald-200 hover:text-white hover:border-emerald-300 inline-flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed">
-                                    <x-loading-spinner target="auditAllProjects" size="w-3 h-3" class="mr-1" />
-                                    {{ __('Audit Projects') }}
-                                </button>
-                            @else
-                                <button type="button" onclick="window.dispatchEvent(new CustomEvent('gwm-open-enterprise-modal', { detail: { feature: 'Automatic Project & Container Audits' } }));" class="w-full px-3 py-2 text-xs rounded-md border border-amber-400/50 text-amber-200 hover:text-amber-100 hover:border-amber-300 inline-flex items-center justify-center">
-                                    <svg class="h-3.5 w-3.5 mr-1.5 shrink-0 text-amber-300" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                        <path fill-rule="evenodd" d="M10 1a4 4 0 00-4 4v2H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-1V5a4 4 0 00-4-4zm-2 6V5a2 2 0 114 0v2H8z" clip-rule="evenodd"></path>
-                                    </svg>
-                                    {{ __('Audit Projects') }}
-                                </button>
-                            @endif
-                        </div>
-                    @endif
-                </nav>
+                @endif
             </div>
-        </div>
-    </template>
+        @endif
+    </div>
 </div>

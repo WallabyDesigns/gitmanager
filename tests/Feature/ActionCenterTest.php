@@ -19,14 +19,33 @@ class ActionCenterTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_projects_action_center_loads_for_authenticated_users(): void
+    public function test_security_settings_page_renders_audit_settings_for_admins(): void
+    {
+        $admin = User::factory()->create();
+
+        $this->actingAs($admin)
+            ->get(route('security.settings'))
+            ->assertOk()
+            ->assertSee('Settings');
+    }
+
+    public function test_legacy_action_center_route_redirects_to_security(): void
     {
         $user = User::factory()->create();
 
         $this->actingAs($user)
             ->get(route('projects.action-center'))
+            ->assertRedirect('/security');
+    }
+
+    public function test_security_page_loads_for_authenticated_users(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get(route('security.index'))
             ->assertOk()
-            ->assertSee('Action Center')
+            ->assertSee('Security')
             ->assertSee('Current Issues')
             ->assertDontSee('Resolved Issues');
     }
@@ -48,7 +67,7 @@ class ActionCenterTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get(route('projects.action-center'))
+            ->get(route('security.index'))
             ->assertOk()
             ->assertSee('Attempt Resolve All')
             ->assertSee('Attempt Resolve All (Force)')

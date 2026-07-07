@@ -1,6 +1,6 @@
 <div class="py-10">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid gap-6 lg:grid-cols-[260px,1fr]">
+        <div class="space-y-6">
             @include('livewire.projects.partials.tabs')
             <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800">
                 <div class="p-6">

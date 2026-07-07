@@ -16,7 +16,6 @@
         request()->routeIs('system.support') => 'support',
         request()->routeIs('system.scheduler') => 'scheduler',
         request()->routeIs('system.application') => 'application',
-        request()->routeIs('system.audits') => 'audits',
         request()->routeIs('system.diagnostics') => 'diagnostics',
         request()->routeIs('system.licensing') => 'licensing',
         request()->routeIs('system.environment') => 'environment',
@@ -32,7 +31,6 @@
         $isSystemTab('support') => 'Enterprise Support',
         $isSystemTab('scheduler') => 'Scheduler & Queue',
         $isSystemTab('application') => 'App & Security',
-        $isSystemTab('audits') => 'Audits & Alerts',
         $isSystemTab('node') => 'Runtime Diagnostics',
         $isSystemTab('diagnostics') => 'Runtime Diagnostics',
         $isSystemTab('licensing') => 'Edition & License',
@@ -59,10 +57,6 @@
         ['label' => 'Force HTTPS / SSL', 'section' => 'App & Security', 'url' => route('system.application'), 'keys' => 'ssl https force secure certificate tls'],
         ['label' => 'Session Lifetime', 'section' => 'App & Security', 'url' => route('system.application'), 'keys' => 'session lifetime timeout expire login idle'],
         ['label' => 'Two-Factor Authentication', 'section' => 'App & Security', 'url' => route('system.application'), 'keys' => '2fa two factor authentication mfa totp authenticator'],
-        // Audits & Alerts
-        ['label' => 'Audit Log', 'section' => 'Audits & Alerts', 'url' => route('system.audits'), 'keys' => 'audit log history activity events'],
-        ['label' => 'Webhooks', 'section' => 'Audits & Alerts', 'url' => route('system.audits'), 'keys' => 'webhook notification alert url endpoint http'],
-        ['label' => 'Email Alerts', 'section' => 'Audits & Alerts', 'url' => route('system.audits'), 'keys' => 'email alert notification smtp push'],
         // Edition & License
         ['label' => 'License Key', 'section' => 'Edition & License', 'url' => route('system.licensing'), 'keys' => 'license key activate deactivate enterprise'],
         ['label' => 'Edition', 'section' => 'Edition & License', 'url' => route('system.licensing'), 'keys' => 'edition community enterprise license plan tier'],
@@ -233,11 +227,6 @@
                 <a href="{{ route('system.application') }}" class="{{ $navItem }} {{ $isSystemTab('application') ? $activeNav : $idleNav }}">
                     <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
                     {{ __('App & Security') }}
-                </a>
-
-                <a href="{{ route('system.audits') }}" class="{{ $navItem }} {{ $isSystemTab('audits') ? $activeNav : $idleNav }}">
-                    <svg class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5" /></svg>
-                    {{ __('Audits & Alerts') }}
                 </a>
 
                 <a href="{{ route('system.licensing') }}" class="{{ $navItem }} {{ $isSystemTab('licensing') ? $activeNav : $idleNav }}">
@@ -425,11 +414,6 @@
                     <a href="{{ route('system.application') }}" @click="open = false" class="{{ $navItem }} {{ $isSystemTab('application') ? $activeNav : $idleNav }}">
                         <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
                         {{ __('App & Security') }}
-                    </a>
-
-                    <a href="{{ route('system.audits') }}" @click="open = false" class="{{ $navItem }} {{ $isSystemTab('audits') ? $activeNav : $idleNav }}">
-                        <svg class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5" /></svg>
-                        {{ __('Audits & Alerts') }}
                     </a>
 
                     <a href="{{ route('system.licensing') }}" @click="open = false" class="{{ $navItem }} {{ $isSystemTab('licensing') ? $activeNav : $idleNav }}">

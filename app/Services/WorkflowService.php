@@ -331,7 +331,7 @@ class WorkflowService
             'links' => [
                 'app' => route('projects.index'),
                 'project' => route('projects.show', $project),
-                'action_center' => route('projects.action-center'),
+                'action_center' => route('security.index'),
                 'system_updates' => route('system.updates'),
             ],
         ];

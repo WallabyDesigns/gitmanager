@@ -1,8 +1,8 @@
 <div class="py-10">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid gap-6 lg:grid-cols-[260px,1fr]">
+        <div class="{{ ($projectShell ?? false) ? 'space-y-6' : 'grid gap-6 lg:grid-cols-[260px,1fr]' }}">
             @if ($projectShell ?? false)
-                @include('livewire.projects.partials.tabs', ['projectsTab' => 'action-center'])
+                @include('livewire.security.partials.tabs', ['securityTab' => 'security'])
             @else
                 @include('livewire.system.partials.tabs', ['systemTab' => 'audits'])
             @endif

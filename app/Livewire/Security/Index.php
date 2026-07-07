@@ -32,7 +32,8 @@ class Index extends Component
 
     public function mount(SettingsService $settings): void
     {
-        $this->projectShell = request()->routeIs('projects.action-center');
+        // Tab shell for the standalone /security page; system shell for /system/security.
+        $this->projectShell = ! request()->routeIs('system.security');
         $this->sslVerifyEnabled = (bool) ($settings->get(
             'system.github_ssl_verify',
             (bool) config('services.github.verify_ssl', true)
@@ -79,7 +80,7 @@ class Index extends Component
             'canSyncAlerts' => $canSyncAlerts,
             'canAttemptResolution' => true,
         ])->layout('layouts.app', [
-            'title' => $projectShell ? 'Action Center' : 'Security',
+            'title' => 'Security',
             'header' => $projectShell
                 ? view('livewire.projects.partials.action-center-header')
                 : view('livewire.security.partials.header'),

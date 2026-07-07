@@ -16,6 +16,7 @@ new class extends Component
     public bool $hideEditionLabel = false;
     public string $subHeading = '';
     public int $queueCount = 0;
+    public int $actionCenterCount = 0;
 
     public function mount(NavigationStateService $navigationState): void
     {
@@ -28,12 +29,14 @@ new class extends Component
         $this->hideEditionLabel = (bool) ($state['hideEditionLabel'] ?? false);
         $this->subHeading = (string) ($state['subHeading'] ?? '');
         $this->queueCount = (int) ($state['queueCount'] ?? 0);
+        $sidebar = $navigationState->projectsSidebarState(Auth::user());
+        $this->actionCenterCount = (int) ($sidebar['actionCenterCount'] ?? 0);
         $brandName = (string) ($state['brandName'] ?? config('app.name', 'Git Web Manager'));
         $this->brandName = __($brandName);
     }
 
     /**
-     * Lightweight poll target: refresh only the queue badge count.
+     * Lightweight poll target: refresh only the badge counts.
      */
     public function refreshQueueCount(NavigationStateService $navigationState): void
     {
@@ -41,6 +44,8 @@ new class extends Component
         $this->queueCount = (int) ($state['queueCount'] ?? 0);
         $this->openAlerts = (int) ($state['openAlerts'] ?? 0);
         $this->updateAvailable = (bool) ($state['updateAvailable'] ?? false);
+        $sidebar = $navigationState->projectsSidebarState(Auth::user());
+        $this->actionCenterCount = (int) ($sidebar['actionCenterCount'] ?? 0);
     }
     /**
      * Log the current user out of the application.
@@ -120,15 +125,18 @@ new class extends Component
                             {{ __('Containers') }}
                         </button>
                     @endif
+                    <x-nav-link :href="route('security.index')" :active="request()->routeIs('security.*') || request()->routeIs('system.security')">
+                        <span class="flex items-center gap-1.5">
+                            <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+                            </svg>
+                            {{ __('Security') }}
+                            @if ($actionCenterCount > 0)
+                                <span class="inline-flex items-center justify-center rounded-full bg-rose-500/20 px-1.5 py-0.5 text-xs text-rose-200">{{ $actionCenterCount }}</span>
+                            @endif
+                        </span>
+                    </x-nav-link>
                     @if (auth()->user()?->isAdmin())
-                        <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.index')">
-                            <span class="flex items-center gap-1.5">
-                                <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-                                </svg>
-                                {{ __('Users') }}
-                            </span>
-                        </x-nav-link>
                         <x-nav-link :href="route('workflows.index')" :active="request()->routeIs('workflows.index')">
                             <span class="flex items-center gap-1.5">
                                 <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
@@ -154,7 +162,7 @@ new class extends Component
                                 @endif
                             </span>
                         </x-nav-link>
-                        <x-nav-link :href="route('system.updates')" :active="request()->routeIs('system.*') && ! request()->routeIs('processes.*')">
+                        <x-nav-link :href="route('system.updates')" :active="request()->routeIs('system.*') && ! request()->routeIs('processes.*') && ! request()->routeIs('system.security')">
                             <span class="flex items-center gap-1.5">
                                 <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
@@ -216,6 +224,17 @@ new class extends Component
                                 {{ __('Profile') }}
                             </span>
                         </x-dropdown-link>
+
+                        @if (auth()->user()?->isAdmin())
+                            <x-dropdown-link :href="route('users.index')">
+                                <span class="flex items-center gap-2">
+                                    <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                                    </svg>
+                                    {{ __('Users') }}
+                                </span>
+                            </x-dropdown-link>
+                        @endif
 
                         <x-dropdown-link href="https://docs.gitwebmanager.com/" target="_blank" rel="noopener">
                             <span class="flex items-center gap-2">
@@ -350,15 +369,18 @@ new class extends Component
                             {{ __('Containers') }}
                         </button>
                     @endif
+                    <x-responsive-nav-link :href="route('security.index')" :active="request()->routeIs('security.*') || request()->routeIs('system.security')">
+                        <span class="flex items-center gap-3">
+                            <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+                            </svg>
+                            {{ __('Security') }}
+                            @if ($actionCenterCount > 0)
+                                <span class="ml-auto inline-flex items-center justify-center rounded-full bg-rose-500/20 px-1.5 py-0.5 text-xs text-rose-200">{{ $actionCenterCount }}</span>
+                            @endif
+                        </span>
+                    </x-responsive-nav-link>
                     @if (auth()->user()?->isAdmin())
-                        <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.index')">
-                            <span class="flex items-center gap-3">
-                                <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-                                </svg>
-                                {{ __('Users') }}
-                            </span>
-                        </x-responsive-nav-link>
                         <x-responsive-nav-link :href="route('workflows.index')" :active="request()->routeIs('workflows.index')">
                             <span class="flex items-center gap-3">
                                 <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
@@ -384,7 +406,7 @@ new class extends Component
                                 @endif
                             </span>
                         </x-responsive-nav-link>
-                        <x-responsive-nav-link :href="route('system.updates')" :active="request()->routeIs('system.*') && ! request()->routeIs('processes.*')">
+                        <x-responsive-nav-link :href="route('system.updates')" :active="request()->routeIs('system.*') && ! request()->routeIs('processes.*') && ! request()->routeIs('system.security')">
                             <span class="flex items-center gap-3">
                                 <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
@@ -433,6 +455,17 @@ new class extends Component
                                     {{ __('Profile') }}
                                 </span>
                             </x-responsive-nav-link>
+
+                            @if (auth()->user()?->isAdmin())
+                                <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.index')">
+                                    <span class="flex items-center gap-3">
+                                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                                        </svg>
+                                        {{ __('Users') }}
+                                    </span>
+                                </x-responsive-nav-link>
+                            @endif
 
                             <x-responsive-nav-link href="https://docs.gitwebmanager.com/" target="_blank" rel="noopener">
                                 <span class="flex items-center gap-3">
