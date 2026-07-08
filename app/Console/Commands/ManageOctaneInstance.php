@@ -16,6 +16,7 @@ class ManageOctaneInstance extends Command
     public function handle(OctaneInstanceService $octane): int
     {
         $action = strtolower((string) $this->argument('action'));
+        $octane->markOperationRunning($action);
 
         $result = match ($action) {
             'start' => $octane->start(! $this->option('no-build')),
@@ -25,6 +26,8 @@ class ManageOctaneInstance extends Command
         };
 
         $message = (string) ($result['message'] ?? 'Octane action completed.');
+        $octane->markOperationFinished($action, (bool) ($result['success'] ?? false), $message);
+
         $result['success'] ?? false
             ? $this->info($message)
             : $this->error($message);

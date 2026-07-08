@@ -18,6 +18,8 @@
 /storage/*.key
 /storage/pail
 /storage/node-runtime
+/storage/framework/octane-instance-operation.json
+/storage/logs/octane-instance*.log
 /storage/plugins
 /vendor
 Homestead.json
@@ -31,4 +33,3 @@ migrationguide.md
 
 # Local scripts and config
 .local/
-

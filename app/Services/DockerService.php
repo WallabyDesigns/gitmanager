@@ -10,9 +10,14 @@ class DockerService
 {
     private string $binary;
 
+    /**
+     * @var array{type: string, binary: string}|null
+     */
+    private ?array $composeCommand = null;
+
     public function __construct()
     {
-        $this->binary = config('gitmanager.docker.binary', 'docker');
+        $this->binary = $this->resolveDockerBinary((string) config('gitmanager.docker.binary', 'docker'));
     }
 
     public function isAvailable(): bool
@@ -42,9 +47,32 @@ class DockerService
 
     public function composeAvailable(): bool
     {
-        [$success] = $this->run(['compose', 'version', '--short']);
+        $status = $this->composeStatus();
 
-        return $success;
+        return (bool) $status['success'];
+    }
+
+    /**
+     * @return array{success: bool, output: string, error: string}
+     */
+    public function composeStatus(): array
+    {
+        $command = $this->composeCommand();
+        if ($command !== null) {
+            return ['success' => true, 'output' => $command['type'], 'error' => ''];
+        }
+
+        [$dockerComposeSuccess, $dockerComposeOutput, $dockerComposeError] = $this->run(['compose', 'version', '--short']);
+        [$standaloneSuccess, $standaloneOutput, $standaloneError] = $this->runBinary($this->resolveDockerComposeBinary(), ['version', '--short']);
+
+        return [
+            'success' => false,
+            'output' => trim($dockerComposeOutput."\n".$standaloneOutput),
+            'error' => trim(
+                'docker compose: '.($dockerComposeError ?: 'not available')."\n".
+                'docker-compose: '.($standaloneError ?: 'not available')
+            ),
+        ];
     }
 
     // ─── Containers ───────────────────────────────────────────────────────────
@@ -508,7 +536,7 @@ class DockerService
 
     public function composeUp(string $workingDirectory, string $service, array $profiles = [], bool $build = false): array
     {
-        $args = ['compose'];
+        $args = [];
         foreach ($profiles as $profile) {
             $profile = trim((string) $profile);
             if ($profile !== '') {
@@ -526,28 +554,28 @@ class DockerService
 
         $args[] = $service;
 
-        [$success, $output, $error] = $this->run($args, $workingDirectory);
+        [$success, $output, $error] = $this->runCompose($args, $workingDirectory);
 
         return ['success' => $success, 'output' => $output, 'error' => $error];
     }
 
     public function composeStop(string $workingDirectory, string $service): array
     {
-        [$success, $output, $error] = $this->run(['compose', 'stop', $service], $workingDirectory);
+        [$success, $output, $error] = $this->runCompose(['stop', $service], $workingDirectory);
 
         return ['success' => $success, 'output' => $output, 'error' => $error];
     }
 
     public function composeRestart(string $workingDirectory, string $service): array
     {
-        [$success, $output, $error] = $this->run(['compose', 'restart', $service], $workingDirectory);
+        [$success, $output, $error] = $this->runCompose(['restart', $service], $workingDirectory);
 
         return ['success' => $success, 'output' => $output, 'error' => $error];
     }
 
     public function composeServiceStatus(string $workingDirectory, string $service): array
     {
-        [$success, $output, $error] = $this->run(['compose', 'ps', '--format', 'json', $service], $workingDirectory);
+        [$success, $output, $error] = $this->runCompose(['ps', '--format', 'json', $service], $workingDirectory);
         if (! $success) {
             return [
                 'success' => false,
@@ -732,7 +760,51 @@ class DockerService
 
     private function run(array $args, ?string $workingDirectory = null): array
     {
-        $cmd = array_merge([$this->binary], $args);
+        return $this->runBinary($this->binary, $args, $workingDirectory);
+    }
+
+    private function runCompose(array $args, ?string $workingDirectory = null): array
+    {
+        $command = $this->composeCommand();
+        if ($command === null) {
+            $status = $this->composeStatus();
+
+            return [false, $status['output'], $status['error']];
+        }
+
+        if ($command['type'] === 'plugin') {
+            return $this->run(array_merge(['compose'], $args), $workingDirectory);
+        }
+
+        return $this->runBinary($command['binary'], $args, $workingDirectory);
+    }
+
+    /**
+     * @return array{type: string, binary: string}|null
+     */
+    private function composeCommand(): ?array
+    {
+        if ($this->composeCommand !== null) {
+            return $this->composeCommand;
+        }
+
+        [$pluginSuccess] = $this->run(['compose', 'version', '--short']);
+        if ($pluginSuccess) {
+            return $this->composeCommand = ['type' => 'plugin', 'binary' => $this->binary];
+        }
+
+        $standalone = $this->resolveDockerComposeBinary();
+        [$standaloneSuccess] = $this->runBinary($standalone, ['version', '--short']);
+        if ($standaloneSuccess) {
+            return $this->composeCommand = ['type' => 'standalone', 'binary' => $standalone];
+        }
+
+        return null;
+    }
+
+    private function runBinary(string $binary, array $args, ?string $workingDirectory = null): array
+    {
+        $cmd = array_merge([$binary], $args);
 
         $pipes = [];
 
@@ -765,5 +837,88 @@ class DockerService
         $code = proc_close($process);
 
         return [$code === 0, (string) $stdout, (string) $stderr];
+    }
+
+    private function resolveDockerBinary(string $configured): string
+    {
+        $configured = trim($configured, "\"' ");
+        if ($configured === '') {
+            $configured = 'docker';
+        }
+
+        if (strtolower(basename($configured)) !== 'docker' && strtolower(basename($configured)) !== 'docker.exe') {
+            return $configured;
+        }
+
+        foreach ($this->dockerBinaryCandidates($configured) as $candidate) {
+            if (is_file($candidate) && is_executable($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return $configured;
+    }
+
+    private function resolveDockerComposeBinary(): string
+    {
+        $configured = trim((string) config('gitmanager.docker.compose_binary', 'docker-compose'), "\"' ");
+        if ($configured === '') {
+            $configured = 'docker-compose';
+        }
+
+        if (strtolower(basename($configured)) !== 'docker-compose' && strtolower(basename($configured)) !== 'docker-compose.exe') {
+            return $configured;
+        }
+
+        foreach ($this->dockerComposeBinaryCandidates($configured) as $candidate) {
+            if (is_file($candidate) && is_executable($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return $configured;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function dockerComposeBinaryCandidates(string $configured): array
+    {
+        $candidates = [$configured];
+
+        if (PHP_OS_FAMILY === 'Windows') {
+            $programFiles = getenv('ProgramFiles') ?: 'C:\\Program Files';
+            $programFilesX86 = getenv('ProgramFiles(x86)') ?: 'C:\\Program Files (x86)';
+            $candidates[] = $programFiles.'\\Docker\\Docker\\resources\\bin\\docker-compose.exe';
+            $candidates[] = $programFiles.'\\Docker\\cli-plugins\\docker-compose.exe';
+            $candidates[] = $programFilesX86.'\\Docker\\Docker\\resources\\bin\\docker-compose.exe';
+        } else {
+            $candidates[] = '/usr/bin/docker-compose';
+            $candidates[] = '/usr/local/bin/docker-compose';
+            $candidates[] = '/snap/bin/docker-compose';
+        }
+
+        return array_values(array_unique(array_filter($candidates)));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function dockerBinaryCandidates(string $configured): array
+    {
+        $candidates = [$configured];
+
+        if (PHP_OS_FAMILY === 'Windows') {
+            $programFiles = getenv('ProgramFiles') ?: 'C:\\Program Files';
+            $programFilesX86 = getenv('ProgramFiles(x86)') ?: 'C:\\Program Files (x86)';
+            $candidates[] = $programFiles.'\\Docker\\Docker\\resources\\bin\\docker.exe';
+            $candidates[] = $programFilesX86.'\\Docker\\Docker\\resources\\bin\\docker.exe';
+        } else {
+            $candidates[] = '/usr/bin/docker';
+            $candidates[] = '/usr/local/bin/docker';
+            $candidates[] = '/snap/bin/docker';
+        }
+
+        return array_values(array_unique(array_filter($candidates)));
     }
 }

@@ -10,7 +10,7 @@ RUN mkdir -p bootstrap/cache \
     storage/framework/sessions \
     storage/framework/views \
     storage/logs \
-    && chmod -R 775 bootstrap/cache storage
+    && chmod -R 775 bootstrap/cache storage/framework storage/logs
 RUN composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader
 
 FROM php:8.2-fpm-bookworm AS app

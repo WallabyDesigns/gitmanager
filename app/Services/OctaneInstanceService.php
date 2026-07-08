@@ -18,7 +18,8 @@ class OctaneInstanceService
      *     name: string,
      *     port: int,
      *     url: string,
-     *     message: string
+     *     message: string,
+     *     operation: array<string, mixed>|null
      * }
      */
     public function status(): array
@@ -34,6 +35,7 @@ class OctaneInstanceService
             'port' => $port,
             'url' => $this->url($port),
             'message' => '',
+            'operation' => $this->operationStatus(),
         ];
 
         if (! $base['docker_available']) {
@@ -45,21 +47,23 @@ class OctaneInstanceService
         $base['compose_available'] = $this->docker->composeAvailable();
         if (! $base['compose_available']) {
             $base['state'] = 'compose_unavailable';
-            $base['message'] = 'Docker is available, but Docker Compose support was not detected.';
+            $base['message'] = $this->composeUnavailableMessage();
 
             return $base;
         }
 
         $status = $this->docker->composeServiceStatus($this->workingDirectory(), $this->serviceName());
+        $running = (bool) ($status['running'] ?? false);
 
         return array_merge($base, [
-            'running' => (bool) ($status['running'] ?? false),
+            'running' => $running,
             'state' => (string) ($status['state'] ?? 'unknown'),
             'status' => (string) ($status['status'] ?? ''),
             'name' => (string) ($status['name'] ?? ''),
             'message' => $status['success'] ?? false
-                ? (($status['running'] ?? false) ? 'Octane is running.' : 'Octane is stopped or has not been created.')
+                ? ($running ? 'Octane is running.' : 'Octane is stopped or has not been created.')
                 : (string) ($status['error'] ?? 'Unable to inspect the Octane service.'),
+            'operation' => $this->reconciledOperationStatus($running),
         ]);
     }
 
@@ -70,7 +74,7 @@ class OctaneInstanceService
         }
 
         if (! $this->docker->composeAvailable()) {
-            return ['success' => false, 'message' => 'Docker Compose support was not detected.'];
+            return ['success' => false, 'message' => $this->composeUnavailableMessage()];
         }
 
         $result = $this->docker->composeUp(
@@ -131,7 +135,7 @@ class OctaneInstanceService
         }
 
         if (! $this->docker->composeAvailable()) {
-            return ['success' => false, 'message' => 'Docker Compose support was not detected.'];
+            return ['success' => false, 'message' => $this->composeUnavailableMessage()];
         }
 
         if (app()->runningUnitTests()) {
@@ -140,8 +144,9 @@ class OctaneInstanceService
 
         try {
             $this->ensureLogDirectory();
+            $this->writeOperationStatus($action, 'queued', $this->backgroundMessage($action));
 
-            $php = PHP_BINARY;
+            $php = $this->phpBinary();
             $artisan = base_path('artisan');
             $args = array_merge(['octane:instance', $action], $extraArgs);
             $logPath = $this->logPath();
@@ -190,6 +195,16 @@ class OctaneInstanceService
         };
     }
 
+    public function markOperationRunning(string $action): void
+    {
+        $this->writeOperationStatus($action, 'running', 'Octane '.$action.' is running in the background.');
+    }
+
+    public function markOperationFinished(string $action, bool $success, string $message): void
+    {
+        $this->writeOperationStatus($action, $success ? 'completed' : 'failed', $message, true);
+    }
+
     private function composeAction(callable $action, string $successMessage, string $failureMessage): array
     {
         if (! $this->docker->isAvailable()) {
@@ -197,7 +212,7 @@ class OctaneInstanceService
         }
 
         if (! $this->docker->composeAvailable()) {
-            return ['success' => false, 'message' => 'Docker Compose support was not detected.'];
+            return ['success' => false, 'message' => $this->composeUnavailableMessage()];
         }
 
         $result = $action();
@@ -242,9 +257,81 @@ class OctaneInstanceService
             .'or expose Docker through a controlled remote context.';
     }
 
+    private function composeUnavailableMessage(): string
+    {
+        $status = $this->docker->composeStatus();
+        $message = trim((string) ($status['error'] ?: $status['output']));
+
+        return 'Docker is available, but Docker Compose support was not detected. '
+            .'Install the Docker Compose v2 plugin, install standalone docker-compose, or set GWM_DOCKER_COMPOSE_BINARY to its absolute path.'
+            .($message !== '' ? ' '.$message : '');
+    }
+
     private function workingDirectory(): string
     {
         return base_path();
+    }
+
+    private function phpBinary(): string
+    {
+        $configured = trim((string) config('gitmanager.php_binary', 'php'));
+        $configured = trim($configured, "\"' ");
+
+        if ($configured !== '' && $configured !== 'php') {
+            return $configured;
+        }
+
+        foreach ($this->phpCliCandidates($configured) as $candidate) {
+            if ($this->isUsablePhpCliBinary($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return $configured !== '' ? $configured : 'php';
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function phpCliCandidates(string $configured): array
+    {
+        $candidates = [];
+
+        if ($configured !== '') {
+            $candidates[] = $configured;
+        }
+
+        if (PHP_BINARY !== '') {
+            $candidates[] = PHP_BINARY;
+
+            $fpmMapped = str_replace(['/php-fpm83/', '/php-fpm82/', '/php-fpm81/'], ['/php83/', '/php82/', '/php81/'], PHP_BINARY);
+            $fpmMapped = preg_replace('#/sbin/php-fpm(?:[0-9.]*)?$#', '/bin/php', $fpmMapped) ?: $fpmMapped;
+            if ($fpmMapped !== PHP_BINARY) {
+                $candidates[] = $fpmMapped;
+            }
+        }
+
+        $candidates[] = '/opt/alt/php83/usr/bin/php';
+        $candidates[] = '/opt/alt/php82/usr/bin/php';
+        $candidates[] = '/usr/local/bin/php';
+        $candidates[] = '/usr/bin/php';
+        $candidates[] = 'php';
+
+        return array_values(array_unique(array_filter($candidates)));
+    }
+
+    private function isUsablePhpCliBinary(string $binary): bool
+    {
+        $name = strtolower(basename($binary));
+        if (str_contains($name, 'php-fpm') || str_contains($name, 'php-cgi')) {
+            return false;
+        }
+
+        if (str_contains($binary, DIRECTORY_SEPARATOR) && (! is_file($binary) || ! is_executable($binary))) {
+            return false;
+        }
+
+        return true;
     }
 
     private function serviceName(): string
@@ -286,6 +373,74 @@ class OctaneInstanceService
     private function errorLogPath(): string
     {
         return storage_path('logs/octane-instance-error.log');
+    }
+
+    private function operationStatusPath(): string
+    {
+        return storage_path('framework/octane-instance-operation.json');
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function operationStatus(): ?array
+    {
+        $path = $this->operationStatusPath();
+        if (! is_file($path)) {
+            return null;
+        }
+
+        $payload = json_decode((string) file_get_contents($path), true);
+        if (! is_array($payload)) {
+            return null;
+        }
+
+        return $payload;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function reconciledOperationStatus(bool $running): ?array
+    {
+        $operation = $this->operationStatus();
+        if (! is_array($operation)) {
+            return null;
+        }
+
+        $state = (string) ($operation['state'] ?? '');
+        $action = (string) ($operation['action'] ?? '');
+
+        if ($running && $state === 'failed' && in_array($action, ['start', 'restart'], true)) {
+            return [
+                ...$operation,
+                'state' => 'completed',
+                'message' => 'Octane is running. The previous failed action has been superseded by the current container state.',
+            ];
+        }
+
+        return $operation;
+    }
+
+    private function writeOperationStatus(string $action, string $state, string $message, bool $finished = false): void
+    {
+        $previous = $this->operationStatus();
+        $now = now()->toDateTimeString();
+
+        $payload = [
+            'action' => $action,
+            'state' => $state,
+            'message' => $message,
+            'started_at' => is_array($previous) && ($previous['action'] ?? null) === $action
+                ? (string) ($previous['started_at'] ?? $now)
+                : $now,
+            'updated_at' => $now,
+            'finished_at' => $finished ? $now : null,
+            'log_path' => $this->logPath(),
+            'error_log_path' => $this->errorLogPath(),
+        ];
+
+        @file_put_contents($this->operationStatusPath(), json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
     }
 
     private function cmdQuote(string $value): string

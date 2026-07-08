@@ -81,6 +81,9 @@
                                     <p class="mt-1 text-sm text-slate-400">
                                         {{ __('Managed through the local Docker Compose Octane profile when Docker is available.') }}
                                     </p>
+                                    <p class="mt-1 text-xs text-slate-500">
+                                        {{ __('Traffic uses Octane only when your browser or web server is pointed at the Octane endpoint.') }}
+                                    </p>
                                 </div>
                                 <div class="text-right text-xs text-slate-400">
                                     <div>{{ __('State:') }} <span class="font-mono text-slate-200">{{ $octaneStatus['state'] ?? 'unknown' }}</span></div>
@@ -113,19 +116,39 @@
                                 </div>
                             @endif
 
+                            @if (! empty($octaneStatus['operation']))
+                                <div class="rounded-md border border-slate-800 bg-slate-950/40 px-3 py-2 text-xs text-slate-300">
+                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                        <span>
+                                            {{ __('Last Octane action:') }}
+                                            <span class="font-semibold text-slate-100">{{ $octaneStatus['operation']['action'] ?? 'unknown' }}</span>
+                                            <span class="text-slate-500">/</span>
+                                            <span class="font-semibold text-slate-100">{{ $octaneStatus['operation']['state'] ?? 'unknown' }}</span>
+                                        </span>
+                                        <span class="text-slate-500">{{ $octaneStatus['operation']['updated_at'] ?? '' }}</span>
+                                    </div>
+                                    @if (! empty($octaneStatus['operation']['message']))
+                                        <div class="mt-1 text-slate-400">{{ $octaneStatus['operation']['message'] }}</div>
+                                    @endif
+                                </div>
+                            @endif
+
                             <div class="flex flex-wrap gap-2">
-                                <button type="button" wire:click="startOctane" class="px-3 py-2 text-xs rounded-md border border-slate-700 text-slate-200 hover:text-white inline-flex items-center">
-                                    <x-loading-spinner target="startOctane" />
-                                    {{ __('Start Octane') }}
-                                </button>
-                                <button type="button" wire:click="restartOctane" class="px-3 py-2 text-xs rounded-md border border-slate-700 text-slate-200 hover:text-white inline-flex items-center">
-                                    <x-loading-spinner target="restartOctane" />
-                                    {{ __('Restart Octane') }}
-                                </button>
-                                <button type="button" wire:click="stopOctane" class="px-3 py-2 text-xs rounded-md border border-rose-500/40 text-rose-200 hover:text-white inline-flex items-center">
-                                    <x-loading-spinner target="stopOctane" />
-                                    {{ __('Stop Octane') }}
-                                </button>
+                                @if ($octaneStatus['running'] ?? false)
+                                    <button type="button" wire:click="restartOctane" class="px-3 py-2 text-xs rounded-md border border-slate-700 text-slate-200 hover:text-white inline-flex items-center">
+                                        <x-loading-spinner target="restartOctane" />
+                                        {{ __('Restart Octane') }}
+                                    </button>
+                                    <button type="button" wire:click="stopOctane" class="px-3 py-2 text-xs rounded-md border border-rose-500/40 text-rose-200 hover:text-white inline-flex items-center">
+                                        <x-loading-spinner target="stopOctane" />
+                                        {{ __('Stop Octane') }}
+                                    </button>
+                                @else
+                                    <button type="button" wire:click="startOctane" class="px-3 py-2 text-xs rounded-md border border-slate-700 text-slate-200 hover:text-white inline-flex items-center">
+                                        <x-loading-spinner target="startOctane" />
+                                        {{ __('Start Octane') }}
+                                    </button>
+                                @endif
                             </div>
                         </div>
                     @endif

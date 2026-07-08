@@ -265,7 +265,7 @@
                 </div>
                 <div class="gwm-uo-spinner"></div>
                 <p class="gwm-uo-title">Temporarily Unavailable</p>
-                <p class="gwm-uo-sub">The app is restarting &mdash; this can happen during a deployment, queue task, or update. It will reload automatically.</p>
+                <p class="gwm-uo-sub">This can happen during a deployment, queue task, or update. It will reload automatically.</p>
                 <div class="gwm-uo-retry">Retrying in <span id="gwm-uo-countdown">5</span>s</div>
                 <div style="margin-top:0.5rem;font-size:0.72rem;color:#64748b;">
                     <a href="/processes/queue" style="color:#818cf8;text-decoration:none;">View Task Queue</a>

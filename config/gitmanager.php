@@ -65,6 +65,7 @@ return [
     ],
     'docker' => [
         'binary' => env('GWM_DOCKER_BINARY', 'docker'),
+        'compose_binary' => env('GWM_DOCKER_COMPOSE_BINARY', 'docker-compose'),
     ],
     'octane' => [
         'service' => env('GWM_OCTANE_SERVICE', 'octane'),
