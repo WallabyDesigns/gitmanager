@@ -69,6 +69,8 @@ class OctaneInstanceService
 
     public function start(bool $build = true): array
     {
+        $this->prepareComposerAuthEnvironment();
+
         if (! $this->docker->isAvailable()) {
             return ['success' => false, 'message' => $this->dockerUnavailableMessage()];
         }
@@ -99,6 +101,8 @@ class OctaneInstanceService
 
     public function stop(): array
     {
+        $this->prepareComposerAuthEnvironment();
+
         return $this->composeAction(
             fn () => $this->docker->composeStop($this->workingDirectory(), $this->serviceName()),
             'Octane instance stopped.',
@@ -113,6 +117,8 @@ class OctaneInstanceService
 
     public function restart(): array
     {
+        $this->prepareComposerAuthEnvironment();
+
         return $this->composeAction(
             fn () => $this->docker->composeRestart($this->workingDirectory(), $this->serviceName()),
             'Octane instance restarted.',
@@ -229,13 +235,13 @@ class OctaneInstanceService
     {
         $error = trim((string) ($result['error'] ?? ''));
         $output = trim((string) ($result['output'] ?? ''));
-        $message = $error ?: $output;
+        $message = trim($output."\n".$error);
 
         if ($this->docker->isPermissionDeniedError($message)) {
             return $this->dockerPermissionDeniedMessage();
         }
 
-        return $fallback.($message !== '' ? ' '.$message : '');
+        return $fallback.($message !== '' ? ' '.$this->summarizeProcessOutput($message) : '');
     }
 
     private function dockerUnavailableMessage(): string
@@ -265,6 +271,48 @@ class OctaneInstanceService
         return 'Docker is available, but Docker Compose support was not detected. '
             .'Install the Docker Compose v2 plugin, install standalone docker-compose, or set GWM_DOCKER_COMPOSE_BINARY to its absolute path.'
             .($message !== '' ? ' '.$message : '');
+    }
+
+    private function prepareComposerAuthEnvironment(): void
+    {
+        if (trim((string) getenv('COMPOSER_AUTH')) !== '') {
+            return;
+        }
+
+        try {
+            $settings = app(SettingsService::class);
+            $licenseKey = trim((string) $settings->getDecrypted('system.license.key', ''));
+            $installationUuid = trim((string) $settings->get('system.license.installation_uuid', ''));
+        } catch (\Throwable) {
+            return;
+        }
+
+        if ($licenseKey === '' || $installationUuid === '') {
+            return;
+        }
+
+        $auth = json_encode([
+            'http-basic' => [
+                'gitwebmanager.com' => [
+                    'username' => $licenseKey,
+                    'password' => $installationUuid,
+                ],
+            ],
+        ], JSON_UNESCAPED_SLASHES);
+
+        if (is_string($auth) && $auth !== '') {
+            putenv('COMPOSER_AUTH='.$auth);
+            $_ENV['COMPOSER_AUTH'] = $auth;
+            $_SERVER['COMPOSER_AUTH'] = $auth;
+        }
+    }
+
+    private function summarizeProcessOutput(string $output): string
+    {
+        $lines = preg_split('/\R/', trim($output)) ?: [];
+        $lines = array_values(array_filter(array_map('trim', $lines), static fn (string $line): bool => $line !== ''));
+
+        return implode("\n", array_slice($lines, -40));
     }
 
     private function workingDirectory(): string

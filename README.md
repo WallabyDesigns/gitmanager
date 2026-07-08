@@ -128,6 +128,7 @@ Set these in `.env` as needed:
 - `GWM_GIT_BINARY`, `GWM_COMPOSER_BINARY`, `GWM_NPM_BINARY` for custom CLI paths.
 - `GWM_PHP_BINARY` / `GWM_PHP_PATH` for PHP CLI selection.
 - `GWM_DOCKER_BINARY` / `GWM_DOCKER_COMPOSE_BINARY` / `GWM_KUBECTL_BINARY` for container CLI overrides.
+- Docker/Octane builds install Composer dependencies inside the image. Private package access is passed as `COMPOSER_AUTH` automatically from the saved license when available; otherwise set `COMPOSER_AUTH` in the environment used to start the build.
 - `GWM_PROCESS_PATH` to prepend PATH (Node, PHP, etc).
 - `GWM_SELF_UPDATE_ENABLED` to enable self updates.
 - `GWM_SELF_UPDATE_EXCLUDE_PATHS` to skip paths (default: `docs`).

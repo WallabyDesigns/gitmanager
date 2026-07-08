@@ -4,6 +4,7 @@ FROM composer:2 AS vendor
 WORKDIR /app
 USER root
 ENV COMPOSER_ALLOW_SUPERUSER=1
+ARG COMPOSER_AUTH=""
 COPY . .
 RUN mkdir -p bootstrap/cache \
     storage/framework/cache \
@@ -11,7 +12,7 @@ RUN mkdir -p bootstrap/cache \
     storage/framework/views \
     storage/logs \
     && chmod -R 775 bootstrap/cache storage/framework storage/logs
-RUN composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader
+RUN COMPOSER_AUTH="${COMPOSER_AUTH}" composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader
 
 FROM php:8.2-fpm-bookworm AS app
 WORKDIR /var/www/html
