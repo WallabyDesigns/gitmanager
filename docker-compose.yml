@@ -8,8 +8,8 @@ services:
     build:
       context: .
       target: app
-      args:
-        COMPOSER_AUTH: "${COMPOSER_AUTH:-}"
+      secrets:
+        - composer_auth
     environment:
       CONTAINER_ROLE: app
       RUN_MIGRATIONS: "true"
@@ -20,8 +20,8 @@ services:
     build:
       context: .
       target: nginx
-      args:
-        COMPOSER_AUTH: "${COMPOSER_AUTH:-}"
+      secrets:
+        - composer_auth
     ports:
       - "${APP_PORT:-8080}:80"
     volumes:
@@ -34,8 +34,8 @@ services:
     build:
       context: .
       target: app
-      args:
-        COMPOSER_AUTH: "${COMPOSER_AUTH:-}"
+      secrets:
+        - composer_auth
     command: ["php", "artisan", "queue:work", "--sleep=1", "--tries=1", "--timeout=0"]
     environment:
       CONTAINER_ROLE: queue
@@ -48,8 +48,8 @@ services:
     build:
       context: .
       target: app
-      args:
-        COMPOSER_AUTH: "${COMPOSER_AUTH:-}"
+      secrets:
+        - composer_auth
     command: ["php", "artisan", "scheduler:work"]
     environment:
       CONTAINER_ROLE: scheduler
@@ -63,8 +63,8 @@ services:
     build:
       context: .
       target: octane
-      args:
-        COMPOSER_AUTH: "${COMPOSER_AUTH:-}"
+      secrets:
+        - composer_auth
     command: ["php", "artisan", "octane:start", "--server=frankenphp", "--host=0.0.0.0", "--port=8000"]
     environment:
       CONTAINER_ROLE: octane
@@ -79,3 +79,7 @@ services:
 volumes:
   storage:
   database:
+
+secrets:
+  composer_auth:
+    environment: COMPOSER_AUTH

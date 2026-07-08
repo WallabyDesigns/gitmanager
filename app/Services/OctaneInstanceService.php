@@ -69,6 +69,11 @@ class OctaneInstanceService
 
     public function start(bool $build = true): array
     {
+        $preflight = $this->composerFilesPreflight();
+        if (! $preflight['success']) {
+            return $preflight;
+        }
+
         $this->prepareComposerAuthEnvironment();
 
         if (! $this->docker->isAvailable()) {
@@ -305,6 +310,40 @@ class OctaneInstanceService
             $_ENV['COMPOSER_AUTH'] = $auth;
             $_SERVER['COMPOSER_AUTH'] = $auth;
         }
+    }
+
+    /**
+     * @return array{success: bool, message: string}
+     */
+    private function composerFilesPreflight(): array
+    {
+        foreach (['composer.json', 'composer.lock'] as $filename) {
+            $path = base_path($filename);
+            if (! is_file($path)) {
+                return [
+                    'success' => false,
+                    'message' => "Octane instance could not be started. {$filename} is missing.",
+                ];
+            }
+
+            $contents = (string) file_get_contents($path);
+            if (preg_match('/^(<<<<<<<|=======|>>>>>>>) /m', $contents) === 1) {
+                return [
+                    'success' => false,
+                    'message' => "Octane instance could not be started. {$filename} contains unresolved merge conflict markers. Resolve the file and run composer validate before starting Octane.",
+                ];
+            }
+
+            json_decode($contents, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return [
+                    'success' => false,
+                    'message' => "Octane instance could not be started. {$filename} is not valid JSON: ".json_last_error_msg(),
+                ];
+            }
+        }
+
+        return ['success' => true, 'message' => 'Composer files are valid.'];
     }
 
     private function summarizeProcessOutput(string $output): string

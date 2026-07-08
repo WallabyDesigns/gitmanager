@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Services\DockerService;
 use App\Services\OctaneInstanceService;
+use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 class OctaneInstanceServiceTest extends TestCase
@@ -88,6 +89,31 @@ class OctaneInstanceServiceTest extends TestCase
 
         $this->assertFalse($result['success']);
         $this->assertStringContainsString('cannot access the Docker daemon socket', $result['message']);
+    }
+
+    public function test_start_fails_before_docker_when_composer_lock_has_conflict_markers(): void
+    {
+        $path = base_path('composer.lock');
+        $original = File::get($path);
+
+        try {
+            File::put($path, "{\n<<<<<<< Updated upstream\n}\n");
+
+            $service = new OctaneInstanceService(new class extends DockerService
+            {
+                public function isAvailable(): bool
+                {
+                    throw new \RuntimeException('Docker should not be checked when composer.lock is invalid.');
+                }
+            });
+
+            $result = $service->start();
+
+            $this->assertFalse($result['success']);
+            $this->assertStringContainsString('composer.lock contains unresolved merge conflict markers', $result['message']);
+        } finally {
+            File::put($path, $original);
+        }
     }
 
     public function test_start_uses_octane_compose_profile_and_service(): void

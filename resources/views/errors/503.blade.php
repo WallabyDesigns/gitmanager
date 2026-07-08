@@ -144,7 +144,7 @@
                             return Promise.reject(r.status);
                         })
                         .then(function (text) { setLog(text || 'No log content yet.'); })
-                        .catch(function () { setLog('Update log unavailable while app is restarting…'); });
+                        .catch(function () { setLog('Loading…'); });
                 }
 
                 function checkOnline() {
