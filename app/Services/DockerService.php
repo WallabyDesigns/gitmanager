@@ -17,9 +17,27 @@ class DockerService
 
     public function isAvailable(): bool
     {
-        [$success] = $this->run(['info', '--format', '{{.ServerVersion}}']);
+        $status = $this->daemonStatus();
 
-        return $success;
+        return (bool) $status['success'];
+    }
+
+    /**
+     * @return array{success: bool, output: string, error: string}
+     */
+    public function daemonStatus(): array
+    {
+        [$success, $output, $error] = $this->run(['info', '--format', '{{.ServerVersion}}']);
+
+        return ['success' => $success, 'output' => $output, 'error' => $error];
+    }
+
+    public function isPermissionDeniedError(string $message): bool
+    {
+        $message = strtolower($message);
+
+        return str_contains($message, 'permission denied')
+            && (str_contains($message, 'docker.sock') || str_contains($message, 'docker daemon socket'));
     }
 
     public function composeAvailable(): bool

@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Symfony\Component\Process\Process;
+
 class OctaneInstanceService
 {
     public function __construct(private readonly DockerService $docker) {}
@@ -35,7 +37,7 @@ class OctaneInstanceService
         ];
 
         if (! $base['docker_available']) {
-            $base['message'] = 'Docker is not available on this server.';
+            $base['message'] = $this->dockerUnavailableMessage();
 
             return $base;
         }
@@ -64,7 +66,7 @@ class OctaneInstanceService
     public function start(bool $build = true): array
     {
         if (! $this->docker->isAvailable()) {
-            return ['success' => false, 'message' => 'Docker is not available on this server.'];
+            return ['success' => false, 'message' => $this->dockerUnavailableMessage()];
         }
 
         if (! $this->docker->composeAvailable()) {
@@ -86,6 +88,11 @@ class OctaneInstanceService
         ];
     }
 
+    public function startInBackground(bool $build = true): array
+    {
+        return $this->runInBackground('start', $build ? [] : ['--no-build']);
+    }
+
     public function stop(): array
     {
         return $this->composeAction(
@@ -93,6 +100,11 @@ class OctaneInstanceService
             'Octane instance stopped.',
             'Octane instance could not be stopped.',
         );
+    }
+
+    public function stopInBackground(): array
+    {
+        return $this->runInBackground('stop');
     }
 
     public function restart(): array
@@ -104,10 +116,84 @@ class OctaneInstanceService
         );
     }
 
+    public function restartInBackground(): array
+    {
+        return $this->runInBackground('restart');
+    }
+
+    /**
+     * @param  array<int, string>  $extraArgs
+     */
+    private function runInBackground(string $action, array $extraArgs = []): array
+    {
+        if (! $this->docker->isAvailable()) {
+            return ['success' => false, 'message' => $this->dockerUnavailableMessage()];
+        }
+
+        if (! $this->docker->composeAvailable()) {
+            return ['success' => false, 'message' => 'Docker Compose support was not detected.'];
+        }
+
+        if (app()->runningUnitTests()) {
+            return ['success' => true, 'message' => $this->backgroundMessage($action)];
+        }
+
+        try {
+            $this->ensureLogDirectory();
+
+            $php = PHP_BINARY;
+            $artisan = base_path('artisan');
+            $args = array_merge(['octane:instance', $action], $extraArgs);
+            $logPath = $this->logPath();
+
+            if (PHP_OS_FAMILY === 'Windows') {
+                $command = 'start "" /B '
+                    .$this->cmdQuote($php).' '
+                    .$this->cmdQuote($artisan).' '
+                    .implode(' ', array_map([$this, 'cmdQuote'], $args))
+                    .' >> '.$this->cmdQuote($logPath)
+                    .' 2>> '.$this->cmdQuote($this->errorLogPath());
+
+                $process = Process::fromShellCommandline($command, base_path());
+            } else {
+                $command = 'cd '.escapeshellarg(base_path())
+                    .' && nohup '.escapeshellarg($php).' '.escapeshellarg($artisan).' '
+                    .implode(' ', array_map('escapeshellarg', $args))
+                    .' >> '.escapeshellarg($logPath).' 2>&1 &';
+
+                $process = Process::fromShellCommandline($command, base_path());
+            }
+
+            $process->setTimeout(15);
+            $process->run();
+
+            if (! $process->isSuccessful()) {
+                return [
+                    'success' => false,
+                    'message' => 'Unable to launch Octane background action. '.trim($process->getErrorOutput() ?: $process->getOutput()),
+                ];
+            }
+
+            return ['success' => true, 'message' => $this->backgroundMessage($action)];
+        } catch (\Throwable $exception) {
+            return ['success' => false, 'message' => 'Unable to launch Octane background action. '.$exception->getMessage()];
+        }
+    }
+
+    private function backgroundMessage(string $action): string
+    {
+        return match ($action) {
+            'start' => 'Octane start queued in the background. Check the Octane status panel in a moment.',
+            'stop' => 'Octane stop queued in the background. Check the Octane status panel in a moment.',
+            'restart' => 'Octane restart queued in the background. Check the Octane status panel in a moment.',
+            default => 'Octane action queued in the background. Check the Octane status panel in a moment.',
+        };
+    }
+
     private function composeAction(callable $action, string $successMessage, string $failureMessage): array
     {
         if (! $this->docker->isAvailable()) {
-            return ['success' => false, 'message' => 'Docker is not available on this server.'];
+            return ['success' => false, 'message' => $this->dockerUnavailableMessage()];
         }
 
         if (! $this->docker->composeAvailable()) {
@@ -128,8 +214,32 @@ class OctaneInstanceService
     {
         $error = trim((string) ($result['error'] ?? ''));
         $output = trim((string) ($result['output'] ?? ''));
+        $message = $error ?: $output;
 
-        return $fallback.(($error ?: $output) !== '' ? ' '.($error ?: $output) : '');
+        if ($this->docker->isPermissionDeniedError($message)) {
+            return $this->dockerPermissionDeniedMessage();
+        }
+
+        return $fallback.($message !== '' ? ' '.$message : '');
+    }
+
+    private function dockerUnavailableMessage(): string
+    {
+        $status = $this->docker->daemonStatus();
+        $message = trim((string) ($status['error'] ?: $status['output']));
+
+        if ($this->docker->isPermissionDeniedError($message)) {
+            return $this->dockerPermissionDeniedMessage();
+        }
+
+        return 'Docker is not available on this server.'.($message !== '' ? ' '.$message : '');
+    }
+
+    private function dockerPermissionDeniedMessage(): string
+    {
+        return 'Docker is installed, but this app user cannot access the Docker daemon socket at /var/run/docker.sock. '
+            .'Run the web/PHP worker under a user with Docker access, add that user to the docker group and restart the PHP/web service, '
+            .'or expose Docker through a controlled remote context.';
     }
 
     private function workingDirectory(): string
@@ -157,5 +267,29 @@ class OctaneInstanceService
         $host = trim((string) config('gitmanager.octane.host', '127.0.0.1'));
 
         return 'http://'.$host.':'.$port;
+    }
+
+    private function ensureLogDirectory(): void
+    {
+        $directory = dirname($this->logPath());
+
+        if (! is_dir($directory)) {
+            @mkdir($directory, 0775, true);
+        }
+    }
+
+    private function logPath(): string
+    {
+        return storage_path('logs/octane-instance.log');
+    }
+
+    private function errorLogPath(): string
+    {
+        return storage_path('logs/octane-instance-error.log');
+    }
+
+    private function cmdQuote(string $value): string
+    {
+        return '"'.str_replace('"', '""', $value).'"';
     }
 }

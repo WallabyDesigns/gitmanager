@@ -299,21 +299,21 @@ class Settings extends Component
 
     public function startOctane(OctaneInstanceService $octane): void
     {
-        $result = $octane->start();
+        $result = $octane->startInBackground();
         $this->dispatch('notify', message: $result['message']);
         $this->dispatch('$refresh');
     }
 
     public function stopOctane(OctaneInstanceService $octane): void
     {
-        $result = $octane->stop();
+        $result = $octane->stopInBackground();
         $this->dispatch('notify', message: $result['message']);
         $this->dispatch('$refresh');
     }
 
     public function restartOctane(OctaneInstanceService $octane): void
     {
-        $result = $octane->restart();
+        $result = $octane->restartInBackground();
         $this->dispatch('notify', message: $result['message']);
         $this->dispatch('$refresh');
     }
