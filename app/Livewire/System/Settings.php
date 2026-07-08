@@ -11,10 +11,10 @@ use App\Services\EnvManagerService;
 use App\Services\LicenseService;
 use App\Services\LogCleanupService;
 use App\Services\NodeInstallService;
+use App\Services\OctaneInstanceService;
 use App\Services\RuntimeDiagnosticsService;
 use App\Services\SchedulerService;
 use App\Services\SettingsService;
-use App\Services\TurnstileService;
 use App\Support\InstallContext;
 use App\Support\SchedulerTaskIntervals;
 use Composer\InstalledVersions;
@@ -35,7 +35,6 @@ class Settings extends Component
     public const SECTION_ENVIRONMENT = 'environment';
 
     public const SECTION_NODE = 'node';
-
 
     public const SECTION_DIAGNOSTICS = 'diagnostics';
 
@@ -184,7 +183,7 @@ class Settings extends Component
         $this->dispatch('notify', message: 'Security settings saved.');
     }
 
-    public function render(EditionService $edition, SchedulerService $scheduler, NodeInstallService $nodeInstall): View
+    public function render(EditionService $edition, SchedulerService $scheduler, NodeInstallService $nodeInstall, OctaneInstanceService $octane): View
     {
         $schedulerGraceSeconds = max(600, (int) config('gitmanager.scheduler.stale_seconds', 600));
 
@@ -214,6 +213,9 @@ class Settings extends Component
             'captchaSiteKey' => (string) $settingsService->get('system.captcha.site_key', ''),
             'runtimeDiagnostics' => $this->settingsSection === self::SECTION_DIAGNOSTICS
                 ? app(RuntimeDiagnosticsService::class)->detect()
+                : null,
+            'octaneStatus' => $this->settingsSection === self::SECTION_SCHEDULER
+                ? $octane->status()
                 : null,
         ])
             ->layout('layouts.app', [
@@ -292,6 +294,27 @@ class Settings extends Component
         $result = $scheduler->installCron();
         $message = $result['message'] ?? 'Cron action completed.';
         $this->dispatch('notify', message: $message);
+        $this->dispatch('$refresh');
+    }
+
+    public function startOctane(OctaneInstanceService $octane): void
+    {
+        $result = $octane->start();
+        $this->dispatch('notify', message: $result['message']);
+        $this->dispatch('$refresh');
+    }
+
+    public function stopOctane(OctaneInstanceService $octane): void
+    {
+        $result = $octane->stop();
+        $this->dispatch('notify', message: $result['message']);
+        $this->dispatch('$refresh');
+    }
+
+    public function restartOctane(OctaneInstanceService $octane): void
+    {
+        $result = $octane->restart();
+        $this->dispatch('notify', message: $result['message']);
         $this->dispatch('$refresh');
     }
 

@@ -180,12 +180,21 @@ Start a worker for webhook deployments:
 php artisan queue:work
 ```
 
-Ensure the scheduler runs (crontab entry):
+Preferred for busy hosts: run the scheduler as a supervised long-running worker so it does not depend on cron firing exactly on time:
+```bash
+php artisan scheduler:work
+```
+
+The worker reuses GitManager's scheduler wrapper, so it records the System Scheduler heartbeat, releases stale scheduler locks, logs scheduler issues, and checks due Laravel scheduled tasks every `GWM_SCHEDULER_WORKER_SLEEP_SECONDS` seconds.
+
+Cron is still supported for existing installs:
 ```bash
 * * * * * cd /path/to/app && /path/to/php artisan scheduler:run >/dev/null 2>&1
 ```
 
 The `scheduler:run` wrapper records the System Scheduler heartbeat first, then runs Laravel's scheduled tasks. Existing installations that already use this cron line do not need to change it.
+
+Docker Compose uses `scheduler:work` for the scheduler service. If Docker and Docker Compose are available to the app, System → Scheduler can also start, stop, and restart the app-managed Octane instance. Octane listens on `OCTANE_PORT` or port `8000` by default and uses FrankenPHP unless `OCTANE_SERVER` is changed.
 
 Scheduled commands include:
 - `app:self-audit` (every 10 minutes)

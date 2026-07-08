@@ -290,23 +290,38 @@ class Containers extends Component
             return;
         }
 
-        $parsed = app(DockerService::class)->parseRunCommand($this->cliCommand);
-
-        $this->createForm = [
-            'image' => $parsed['image'],
-            'name' => $parsed['name'],
-            'ports' => array_values(array_filter($parsed['ports'])) ?: [''],
-            'env' => array_values(array_filter($parsed['env'])) ?: [''],
-            'volumes' => array_values(array_filter($parsed['volumes'])) ?: [''],
-            'network' => $parsed['network'],
-            'restart' => $parsed['restart'] ?: 'unless-stopped',
-            'memory' => $parsed['memory'],
-            'cpus' => $parsed['cpus'],
-            'hostname' => $parsed['hostname'],
-            'command' => $parsed['command'],
-        ];
+        $this->createForm = $this->createFormFromCliCommand();
 
         $this->cliPasteMode = false;
+    }
+
+    public function createContainerFromCli(): void
+    {
+        if (trim($this->cliCommand) === '') {
+            $this->flash('Paste a docker run command first.', 'error');
+
+            return;
+        }
+
+        $options = $this->createFormFromCliCommand();
+        if (trim((string) ($options['image'] ?? '')) === '') {
+            $this->flash('Unable to find an image in the pasted docker run command.', 'error');
+
+            return;
+        }
+
+        $result = app(DockerService::class)->createContainer($options);
+
+        if ($result['success']) {
+            $this->flash('Container created from pasted command.');
+            $this->showCreate = false;
+            $this->resetCreateForm();
+            $this->loadContainers(app(DockerService::class));
+
+            return;
+        }
+
+        $this->flash($result['error'], 'error');
     }
 
     public function createContainer(): void
@@ -357,6 +372,25 @@ class Containers extends Component
         ];
         $this->cliCommand = '';
         $this->cliPasteMode = false;
+    }
+
+    private function createFormFromCliCommand(): array
+    {
+        $parsed = app(DockerService::class)->parseRunCommand($this->cliCommand);
+
+        return [
+            'image' => $parsed['image'],
+            'name' => $parsed['name'],
+            'ports' => array_values(array_filter($parsed['ports'])) ?: [''],
+            'env' => array_values(array_filter($parsed['env'])) ?: [''],
+            'volumes' => array_values(array_filter($parsed['volumes'])) ?: [''],
+            'network' => $parsed['network'],
+            'restart' => $parsed['restart'] ?: 'unless-stopped',
+            'memory' => $parsed['memory'],
+            'cpus' => $parsed['cpus'],
+            'hostname' => $parsed['hostname'],
+            'command' => $parsed['command'],
+        ];
     }
 
     // ─── Image Actions ────────────────────────────────────────────────────────

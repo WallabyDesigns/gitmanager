@@ -22,6 +22,13 @@ class DockerService
         return $success;
     }
 
+    public function composeAvailable(): bool
+    {
+        [$success] = $this->run(['compose', 'version', '--short']);
+
+        return $success;
+    }
+
     // ─── Containers ───────────────────────────────────────────────────────────
 
     public function listContainers(bool $all = true): array
@@ -479,10 +486,83 @@ class DockerService
         return $this->parseJsonLines($output);
     }
 
+    // ─── Compose ─────────────────────────────────────────────────────────────
+
+    public function composeUp(string $workingDirectory, string $service, array $profiles = [], bool $build = false): array
+    {
+        $args = ['compose'];
+        foreach ($profiles as $profile) {
+            $profile = trim((string) $profile);
+            if ($profile !== '') {
+                $args[] = '--profile';
+                $args[] = $profile;
+            }
+        }
+
+        $args[] = 'up';
+        $args[] = '-d';
+
+        if ($build) {
+            $args[] = '--build';
+        }
+
+        $args[] = $service;
+
+        [$success, $output, $error] = $this->run($args, $workingDirectory);
+
+        return ['success' => $success, 'output' => $output, 'error' => $error];
+    }
+
+    public function composeStop(string $workingDirectory, string $service): array
+    {
+        [$success, $output, $error] = $this->run(['compose', 'stop', $service], $workingDirectory);
+
+        return ['success' => $success, 'output' => $output, 'error' => $error];
+    }
+
+    public function composeRestart(string $workingDirectory, string $service): array
+    {
+        [$success, $output, $error] = $this->run(['compose', 'restart', $service], $workingDirectory);
+
+        return ['success' => $success, 'output' => $output, 'error' => $error];
+    }
+
+    public function composeServiceStatus(string $workingDirectory, string $service): array
+    {
+        [$success, $output, $error] = $this->run(['compose', 'ps', '--format', 'json', $service], $workingDirectory);
+        if (! $success) {
+            return [
+                'success' => false,
+                'service' => $service,
+                'running' => false,
+                'state' => 'unknown',
+                'status' => '',
+                'error' => $error,
+            ];
+        }
+
+        $rows = $this->parseComposeJson($output);
+        $row = $rows[0] ?? [];
+        $state = strtolower((string) ($row['State'] ?? ''));
+
+        return [
+            'success' => true,
+            'service' => $service,
+            'running' => $state === 'running',
+            'state' => $state !== '' ? $state : 'not_created',
+            'status' => (string) ($row['Status'] ?? ''),
+            'name' => (string) ($row['Name'] ?? ''),
+            'publishers' => $row['Publishers'] ?? [],
+            'error' => '',
+        ];
+    }
+
     // ─── CLI Parser ───────────────────────────────────────────────────────────
 
     public function parseRunCommand(string $command): array
     {
+        $command = preg_replace('/\\\\\s*(\r\n|\r|\n)\s*/', ' ', $command) ?? $command;
+        $command = preg_replace('/\s*(\r\n|\r|\n)\s*/', ' ', $command) ?? $command;
         $command = preg_replace('/^docker\s+run\s+/i', '', trim($command));
 
         $result = [
@@ -577,6 +657,25 @@ class DockerService
         return $items;
     }
 
+    private function parseComposeJson(string $output): array
+    {
+        $output = trim($output);
+        if ($output === '') {
+            return [];
+        }
+
+        $decoded = json_decode($output, true);
+        if (is_array($decoded)) {
+            if (array_is_list($decoded)) {
+                return array_values(array_filter($decoded, 'is_array'));
+            }
+
+            return [$decoded];
+        }
+
+        return $this->parseJsonLines($output);
+    }
+
     private function tokenizeCommand(string $command): array
     {
         $tokens = [];
@@ -613,7 +712,7 @@ class DockerService
         return $tokens;
     }
 
-    private function run(array $args): array
+    private function run(array $args, ?string $workingDirectory = null): array
     {
         $cmd = array_merge([$this->binary], $args);
 
@@ -626,7 +725,7 @@ class DockerService
                 $cmd,
                 [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
                 $pipes,
-                null,
+                $workingDirectory,
                 null,
                 ['bypass_shell' => true],
             );

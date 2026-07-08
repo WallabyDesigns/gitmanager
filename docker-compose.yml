@@ -42,9 +42,25 @@ services:
     build:
       context: .
       target: app
-    command: ["php", "artisan", "schedule:work"]
+    command: ["php", "artisan", "scheduler:work"]
     environment:
       CONTAINER_ROLE: scheduler
+    volumes: *app-volumes
+    depends_on:
+      - app
+    restart: unless-stopped
+
+  octane:
+    profiles: ["octane"]
+    build:
+      context: .
+      target: octane
+    command: ["php", "artisan", "octane:start", "--server=frankenphp", "--host=0.0.0.0", "--port=8000"]
+    environment:
+      CONTAINER_ROLE: octane
+      OCTANE_SERVER: frankenphp
+    ports:
+      - "${OCTANE_PORT:-8000}:8000"
     volumes: *app-volumes
     depends_on:
       - app

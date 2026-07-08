@@ -62,3 +62,27 @@ COPY --from=app /var/www/html /var/www/html
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
 RUN mkdir -p /var/www/html/storage/app \
     && (ln -s /var/www/html/storage/app/public /var/www/html/public/storage 2>/dev/null || true)
+
+FROM dunglas/frankenphp:1-php8.2-bookworm AS octane
+WORKDIR /var/www/html
+
+RUN install-php-extensions \
+        pdo_mysql \
+        pdo_sqlite \
+        mbstring \
+        zip \
+        exif \
+        pcntl \
+        bcmath \
+        gd
+
+COPY --from=vendor /app /var/www/html
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh \
+    && mkdir -p storage bootstrap/cache database \
+    && chown -R www-data:www-data storage bootstrap/cache database \
+    && chmod -R 775 storage bootstrap/cache \
+    && (ln -s /var/www/html/storage/app/public /var/www/html/public/storage 2>/dev/null || true)
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["php", "artisan", "octane:start", "--server=frankenphp", "--host=0.0.0.0", "--port=8000"]

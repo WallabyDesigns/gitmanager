@@ -8,6 +8,7 @@
     "require": {
         "php": "^8.2",
         "laravel/framework": "^12.0",
+        "laravel/octane": "^2.17",
         "livewire/livewire": "^3.6.4",
         "livewire/volt": "^1.7.0",
         "stripe/stripe-php": "^16.0",

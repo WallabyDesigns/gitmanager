@@ -68,6 +68,68 @@
                         </div>
                     </div>
 
+                    @if ($octaneStatus)
+                        <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6 space-y-4">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <h3 class="text-lg font-semibold text-slate-100">{{ __('Octane Runtime') }}</h3>
+                                        <span class="px-2 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wide {{ ($octaneStatus['running'] ?? false) ? 'bg-emerald-500/20 text-emerald-200' : 'bg-slate-500/20 text-slate-200' }}">
+                                            {{ ($octaneStatus['running'] ?? false) ? __('Running') : __('Stopped') }}
+                                        </span>
+                                    </div>
+                                    <p class="mt-1 text-sm text-slate-400">
+                                        {{ __('Managed through the local Docker Compose Octane profile when Docker is available.') }}
+                                    </p>
+                                </div>
+                                <div class="text-right text-xs text-slate-400">
+                                    <div>{{ __('State:') }} <span class="font-mono text-slate-200">{{ $octaneStatus['state'] ?? 'unknown' }}</span></div>
+                                    <div>{{ __('Port:') }} <span class="font-mono text-slate-200">{{ $octaneStatus['port'] ?? 8000 }}</span></div>
+                                </div>
+                            </div>
+
+                            <div class="grid gap-3 md:grid-cols-3">
+                                <div class="rounded-lg border border-slate-800 bg-slate-950/40 p-4">
+                                    <div class="text-xs uppercase tracking-wide text-slate-500">{{ __('Docker') }}</div>
+                                    <div class="mt-1 text-sm font-semibold {{ ($octaneStatus['docker_available'] ?? false) ? 'text-emerald-300' : 'text-rose-300' }}">
+                                        {{ ($octaneStatus['docker_available'] ?? false) ? __('Available') : __('Unavailable') }}
+                                    </div>
+                                </div>
+                                <div class="rounded-lg border border-slate-800 bg-slate-950/40 p-4">
+                                    <div class="text-xs uppercase tracking-wide text-slate-500">{{ __('Compose') }}</div>
+                                    <div class="mt-1 text-sm font-semibold {{ ($octaneStatus['compose_available'] ?? false) ? 'text-emerald-300' : 'text-rose-300' }}">
+                                        {{ ($octaneStatus['compose_available'] ?? false) ? __('Available') : __('Unavailable') }}
+                                    </div>
+                                </div>
+                                <div class="rounded-lg border border-slate-800 bg-slate-950/40 p-4">
+                                    <div class="text-xs uppercase tracking-wide text-slate-500">{{ __('Endpoint') }}</div>
+                                    <div class="mt-1 text-sm font-mono text-slate-200 truncate">{{ $octaneStatus['url'] ?? '' }}</div>
+                                </div>
+                            </div>
+
+                            @if (! empty($octaneStatus['message']))
+                                <div class="rounded-md border border-slate-800 bg-slate-950/40 px-3 py-2 text-xs text-slate-300">
+                                    {{ $octaneStatus['message'] }}
+                                </div>
+                            @endif
+
+                            <div class="flex flex-wrap gap-2">
+                                <button type="button" wire:click="startOctane" class="px-3 py-2 text-xs rounded-md border border-slate-700 text-slate-200 hover:text-white inline-flex items-center">
+                                    <x-loading-spinner target="startOctane" />
+                                    {{ __('Start Octane') }}
+                                </button>
+                                <button type="button" wire:click="restartOctane" class="px-3 py-2 text-xs rounded-md border border-slate-700 text-slate-200 hover:text-white inline-flex items-center">
+                                    <x-loading-spinner target="restartOctane" />
+                                    {{ __('Restart Octane') }}
+                                </button>
+                                <button type="button" wire:click="stopOctane" class="px-3 py-2 text-xs rounded-md border border-rose-500/40 text-rose-200 hover:text-white inline-flex items-center">
+                                    <x-loading-spinner target="stopOctane" />
+                                    {{ __('Stop Octane') }}
+                                </button>
+                            </div>
+                        </div>
+                    @endif
+
                     @if (! empty($schedulerLocks))
                         <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-amber-500/30 p-6 space-y-4">
                             <div class="flex items-center justify-between gap-3">

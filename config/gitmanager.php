@@ -66,6 +66,12 @@ return [
     'docker' => [
         'binary' => env('GWM_DOCKER_BINARY', 'docker'),
     ],
+    'octane' => [
+        'service' => env('GWM_OCTANE_SERVICE', 'octane'),
+        'profile' => env('GWM_OCTANE_PROFILE', 'octane'),
+        'host' => env('GWM_OCTANE_HOST', '127.0.0.1'),
+        'port' => env('OCTANE_PORT', 8000),
+    ],
     'kubernetes' => [
         'kubectl_binary' => env('GWM_KUBECTL_BINARY', 'kubectl'),
     ],
@@ -76,6 +82,7 @@ return [
     ],
     'scheduler' => [
         'stale_seconds' => env('GWM_SCHEDULER_STALE_SECONDS', 120),
+        'worker_sleep_seconds' => env('GWM_SCHEDULER_WORKER_SLEEP_SECONDS', 60),
     ],
     'health' => [
         'stream_fallback_enabled' => env('GWM_HEALTH_STREAM_FALLBACK_ENABLED', true),
