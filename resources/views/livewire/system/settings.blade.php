@@ -481,7 +481,7 @@
                                 <h3 class="text-lg font-semibold text-slate-100">{{ __('Running Processes') }}</h3>
                                 <p class="text-sm text-slate-400">{{ __('Monitor and manage active deployments and Node services.') }}</p>
                             </div>
-                            <a href="{{ route('system.processes') }}" wire:navigate class="shrink-0 px-3 py-1.5 text-xs rounded-md border border-slate-700 text-slate-200 hover:text-white hover:border-slate-600 transition-colors inline-flex items-center gap-1.5">
+                            <a href="{{ route('processes.active') }}" wire:navigate class="shrink-0 px-3 py-1.5 text-xs rounded-md border border-slate-700 text-slate-200 hover:text-white hover:border-slate-600 transition-colors inline-flex items-center gap-1.5">
                                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
                                 </svg>
