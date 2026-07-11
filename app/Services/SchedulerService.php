@@ -357,6 +357,11 @@ class SchedulerService
         return storage_path('logs/scheduler-worker.log');
     }
 
+    private function workerRestartRequestPath(): string
+    {
+        return storage_path('logs/scheduler-worker-restart.json');
+    }
+
     private function ensureWorkerLogFile(): void
     {
         $path = $this->workerLogPath();
@@ -421,10 +426,15 @@ class SchedulerService
 
     private function workerStaleSeconds(): int
     {
-        $sleep = max(1, (int) config('gitmanager.scheduler.worker_sleep_seconds', 60));
+        $sleep = $this->workerSleepSeconds();
         $healthGrace = max(1, (int) config('gitmanager.scheduler.stale_seconds', 120));
 
         return max($healthGrace, ($sleep * 2) + 15);
+    }
+
+    private function workerSleepSeconds(): int
+    {
+        return max(1, min(3600, (int) config('gitmanager.scheduler.worker_sleep_seconds', 60)));
     }
 
     private function cronLogPath(): string
@@ -508,6 +518,77 @@ class SchedulerService
     public function markWorkerStopped(): void
     {
         $this->writeWorkerStatus('stopped');
+    }
+
+    public function requestWorkerRestart(): void
+    {
+        $path = $this->workerRestartRequestPath();
+        $directory = dirname($path);
+        if (! is_dir($directory)) {
+            @mkdir($directory, 0775, true);
+        }
+
+        @file_put_contents($path, json_encode(['requested_at' => now()->toDateTimeString()]));
+        @chmod($path, 0664);
+    }
+
+    public function consumeWorkerRestartRequest(): bool
+    {
+        $path = $this->workerRestartRequestPath();
+
+        return is_file($path) && @unlink($path);
+    }
+
+    /**
+     * @return array{success: bool, message: string}
+     */
+    public function queueWorkerRecoveryCheck(?int $delaySeconds = null): array
+    {
+        $delay = $delaySeconds ?? ($this->workerSleepSeconds() + 10);
+        $delay = max(5, min(3600, $delay));
+
+        if (app()->runningUnitTests()) {
+            return ['success' => true, 'message' => 'Scheduler worker recovery check queued.'];
+        }
+
+        try {
+            $this->ensureWorkerLogFile();
+            $php = $this->phpBinary();
+            $artisan = base_path('artisan');
+            $logPath = $this->workerLogPath();
+
+            if (PHP_OS_FAMILY === 'Windows') {
+                $command = 'start "" /B '
+                    .$this->cmdQuote($php).' '
+                    .$this->cmdQuote($artisan).' scheduler:ensure-worker --delay='.$delay
+                    .' >> '.$this->cmdQuote($logPath).' 2>&1';
+            } else {
+                $command = 'cd '.escapeshellarg(base_path())
+                    .' && nohup '.escapeshellarg($php).' '.escapeshellarg($artisan)
+                    .' scheduler:ensure-worker --delay='.escapeshellarg((string) $delay)
+                    .' >> '.escapeshellarg($logPath).' 2>&1 &';
+            }
+
+            $process = Process::fromShellCommandline($command, base_path(), $this->baseEnv());
+            $process->setTimeout(15);
+            $process->run();
+
+            if (! $process->isSuccessful()) {
+                $output = trim($process->getErrorOutput() ?: $process->getOutput());
+
+                return [
+                    'success' => false,
+                    'message' => 'Unable to queue scheduler worker recovery check.'.($output !== '' ? ' '.$output : ''),
+                ];
+            }
+
+            return ['success' => true, 'message' => 'Scheduler worker recovery check queued.'];
+        } catch (\Throwable $exception) {
+            return [
+                'success' => false,
+                'message' => 'Unable to queue scheduler worker recovery check: '.$exception->getMessage(),
+            ];
+        }
     }
 
     protected function isWorkerRunning(): bool

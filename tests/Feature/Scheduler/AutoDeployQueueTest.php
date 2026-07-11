@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Scheduler;
 
+use App\Models\Deployment;
 use App\Models\DeploymentQueueItem;
 use App\Models\Project;
 use App\Models\User;
@@ -193,5 +194,108 @@ class AutoDeployQueueTest extends TestCase
                 ->whereIn('status', ['queued', 'running'])
                 ->count()
         );
+    }
+
+    public function test_command_does_not_queue_a_revision_that_previously_failed_automatic_deployment(): void
+    {
+        $owner = User::factory()->create();
+        $project = Project::factory()->create([
+            'user_id' => $owner->id,
+            'auto_deploy' => true,
+            'latest_remote_hash' => 'bad-revision',
+            'auto_deploy_blocked_hash' => 'bad-revision',
+            'auto_deploy_blocked_at' => now(),
+        ]);
+
+        $this->mock(DeploymentService::class, function ($mock) use ($project): void {
+            $mock->shouldReceive('checkForUpdates')->once()->with(\Mockery::on(fn (Project $p) => $p->is($project)))->andReturn(true);
+            $mock->shouldReceive('flushHealthNotifications')->once();
+        });
+
+        $this->mock(DeploymentQueueService::class, function ($mock): void {
+            $mock->shouldReceive('enqueue')->never();
+        });
+
+        $this->mock(SchedulerService::class, function ($mock): void {
+            $mock->shouldReceive('recordHeartbeat')->once()->with('schedule');
+        });
+
+        Artisan::call('projects:auto-deploy');
+
+        $this->assertStringContainsString('previously failed', Artisan::output());
+    }
+
+    public function test_command_queues_a_new_revision_after_an_older_revision_was_blocked(): void
+    {
+        $owner = User::factory()->create();
+        $project = Project::factory()->create([
+            'user_id' => $owner->id,
+            'auto_deploy' => true,
+            'latest_remote_hash' => 'new-revision',
+            'auto_deploy_blocked_hash' => 'old-failed-revision',
+            'auto_deploy_blocked_at' => now()->subHour(),
+        ]);
+
+        $this->mock(DeploymentService::class, function ($mock) use ($project): void {
+            $mock->shouldReceive('checkForUpdates')->once()->with(\Mockery::on(fn (Project $p) => $p->is($project)))->andReturn(true);
+            $mock->shouldReceive('flushHealthNotifications')->once();
+        });
+
+        $this->mock(DeploymentQueueService::class, function ($mock) use ($project): void {
+            $mock->shouldReceive('enqueue')->once()->with(
+                \Mockery::on(fn (Project $p) => $p->is($project)),
+                'deploy',
+                ['reason' => 'auto_update', 'target_hash' => 'new-revision'],
+            )->andReturn(new DeploymentQueueItem);
+        });
+
+        $this->mock(SchedulerService::class, function ($mock): void {
+            $mock->shouldReceive('recordHeartbeat')->once()->with('schedule');
+        });
+
+        Artisan::call('projects:auto-deploy');
+
+        $this->assertStringContainsString('Queued deploy', Artisan::output());
+    }
+
+    public function test_failed_auto_deploy_blocks_only_its_target_revision(): void
+    {
+        $project = Project::factory()->create([
+            'user_id' => User::factory(),
+            'latest_remote_hash' => 'bad-revision',
+        ]);
+        $deployment = Deployment::query()->create([
+            'project_id' => $project->id,
+            'action' => 'deploy',
+            'status' => 'failed',
+            'to_hash' => 'bad-revision',
+            'started_at' => now()->subMinute(),
+            'finished_at' => now(),
+        ]);
+
+        app(DeploymentQueueService::class)->recordAutoDeployResult($project, [
+            'reason' => 'auto_update',
+            'target_hash' => 'bad-revision',
+        ], $deployment);
+
+        $project->refresh();
+        $this->assertSame('bad-revision', $project->auto_deploy_blocked_hash);
+        $this->assertNotNull($project->auto_deploy_blocked_at);
+
+        $nextDeployment = Deployment::query()->create([
+            'project_id' => $project->id,
+            'action' => 'deploy',
+            'status' => 'failed',
+            'to_hash' => 'next-revision',
+            'started_at' => now()->subMinute(),
+            'finished_at' => now(),
+        ]);
+
+        app(DeploymentQueueService::class)->recordAutoDeployResult($project, [
+            'reason' => 'manual_deploy',
+            'target_hash' => 'next-revision',
+        ], $nextDeployment);
+
+        $this->assertSame('bad-revision', $project->fresh()->auto_deploy_blocked_hash);
     }
 }

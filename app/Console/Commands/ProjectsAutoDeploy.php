@@ -53,11 +53,21 @@ class ProjectsAutoDeploy extends Command
         foreach ($projects as $project) {
             try {
                 if ($service->checkForUpdates($project)) {
-                    if (config('gitmanager.deploy_queue.enabled', true)) {
-                        $queue->enqueue($project, 'deploy', ['reason' => 'auto_update']);
+                    $project->refresh();
+                    if ($this->isBlockedRevision($project)) {
+                        $this->warn("Skipping deploy for {$project->name}: the current revision previously failed. Push a new revision or deploy manually to retry.");
+                    } elseif (config('gitmanager.deploy_queue.enabled', true)) {
+                        $queue->enqueue($project, 'deploy', [
+                            'reason' => 'auto_update',
+                            'target_hash' => $project->latest_remote_hash,
+                        ]);
                         $this->info("Queued deploy for {$project->name}.");
                     } else {
-                        $service->deploy($project);
+                        $deployment = $service->deploy($project);
+                        $queue->recordAutoDeployResult($project, [
+                            'reason' => 'auto_update',
+                            'target_hash' => $project->latest_remote_hash,
+                        ], $deployment);
                         $this->info("Deployed {$project->name}.");
                         if ($project->hasHealthMonitoring()) {
                             $service->checkHealth($project, true, true);
@@ -128,6 +138,14 @@ class ProjectsAutoDeploy extends Command
             ->where('project_id', $projectId)
             ->where('status', 'running')
             ->exists();
+    }
+
+    private function isBlockedRevision(Project $project): bool
+    {
+        $blockedHash = trim((string) $project->auto_deploy_blocked_hash);
+        $remoteHash = trim((string) $project->latest_remote_hash);
+
+        return $blockedHash !== '' && $blockedHash === $remoteHash;
     }
 
     private function shouldRunAudit(Project $project): bool

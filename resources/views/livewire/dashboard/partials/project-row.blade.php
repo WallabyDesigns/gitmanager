@@ -47,7 +47,9 @@
             <span>{{ __('Last checked :time', ['time' => $project->health_checked_at->diffForHumans()]) }}</span>
         @endif
         @if ($project->updates_available)
-            <span class="font-medium text-indigo-300">{{ __('Updates') }}</span>
+            <span class="font-medium text-indigo-300">
+                {{ (int) $project->updates_behind_count > 0 ? __('Updates (:count behind)', ['count' => $project->updates_behind_count]) : __('Updates') }}
+            </span>
         @endif
         @if (($project->audit_open_count ?? 0) > 0)
             <span class="font-medium text-amber-300">{{ $project->audit_open_count }} {{ __( \Illuminate\Support\Str::plural('vulnerability', $project->audit_open_count) ) }}</span>

@@ -11,6 +11,7 @@ use App\Services\Concerns\ManagesGitWorkingTree;
 use App\Services\Concerns\ManagesPreviewBuilds;
 use App\Services\Concerns\ManagesRemoteDeployments;
 use App\Services\Concerns\RunsProcesses;
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\Process\Process;
 
 class DeploymentService
@@ -28,6 +29,10 @@ class DeploymentService
     private float $lastStreamAt = 0.0;
 
     private int $processCounter = 0;
+
+    private ?bool $autoDeployRevisionColumnsAvailable = null;
+
+    private ?bool $updatesBehindCountColumnAvailable = null;
 
     public function __construct(
         private readonly HealthCheckService $healthCheckService,
@@ -66,6 +71,8 @@ class DeploymentService
             $project->last_checked_at = now();
             $project->updates_checked_at = now();
             $project->updates_available = false;
+            $this->recordUpdatesBehindCount($project, 0);
+            $this->clearAutoDeployBlockForNewRevision($project, null);
             $project->save();
 
             return false;
@@ -88,9 +95,95 @@ class DeploymentService
         $project->last_checked_at = now();
         $project->updates_checked_at = now();
         $project->updates_available = $hasUpdates;
+        $this->recordUpdatesBehindCount($project, $hasUpdates ? $this->countRemoteCommitsAhead($repoPath, $head, $branch) : 0);
+        $this->recordLatestRemoteRevision($project, $remote);
         $project->save();
 
         return $hasUpdates;
+    }
+
+    private function countRemoteCommitsAhead(string $repoPath, ?string $head, string $branch): int
+    {
+        if (trim((string) $head) === '') {
+            return 0;
+        }
+
+        $process = $this->runProcess([
+            'git',
+            '-C',
+            $repoPath,
+            'rev-list',
+            '--count',
+            'HEAD..origin/'.$branch,
+        ], throwOnFailure: false);
+
+        $count = (int) trim($process->getOutput());
+
+        return max(0, $count);
+    }
+
+    private function recordUpdatesBehindCount(Project $project, int $count): void
+    {
+        if (! $this->hasUpdatesBehindCountColumn()) {
+            return;
+        }
+
+        $project->updates_behind_count = max(0, $count);
+    }
+
+    private function hasUpdatesBehindCountColumn(): bool
+    {
+        if ($this->updatesBehindCountColumnAvailable !== null) {
+            return $this->updatesBehindCountColumnAvailable;
+        }
+
+        try {
+            return $this->updatesBehindCountColumnAvailable = Schema::hasColumn('projects', 'updates_behind_count');
+        } catch (\Throwable) {
+            return $this->updatesBehindCountColumnAvailable = false;
+        }
+    }
+
+    private function recordLatestRemoteRevision(Project $project, ?string $remoteHash): void
+    {
+        if (! $this->hasAutoDeployRevisionColumns()) {
+            return;
+        }
+
+        $remoteHash = trim((string) $remoteHash);
+        $project->latest_remote_hash = $remoteHash !== '' ? $remoteHash : null;
+        $this->clearAutoDeployBlockForNewRevision($project, $remoteHash);
+    }
+
+    private function clearAutoDeployBlockForNewRevision(Project $project, ?string $remoteHash): void
+    {
+        if (! $this->hasAutoDeployRevisionColumns()) {
+            return;
+        }
+
+        $blockedHash = trim((string) $project->auto_deploy_blocked_hash);
+        $remoteHash = trim((string) $remoteHash);
+        if ($blockedHash !== '' && $blockedHash !== $remoteHash) {
+            $project->auto_deploy_blocked_hash = null;
+            $project->auto_deploy_blocked_at = null;
+        }
+    }
+
+    private function hasAutoDeployRevisionColumns(): bool
+    {
+        if ($this->autoDeployRevisionColumnsAvailable !== null) {
+            return $this->autoDeployRevisionColumnsAvailable;
+        }
+
+        try {
+            return $this->autoDeployRevisionColumnsAvailable = Schema::hasColumns('projects', [
+                'latest_remote_hash',
+                'auto_deploy_blocked_hash',
+                'auto_deploy_blocked_at',
+            ]);
+        } catch (\Throwable) {
+            return $this->autoDeployRevisionColumnsAvailable = false;
+        }
     }
 
     public function releaseStaleRunningDeployments(?int $graceSeconds = null): void

@@ -9,10 +9,13 @@ use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\Process\Process;
 
 class DeploymentQueueService
 {
+    private ?bool $autoDeployRevisionColumnsAvailable = null;
+
     public function isIdle(): bool
     {
         $this->releaseStaleRunning();
@@ -746,6 +749,7 @@ class DeploymentQueueService
 
             if ($deployment) {
                 $item->deployment_id = $deployment->id;
+                $this->recordAutoDeployResult($project, $payload, $deployment);
             }
 
             // Verify automated audit fixes with a follow-up scan: the issue is
@@ -786,6 +790,53 @@ class DeploymentQueueService
             ->where('action', 'audit_project')
             ->whereIn('status', ['queued', 'running'])
             ->exists();
+    }
+
+    /**
+     * Stop automatic retries for a revision that has already failed. A future
+     * update check clears this marker only when the remote revision changes.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function recordAutoDeployResult(Project $project, array $payload, Deployment $deployment): void
+    {
+        if (($payload['reason'] ?? null) !== 'auto_update' || ! $this->hasAutoDeployRevisionColumns()) {
+            return;
+        }
+
+        if ($deployment->status === 'success') {
+            $project->auto_deploy_blocked_hash = null;
+            $project->auto_deploy_blocked_at = null;
+            $project->save();
+
+            return;
+        }
+
+        $targetHash = trim((string) ($deployment->to_hash ?: ($payload['target_hash'] ?? '')));
+        if ($targetHash === '') {
+            return;
+        }
+
+        $project->auto_deploy_blocked_hash = $targetHash;
+        $project->auto_deploy_blocked_at = now();
+        $project->save();
+    }
+
+    private function hasAutoDeployRevisionColumns(): bool
+    {
+        if ($this->autoDeployRevisionColumnsAvailable !== null) {
+            return $this->autoDeployRevisionColumnsAvailable;
+        }
+
+        try {
+            return $this->autoDeployRevisionColumnsAvailable = Schema::hasColumns('projects', [
+                'latest_remote_hash',
+                'auto_deploy_blocked_hash',
+                'auto_deploy_blocked_at',
+            ]);
+        } catch (\Throwable) {
+            return $this->autoDeployRevisionColumnsAvailable = false;
+        }
     }
 
     private function applyItemRuntimeBudget(): void

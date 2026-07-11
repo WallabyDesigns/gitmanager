@@ -259,6 +259,11 @@
                             <div class="text-xs text-slate-500">
                                 {{ __('Last checked: :date', ['date' => \App\Support\DateFormatter::forUser($project->updates_checked_at, 'M j, Y g:i a', __('Never'))]) }}
                             </div>
+                            @if ($project->updates_available)
+                                <div class="text-xs text-indigo-300">
+                                    {{ (int) $project->updates_behind_count > 0 ? __('Updates Available (:count behind)', ['count' => $project->updates_behind_count]) : __('Updates Available') }}
+                                </div>
+                            @endif
                         </div>
                         <div class="rounded-lg border border-slate-800 p-4">
                             <div class="text-xs uppercase tracking-wide text-slate-400">{{ __('Auto Deploy') }}</div>

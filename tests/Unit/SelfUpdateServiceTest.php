@@ -526,6 +526,45 @@ class SelfUpdateServiceTest extends TestCase
         $this->assertStringContainsString('Scheduler cron refreshed after update', implode("\n", $output));
     }
 
+    public function test_post_update_scheduler_recovery_requests_a_clean_restart(): void
+    {
+        $scheduler = new class extends SchedulerService
+        {
+            public bool $restartRequested = false;
+
+            public function requestWorkerRestart(): void
+            {
+                $this->restartRequested = true;
+            }
+
+            public function queueWorkerRecoveryCheck(?int $delaySeconds = null): array
+            {
+                return ['success' => true, 'message' => 'Scheduler worker recovery check queued.'];
+            }
+        };
+
+        $service = new class($scheduler) extends SelfUpdateService
+        {
+            public function __construct(private readonly SchedulerService $fakeScheduler) {}
+
+            public function inspectRecoverSchedulerWorkerAfterUpdate(array &$output): void
+            {
+                $this->recoverSchedulerWorkerAfterUpdate($output);
+            }
+
+            protected function schedulerService(): SchedulerService
+            {
+                return $this->fakeScheduler;
+            }
+        };
+
+        $output = [];
+        $service->inspectRecoverSchedulerWorkerAfterUpdate($output);
+
+        $this->assertTrue($scheduler->restartRequested);
+        $this->assertStringContainsString('Scheduler worker recovery scheduled after update', implode("\n", $output));
+    }
+
     /**
      * @param  array<string, mixed>  $composer
      * @param  array<string, mixed>|null  $lock

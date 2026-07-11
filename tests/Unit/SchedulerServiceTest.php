@@ -115,4 +115,40 @@ class SchedulerServiceTest extends TestCase
         $this->assertTrue($result['success']);
         $this->assertSame('Scheduler executed successfully.', $result['message']);
     }
+
+    public function test_scheduler_worker_honors_a_post_update_restart_request(): void
+    {
+        $scheduler = new class extends SchedulerService
+        {
+            public function runSchedulerOnce(string $source = 'manual'): array
+            {
+                return ['success' => true, 'message' => 'Scheduler executed successfully.', 'output' => ''];
+            }
+        };
+        $scheduler->requestWorkerRestart();
+        $this->app->instance(SchedulerService::class, $scheduler);
+
+        $exitCode = Artisan::call('scheduler:work', ['--once' => true, '--sleep' => 1]);
+
+        $this->assertSame(0, $exitCode);
+        $this->assertStringContainsString('restart requested after application update', Artisan::output());
+        $this->assertFalse($scheduler->consumeWorkerRestartRequest());
+    }
+
+    public function test_recovery_command_starts_the_worker_when_needed(): void
+    {
+        $scheduler = new class extends SchedulerService
+        {
+            public function ensureWorkerRunning(): array
+            {
+                return ['success' => true, 'started' => true, 'message' => 'Scheduler worker started in the background.'];
+            }
+        };
+        $this->app->instance(SchedulerService::class, $scheduler);
+
+        $exitCode = Artisan::call('scheduler:ensure-worker', ['--delay' => 0]);
+
+        $this->assertSame(0, $exitCode);
+        $this->assertStringContainsString('Scheduler worker started', Artisan::output());
+    }
 }

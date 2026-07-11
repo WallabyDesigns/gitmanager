@@ -37,6 +37,12 @@ class SchedulerWork extends Command
                 $message = '['.now()->toDateTimeString().'] '.$result['message'];
                 $result['success'] ? $this->info($message) : $this->error($message);
 
+                if ($scheduler->consumeWorkerRestartRequest()) {
+                    $this->info('Scheduler worker restart requested after application update.');
+
+                    break;
+                }
+
                 if ($this->option('once') || ($maxRuns !== null && $runs >= $maxRuns) || $this->shouldQuit) {
                     break;
                 }

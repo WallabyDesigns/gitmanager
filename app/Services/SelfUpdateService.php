@@ -1577,6 +1577,7 @@ class SelfUpdateService
 
         $this->applyPostUpdatePermissions($repoPath, $output);
         $this->validateUpdatedApplication($repoPath, $output);
+        $this->recoverSchedulerWorkerAfterUpdate($output);
     }
 
     protected function refreshSchedulerCronAfterUpdate(string $repoPath, array &$output): void
@@ -1612,6 +1613,28 @@ class SelfUpdateService
     protected function schedulerService(): SchedulerService
     {
         return app(SchedulerService::class);
+    }
+
+    protected function recoverSchedulerWorkerAfterUpdate(array &$output): void
+    {
+        try {
+            $scheduler = $this->schedulerService();
+            $scheduler->requestWorkerRestart();
+            $result = $scheduler->queueWorkerRecoveryCheck();
+        } catch (\Throwable $exception) {
+            $output[] = 'Warning: scheduler worker recovery check could not be queued: '.$exception->getMessage();
+
+            return;
+        }
+
+        $message = trim((string) ($result['message'] ?? ''));
+        if (($result['success'] ?? false) === true) {
+            $output[] = 'Scheduler worker recovery scheduled after update'.($message !== '' ? ': '.$message : '.');
+
+            return;
+        }
+
+        $output[] = 'Warning: scheduler worker recovery check was not queued'.($message !== '' ? ': '.$message : '.');
     }
 
     protected function isWindowsHost(): bool

@@ -47,7 +47,7 @@
                 @endif
                 @if ($project->updates_available)
                     <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-indigo-500/10 text-indigo-300">
-                        {{ __('Updates Available') }}
+                        {{ (int) $project->updates_behind_count > 0 ? __('Updates Available (:count behind)', ['count' => $project->updates_behind_count]) : __('Updates Available') }}
                     </span>
                 @endif
                 @if (($project->audit_open_count ?? 0) > 0)
