@@ -33,15 +33,15 @@ To review the documentation for this project, click here: [documentation](https:
 - **Dependency operations:** Run composer/npm actions with per-run logs and issue visibility.
 - **Per-project `.env` editor:** Edit each project's environment file directly from the UI without server access.
 - **FTP deploy targets:** Configure FTP accounts and deploy projects into managed FTP workspaces — useful for hosts that only expose FTP.
-- **Workflow automations:** Configure rule-based notifications and webhooks for deploy and audit events.
+- **Workflow automations:** Configure rule-based notifications and webhooks for deploy and audit events. Activity emails are consolidated into hourly digest reports to prevent repeated failure notifications.
 
 ### Security & Auditing
 - **Security insights:** Review Dependabot and audit findings in one place, including remediation workflows.
-- **Enterprise audit automation:** Enable scheduled project dependency audits plus managed container runtime audits.
+- **Enterprise audit automation:** Enable scheduled project dependency audits plus managed container runtime audits. Eligible projects are audited hourly and remediation work is queued automatically when auditing is enabled.
 - **Audit log & alerts:** View a full activity log of system and deploy events, and configure rule-based email or webhook notifications for success/failure outcomes.
 
 ### Infrastructure
-- **Container control center:** Manage Docker nodes, runtime health, containers, and managed PostgreSQL/MySQL database containers from one workspace.
+- **Container control center:** Manage Docker nodes, runtime health, containers, and managed PostgreSQL/MySQL database containers from one workspace. Create containers with the form or paste a `docker run` command to deploy immediately or prefill the form for review.
 - **Tiered container licensing:** Community edition includes Docker with up to 3 nodes; Enterprise unlocks unlimited nodes and premium automation.
 - **Scheduler health:** Monitor heartbeat status, run scheduler actions manually, and manage cron setup from the UI.
 - **Runtime diagnostics:** Check the live status of PHP, Composer, Node.js/npm, Python, and pip directly from the System Control Center, with inline install actions for missing tools. Also manages the bundled Node.js LTS runtime — GWM can download and install Node.js into its own storage directory with no system-level install required.
@@ -50,7 +50,7 @@ To review the documentation for this project, click here: [documentation](https:
 - **App self-update:** Update the manager itself with safe defaults and force-update recovery options. Updates run under maintenance mode to prevent broken-state errors mid-deploy.
 - **Recovery tools:** Create, restore, and delete `.env` backups from the UI, and trigger a full app rebuild from the recovery page.
 - **Environment config editor:** Edit the application `.env` file and manage environment variables directly from the System Control Center.
-- **Email settings:** Configure the mail driver, SMTP credentials, sender address, and send test emails from the UI.
+- **Email settings:** Configure the mail driver, SMTP credentials, sender address, and send test emails from the UI. Application emails use the GWM layout, include a plain-text fallback, and place lengthy error output behind a "View error log" disclosure.
 - **GitHub OAuth:** Enable GitHub-based login as an authentication option, configured from App & Security settings.
 - **Cloudflare Turnstile:** Add bot protection to the login form without a traditional CAPTCHA, configured from App & Security settings.
 - **User management:** Manage users, enforce first-login password changes, and configure role-based access.
@@ -197,6 +197,10 @@ The `scheduler:run` wrapper records the System Scheduler heartbeat first, then r
 
 Docker Compose uses `scheduler:work` for the scheduler service. If Docker and Docker Compose are available to the app, System → Scheduler can also start, stop, and restart the app-managed Octane instance. Octane listens on `OCTANE_PORT` or port `8000` by default and uses FrankenPHP unless `OCTANE_SERVER` is changed.
 
+Octane is optional. Starting it creates and manages the local Docker Compose Octane profile from the System Control Center; it does not automatically move existing browser or reverse-proxy traffic to port `8000`. Point the web server or proxy at the displayed Octane endpoint before treating it as the application's active HTTP runtime. The app continues to use the normal PHP web-server path until that routing change is made.
+
+The **Run Scheduler Now** control performs a due-task run and starts the managed scheduler worker when it is not already available. For production, keep `scheduler:work` supervised by Docker, systemd, Supervisor, or an equivalent process manager. Cron remains a supported fallback for shared hosting.
+
 Scheduled commands include:
 - `app:self-audit` (every 10 minutes)
 - `projects:auto-deploy` (every 5 minutes)
@@ -204,7 +208,14 @@ Scheduled commands include:
 - `deployments:process-queue` (every minute)
 - `security:sync` (hourly)
 - `dependabot:auto-merge` (hourly)
+- `projects:audit` (hourly; valid Enterprise license and dependency auditing enabled)
+- `notifications:send-digest` (hourly)
 - `gitmanager:self-update` (daily at 02:30 if enabled)
+
+### Email Digests
+Deployment failures, queue failures, audit findings, and resolved audit events are grouped by recipient and delivered as a single activity report after the configured cooldown (60 minutes by default). Repeated records for the same deployment or audit issue are consolidated before sending, with the latest available error output retained. Site health failures remain immediate alerts because they can indicate an unavailable website.
+
+For Community installations, application emails include a small Enterprise note. Enterprise installations do not receive that promotion.
 
 ## Webhooks
 Set GitHub to POST to:

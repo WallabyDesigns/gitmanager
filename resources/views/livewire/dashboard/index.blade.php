@@ -1,6 +1,5 @@
 @php
-    use App\Services\NavigationStateService;
-    $projectNavState = app(NavigationStateService::class)->projectsSidebarState(auth()->user());
+    $projectNavState = app(\App\Services\NavigationStateService::class)->projectsSidebarState(auth()->user());
     $isEnterprise = (bool) ($projectNavState['isEnterprise'] ?? false);
     $queueBusy = (int) ($queueRunningCount ?? 0) > 0;
     $queueUnavailable = ! ($queueEnabled ?? true) || $queueBusy || (int) ($queuedCount ?? 0) === 0;
@@ -267,8 +266,10 @@
                                     <span class="inline-block h-2 w-2 shrink-0 rounded-full bg-amber-500"></span>
                                     <div class="min-w-0 flex-1">
                                         <p class="truncate text-sm text-slate-200">{{ $project->name }}</p>
-                                        @php($projectVulnerabilityCount = (int) $project->audit_open_count + (int) $project->security_open_count)
-                                        <p class="text-xs text-slate-500">{{ $projectVulnerabilityCount }} {{ __( \Illuminate\Support\Str::plural('vulnerability', $projectVulnerabilityCount) ) }}</p>
+                                        @php
+                                            $projectVulnerabilityCount = (int) $project->audit_open_count + (int) $project->security_open_count;
+                                        @endphp
+                                        <p class="text-xs text-slate-500">{{ $projectVulnerabilityCount }} {{ __(\Illuminate\Support\Str::plural('vulnerability', $projectVulnerabilityCount)) }}</p>
                                     </div>
                                     <span class="shrink-0 text-xs font-medium text-amber-400">{{ __('Security') }}</span>
                                 </a>
