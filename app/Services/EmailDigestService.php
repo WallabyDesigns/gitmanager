@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Mail\SystemNotificationMail;
 use App\Models\AuditIssue;
 use App\Models\Deployment;
 use App\Models\DeploymentQueueItem;
@@ -27,18 +28,20 @@ class EmailDigestService
             return;
         }
 
-        EmailDigestEntry::query()->firstOrCreate(
-            ['source_key' => $sourceKey],
-            [
-                'project_id' => $project?->id,
-                'recipient_key' => $this->recipientKey($recipients),
-                'recipients' => $recipients,
-                'category' => $category,
-                'summary' => $summary,
-                'details' => $details,
-                'occurred_at' => now(),
-            ],
-        );
+        $attributes = [
+            'project_id' => $project?->id,
+            'recipient_key' => $this->recipientKey($recipients),
+            'recipients' => $recipients,
+            'category' => $category,
+            'summary' => $summary,
+            'details' => $details,
+            'occurred_at' => now(),
+        ];
+
+        $entry = EmailDigestEntry::query()->firstOrNew(['source_key' => $sourceKey]);
+        if (! $entry->exists || $entry->sent_at === null) {
+            $entry->fill($attributes)->save();
+        }
     }
 
     /**
@@ -59,6 +62,7 @@ class EmailDigestService
                 'action' => $action,
                 'status' => $deployment->status,
                 'project' => $project->name,
+                'deployment_id' => $deployment->id,
                 'site_url' => $project->site_url,
                 'commit' => $deployment->to_hash,
                 'finished_at' => $deployment->finished_at?->toDateTimeString(),
@@ -74,13 +78,14 @@ class EmailDigestService
     {
         $action = Str::headline($item->action);
         $this->queue(
-            'queue-failure:'.$item->id.':'.$this->recipientKey($recipients),
+            'queue-failure:'.($item->deployment_id ?: $item->id).':'.$this->recipientKey($recipients),
             'queue_failure',
             $recipients,
             sprintf('Queued %s task failed for %s.', $action, $project->name),
             [
                 'action' => $action,
                 'project' => $project->name,
+                'deployment_id' => $item->deployment_id,
                 'site_url' => $project->site_url,
                 'failed_at' => $item->finished_at?->toDateTimeString(),
                 'output' => $this->outputTail((string) ($item->deployment?->output_log ?? '')),
@@ -142,11 +147,18 @@ class EmailDigestService
                     return;
                 }
 
+                $consolidatedEntries = $this->consolidateEntries($entries);
+
                 try {
-                    $subject = $this->subject($entries);
-                    Mail::raw($this->buildBody($entries), function ($message) use ($first, $subject) {
-                        $message->to($first->recipients)->subject($subject);
-                    });
+                    Mail::to($first->recipients)->send(new SystemNotificationMail(
+                        $this->subject($consolidatedEntries),
+                        __('Activity report'),
+                        __('Your scheduled activity report is ready. Related events are consolidated below.'),
+                        $this->mailItems($consolidatedEntries),
+                        route('processes.queue'),
+                        __('Review activity'),
+                        $this->showEnterpriseSuggestion(),
+                    ));
                 } catch (\Throwable) {
                     return;
                 }
@@ -170,24 +182,48 @@ class EmailDigestService
     }
 
     /** @param Collection<int, EmailDigestEntry> $entries */
-    private function buildBody(Collection $entries): string
+    private function consolidateEntries(Collection $entries): Collection
     {
-        $lines = ['Git Web Manager activity report', 'Generated: '.now()->toDateTimeString(), ''];
+        return $entries
+            ->sortByDesc(fn (EmailDigestEntry $entry) => [$entry->occurred_at?->getTimestamp() ?? 0, $entry->id])
+            ->unique(fn (EmailDigestEntry $entry) => $this->consolidationKey($entry))
+            ->sortBy('id')
+            ->values();
+    }
 
-        foreach ($entries as $index => $entry) {
-            $lines[] = sprintf('%d. %s', $index + 1, $entry->summary);
-            foreach ((array) $entry->details as $label => $value) {
-                if ($value === null || $value === '') {
-                    continue;
-                }
-                $lines[] = '   '.Str::headline((string) $label).': '.(is_scalar($value) ? (string) $value : json_encode($value));
-            }
-            $lines[] = '';
+    /** @param Collection<int, EmailDigestEntry> $entries */
+    private function mailItems(Collection $entries): array
+    {
+        return $entries->map(function (EmailDigestEntry $entry): array {
+            $details = (array) $entry->details;
+            $errorLog = $details['output'] ?? null;
+            unset($details['output'], $details['deployment_id'], $details['audit_issue_id']);
+
+            return [
+                'title' => $entry->summary,
+                'fields' => $details,
+                'error_log' => is_string($errorLog) ? $errorLog : null,
+            ];
+        })->all();
+    }
+
+    private function consolidationKey(EmailDigestEntry $entry): string
+    {
+        $details = (array) $entry->details;
+        if (in_array($entry->category, ['deployment', 'queue_failure'], true) && ! empty($details['deployment_id'])) {
+            return 'deployment:'.$details['deployment_id'];
         }
 
-        $lines[] = 'Review activity: '.route('processes.queue');
+        if (str_starts_with($entry->category, 'audit_') && ! empty($details['audit_issue_id'])) {
+            return 'audit:'.$details['audit_issue_id'];
+        }
 
-        return implode("\n", $lines);
+        return sha1(implode('|', [$entry->category, $entry->project_id, $entry->summary]));
+    }
+
+    private function showEnterpriseSuggestion(): bool
+    {
+        return strtolower((string) $this->settings->get('system.license.edition', 'community')) !== EditionService::ENTERPRISE;
     }
 
     /** @param Collection<int, EmailDigestEntry> $entries */

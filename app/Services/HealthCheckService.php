@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Mail\SystemNotificationMail;
 use App\Models\Project;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -11,7 +12,9 @@ use Symfony\Component\Process\Process;
 class HealthCheckService
 {
     private const EMAIL_COOLDOWN_MINUTES = 10;
+
     private const HTTP_ATTEMPTS = 3;
+
     private const TRANSPORT_FAILURE_THRESHOLD = 3;
 
     /**
@@ -597,12 +600,25 @@ class HealthCheckService
             ? sprintf('Health check failed: %s', $alerts[0]['project']->name)
             : sprintf('Health checks failed for %d projects', count($alerts));
 
-        $body = $this->buildBatchHealthEmailBody($alerts);
-
         try {
-            Mail::raw($body, function ($message) use ($group, $subject) {
-                $message->to($group['recipients'])->subject($subject);
-            });
+            Mail::to($group['recipients'])->send(new SystemNotificationMail(
+                $subject,
+                __('Health check alert'),
+                __('One or more monitored sites need attention.'),
+                array_map(static fn (array $alert): array => [
+                    'title' => $alert['project']->name,
+                    'fields' => [
+                        'previous' => strtoupper($alert['previous']),
+                        'current' => strtoupper($alert['current']),
+                        'health url' => $alert['url'],
+                        'checked' => $alert['checked_at'],
+                    ],
+                    'error_log' => $alert['issue'],
+                ], $alerts),
+                route('security.index'),
+                __('Review health issues'),
+                strtolower((string) $this->settings->get('system.license.edition', 'community')) !== EditionService::ENTERPRISE,
+            ));
 
             foreach ($alerts as $alert) {
                 $this->markEmailCooldown($alert['project']);
@@ -630,35 +646,6 @@ class HealthCheckService
         }
 
         return array_values(array_unique(array_filter($recipients)));
-    }
-
-    /**
-     * @param  array<int, array{project: Project, previous: string, current: string, issue: string|null, url: string|null, checked_at: string}>  $alerts
-     */
-    private function buildBatchHealthEmailBody(array $alerts): string
-    {
-        $lines = [
-            'Health check failures detected',
-            'Checked: '.now()->toDateTimeString(),
-            '',
-        ];
-
-        foreach ($alerts as $index => $alert) {
-            $project = $alert['project'];
-            $lines[] = sprintf('%d. %s', $index + 1, $project->name);
-            $lines[] = '   Previous: '.strtoupper($alert['previous']);
-            $lines[] = '   Current: '.strtoupper($alert['current']);
-            if ($alert['url']) {
-                $lines[] = '   Health URL: '.$alert['url'];
-            }
-            if ($alert['issue']) {
-                $lines[] = '   Issue: '.$alert['issue'];
-            }
-            $lines[] = '   Checked: '.$alert['checked_at'];
-            $lines[] = '';
-        }
-
-        return trim(implode("\n", $lines));
     }
 
     private function queueHealthAlert(

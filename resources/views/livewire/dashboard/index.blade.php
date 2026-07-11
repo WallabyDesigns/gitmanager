@@ -37,10 +37,18 @@
             <p class="text-xs font-medium uppercase tracking-wide text-slate-400">{{ __('Health Issues') }}</p>
             <p class="mt-2 text-3xl font-bold {{ $healthIssues->count() > 0 ? 'text-rose-600' : ' text-slate-100' }}">{{ $healthIssues->count() }}</p>
         </div>
-        <div class="rounded-xl border border-slate-800 bg-slate-900 p-5">
-            <p class="text-xs font-medium uppercase tracking-wide text-slate-400">{{ __('Deployments Today') }}</p>
-            <p class="mt-2 text-3xl font-bold text-indigo-400">{{ $deploymentsToday }}</p>
-        </div>
+        @if ($vulnerabilityCount > 0)
+            <a href="{{ route('security.index') }}" class="group block rounded-xl border border-rose-500/30 bg-slate-900 p-5 hover:border-rose-400/60 hover:bg-slate-800/60 transition-colors">
+                <p class="text-xs font-medium uppercase tracking-wide text-slate-400 group-hover:text-slate-300">{{ __('Vulnerabilities') }}</p>
+                <p class="mt-2 text-3xl font-bold text-rose-300">{{ $vulnerabilityCount }}</p>
+                <p class="mt-1 text-xs text-slate-500 group-hover:text-slate-400">{{ __('View Vulnerabilities →') }}</p>
+            </a>
+        @else
+            <div class="rounded-xl border border-slate-800 bg-slate-900 p-5">
+                <p class="text-xs font-medium uppercase tracking-wide text-slate-400">{{ __('Vulnerabilities') }}</p>
+                <p class="mt-2 text-3xl font-bold text-slate-100">0</p>
+            </div>
+        @endif
     </div>
 
     <div class="hidden lg:block mt-8 border-t border-slate-800 pt-4 space-y-2">
@@ -259,7 +267,8 @@
                                     <span class="inline-block h-2 w-2 shrink-0 rounded-full bg-amber-500"></span>
                                     <div class="min-w-0 flex-1">
                                         <p class="truncate text-sm text-slate-200">{{ $project->name }}</p>
-                                        <p class="text-xs text-slate-500">{{ $project->audit_open_count }} {{ __( \Illuminate\Support\Str::plural('vulnerability', $project->audit_open_count) ) }}</p>
+                                        @php($projectVulnerabilityCount = (int) $project->audit_open_count + (int) $project->security_open_count)
+                                        <p class="text-xs text-slate-500">{{ $projectVulnerabilityCount }} {{ __( \Illuminate\Support\Str::plural('vulnerability', $projectVulnerabilityCount) ) }}</p>
                                     </div>
                                     <span class="shrink-0 text-xs font-medium text-amber-400">{{ __('Security') }}</span>
                                 </a>

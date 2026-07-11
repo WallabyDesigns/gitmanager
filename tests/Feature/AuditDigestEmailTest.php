@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Mail\SystemNotificationMail;
 use App\Models\AuditIssue;
 use App\Models\DeploymentQueueItem;
 use App\Models\EmailDigestEntry;
@@ -108,10 +109,11 @@ class AuditDigestEmailTest extends TestCase
 
         $this->assertDatabaseCount('email_digest_entries', 1);
 
-        Mail::shouldReceive('raw')->once();
+        Mail::fake();
 
         app(EmailDigestService::class)->sendDueDigests();
 
+        Mail::assertSent(SystemNotificationMail::class);
         $this->assertNotNull($issue->fresh()->last_emailed_at);
     }
 }

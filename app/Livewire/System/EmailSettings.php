@@ -2,6 +2,7 @@
 
 namespace App\Livewire\System;
 
+use App\Mail\SystemNotificationMail;
 use App\Services\SettingsService;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Component;
@@ -87,10 +88,11 @@ class EmailSettings extends Component
 
         $settings->applyMailConfig();
 
-        Mail::raw('Git Web Manager test email.', function ($message) {
-            $message->to($this->testRecipient)
-                ->subject('Git Web Manager test email');
-        });
+        Mail::to($this->testRecipient)->send(new SystemNotificationMail(
+            __('Git Web Manager test email'),
+            __('Email delivery is working'),
+            __('This test message confirms that your email settings can deliver a styled Git Web Manager notification.'),
+        ));
 
         $this->dispatch('notify', message: 'Test email sent.');
     }

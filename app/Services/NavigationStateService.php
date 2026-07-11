@@ -34,7 +34,8 @@ class NavigationStateService
      *   brandName:string,
      *   hideEditionLabel:bool,
      *   subHeading:string,
-     *   queueCount:int
+     *   queueCount:int,
+     *   queueRunningCount:int
      * }
      */
     public function topNavigationState(?User $user): array
@@ -54,6 +55,7 @@ class NavigationStateService
             'subHeading' => $shared['subHeading'],
             // Bypasses the shared cache so the Processes badge stays current.
             'queueCount' => $this->queueCount($user?->id),
+            'queueRunningCount' => $this->queueRunningCount($user?->id),
         ];
     }
 
@@ -251,6 +253,17 @@ class NavigationStateService
 
         return DeploymentQueueItem::query()
             ->whereIn('status', ['queued', 'running'])
+            ->count();
+    }
+
+    private function queueRunningCount(?int $userId): int
+    {
+        if (! $userId) {
+            return 0;
+        }
+
+        return DeploymentQueueItem::query()
+            ->where('status', 'running')
             ->count();
     }
 

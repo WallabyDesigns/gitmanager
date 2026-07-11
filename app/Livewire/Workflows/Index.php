@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Workflows;
 
+use App\Mail\SystemNotificationMail;
 use App\Models\Workflow;
 use App\Services\SettingsService;
 use Illuminate\Support\Facades\Crypt;
@@ -167,10 +168,11 @@ class Index extends Component
 
         $settings->applyMailConfig();
 
-        Mail::raw('Git Web Manager workflow test email.', function ($message) {
-            $message->to($this->testEmail)
-                ->subject('Git Web Manager workflow test');
-        });
+        Mail::to($this->testEmail)->send(new SystemNotificationMail(
+            __('Git Web Manager workflow test'),
+            __('Workflow email delivery is working'),
+            __('This test message confirms that workflow notifications will use the Git Web Manager email layout.'),
+        ));
 
         $this->dispatch('notify', message: 'Test email sent.');
     }

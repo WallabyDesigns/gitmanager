@@ -109,9 +109,6 @@
                 </svg>
                 <span class="text-xs uppercase tracking-[0.16em] text-slate-400">{{ __('System') }}</span>
                 <span class="font-medium text-white">{{ __($currentSystemPage) }}</span>
-                @if ($openAlerts > 0)
-                    <span class="inline-flex items-center justify-center rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] uppercase tracking-wide text-rose-200">{{ $openAlerts }}</span>
-                @endif
             </span>
             <svg class="h-4 w-4 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
@@ -218,9 +215,6 @@
                     <svg class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 5H3"/><path d="M16 12H3"/><path d="M9 19H3"/><path d="m16 16-3 3 3 3"/><path d="M21 5v12a2 2 0 0 1-2 2h-6"/></svg>
                     <span class="inline-flex items-center gap-2">
                         {{ __('Scheduler & Queue') }}
-                        @if ($openAlerts > 0)
-                            <span class="inline-flex items-center justify-center rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] uppercase tracking-wide text-rose-200">{{ $openAlerts }}</span>
-                        @endif
                     </span>
                 </a>
 
@@ -405,9 +399,6 @@
                         <svg class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 5H3"/><path d="M16 12H3"/><path d="M9 19H3"/><path d="m16 16-3 3 3 3"/><path d="M21 5v12a2 2 0 0 1-2 2h-6"/></svg>
                         <span class="inline-flex items-center gap-2">
                             {{ __('Scheduler & Queue') }}
-                            @if ($openAlerts > 0)
-                                <span class="inline-flex items-center justify-center rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] uppercase tracking-wide text-rose-200">{{ $openAlerts }}</span>
-                            @endif
                         </span>
                     </a>
 

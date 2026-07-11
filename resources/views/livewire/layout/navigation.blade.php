@@ -8,14 +8,25 @@ use Livewire\Volt\Component;
 new class extends Component
 {
     public int $openAlerts = 0;
+
     public bool $updateAvailable = false;
+
     public bool $checkUpdatesEnabled = true;
+
     public string $editionLabel = 'Community Edition';
+
     public bool $isEnterprise = false;
+
     public string $brandName = 'Git Web Manager';
+
     public bool $hideEditionLabel = false;
+
     public string $subHeading = '';
+
     public int $queueCount = 0;
+
+    public int $queueRunningCount = 0;
+
     public int $actionCenterCount = 0;
 
     public function mount(NavigationStateService $navigationState): void
@@ -29,6 +40,7 @@ new class extends Component
         $this->hideEditionLabel = (bool) ($state['hideEditionLabel'] ?? false);
         $this->subHeading = (string) ($state['subHeading'] ?? '');
         $this->queueCount = (int) ($state['queueCount'] ?? 0);
+        $this->queueRunningCount = (int) ($state['queueRunningCount'] ?? 0);
         $sidebar = $navigationState->projectsSidebarState(Auth::user());
         $this->actionCenterCount = (int) ($sidebar['actionCenterCount'] ?? 0);
         $brandName = (string) ($state['brandName'] ?? config('app.name', 'Git Web Manager'));
@@ -42,11 +54,13 @@ new class extends Component
     {
         $state = $navigationState->topNavigationState(Auth::user());
         $this->queueCount = (int) ($state['queueCount'] ?? 0);
+        $this->queueRunningCount = (int) ($state['queueRunningCount'] ?? 0);
         $this->openAlerts = (int) ($state['openAlerts'] ?? 0);
         $this->updateAvailable = (bool) ($state['updateAvailable'] ?? false);
         $sidebar = $navigationState->projectsSidebarState(Auth::user());
         $this->actionCenterCount = (int) ($sidebar['actionCenterCount'] ?? 0);
     }
+
     /**
      * Log the current user out of the application.
      */
@@ -147,7 +161,7 @@ new class extends Component
                         </x-nav-link>
                         <x-nav-link :href="route('processes.index')" :active="request()->routeIs('processes.*')">
                             <span class="flex items-center gap-1.5">
-                                @if ($queueCount > 0)
+                                @if ($queueRunningCount > 0)
                                     <svg class="h-4 w-4 shrink-0 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                                     </svg>
@@ -169,11 +183,7 @@ new class extends Component
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
                                 {{ __('System') }}
-                                @if ($openAlerts > 0)
-                                    <span class="inline-flex items-center justify-center rounded-full bg-rose-500/20 px-1.5 py-0.5 text-xs text-rose-200">
-                                        {{ $openAlerts }}
-                                    </span>
-                                @elseif ($updateAvailable)
+                                @if ($updateAvailable)
                                     <span class="inline-flex items-center justify-center rounded-full bg-amber-400/20 px-1.5 py-0.5 text-xs text-amber-200">
                                         {{ __('New') }}
                                     </span>
@@ -391,7 +401,7 @@ new class extends Component
                         </x-responsive-nav-link>
                         <x-responsive-nav-link :href="route('processes.index')" :active="request()->routeIs('processes.*')">
                             <span class="flex items-center gap-3">
-                                @if ($queueCount > 0)
+                                @if ($queueRunningCount > 0)
                                     <svg class="h-5 w-5 shrink-0 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                                     </svg>
@@ -413,11 +423,7 @@ new class extends Component
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
                                 {{ __('System') }}
-                                @if ($openAlerts > 0)
-                                    <span class="ml-auto inline-flex items-center justify-center rounded-full bg-rose-500/20 px-1.5 py-0.5 text-xs text-rose-200">
-                                        {{ $openAlerts }}
-                                    </span>
-                                @elseif ($updateAvailable)
+                                @if ($updateAvailable)
                                     <span class="ml-auto inline-flex items-center justify-center rounded-full bg-amber-400/20 px-1.5 py-0.5 text-xs text-amber-200">
                                         {{ __('New') }}
                                     </span>

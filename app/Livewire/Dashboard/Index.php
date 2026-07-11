@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Dashboard;
 
-use App\Models\Deployment;
 use App\Models\DeploymentQueueItem;
 use App\Models\NodeProcess;
 use App\Models\Project;
@@ -11,7 +10,6 @@ use App\Services\DeploymentQueueService;
 use App\Services\DeploymentService;
 use App\Services\DockerService;
 use App\Services\EditionService;
-use App\Services\NodeProcessService;
 use App\Services\SchedulerService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -152,6 +150,7 @@ class Index extends Component
         $allProjects = Project::query()
             ->withCount([
                 'auditIssues as audit_open_count' => fn ($q) => $q->where('status', 'open'),
+                'securityAlerts as security_open_count' => fn ($q) => $q->where('state', 'open'),
                 'deployments as deployments_today_count' => fn ($q) => $q
                     ->where('action', 'deploy')
                     ->where('started_at', '>=', now()->startOfDay()),
@@ -162,7 +161,8 @@ class Index extends Component
         $healthyCount = $monitoredProjects->where('health_status', 'ok')->count();
         $healthIssues = $monitoredProjects->where('health_status', 'na')->values();
         $updatesAvailable = $allProjects->where('updates_available', true)->values();
-        $vulnerableProjects = $allProjects->filter(fn ($p) => ($p->audit_open_count ?? 0) > 0)->values();
+        $vulnerableProjects = $allProjects->filter(fn ($p) => ((int) ($p->audit_open_count ?? 0) + (int) ($p->security_open_count ?? 0)) > 0)->values();
+        $vulnerabilityCount = $allProjects->sum(fn ($p) => (int) ($p->audit_open_count ?? 0) + (int) ($p->security_open_count ?? 0));
 
         $projectIds = $allProjects->pluck('id')->all();
 
@@ -186,12 +186,6 @@ class Index extends Component
                 ->take(-30)
                 ->values();
         }
-
-        $deploymentsToday = $projectIds === [] ? 0 : Deployment::query()
-            ->whereIn('project_id', $projectIds)
-            ->where('action', 'deploy')
-            ->where('started_at', '>=', now()->startOfDay())
-            ->count();
 
         $queuedCount = DeploymentQueueItem::query()
             ->where('status', 'queued')
@@ -217,9 +211,9 @@ class Index extends Component
             'healthIssues' => $healthIssues,
             'updatesAvailable' => $updatesAvailable,
             'vulnerableProjects' => $vulnerableProjects,
+            'vulnerabilityCount' => $vulnerabilityCount,
             'queueItems' => $queueItems,
             'healthHistory' => $healthHistory,
-            'deploymentsToday' => $deploymentsToday,
             'queuedCount' => $queuedCount,
             'queueRunningCount' => $queueRunningCount,
             'queueEnabled' => $this->queueEnabled(),
