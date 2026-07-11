@@ -6,7 +6,6 @@ use App\Models\AuditIssue;
 use App\Models\DeploymentQueueItem;
 use App\Models\Project;
 use App\Models\User;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 
 class AuditService
@@ -18,7 +17,8 @@ class AuditService
     public function __construct(
         private readonly DeploymentService $deployments,
         private readonly DeploymentQueueService $queue,
-        private readonly SettingsService $settings
+        private readonly SettingsService $settings,
+        private readonly EmailDigestService $digest,
     ) {}
 
     /**
@@ -106,7 +106,7 @@ class AuditService
             return [];
         }
 
-        $cooldownHours = (int) $this->settings->get('system.audit_notification_cooldown', 24);
+        $cooldownHours = 1;
         $entries = [];
 
         $openIssues = AuditIssue::query()
@@ -413,21 +413,7 @@ class AuditService
             return;
         }
 
-        if (! $this->settings->isMailConfigured()) {
-            return;
-        }
-
-        if (! $this->settings->get('workflows.email.enabled', true)) {
-            return;
-        }
-
         if (! $this->settings->get('system.audit_email_enabled', false)) {
-            return;
-        }
-
-        try {
-            $this->settings->applyMailConfig();
-        } catch (\Throwable $exception) {
             return;
         }
 
@@ -439,45 +425,32 @@ class AuditService
                 continue;
             }
 
-            $subject = $this->buildEmailSubject($resolved, $current);
-            $body = $this->buildEmailBody($resolved, $current);
-
-            try {
-                Mail::raw($body, function ($message) use ($group, $subject) {
-                    $message->to($group['recipients'])->subject($subject);
-                });
-                $this->stampEmailedAt(array_merge($resolved, $current));
-            } catch (\Throwable $exception) {
-                // Swallow mail errors to avoid blocking audits.
+            foreach ($resolved as $entry) {
+                $this->queueAuditNotification($entry, $group['recipients'], 'resolved');
+            }
+            foreach ($current as $entry) {
+                $this->queueAuditNotification($entry, $group['recipients'], 'open');
             }
         }
     }
 
     /**
-     * @param  array<int, array<string, mixed>>  $entries
+     * @param  array<string, mixed>  $entry
+     * @param  array<int, string>  $recipients
      */
-    private function stampEmailedAt(array $entries): void
+    private function queueAuditNotification(array $entry, array $recipients, string $type): void
     {
-        if (! $this->hasLastEmailedColumn()) {
-            return;
-        }
+        $issue = $entry['issue'] ?? null;
+        $project = $entry['project'] ?? null;
 
-        $ids = [];
-        foreach ($entries as $entry) {
-            $issue = $entry['issue'] ?? null;
-            if ($issue instanceof AuditIssue) {
-                $ids[] = $issue->id;
-            }
-        }
-
-        if ($ids !== []) {
-            AuditIssue::whereIn('id', $ids)->update(['last_emailed_at' => now()]);
+        if ($issue instanceof AuditIssue && $project instanceof Project) {
+            $this->digest->queueAuditIssue($issue, $project, $recipients, $type);
         }
     }
 
     private function wasRecentlyEmailed(Project $project, string $tool, int $excludeIssueId): bool
     {
-        $cooldownHours = (int) $this->settings->get('system.audit_notification_cooldown', 24);
+        $cooldownHours = 1;
 
         return $cooldownHours > 0
             && $this->hasLastEmailedColumn()
@@ -492,7 +465,7 @@ class AuditService
 
     private function issueWasRecentlyEmailed(AuditIssue $issue): bool
     {
-        $cooldownHours = (int) $this->settings->get('system.audit_notification_cooldown', 24);
+        $cooldownHours = 1;
 
         return $cooldownHours > 0
             && $this->hasLastEmailedColumn()
@@ -513,78 +486,6 @@ class AuditService
         }
 
         return $this->lastEmailedColumnAvailable;
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $resolved
-     * @param  array<int, array<string, mixed>>  $current
-     */
-    private function buildEmailSubject(array $resolved, array $current): string
-    {
-        if ($resolved !== [] && $current !== []) {
-            return sprintf('Audit report: %d resolved, %d open', count($resolved), count($current));
-        }
-
-        if ($current !== []) {
-            return sprintf('Audit issues detected (%d)', count($current));
-        }
-
-        return sprintf('Audit issues resolved (%d)', count($resolved));
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $resolved
-     * @param  array<int, array<string, mixed>>  $current
-     */
-    private function buildEmailBody(array $resolved, array $current): string
-    {
-        $lines = [
-            'Git Web Manager audit report',
-            'Checked: '.now()->toDateTimeString(),
-            '',
-        ];
-
-        if ($resolved !== []) {
-            $lines[] = 'Resolved issues:';
-            foreach ($resolved as $index => $entry) {
-                $project = $entry['project'];
-                $label = $this->formatTool($entry['tool'] ?? 'audit');
-                $summary = (string) ($entry['fix_summary'] ?? $entry['summary'] ?? 'Resolved audit issue');
-                $lines[] = sprintf('%d. %s (%s)', $index + 1, $project->name, $label);
-                $lines[] = '   '.$summary;
-            }
-            $lines[] = '';
-        }
-
-        if ($current !== []) {
-            $lines[] = 'Current issues:';
-            foreach ($current as $index => $entry) {
-                $project = $entry['project'];
-                $label = $this->formatTool($entry['tool'] ?? 'audit');
-                $summary = (string) ($entry['summary'] ?? 'Open audit issue');
-                $remaining = $entry['remaining'] ?? null;
-                $lines[] = sprintf('%d. %s (%s)', $index + 1, $project->name, $label);
-                $lines[] = '   '.$summary;
-                if (is_numeric($remaining)) {
-                    $lines[] = '   Remaining: '.$remaining;
-                }
-                if (! empty($entry['severity'])) {
-                    $lines[] = '   Severity: '.$entry['severity'];
-                }
-            }
-            $lines[] = '';
-        }
-
-        return trim(implode("\n", $lines));
-    }
-
-    private function formatTool(string $tool): string
-    {
-        return match (strtolower($tool)) {
-            'npm' => 'Npm audit',
-            'composer' => 'Composer audit',
-            default => ucfirst($tool),
-        };
     }
 
     /**

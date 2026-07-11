@@ -7,13 +7,15 @@ use App\Models\Project;
 use App\Models\Workflow;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class WorkflowService
 {
-    public function __construct(private SettingsService $settings) {}
+    public function __construct(
+        private SettingsService $settings,
+        private EmailDigestService $digest,
+    ) {}
 
     /**
      * @return array<int, string>
@@ -108,23 +110,8 @@ class WorkflowService
             return ['Workflow email skipped (no recipients configured).'];
         }
 
-        try {
-            $this->settings->applyMailConfig();
-
-            $subject = $deployment->status === 'success'
-                ? 'Deployment succeeded: '.$project->name
-                : 'Deployment failed: '.$project->name;
-
-            $body = $this->buildEmailBody($deployment, $project);
-
-            Mail::raw($body, function ($message) use ($recipients, $subject) {
-                $message->to($recipients)->subject($subject);
-            });
-
-            $messages[] = 'Workflow email sent to '.implode(', ', $recipients).'.';
-        } catch (\Throwable $exception) {
-            $messages[] = 'Workflow email failed: '.$exception->getMessage();
-        }
+        $this->digest->queueDeployment($deployment, $project, $recipients);
+        $messages[] = 'Workflow email queued for the hourly activity report.';
 
         return $messages;
     }
@@ -176,20 +163,8 @@ class WorkflowService
             return ['Workflow "'.$workflow->name.'" '.$label.' skipped (no recipients configured).'];
         }
 
-        try {
-            $this->settings->applyMailConfig();
-
-            $subject = $this->formatSubject($deployment, $project);
-            $body = $this->buildEmailBody($deployment, $project);
-
-            Mail::raw($body, function ($message) use ($recipients, $subject) {
-                $message->to($recipients)->subject($subject);
-            });
-
-            $messages[] = 'Workflow "'.$workflow->name.'" '.$label.' sent to '.implode(', ', $recipients).'.';
-        } catch (\Throwable $exception) {
-            $messages[] = 'Workflow "'.$workflow->name.'" '.$label.' failed: '.$exception->getMessage();
-        }
+        $this->digest->queueDeployment($deployment, $project, $recipients, 'workflow-'.$workflow->id.'-'.$label);
+        $messages[] = 'Workflow "'.$workflow->name.'" '.$label.' queued for the hourly activity report.';
 
         return $messages;
     }
@@ -279,23 +254,6 @@ class WorkflowService
         return array_values(array_unique(array_filter($recipients)));
     }
 
-    private function buildEmailBody(Deployment $deployment, Project $project): string
-    {
-        $status = strtoupper($deployment->status);
-        $action = $this->formatActionLabel($deployment->action);
-        $hashLine = $deployment->to_hash ? 'Commit: '.$deployment->to_hash : 'Commit: n/a';
-
-        return implode("\n", [
-            $action.' '.$status,
-            'Project: '.$project->name,
-            'Repo: '.$project->repo_url,
-            'Branch: '.$project->default_branch,
-            $hashLine,
-            'Started: '.optional($deployment->started_at)->toDateTimeString(),
-            'Finished: '.optional($deployment->finished_at)->toDateTimeString(),
-        ]);
-    }
-
     /**
      * @param  array<string, mixed>|null  $delivery
      * @return array<string, mixed>
@@ -366,14 +324,6 @@ class WorkflowService
         }
 
         return $payload;
-    }
-
-    private function formatSubject(Deployment $deployment, Project $project): string
-    {
-        $action = $this->formatActionLabel($deployment->action);
-        $suffix = $deployment->status === 'success' ? 'succeeded' : 'failed';
-
-        return sprintf('%s %s: %s', $action, $suffix, $project->name);
     }
 
     private function formatActionLabel(string $action): string

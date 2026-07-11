@@ -4,9 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\AuditIssue;
 use App\Models\DeploymentQueueItem;
+use App\Models\EmailDigestEntry;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\AuditService;
+use App\Services\EmailDigestService;
 use App\Services\SettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -53,18 +55,12 @@ class AuditDigestEmailTest extends TestCase
         $this->makeOpenIssue($projectOne, 'npm', 3);
         $this->makeOpenIssue($projectTwo, 'composer', 2);
 
-        $sentBodies = [];
-        Mail::shouldReceive('raw')
-            ->once()
-            ->andReturnUsing(function (string $body) use (&$sentBodies) {
-                $sentBodies[] = $body;
-            });
-
         app(AuditService::class)->sendPendingDigest();
 
-        $this->assertCount(1, $sentBodies);
-        $this->assertStringContainsString('Alpha Site', $sentBodies[0]);
-        $this->assertStringContainsString('Beta Site', $sentBodies[0]);
+        $entries = EmailDigestEntry::query()->get();
+        $this->assertCount(2, $entries);
+        $this->assertTrue($entries->contains(fn (EmailDigestEntry $entry) => str_contains($entry->summary, 'Alpha Site')));
+        $this->assertTrue($entries->contains(fn (EmailDigestEntry $entry) => str_contains($entry->summary, 'Beta Site')));
     }
 
     public function test_digest_skips_issues_with_pending_automated_fix(): void
@@ -82,9 +78,9 @@ class AuditDigestEmailTest extends TestCase
             'payload' => ['reason' => 'audit_fix'],
         ]);
 
-        Mail::shouldReceive('raw')->never();
-
         app(AuditService::class)->sendPendingDigest();
+
+        $this->assertDatabaseCount('email_digest_entries', 0);
     }
 
     public function test_digest_respects_email_cooldown(): void
@@ -96,9 +92,9 @@ class AuditDigestEmailTest extends TestCase
         $issue->last_emailed_at = now()->subHours(1);
         $issue->save();
 
-        Mail::shouldReceive('raw')->never();
-
         app(AuditService::class)->sendPendingDigest();
+
+        $this->assertDatabaseCount('email_digest_entries', 0);
     }
 
     public function test_digest_stamps_emailed_issues(): void
@@ -108,9 +104,13 @@ class AuditDigestEmailTest extends TestCase
 
         $issue = $this->makeOpenIssue($project, 'npm', 3);
 
+        app(AuditService::class)->sendPendingDigest();
+
+        $this->assertDatabaseCount('email_digest_entries', 1);
+
         Mail::shouldReceive('raw')->once();
 
-        app(AuditService::class)->sendPendingDigest();
+        app(EmailDigestService::class)->sendDueDigests();
 
         $this->assertNotNull($issue->fresh()->last_emailed_at);
     }

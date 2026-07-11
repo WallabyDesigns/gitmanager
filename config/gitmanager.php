@@ -85,6 +85,10 @@ return [
         'stale_seconds' => env('GWM_SCHEDULER_STALE_SECONDS', 120),
         'worker_sleep_seconds' => env('GWM_SCHEDULER_WORKER_SLEEP_SECONDS', 60),
     ],
+    'email_digest' => [
+        'enabled' => env('GWM_EMAIL_DIGEST_ENABLED', true),
+        'cooldown_minutes' => env('GWM_EMAIL_DIGEST_COOLDOWN_MINUTES', 60),
+    ],
     'health' => [
         'stream_fallback_enabled' => env('GWM_HEALTH_STREAM_FALLBACK_ENABLED', true),
         'cli_fallback_enabled' => env('GWM_HEALTH_CLI_FALLBACK_ENABLED', true),

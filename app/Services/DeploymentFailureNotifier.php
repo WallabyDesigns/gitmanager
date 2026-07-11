@@ -3,15 +3,13 @@
 namespace App\Services;
 
 use App\Models\DeploymentQueueItem;
-use Illuminate\Support\Facades\Mail;
 
 class DeploymentFailureNotifier
 {
-    private const OUTPUT_TAIL_CHARS = 2000;
-
-    public function __construct(private readonly SettingsService $settings)
-    {
-    }
+    public function __construct(
+        private readonly SettingsService $settings,
+        private readonly EmailDigestService $digest,
+    ) {}
 
     /**
      * Email the project owner / configured recipients when a queued task fails.
@@ -34,49 +32,10 @@ class DeploymentFailureNotifier
                 return;
             }
 
-            $action = ucfirst(str_replace('_', ' ', $item->action));
-            $subject = sprintf('Task failed: %s — %s', $action, $project->name);
-            $body = $this->buildBody($item, $action);
-
-            Mail::raw($body, function ($message) use ($recipients, $subject) {
-                $message->to($recipients)->subject($subject);
-            });
+            $this->digest->queueQueueFailure($item, $project, $recipients);
         } catch (\Throwable) {
             // Swallow mail errors to avoid breaking queue processing.
         }
-    }
-
-    private function buildBody(DeploymentQueueItem $item, string $action): string
-    {
-        $project = $item->project;
-        $lines = [
-            'A queued task failed.',
-            '',
-            'Project: '.$project->name,
-            'Action: '.$action,
-            'Queued at: '.($item->created_at?->toDateTimeString() ?? 'unknown'),
-            'Failed at: '.($item->finished_at?->toDateTimeString() ?? now()->toDateTimeString()),
-        ];
-
-        if ($project->site_url) {
-            $lines[] = 'Site: '.$project->site_url;
-        }
-
-        $output = trim((string) ($item->deployment?->output_log ?? ''));
-        if ($output !== '') {
-            if (strlen($output) > self::OUTPUT_TAIL_CHARS) {
-                $output = '…'.substr($output, -self::OUTPUT_TAIL_CHARS);
-            }
-
-            $lines[] = '';
-            $lines[] = 'Last output:';
-            $lines[] = $output;
-        }
-
-        $lines[] = '';
-        $lines[] = 'Review the task queue: '.route('processes.queue');
-
-        return implode("\n", $lines);
     }
 
     /**
