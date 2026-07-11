@@ -12,7 +12,14 @@
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:680px;background:#0f172a;border:1px solid #334155;border-radius:8px;overflow:hidden;">
                     <tr>
                         <td style="padding:22px 28px;background:#0b1120;border-bottom:3px solid #f97316;">
-                            <div style="font-size:18px;font-weight:700;color:#f8fafc;">{{ config('app.name', 'Git Web Manager') }}</div>
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                                <tr>
+                                    <td style="padding-right:10px;vertical-align:middle;">
+                                        <img src="{{ $brand['logo_url'] }}" alt="{{ $brand['name'] }}" width="34" height="34" style="display:block;width:34px;height:34px;max-width:34px;border:0;outline:none;text-decoration:none;object-fit:contain;">
+                                    </td>
+                                    <td style="vertical-align:middle;font-size:18px;font-weight:700;color:#f8fafc;">{{ $brand['name'] }}</td>
+                                </tr>
+                            </table>
                             <div style="margin-top:4px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8;">{{ __('System notification') }}</div>
                         </td>
                     </tr>
@@ -40,7 +47,9 @@
                                             @if (! empty($item['error_log']))
                                                 <details style="margin-top:14px;">
                                                     <summary style="cursor:pointer;color:#fbbf24;font-size:13px;font-weight:700;">{{ __('View error log') }}</summary>
-                                                    <pre style="margin:10px 0 0;padding:12px;white-space:pre-wrap;word-break:break-word;background:#020617;border:1px solid #334155;border-radius:4px;color:#cbd5e1;font:12px/1.5 Consolas,Monaco,monospace;">{{ $item['error_log'] }}</pre>
+                                                    <div style="max-height:240px;overflow:auto;-webkit-overflow-scrolling:touch;margin-top:10px;border:1px solid #334155;border-radius:4px;background:#020617;">
+                                                        <pre style="margin:0;padding:12px;white-space:pre-wrap;word-break:break-word;color:#cbd5e1;font:12px/1.5 Consolas,Monaco,monospace;">{{ $item['error_log'] }}</pre>
+                                                    </div>
                                                 </details>
                                             @endif
                                         </td>
@@ -65,7 +74,7 @@
                     </tr>
                     <tr>
                         <td style="padding:16px 28px;background:#0b1120;border-top:1px solid #334155;font-size:11px;color:#64748b;">
-                            {{ __('Sent by :app.', ['app' => config('app.name', 'Git Web Manager')]) }}
+                            {{ __('Sent by :app.', ['app' => $brand['name']]) }}
                         </td>
                     </tr>
                 </table>

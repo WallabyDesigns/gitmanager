@@ -214,6 +214,15 @@ class EmailDigestService
             return 'deployment:'.$details['deployment_id'];
         }
 
+        if (in_array($entry->category, ['deployment', 'queue_failure'], true)) {
+            return sha1(implode('|', [
+                'deployment-failure',
+                $entry->project_id,
+                strtolower(trim((string) ($details['project'] ?? ''))),
+                strtolower(trim((string) ($details['action'] ?? 'deployment'))),
+            ]));
+        }
+
         if (str_starts_with($entry->category, 'audit_') && ! empty($details['audit_issue_id'])) {
             return 'audit:'.$details['audit_issue_id'];
         }
@@ -282,6 +291,6 @@ class EmailDigestService
     {
         $output = trim($output);
 
-        return mb_strlen($output) > 2000 ? '...'.mb_substr($output, -2000) : $output;
+        return mb_strlen($output) > 1200 ? "[Showing the last 1,200 characters]\n...".mb_substr($output, -1200) : $output;
     }
 }

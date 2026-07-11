@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Services\EmailBrandingService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
@@ -26,8 +27,11 @@ class SystemNotificationMail extends Mailable
 
     public function build(): self
     {
+        $brand = app(EmailBrandingService::class)->resolve();
+
         return $this->subject($this->subjectLine)
             ->view('emails.system-notification')
-            ->text('emails.system-notification-text');
+            ->text('emails.system-notification-text')
+            ->with('brand', $brand);
     }
 }

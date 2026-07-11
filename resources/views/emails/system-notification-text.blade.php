@@ -1,4 +1,4 @@
-{{ config('app.name', 'Git Web Manager') }}
+{{ $brand['name'] }}
 
 {{ $heading }}
 {{ $intro }}

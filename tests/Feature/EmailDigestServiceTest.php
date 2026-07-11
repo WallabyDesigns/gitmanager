@@ -88,4 +88,30 @@ class EmailDigestServiceTest extends TestCase
         });
         $this->assertSame(2, EmailDigestEntry::query()->whereNotNull('sent_at')->count());
     }
+
+    public function test_digest_consolidates_deployment_and_queue_failure_without_a_deployment_link(): void
+    {
+        $digest = app(EmailDigestService::class);
+        $digest->queue('deployment-alpha', 'deployment', ['ops@example.com'], 'Deployment failed for Alpha.', [
+            'action' => 'Deploy',
+            'project' => 'Alpha',
+            'commit' => 'abc123',
+        ]);
+        $digest->queue('queue-alpha', 'queue_failure', ['ops@example.com'], 'Queued deploy task failed for Alpha.', [
+            'action' => 'Deploy',
+            'project' => 'Alpha',
+            'output' => 'Build command failed.',
+        ]);
+
+        Mail::fake();
+
+        $this->assertSame(1, $digest->sendDueDigests());
+        Mail::assertSent(SystemNotificationMail::class, function (SystemNotificationMail $mail): bool {
+            $this->assertCount(1, $mail->items);
+            $this->assertSame('Queued deploy task failed for Alpha.', $mail->items[0]['title']);
+            $this->assertSame('Build command failed.', $mail->items[0]['error_log']);
+
+            return true;
+        });
+    }
 }
