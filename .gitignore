@@ -19,6 +19,8 @@
 /storage/pail
 /storage/node-runtime
 /storage/framework/octane-instance-operation.json
+/storage/logs/scheduler-worker.json
+/storage/logs/scheduler-worker.log
 /storage/logs/octane-instance*.log
 /storage/plugins
 /vendor

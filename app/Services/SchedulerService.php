@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Support\ConsoleOutput;
 use Carbon\Carbon;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +24,10 @@ class SchedulerService
         Cache::forever(self::HEARTBEAT_KEY, now()->toDateTimeString());
         Cache::forever(self::SOURCE_KEY, $source);
         $this->writeHeartbeatFile($source);
+
+        if ($source === 'worker') {
+            $this->writeWorkerStatus('running');
+        }
     }
 
     public function recordManualRun(): void
@@ -342,6 +347,86 @@ class SchedulerService
         return storage_path('logs/scheduler-heartbeat.json');
     }
 
+    private function workerStatusPath(): string
+    {
+        return storage_path('logs/scheduler-worker.json');
+    }
+
+    private function workerLogPath(): string
+    {
+        return storage_path('logs/scheduler-worker.log');
+    }
+
+    private function ensureWorkerLogFile(): void
+    {
+        $path = $this->workerLogPath();
+        $directory = dirname($path);
+        if (! is_dir($directory)) {
+            @mkdir($directory, 0775, true);
+        }
+
+        if (! is_file($path)) {
+            @touch($path);
+        }
+
+        @chmod($path, 0664);
+    }
+
+    private function writeWorkerStatus(string $state, ?int $sleepSeconds = null): void
+    {
+        $path = $this->workerStatusPath();
+        $directory = dirname($path);
+        if (! is_dir($directory)) {
+            @mkdir($directory, 0775, true);
+        }
+
+        $payload = [
+            'state' => $state,
+            'updated_at' => now()->toDateTimeString(),
+        ];
+
+        if ($sleepSeconds !== null) {
+            $payload['sleep_seconds'] = $sleepSeconds;
+        }
+
+        @file_put_contents($path, json_encode($payload, JSON_PRETTY_PRINT));
+        @chmod($path, 0664);
+    }
+
+    /**
+     * @return array{state?: string, updated_at?: Carbon, sleep_seconds?: int}
+     */
+    private function readWorkerStatus(): array
+    {
+        $path = $this->workerStatusPath();
+        if (! is_file($path)) {
+            return [];
+        }
+
+        try {
+            $payload = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+            if (! is_array($payload) || ! is_string($payload['state'] ?? null) || ! is_string($payload['updated_at'] ?? null)) {
+                return [];
+            }
+
+            return [
+                'state' => $payload['state'],
+                'updated_at' => Carbon::parse($payload['updated_at']),
+                'sleep_seconds' => isset($payload['sleep_seconds']) ? (int) $payload['sleep_seconds'] : null,
+            ];
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    private function workerStaleSeconds(): int
+    {
+        $sleep = max(1, (int) config('gitmanager.scheduler.worker_sleep_seconds', 60));
+        $healthGrace = max(1, (int) config('gitmanager.scheduler.stale_seconds', 120));
+
+        return max($healthGrace, ($sleep * 2) + 15);
+    }
+
     private function cronLogPath(): string
     {
         return storage_path('logs/scheduler-cron.log');
@@ -372,7 +457,129 @@ class SchedulerService
      */
     public function runScheduleNow(): array
     {
-        return $this->runSchedulerOnce('manual');
+        $worker = $this->ensureWorkerRunning();
+        $result = $this->runSchedulerOnce('manual');
+
+        if ($worker['started']) {
+            $result['message'] = $result['success']
+                ? __('Scheduler worker started in the background. The current due tasks were processed.')
+                : __('Scheduler worker started in the background, but the current scheduler run reported issues.');
+        } elseif (! $worker['success']) {
+            $result['message'] = $result['success']
+                ? __('Scheduler executed successfully, but the background worker could not be started: :message', ['message' => $worker['message']])
+                : __('Scheduler ran with issues. The background worker could not be started: :message', ['message' => $worker['message']]);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Start the persistent scheduler worker when no recent worker heartbeat exists.
+     *
+     * @return array{success: bool, started: bool, message: string}
+     */
+    public function ensureWorkerRunning(): array
+    {
+        if ($this->isWorkerRunning()) {
+            return [
+                'success' => true,
+                'started' => false,
+                'message' => __('Scheduler worker is already running.'),
+            ];
+        }
+
+        $runtime = $this->phpRuntimeStatus();
+        if (! $runtime['ok']) {
+            return [
+                'success' => false,
+                'started' => false,
+                'message' => $runtime['message'],
+            ];
+        }
+
+        return $this->launchWorkerInBackground();
+    }
+
+    public function markWorkerStarted(int $sleepSeconds): void
+    {
+        $this->writeWorkerStatus('running', $sleepSeconds);
+    }
+
+    public function markWorkerStopped(): void
+    {
+        $this->writeWorkerStatus('stopped');
+    }
+
+    protected function isWorkerRunning(): bool
+    {
+        $lastHeartbeat = $this->lastHeartbeat();
+        $status = $this->readWorkerStatus();
+        $statusUpdatedAt = $status['updated_at'] ?? now()->subDay();
+
+        if (($status['state'] ?? null) === 'starting' && $statusUpdatedAt->greaterThan(now()->subSeconds(15))) {
+            return true;
+        }
+
+        return ($status['state'] ?? null) === 'running'
+            && $statusUpdatedAt->greaterThan(now()->subSeconds($this->workerStaleSeconds()))
+            && $this->lastSource() === 'worker'
+            && $lastHeartbeat !== null
+            && $lastHeartbeat->greaterThan(now()->subSeconds($this->workerStaleSeconds()));
+    }
+
+    /**
+     * @return array{success: bool, started: bool, message: string}
+     */
+    protected function launchWorkerInBackground(): array
+    {
+        try {
+            $this->ensureWorkerLogFile();
+            $this->writeWorkerStatus('starting');
+
+            $php = $this->phpBinary();
+            $artisan = base_path('artisan');
+            $logPath = $this->workerLogPath();
+
+            if (PHP_OS_FAMILY === 'Windows') {
+                $command = 'start "" /B '
+                    .$this->cmdQuote($php).' '
+                    .$this->cmdQuote($artisan).' scheduler:work'
+                    .' >> '.$this->cmdQuote($logPath).' 2>&1';
+            } else {
+                $command = 'cd '.escapeshellarg(base_path())
+                    .' && nohup '.escapeshellarg($php).' '.escapeshellarg($artisan).' scheduler:work'
+                    .' >> '.escapeshellarg($logPath).' 2>&1 &';
+            }
+
+            $process = Process::fromShellCommandline($command, base_path(), $this->baseEnv());
+            $process->setTimeout(15);
+            $process->run();
+
+            if (! $process->isSuccessful()) {
+                $this->writeWorkerStatus('failed');
+                $output = trim($process->getErrorOutput() ?: $process->getOutput());
+
+                return [
+                    'success' => false,
+                    'started' => false,
+                    'message' => __('Unable to launch the scheduler worker.').($output !== '' ? ' '.$output : ''),
+                ];
+            }
+
+            return [
+                'success' => true,
+                'started' => true,
+                'message' => __('Scheduler worker started in the background.'),
+            ];
+        } catch (\Throwable $exception) {
+            $this->writeWorkerStatus('failed');
+
+            return [
+                'success' => false,
+                'started' => false,
+                'message' => __('Unable to launch the scheduler worker. :message', ['message' => $exception->getMessage()]),
+            ];
+        }
     }
 
     private function baseEnv(): array
@@ -412,6 +619,11 @@ class SchedulerService
         return $php !== '' ? $php : 'php';
     }
 
+    private function cmdQuote(string $value): string
+    {
+        return '"'.str_replace('"', '\\"', $value).'"';
+    }
+
     /**
      * Release withoutOverlapping locks that have been held longer than $stuckMinutes,
      * even if they haven't expired yet. This catches processes that were killed mid-run
@@ -422,7 +634,7 @@ class SchedulerService
     public function releaseStuckScheduleLocks(int $stuckMinutes = 10): void
     {
         try {
-            $schedule = app(\Illuminate\Console\Scheduling\Schedule::class);
+            $schedule = app(Schedule::class);
             $events = $schedule->events();
             $now = now()->unix();
             $stuckThresholdSecs = $stuckMinutes * 60;
@@ -518,7 +730,7 @@ class SchedulerService
     public function getScheduleLockStatus(): array
     {
         try {
-            $schedule = app(\Illuminate\Console\Scheduling\Schedule::class);
+            $schedule = app(Schedule::class);
             $events = $schedule->events();
 
             $lockMap = [];

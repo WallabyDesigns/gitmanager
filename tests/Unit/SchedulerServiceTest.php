@@ -45,4 +45,74 @@ class SchedulerServiceTest extends TestCase
         $this->assertSame(1, $runs);
         $this->assertStringContainsString('Scheduler worker stopped.', Artisan::output());
     }
+
+    public function test_manual_run_starts_a_worker_when_one_is_not_running(): void
+    {
+        $runs = 0;
+        $launched = 0;
+
+        $scheduler = new class($runs, $launched) extends SchedulerService
+        {
+            public function __construct(private int &$runs, private int &$launched) {}
+
+            protected function isWorkerRunning(): bool
+            {
+                return false;
+            }
+
+            protected function launchWorkerInBackground(): array
+            {
+                $this->launched++;
+
+                return ['success' => true, 'started' => true, 'message' => 'started'];
+            }
+
+            public function runSchedulerOnce(string $source = 'manual'): array
+            {
+                $this->runs++;
+
+                return ['success' => true, 'message' => 'Scheduler executed successfully.', 'output' => ''];
+            }
+        };
+
+        $result = $scheduler->runScheduleNow();
+
+        $this->assertSame(1, $launched);
+        $this->assertSame(1, $runs);
+        $this->assertTrue($result['success']);
+        $this->assertStringContainsString('worker started', strtolower($result['message']));
+    }
+
+    public function test_manual_run_does_not_start_a_second_worker_when_one_is_healthy(): void
+    {
+        $runs = 0;
+
+        $scheduler = new class($runs) extends SchedulerService
+        {
+            public function __construct(private int &$runs) {}
+
+            protected function isWorkerRunning(): bool
+            {
+                return true;
+            }
+
+            protected function launchWorkerInBackground(): array
+            {
+                $this->fail('A healthy worker must not be launched twice.');
+            }
+
+            public function runSchedulerOnce(string $source = 'manual'): array
+            {
+                $this->runs++;
+
+                return ['success' => true, 'message' => 'Scheduler executed successfully.', 'output' => ''];
+            }
+        };
+
+        $result = $scheduler->runScheduleNow();
+
+        $this->assertSame(1, $runs);
+        $this->assertTrue($result['success']);
+        $this->assertSame('Scheduler executed successfully.', $result['message']);
+    }
 }

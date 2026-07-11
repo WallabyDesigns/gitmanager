@@ -27,23 +27,28 @@ class SchedulerWork extends Command
 
         $this->info("Scheduler worker started. Checking due tasks every {$sleep} second(s).");
 
-        do {
-            $runs++;
-            $result = $scheduler->runSchedulerOnce('worker');
+        $scheduler->markWorkerStarted($sleep);
 
-            $message = '['.now()->toDateTimeString().'] '.$result['message'];
-            $result['success'] ? $this->info($message) : $this->error($message);
+        try {
+            do {
+                $runs++;
+                $result = $scheduler->runSchedulerOnce('worker');
 
-            if ($this->option('once') || ($maxRuns !== null && $runs >= $maxRuns) || $this->shouldQuit) {
-                break;
-            }
+                $message = '['.now()->toDateTimeString().'] '.$result['message'];
+                $result['success'] ? $this->info($message) : $this->error($message);
 
-            $this->sleepInterruptibly($sleep);
-        } while (! $this->shouldQuit);
+                if ($this->option('once') || ($maxRuns !== null && $runs >= $maxRuns) || $this->shouldQuit) {
+                    break;
+                }
 
-        $this->info('Scheduler worker stopped.');
+                $this->sleepInterruptibly($sleep);
+            } while (! $this->shouldQuit);
 
-        return self::SUCCESS;
+            return self::SUCCESS;
+        } finally {
+            $scheduler->markWorkerStopped();
+            $this->info('Scheduler worker stopped.');
+        }
     }
 
     private function disableRuntimeLimit(): void
