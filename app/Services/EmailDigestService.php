@@ -10,6 +10,7 @@ use App\Models\EmailDigestEntry;
 use App\Models\Project;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
@@ -159,7 +160,13 @@ class EmailDigestService
                         __('Review activity'),
                         $this->showEnterpriseSuggestion(),
                     ));
-                } catch (\Throwable) {
+                } catch (\Throwable $exception) {
+                    Log::error('Email digest delivery failed.', [
+                        'recipient_key' => $first->recipient_key,
+                        'entry_ids' => $entries->pluck('id')->all(),
+                        'exception' => $exception,
+                    ]);
+
                     return;
                 }
 
@@ -214,7 +221,8 @@ class EmailDigestService
             return 'deployment:'.$details['deployment_id'];
         }
 
-        if (in_array($entry->category, ['deployment', 'queue_failure'], true)) {
+        if (in_array($entry->category, ['deployment', 'queue_failure'], true)
+            && ($entry->project_id !== null || ! empty($details['project']) || ! empty($details['action']))) {
             return sha1(implode('|', [
                 'deployment-failure',
                 $entry->project_id,
