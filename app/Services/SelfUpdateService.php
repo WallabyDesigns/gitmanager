@@ -1103,9 +1103,7 @@ class SelfUpdateService
 
     private function enterprisePackageName(): string
     {
-        $configured = trim((string) config('gitmanager.enterprise.package_name', self::DEFAULT_ENTERPRISE_PACKAGE));
-
-        return $configured !== '' ? $configured : self::DEFAULT_ENTERPRISE_PACKAGE;
+        return self::DEFAULT_ENTERPRISE_PACKAGE;
     }
 
     private function composerRequiresPackage(string $repoPath, string $packageName): bool

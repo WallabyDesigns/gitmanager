@@ -159,6 +159,7 @@ class EnvManagerService
      */
     public const HIDDEN_KEYS = [
         'GWM_ENTERPRISE_BUY_URL',
+        'GWM_ENTERPRISE_PACKAGE_NAME',
         'GWM_EDITION',
         'GWM_EDITION_TESTING_UNLOCK_HASHES',
     ];

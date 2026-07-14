@@ -31,7 +31,7 @@ class SelfUpdateServiceTest extends TestCase
     public function test_get_enterprise_package_status_reports_missing_composer_binary_without_touching_output(): void
     {
         config([
-            'gitmanager.enterprise.package_name' => 'wallabydesigns/gitmanager-enterprise',
+            'gitmanager.enterprise.package_name' => 'example/overridden-package',
             'gitmanager.composer_binary' => 'definitely-not-a-real-composer-binary',
         ]);
 
@@ -56,6 +56,7 @@ class SelfUpdateServiceTest extends TestCase
         $output = [];
         $status = app(SelfUpdateService::class)->getEnterprisePackageStatus($projectPath, $output);
 
+        $this->assertSame('wallabydesigns/gitmanager-enterprise', $status['name']);
         $this->assertSame('unknown', $status['status']);
         $this->assertFalse($status['installed']);
         $this->assertNull($status['current']);
@@ -66,7 +67,6 @@ class SelfUpdateServiceTest extends TestCase
     public function test_install_or_update_enterprise_package_never_writes_auth_json(): void
     {
         config([
-            'gitmanager.enterprise.package_name' => 'wallabydesigns/gitmanager-enterprise',
             'gitmanager.composer_binary' => 'definitely-not-a-real-composer-binary',
         ]);
 

@@ -24,6 +24,8 @@ use Livewire\Component;
 
 class Settings extends Component
 {
+    private const ENTERPRISE_PACKAGE_NAME = 'wallabydesigns/gitmanager-enterprise';
+
     public const SECTION_SCHEDULER = 'scheduler';
 
     public const SECTION_APPLICATION = 'application';
@@ -632,8 +634,8 @@ class Settings extends Component
 
     private function resolveSystemPackageVersion(): string
     {
-        $packageName = (string) config('gitmanager.enterprise.package_name', 'wallabydesigns/gitmanager-enterprise');
-        if ($packageName === '' || ! class_exists(InstalledVersions::class)) {
+        $packageName = self::ENTERPRISE_PACKAGE_NAME;
+        if (! class_exists(InstalledVersions::class)) {
             return 'Unknown';
         }
 

@@ -125,7 +125,6 @@ return [
         // system.license.allow_insecure_local_tls / GWM_LICENSE_ALLOW_INSECURE_LOCAL_TLS
     ],
     'enterprise' => [
-        'package_name' => 'wallabydesigns/gitmanager-enterprise',
         'check_updates' => true,
     ],
 ];
