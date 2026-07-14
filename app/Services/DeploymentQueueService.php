@@ -690,7 +690,13 @@ class DeploymentQueueService
                     $markFailed = $deployment->status === 'failed';
                     break;
                 case 'composer_update':
-                    $deployment = $service->composerUpdate($project, $user);
+                    $deployment = $service->composerUpdate(
+                        $project,
+                        $user,
+                        null,
+                        (bool) ($payload['with_all_dependencies'] ?? false),
+                        ($payload['reason'] ?? '') !== 'audit_fix',
+                    );
                     $markFailed = $deployment->status === 'failed';
                     break;
                 case 'composer_audit':
@@ -710,11 +716,21 @@ class DeploymentQueueService
                     $markFailed = $deployment->status === 'failed';
                     break;
                 case 'npm_audit_fix':
-                    $deployment = $service->npmAuditFix($project, $user, false);
+                    $deployment = $service->npmAuditFix(
+                        $project,
+                        $user,
+                        false,
+                        ($payload['reason'] ?? '') !== 'audit_fix',
+                    );
                     $markFailed = $deployment->status === 'failed';
                     break;
                 case 'npm_audit_fix_force':
-                    $deployment = $service->npmAuditFix($project, $user, true);
+                    $deployment = $service->npmAuditFix(
+                        $project,
+                        $user,
+                        true,
+                        ($payload['reason'] ?? '') !== 'audit_fix',
+                    );
                     $markFailed = $deployment->status === 'failed';
                     break;
                 case 'app_clear_cache':
@@ -752,10 +768,17 @@ class DeploymentQueueService
                 $this->recordAutoDeployResult($project, $payload, $deployment);
             }
 
+            if (($payload['reason'] ?? '') === 'audit_fix'
+                && $deployment?->status === 'success'
+                && in_array($item->action, ['npm_audit_fix', 'npm_audit_fix_force', 'composer_update'], true)) {
+                $markFailed = ! $this->commitAndPushAuditFix($service, $project, $deployment, $item->action);
+            }
+
             // Verify automated audit fixes with a follow-up scan: the issue is
             // either marked resolved, or escalates to an email now that no fix
             // is pending. auto_fix stays off to avoid a fix/audit loop.
-            if (($payload['reason'] ?? '') === 'audit_fix'
+            if (! $markFailed
+                && ($payload['reason'] ?? '') === 'audit_fix'
                 && in_array($item->action, ['npm_audit_fix', 'npm_audit_fix_force', 'composer_update'], true)) {
                 $this->enqueue($project, 'audit_project', [
                     'reason' => 'post_fix_verification',
@@ -781,6 +804,94 @@ class DeploymentQueueService
         if ($item->status === 'failed') {
             app(DeploymentFailureNotifier::class)->notify($item);
         }
+    }
+
+    private function commitAndPushAuditFix(
+        DeploymentService $service,
+        Project $project,
+        Deployment $deployment,
+        string $action,
+    ): bool {
+        try {
+            $changes = $service->getWorkingTreeChanges($project);
+            $paths = $this->dependencyPathsForAction((array) ($changes['files'] ?? []), $action);
+
+            if ($paths === []) {
+                $this->appendDeploymentOutput($deployment, 'Automatic audit remediation found no dependency files to commit.');
+
+                return true;
+            }
+
+            $result = $service->commitAndPush($project, $this->auditFixCommitMessage($action), $paths);
+            $status = (string) ($result['status'] ?? 'unknown');
+            $output = array_filter((array) ($result['output'] ?? []), 'is_string');
+            $detail = $output !== [] ? "\n".implode("\n", $output) : '';
+
+            if (in_array($status, ['pushed', 'clean'], true)) {
+                $this->appendDeploymentOutput($deployment, $status === 'pushed'
+                    ? 'Automatic audit remediation committed and pushed dependency changes.'
+                    : 'Automatic audit remediation found no changes to commit.', $detail);
+
+                return true;
+            }
+
+            $this->markAuditPushFailed($deployment, 'Automatic audit remediation could not create a dependency commit.'.$detail);
+
+            return false;
+        } catch (\Throwable $exception) {
+            $this->markAuditPushFailed($deployment, 'Automatic audit remediation push failed: '.$exception->getMessage());
+
+            return false;
+        }
+    }
+
+    /**
+     * @param  array<int, string>  $files
+     * @return array<int, string>
+     */
+    private function dependencyPathsForAction(array $files, string $action): array
+    {
+        $targets = match ($action) {
+            'composer_update' => ['composer.json', 'composer.lock'],
+            default => ['package.json', 'package-lock.json', 'npm-shrinkwrap.json', 'pnpm-lock.yaml', 'yarn.lock'],
+        };
+
+        $paths = [];
+        foreach ($files as $file) {
+            $file = trim($file);
+            if ($file === '') {
+                continue;
+            }
+
+            $normalized = str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $file);
+            if (in_array(strtolower(basename($normalized)), $targets, true)) {
+                $paths[] = $normalized;
+            }
+        }
+
+        return array_values(array_unique($paths));
+    }
+
+    private function auditFixCommitMessage(string $action): string
+    {
+        return match ($action) {
+            'composer_update' => 'chore: apply composer security updates',
+            default => 'chore: apply npm audit fix',
+        };
+    }
+
+    private function markAuditPushFailed(Deployment $deployment, string $message): void
+    {
+        $deployment->status = 'failed';
+        $this->appendDeploymentOutput($deployment, $message);
+    }
+
+    private function appendDeploymentOutput(Deployment $deployment, string $message, string $detail = ''): void
+    {
+        $output = trim((string) $deployment->output_log);
+        $deployment->output_log = trim($output."\n".$message.$detail);
+        $deployment->finished_at = now();
+        $deployment->save();
     }
 
     private function hasOtherPendingAudits(DeploymentQueueItem $item): bool

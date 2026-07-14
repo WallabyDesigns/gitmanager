@@ -1049,7 +1049,8 @@ class DeploymentService
         string $action,
         callable $callback,
         bool $runClearCache = false,
-        bool $syncFtp = false
+        bool $syncFtp = false,
+        bool $resolveAuditIssues = true,
     ): Deployment {
         $project->refresh();
 
@@ -1077,7 +1078,9 @@ class DeploymentService
                 $this->maybeSyncFtp($project, $executionPath, $output);
             }
 
-            $this->resolveDependencyAuditIssuesForAction($project, $action, $output);
+            if ($resolveAuditIssues) {
+                $this->resolveDependencyAuditIssuesForAction($project, $action, $output);
+            }
 
             $deployment->status = 'success';
             $deployment->output_log = implode("\n", $output);

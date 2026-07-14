@@ -157,19 +157,29 @@ trait ManagesDependencies
         }, true, $syncFtp);
     }
 
-    public function composerUpdate(Project $project, ?User $user = null, ?bool $syncFtp = null): Deployment
-    {
+    public function composerUpdate(
+        Project $project,
+        ?User $user = null,
+        ?bool $syncFtp = null,
+        bool $withAllDependencies = false,
+        bool $resolveAuditIssues = true,
+    ): Deployment {
         $syncFtp = $syncFtp ?? $this->shouldUseFtpWorkspace($project);
 
-        return $this->runMaintenanceAction($project, $user, 'composer_update', function (string $path, array &$output) use ($project): void {
+        return $this->runMaintenanceAction($project, $user, 'composer_update', function (string $path, array &$output) use ($project, $withAllDependencies): void {
             $this->refreshFtpComposerManifestsOrFail($project, $path, $output);
+            $command = ['composer', 'update'];
+            if ($withAllDependencies) {
+                $command[] = '--with-all-dependencies';
+                $output[] = 'Composer audit remediation is running with --with-all-dependencies (-W).';
+            }
             $this->runComposerCommandWithFallback(
                 $path,
                 $output,
                 'Composer update',
-                ['composer', 'update']
+                $command
             );
-        }, true, $syncFtp);
+        }, true, $syncFtp, $resolveAuditIssues);
     }
 
     public function composerAudit(Project $project, ?User $user = null): Deployment
@@ -318,8 +328,12 @@ trait ManagesDependencies
         }, false, $syncFtp);
     }
 
-    public function npmAuditFix(Project $project, ?User $user = null, bool $force = false): Deployment
-    {
+    public function npmAuditFix(
+        Project $project,
+        ?User $user = null,
+        bool $force = false,
+        bool $resolveAuditIssues = true,
+    ): Deployment {
         $syncFtp = false;
 
         return $this->runMaintenanceAction($project, $user, $force ? 'npm_audit_fix_force' : 'npm_audit_fix', function (string $path, array &$output) use ($force, $project): void {
@@ -354,7 +368,7 @@ trait ManagesDependencies
                 'pnpm-lock.yaml',
                 'yarn.lock',
             ], $output);
-        }, false, $syncFtp);
+        }, false, $syncFtp, $resolveAuditIssues);
     }
 
     /**

@@ -342,7 +342,12 @@ class AuditService
             return false;
         }
 
-        $this->queue->enqueue($project, $action, ['reason' => 'audit_fix']);
+        $payload = ['reason' => 'audit_fix'];
+        if ($tool === 'composer') {
+            $payload['with_all_dependencies'] = true;
+        }
+
+        $this->queue->enqueue($project, $action, $payload);
 
         return true;
     }
