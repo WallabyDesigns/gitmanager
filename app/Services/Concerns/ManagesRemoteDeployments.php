@@ -318,6 +318,9 @@ trait ManagesRemoteDeployments
                 $deployment->status = 'success';
                 $deployment->from_hash = $fromHash;
                 $deployment->to_hash = $toHash;
+                if ($this->pauseAutoDeployUntilRevisionChanges($project, $fromHash)) {
+                    $output[] = 'Automatic deployments are paused until a new remote revision is detected.';
+                }
                 $this->appendWorkflowOutput($deployment, $project, $output);
                 $deployment->output_log = implode("\n", $output);
                 $deployment->finished_at = now();

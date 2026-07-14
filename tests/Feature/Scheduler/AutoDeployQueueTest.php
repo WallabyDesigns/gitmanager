@@ -203,9 +203,11 @@ class AutoDeployQueueTest extends TestCase
             'user_id' => $owner->id,
             'auto_deploy' => true,
             'latest_remote_hash' => 'bad-revision',
-            'auto_deploy_blocked_hash' => 'bad-revision',
-            'auto_deploy_blocked_at' => now(),
         ]);
+
+        app(DeploymentService::class)->pauseAutoDeployUntilRevisionChanges($project, 'bad-revision');
+        $this->assertSame('bad-revision', $project->fresh()->auto_deploy_blocked_hash);
+        $this->assertNotNull($project->fresh()->auto_deploy_blocked_at);
 
         $this->mock(DeploymentService::class, function ($mock) use ($project): void {
             $mock->shouldReceive('checkForUpdates')->once()->with(\Mockery::on(fn (Project $p) => $p->is($project)))->andReturn(true);
@@ -222,7 +224,7 @@ class AutoDeployQueueTest extends TestCase
 
         Artisan::call('projects:auto-deploy');
 
-        $this->assertStringContainsString('previously failed', Artisan::output());
+        $this->assertStringContainsString('current revision is paused', Artisan::output());
     }
 
     public function test_command_queues_a_new_revision_after_an_older_revision_was_blocked(): void

@@ -227,9 +227,11 @@ class Show extends Component
             return;
         }
 
-        app(DeploymentQueueService::class)->cancelQueuedGroup($this->project, 'rollback');
+        $queue = app(DeploymentQueueService::class);
+        $queue->cancelQueuedGroup($this->project, 'deploy');
+        $queue->cancelQueuedGroup($this->project, 'rollback');
         if ($this->queueEnabled()) {
-            $result = app(DeploymentQueueService::class)->enqueueForImmediateProcessing($this->project, 'rollback', ['reason' => 'manual_rollback'], Auth::user());
+            $result = $queue->enqueueForImmediateProcessing($this->project, 'rollback', ['reason' => 'manual_rollback'], Auth::user());
             $this->dispatch('notify', message: $result['started'] ? 'Rollback started.' : 'Rollback queued.');
             $this->dispatch('reload-page', delay: 300);
 

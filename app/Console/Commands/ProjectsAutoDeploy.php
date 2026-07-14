@@ -55,7 +55,7 @@ class ProjectsAutoDeploy extends Command
                 if ($service->checkForUpdates($project)) {
                     $project->refresh();
                     if ($this->isBlockedRevision($project)) {
-                        $this->warn("Skipping deploy for {$project->name}: the current revision previously failed. Push a new revision or deploy manually to retry.");
+                        $this->warn("Skipping deploy for {$project->name}: the current revision is paused. Push a new revision or deploy manually to retry.");
                     } elseif (config('gitmanager.deploy_queue.enabled', true)) {
                         $queue->enqueue($project, 'deploy', [
                             'reason' => 'auto_update',

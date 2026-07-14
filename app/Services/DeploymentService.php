@@ -169,6 +169,28 @@ class DeploymentService
         }
     }
 
+    /**
+     * Keep a rollback in place until the remote branch advances beyond the
+     * revision that was active when the rollback was performed.
+     */
+    public function pauseAutoDeployUntilRevisionChanges(Project $project, ?string $revision): bool
+    {
+        if (! $this->hasAutoDeployRevisionColumns()) {
+            return false;
+        }
+
+        $revision = trim((string) $revision);
+        if ($revision === '') {
+            return false;
+        }
+
+        $project->auto_deploy_blocked_hash = $revision;
+        $project->auto_deploy_blocked_at = now();
+        $project->save();
+
+        return true;
+    }
+
     private function hasAutoDeployRevisionColumns(): bool
     {
         if ($this->autoDeployRevisionColumnsAvailable !== null) {
@@ -720,6 +742,9 @@ class DeploymentService
                 $deployment->status = 'success';
                 $deployment->from_hash = $fromHash;
                 $deployment->to_hash = $toHash;
+                if ($this->pauseAutoDeployUntilRevisionChanges($project, $fromHash)) {
+                    $output[] = 'Automatic deployments are paused until a new remote revision is detected.';
+                }
                 $this->appendWorkflowOutput($deployment, $project, $output);
                 $deployment->output_log = implode("\n", $output);
                 $deployment->finished_at = now();
