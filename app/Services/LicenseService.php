@@ -68,6 +68,45 @@ class LicenseService
         $this->settings->set(self::SETTING_EDITION, self::EDITION_COMMUNITY);
     }
 
+    public function upgradeLicenseKey(string $key): bool
+    {
+        $target = trim($key);
+        $current = $this->licenseKey();
+        $uuid = $this->installationUuid();
+        if ($target === '' || Str::isUuid($target) || $current === '' || $this->requestSigningSecret() === '') {
+            return false;
+        }
+
+        $verifyUrl = $this->verifyUrl();
+        $upgradeUrl = preg_replace('#/verify/?$#', '/upgrade', $verifyUrl);
+        if (! is_string($upgradeUrl) || $upgradeUrl === $verifyUrl || ! $this->isEndpointAllowed($upgradeUrl)) {
+            return false;
+        }
+
+        $timestamp = now()->toIso8601String();
+        try {
+            $response = Http::timeout($this->timeoutSeconds())->acceptJson()->asJson()
+                ->withHeaders($this->requestSignatureHeaders($uuid, $timestamp, $current))
+                ->post($upgradeUrl, [
+                    'current_license_key' => $current,
+                    'license_key' => $target,
+                    'installation_uuid' => $uuid,
+                    'app_url' => (string) config('app.url'),
+                    'timestamp' => $timestamp,
+                ]);
+        } catch (\Throwable) {
+            return false;
+        }
+
+        if (! $response->successful() || ! (bool) $response->json('valid', false)) {
+            return false;
+        }
+
+        $this->setLicenseKey($target);
+
+        return true;
+    }
+
     public function clearLicense(): void
     {
         $this->settings->set(self::SETTING_KEY, '');

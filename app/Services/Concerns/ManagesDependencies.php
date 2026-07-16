@@ -1719,6 +1719,8 @@ trait ManagesDependencies
 
                 return;
             }
+
+            $this->clearLaravelRuntimeCachesBeforeTests($laravelRoot, $output);
         }
 
         $this->runProjectShellCommand($command, $output, $path);
@@ -1729,6 +1731,17 @@ trait ManagesDependencies
         $normalized = strtolower(trim($command));
 
         return (bool) preg_match('/(^|\s)artisan\s+test(\s|$)/', $normalized);
+    }
+
+    private function clearLaravelRuntimeCachesBeforeTests(string $laravelRoot, array &$output): void
+    {
+        $this->logStep($output, 'Clear Laravel caches before tests', $laravelRoot, 'php artisan optimize:clear');
+
+        $process = $this->runProjectProcess(['php', 'artisan', 'optimize:clear'], $output, $laravelRoot, false);
+        if (! $process->isSuccessful()) {
+            $error = trim($process->getErrorOutput());
+            throw new \RuntimeException('Unable to clear Laravel caches before tests'.($error !== '' ? ': '.$error : '.'));
+        }
     }
 
     private function logStep(array &$output, string $label, string $path, string $command): void

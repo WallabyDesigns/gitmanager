@@ -352,7 +352,11 @@ class Settings extends Component
     public function verifyLicense(LicenseService $license, EditionService $edition): void
     {
         if (trim($this->enterpriseLicenseKey) !== '') {
-            $license->setLicenseKey($this->enterpriseLicenseKey);
+            if (! $license->upgradeLicenseKey($this->enterpriseLicenseKey)) {
+                $this->addError('enterpriseLicenseKey', 'License upgrade could not be verified.');
+
+                return;
+            }
             $this->enterpriseLicenseKey = '';
         }
 
@@ -456,7 +460,11 @@ class Settings extends Component
         $this->logRetentionDays = LogCleanupService::normalizeRetentionDays($this->logRetentionDays);
 
         if (trim($this->enterpriseLicenseKey) !== '') {
-            $license->setLicenseKey($this->enterpriseLicenseKey);
+            if (! $license->upgradeLicenseKey($this->enterpriseLicenseKey)) {
+                $this->addError('enterpriseLicenseKey', 'License upgrade could not be verified.');
+
+                return;
+            }
             $this->enterpriseLicenseKey = '';
         }
 
