@@ -3,6 +3,7 @@
 namespace App\Livewire\System;
 
 use App\Models\Plugin as PluginModel;
+use App\Services\EnvManagerService;
 use App\Services\OctaneInstanceService;
 use App\Services\Plugins\PluginManager;
 use App\Services\RuntimePluginStatusService;
@@ -190,6 +191,29 @@ class Plugins extends Component
     {
         $result = $executor->restartInBackground();
         $this->dispatch('notify', message: $result['message']);
+        $this->dispatch('$refresh');
+    }
+
+    public function activateReverb(EnvManagerService $environment): void
+    {
+        $status = app(RuntimePluginStatusService::class)->reverb();
+
+        if (! $status['installed']) {
+            $this->dispatch('notify', type: 'error', message: __('Laravel Reverb is not installed in this application build.'));
+
+            return;
+        }
+
+        if (! $status['credentials_configured']) {
+            $this->dispatch('notify', type: 'error', message: __('Configure the Reverb app ID, key, secret, and host in Environment Config before activating broadcasting.'));
+
+            return;
+        }
+
+        $environment->set('BROADCAST_CONNECTION', 'reverb');
+        config()->set('broadcasting.default', 'reverb');
+
+        $this->dispatch('notify', type: 'success', message: __('Reverb is now the broadcast connection. Restart the Reverb server and long-running PHP processes to apply the change everywhere.'));
         $this->dispatch('$refresh');
     }
 

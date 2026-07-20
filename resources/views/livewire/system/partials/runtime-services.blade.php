@@ -36,11 +36,20 @@
         <div class="bg-slate-900 border border-slate-800 rounded-lg p-5 space-y-4">
             <div class="flex items-start justify-between gap-3">
                 <div><h3 class="text-base font-semibold text-slate-100">{{ __('Reverb Real-Time Server') }}</h3><p class="mt-1 text-sm text-slate-400">{{ __('Optional WebSocket broadcasting for live queue, deployment, and audit updates.') }}</p></div>
-                <span class="shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-wide {{ $reverbStatus['installed'] ? 'bg-emerald-500/20 text-emerald-200' : 'bg-slate-500/20 text-slate-200' }}">{{ $reverbStatus['installed'] ? __('Installed') : __('Not bundled') }}</span>
+                <span class="shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-wide {{ $reverbStatus['configured'] ? 'bg-emerald-500/20 text-emerald-200' : ($reverbStatus['installed'] ? 'bg-amber-500/20 text-amber-200' : 'bg-slate-500/20 text-slate-200') }}">{{ $reverbStatus['configured'] ? __('Active') : ($reverbStatus['installed'] ? __('Installed') : __('Not bundled')) }}</span>
             </div>
             <div class="text-xs text-slate-400">{{ $reverbStatus['message'] }}</div>
             @if ($reverbStatus['version'])<div class="text-xs text-slate-400">{{ __('Version') }}: <span class="font-mono text-slate-200">{{ $reverbStatus['version'] }}</span></div>@endif
-            <p class="text-xs text-slate-500">{{ __('Reverb will remain optional with polling as a fallback for shared hosting.') }}</p>
+            @if ($reverbStatus['installed'])
+                <div class="text-xs text-slate-400">{{ __('Configuration') }}: <span class="{{ $reverbStatus['credentials_configured'] ? 'text-emerald-300' : 'text-amber-300' }}">{{ $reverbStatus['credentials_configured'] ? __('Ready') : __('Credentials required') }}</span></div>
+                @if (! $reverbStatus['configured'])
+                    <button type="button" wire:click="activateReverb" wire:loading.attr="disabled" class="px-3 py-2 text-xs rounded-md border border-emerald-500/40 text-emerald-200 hover:text-white inline-flex items-center"><x-loading-spinner target="activateReverb" />{{ __('Activate Reverb') }}</button>
+                @endif
+                @if (! $reverbStatus['credentials_configured'])
+                    <a href="{{ route('system.environment') }}" class="inline-flex text-xs text-indigo-300 hover:text-indigo-200">{{ __('Open Environment Config') }}</a>
+                @endif
+            @endif
+            <p class="text-xs text-slate-500">{{ __('Reverb will remain optional with polling as a fallback for shared hosting. Run php artisan reverb:start under a persistent process manager after activation.') }}</p>
         </div>
 
         <div class="bg-slate-900 border border-slate-800 rounded-lg p-5 space-y-4">

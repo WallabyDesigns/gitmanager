@@ -8,17 +8,22 @@ use Symfony\Component\Process\Process;
 class RuntimePluginStatusService
 {
     /**
-     * @return array{installed: bool, configured: bool, version: ?string, message: string}
+     * @return array{installed: bool, configured: bool, credentials_configured: bool, version: ?string, message: string}
      */
     public function reverb(): array
     {
         $installed = class_exists('Laravel\\Reverb\\ReverbServiceProvider');
         $configured = config('broadcasting.default') === 'reverb';
+        $credentialsConfigured = filled(config('broadcasting.connections.reverb.key'))
+            && filled(config('broadcasting.connections.reverb.secret'))
+            && filled(config('broadcasting.connections.reverb.app_id'))
+            && filled(config('broadcasting.connections.reverb.options.host'));
 
         if (! $installed) {
             return [
                 'installed' => false,
                 'configured' => false,
+                'credentials_configured' => false,
                 'version' => null,
                 'message' => __('Laravel Reverb is not installed in this application build.'),
             ];
@@ -27,6 +32,7 @@ class RuntimePluginStatusService
         return [
             'installed' => true,
             'configured' => $configured,
+            'credentials_configured' => $credentialsConfigured,
             'version' => $this->composerVersion('laravel/reverb'),
             'message' => $configured
                 ? __('Laravel Reverb is installed and selected for broadcasting.')
