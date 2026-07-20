@@ -25,6 +25,7 @@
 /storage/logs/octane-instance*.log
 /storage/plugins
 /vendor
+/executor/target
 Homestead.json
 Homestead.yaml
 Thumbs.db

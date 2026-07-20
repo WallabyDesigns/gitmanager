@@ -758,9 +758,9 @@ class DockerService
         return $tokens;
     }
 
-    private function run(array $args, ?string $workingDirectory = null): array
+    private function run(array $args, ?string $workingDirectory = null, ?array $environment = null): array
     {
-        return $this->runBinary($this->binary, $args, $workingDirectory);
+        return $this->runBinary($this->binary, $args, $workingDirectory, $environment);
     }
 
     private function runCompose(array $args, ?string $workingDirectory = null): array
@@ -773,10 +773,10 @@ class DockerService
         }
 
         if ($command['type'] === 'plugin') {
-            return $this->run(array_merge(['compose'], $args), $workingDirectory);
+            return $this->run(array_merge(['compose'], $args), $workingDirectory, $this->composeEnvironment());
         }
 
-        return $this->runBinary($command['binary'], $args, $workingDirectory);
+        return $this->runBinary($command['binary'], $args, $workingDirectory, $this->composeEnvironment());
     }
 
     /**
@@ -802,7 +802,7 @@ class DockerService
         return null;
     }
 
-    private function runBinary(string $binary, array $args, ?string $workingDirectory = null): array
+    private function runBinary(string $binary, array $args, ?string $workingDirectory = null, ?array $environment = null): array
     {
         $cmd = array_merge([$binary], $args);
 
@@ -816,7 +816,7 @@ class DockerService
                 [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
                 $pipes,
                 $workingDirectory,
-                null,
+                $environment,
                 ['bypass_shell' => true],
             );
         } catch (Throwable) {
@@ -837,6 +837,27 @@ class DockerService
         $code = proc_close($process);
 
         return [$code === 0, (string) $stdout, (string) $stderr];
+    }
+
+    /**
+     * Compose otherwise parses Laravel's .env as its own environment file.
+     * Secrets containing dollar signs are valid Laravel values but Compose
+     * treats them as interpolation expressions. Keep the inherited process
+     * environment for build secrets and pass Compose settings explicitly.
+     *
+     * @return array<string, string>
+     */
+    private function composeEnvironment(): array
+    {
+        $environment = getenv();
+        $environment = is_array($environment) ? $environment : [];
+
+        $environment['COMPOSE_DISABLE_ENV_FILE'] = '1';
+        $environment['APP_PORT'] = (string) env('APP_PORT', 8080);
+        $environment['OCTANE_PORT'] = (string) config('gitmanager.octane.port', 8000);
+        $environment['GWM_RUST_EXECUTOR_LOG_LEVEL'] = (string) env('GWM_RUST_EXECUTOR_LOG_LEVEL', 'info');
+
+        return array_filter($environment, static fn (mixed $value): bool => is_scalar($value));
     }
 
     private function resolveDockerBinary(string $configured): string

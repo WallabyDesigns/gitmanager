@@ -172,7 +172,7 @@ new class extends Component
                                 @endif
                                 {{ __('Processes') }}
                                 @if ($queueCount > 0)
-                                    <span class="inline-flex items-center justify-center rounded-full bg-orange-500/20 px-1.5 py-0.5 text-xs text-orange-300">{{ $queueCount }}</span>
+                                    <span class="inline-flex items-center justify-center rounded-full bg-amber-400/20 px-1.5 py-0.5 text-xs text-amber-200">{{ $queueCount }}</span>
                                 @endif
                             </span>
                         </x-nav-link>

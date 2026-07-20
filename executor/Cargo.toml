@@ -1,0 +1,13 @@
+[package]
+name = "git-web-manager-executor"
+version = "0.1.0"
+edition = "2021"
+license = "Zlib"
+description = "Optional operations executor for Git Web Manager"
+
+[dependencies]
+axum = "0.7"
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

@@ -82,7 +82,7 @@
         ['label' => 'Sub-heading', 'section' => 'White Label', 'url' => route('system.white-label'), 'keys' => 'sub heading subtitle tagline brand text'],
         ['label' => 'Hide Edition Label', 'section' => 'White Label', 'url' => route('system.white-label'), 'keys' => 'hide edition label community enterprise badge'],
         // Plugins
-        ['label' => 'Plugins', 'section' => 'Plugins', 'url' => route('system.plugins'), 'keys' => 'plugins node nodejs npm pm2 runtime install update vulnerability extensions'],
+        ['label' => 'Plugins', 'section' => 'Plugins', 'url' => route('system.plugins'), 'keys' => 'plugins node nodejs npm pm2 runtime octane reverb rust executor install update vulnerability extensions'],
         ['label' => 'Node.js Runtime', 'section' => 'Plugins', 'url' => route('system.plugins'), 'keys' => 'node nodejs runtime install version lts bundled managed'],
         ['label' => 'PM2 Process Manager', 'section' => 'Plugins', 'url' => route('system.plugins'), 'keys' => 'pm2 process manager node daemon restart supervisor'],
         // Enterprise Support

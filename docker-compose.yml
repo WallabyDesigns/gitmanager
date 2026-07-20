@@ -76,6 +76,17 @@ services:
       - app
     restart: unless-stopped
 
+  rust-executor:
+    profiles: ["rust-executor"]
+    build:
+      context: ./executor
+    environment:
+      RUST_LOG: "${GWM_RUST_EXECUTOR_LOG_LEVEL:-info}"
+      GWM_EXECUTOR_BIND: "0.0.0.0:8787"
+    expose:
+      - "8787"
+    restart: unless-stopped
+
 volumes:
   storage:
   database:

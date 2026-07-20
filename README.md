@@ -195,9 +195,18 @@ Cron is still supported for existing installs:
 
 The `scheduler:run` wrapper records the System Scheduler heartbeat first, then runs Laravel's scheduled tasks. Existing installations that already use this cron line do not need to change it.
 
-Docker Compose uses `scheduler:work` for the scheduler service. If Docker and Docker Compose are available to the app, System → Scheduler can also start, stop, and restart the app-managed Octane instance. Octane listens on `OCTANE_PORT` or port `8000` by default and uses FrankenPHP unless `OCTANE_SERVER` is changed.
+Docker Compose uses `scheduler:work` for the scheduler service. If Docker and Docker Compose are available to the app, System → Plugins can also start, stop, and restart the app-managed Octane instance. Octane listens on `OCTANE_PORT` or port `8000` by default and uses FrankenPHP unless `OCTANE_SERVER` is changed.
 
 Octane is optional. Starting it creates and manages the local Docker Compose Octane profile from the System Control Center; it does not automatically move existing browser or reverse-proxy traffic to port `8000`. Point the web server or proxy at the displayed Octane endpoint before treating it as the application's active HTTP runtime. The app continues to use the normal PHP web-server path until that routing change is made.
+
+### Rust Operations Executor
+The optional Rust Operations Executor is built from the bundled `executor/` source through Docker Compose. Use **System → Plugins → Runtime Services → Install Executor** to build and start it without installing Rust or Cargo on the host. It is available only inside the Compose network at `http://rust-executor:8787/health`; no executor port is published publicly.
+
+This first executor release provides a managed, health-checked runtime foundation. Laravel remains the source of truth for queue jobs and existing PHP workers continue processing deployments, updates, and audits. Executor job claiming will be added behind an explicit opt-in after its authenticated, idempotent job protocol is available.
+
+The executor image uses the bundled `executor/Cargo.lock` for reproducible builds. Do not commit `executor/target/`; it contains local Rust build artifacts and is excluded by `.gitignore`.
+
+Docker is the managed executor backend today. A native-host backend is planned for installations that need direct access to arbitrary host project paths; PHP workers remain the fallback for shared hosting and unsupported targets.
 
 The **Run Scheduler Now** control performs a due-task run and starts the managed scheduler worker when it is not already available. For production, keep `scheduler:work` supervised by Docker, systemd, Supervisor, or an equivalent process manager. Cron remains a supported fallback for shared hosting.
 

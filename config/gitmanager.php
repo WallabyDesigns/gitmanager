@@ -73,6 +73,12 @@ return [
         'host' => env('GWM_OCTANE_HOST', '127.0.0.1'),
         'port' => env('OCTANE_PORT', 8000),
     ],
+    'rust_executor' => [
+        'binary' => env('GWM_RUST_EXECUTOR_BINARY', ''),
+        'service' => env('GWM_RUST_EXECUTOR_SERVICE', 'rust-executor'),
+        'profile' => env('GWM_RUST_EXECUTOR_PROFILE', 'rust-executor'),
+        'port' => env('GWM_RUST_EXECUTOR_PORT', 8787),
+    ],
     'kubernetes' => [
         'kubectl_binary' => env('GWM_KUBECTL_BINARY', 'kubectl'),
     ],

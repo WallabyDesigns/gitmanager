@@ -3,7 +3,10 @@
 namespace App\Livewire\System;
 
 use App\Models\Plugin as PluginModel;
+use App\Services\OctaneInstanceService;
 use App\Services\Plugins\PluginManager;
+use App\Services\RuntimePluginStatusService;
+use App\Services\RustExecutorInstanceService;
 use Illuminate\View\View;
 use Livewire\Component;
 
@@ -22,18 +25,19 @@ class Plugins extends Component
         $plugin = $manager->find($slug);
         if ($plugin === null) {
             $this->dispatch('notify', type: 'error', message: "Plugin '{$slug}' not found.");
+
             return;
         }
 
         $record = PluginModel::firstOrCreate(['slug' => $slug]);
-        $record->status        = PluginModel::STATUS_INSTALLING;
+        $record->status = PluginModel::STATUS_INSTALLING;
         $record->error_message = null;
         $record->save();
 
         try {
             $result = $plugin->install();
             $record->installed_version = $plugin->installedVersion();
-            $record->status            = $result['success']
+            $record->status = $result['success']
                 ? PluginModel::STATUS_INSTALLED
                 : PluginModel::STATUS_ERROR;
             $record->error_message = $result['success'] ? null : $result['message'];
@@ -44,7 +48,7 @@ class Plugins extends Component
                 message: $result['message']
             );
         } catch (\Throwable $e) {
-            $record->status        = PluginModel::STATUS_ERROR;
+            $record->status = PluginModel::STATUS_ERROR;
             $record->error_message = $e->getMessage();
             $record->save();
             $this->dispatch('notify', type: 'error', message: $e->getMessage());
@@ -58,18 +62,19 @@ class Plugins extends Component
         $plugin = $manager->find($slug);
         if ($plugin === null) {
             $this->dispatch('notify', type: 'error', message: "Plugin '{$slug}' not found.");
+
             return;
         }
 
         $record = PluginModel::firstOrCreate(['slug' => $slug]);
-        $record->status        = PluginModel::STATUS_UPDATING;
+        $record->status = PluginModel::STATUS_UPDATING;
         $record->error_message = null;
         $record->save();
 
         try {
             $result = $plugin->update();
             $record->installed_version = $plugin->installedVersion();
-            $record->status            = $result['success']
+            $record->status = $result['success']
                 ? PluginModel::STATUS_INSTALLED
                 : PluginModel::STATUS_ERROR;
             $record->error_message = $result['success'] ? null : $result['message'];
@@ -80,7 +85,7 @@ class Plugins extends Component
                 message: $result['message']
             );
         } catch (\Throwable $e) {
-            $record->status        = PluginModel::STATUS_ERROR;
+            $record->status = PluginModel::STATUS_ERROR;
             $record->error_message = $e->getMessage();
             $record->save();
             $this->dispatch('notify', type: 'error', message: $e->getMessage());
@@ -94,6 +99,7 @@ class Plugins extends Component
         $plugin = $manager->find($slug);
         if ($plugin === null) {
             $this->dispatch('notify', type: 'error', message: "Plugin '{$slug}' not found.");
+
             return;
         }
 
@@ -102,7 +108,7 @@ class Plugins extends Component
 
             $record = PluginModel::firstOrCreate(['slug' => $slug]);
             $record->installed_version = null;
-            $record->status            = $result['success']
+            $record->status = $result['success']
                 ? PluginModel::STATUS_NOT_INSTALLED
                 : PluginModel::STATUS_ERROR;
             $record->error_message = $result['success'] ? null : $result['message'];
@@ -137,7 +143,7 @@ class Plugins extends Component
             try {
                 $manager->checkAndMaybeUpdate($plugin);
             } catch (\Throwable $e) {
-                $this->dispatch('notify', type: 'error', message: "Check failed for {$plugin->displayName()}: " . $e->getMessage());
+                $this->dispatch('notify', type: 'error', message: "Check failed for {$plugin->displayName()}: ".$e->getMessage());
             }
         }
 
@@ -145,9 +151,56 @@ class Plugins extends Component
         $this->dispatch('notify', type: 'success', message: 'Plugin update check complete.');
     }
 
-    public function render(): View
+    public function startOctane(OctaneInstanceService $octane): void
+    {
+        $result = $octane->startInBackground();
+        $this->dispatch('notify', message: $result['message']);
+        $this->dispatch('$refresh');
+    }
+
+    public function stopOctane(OctaneInstanceService $octane): void
+    {
+        $result = $octane->stopInBackground();
+        $this->dispatch('notify', message: $result['message']);
+        $this->dispatch('$refresh');
+    }
+
+    public function restartOctane(OctaneInstanceService $octane): void
+    {
+        $result = $octane->restartInBackground();
+        $this->dispatch('notify', message: $result['message']);
+        $this->dispatch('$refresh');
+    }
+
+    public function startRustExecutor(RustExecutorInstanceService $executor): void
+    {
+        $result = $executor->startInBackground();
+        $this->dispatch('notify', message: $result['message']);
+        $this->dispatch('$refresh');
+    }
+
+    public function stopRustExecutor(RustExecutorInstanceService $executor): void
+    {
+        $result = $executor->stopInBackground();
+        $this->dispatch('notify', message: $result['message']);
+        $this->dispatch('$refresh');
+    }
+
+    public function restartRustExecutor(RustExecutorInstanceService $executor): void
+    {
+        $result = $executor->restartInBackground();
+        $this->dispatch('notify', message: $result['message']);
+        $this->dispatch('$refresh');
+    }
+
+    public function render(OctaneInstanceService $octane, RustExecutorInstanceService $executor, RuntimePluginStatusService $runtimePlugins): View
     {
         return view('livewire.system.plugins')
+            ->with([
+                'octaneStatus' => $octane->status(),
+                'reverbStatus' => $runtimePlugins->reverb(),
+                'rustExecutorStatus' => $executor->status(),
+            ])
             ->layout('layouts.app', [
                 'title' => 'Plugins',
                 'header' => view('livewire.system.partials.header', [
@@ -163,22 +216,22 @@ class Plugins extends Component
 
         foreach ($manager->all() as $plugin) {
             $record = $manager->refreshRecord($plugin);
-            $vulns  = ($checkVulnerabilities && $plugin->isInstalled())
+            $vulns = ($checkVulnerabilities && $plugin->isInstalled())
                 ? $plugin->checkVulnerabilities()
                 : [];
 
             $this->pluginRecords[$plugin->slug()] = [
-                'slug'             => $plugin->slug(),
-                'displayName'      => $plugin->displayName(),
-                'description'      => $plugin->description(),
-                'category'         => $plugin->category(),
+                'slug' => $plugin->slug(),
+                'displayName' => $plugin->displayName(),
+                'description' => $plugin->description(),
+                'category' => $plugin->category(),
                 'installedVersion' => $record->installed_version,
-                'latestVersion'    => $record->latest_version,
-                'status'           => $record->status,
-                'autoUpdate'       => (bool) $record->auto_update,
-                'lastCheckedAt'    => $record->last_checked_at?->diffForHumans(),
-                'vulnerabilities'  => $vulns,
-                'errorMessage'     => $record->error_message,
+                'latestVersion' => $record->latest_version,
+                'status' => $record->status,
+                'autoUpdate' => (bool) $record->auto_update,
+                'lastCheckedAt' => $record->last_checked_at?->diffForHumans(),
+                'vulnerabilities' => $vulns,
+                'errorMessage' => $record->error_message,
             ];
         }
     }
