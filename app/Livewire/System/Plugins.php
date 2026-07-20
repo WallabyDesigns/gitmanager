@@ -8,6 +8,7 @@ use App\Services\OctaneInstanceService;
 use App\Services\Plugins\PluginManager;
 use App\Services\RuntimePluginStatusService;
 use App\Services\RustExecutorInstanceService;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Component;
 
@@ -204,16 +205,39 @@ class Plugins extends Component
             return;
         }
 
-        if (! $status['credentials_configured']) {
-            $this->dispatch('notify', type: 'error', message: __('Configure the Reverb app ID, key, secret, and host in Environment Config before activating broadcasting.'));
+        $current = $environment->parseFileToKv(base_path('.env'));
+        $appUrl = $current['APP_URL'] ?? config('app.url');
+        $host = parse_url($appUrl, PHP_URL_HOST);
+
+        if (! is_string($host) || $host === '') {
+            $this->dispatch('notify', type: 'error', message: __('Set APP_URL to a public URL before activating Reverb.'));
 
             return;
         }
 
-        $environment->set('BROADCAST_CONNECTION', 'reverb');
-        config()->set('broadcasting.default', 'reverb');
+        $scheme = parse_url($appUrl, PHP_URL_SCHEME) ?: 'https';
+        $port = parse_url($appUrl, PHP_URL_PORT) ?: ($scheme === 'https' ? 443 : 80);
+        $existing = static fn (string $key, string $fallback): string => filled($current[$key] ?? null)
+            ? $current[$key]
+            : $fallback;
 
-        $this->dispatch('notify', type: 'success', message: __('Reverb is now the broadcast connection. Restart the Reverb server and long-running PHP processes to apply the change everywhere.'));
+        $reverb = [
+            'REVERB_APP_ID' => $existing('REVERB_APP_ID', Str::lower(Str::random(16))),
+            'REVERB_APP_KEY' => $existing('REVERB_APP_KEY', Str::random(32)),
+            'REVERB_APP_SECRET' => $existing('REVERB_APP_SECRET', Str::random(64)),
+            'REVERB_HOST' => $existing('REVERB_HOST', $host),
+            'REVERB_PORT' => $existing('REVERB_PORT', (string) $port),
+            'REVERB_SCHEME' => $existing('REVERB_SCHEME', $scheme),
+        ];
+
+        $environment->setMany(['BROADCAST_CONNECTION' => 'reverb', ...$reverb]);
+        config()->set('broadcasting.default', 'reverb');
+        config()->set('broadcasting.connections.reverb.key', $reverb['REVERB_APP_KEY']);
+        config()->set('broadcasting.connections.reverb.secret', $reverb['REVERB_APP_SECRET']);
+        config()->set('broadcasting.connections.reverb.app_id', $reverb['REVERB_APP_ID']);
+        config()->set('broadcasting.connections.reverb.options.host', $reverb['REVERB_HOST']);
+
+        $this->dispatch('notify', type: 'success', message: __('Reverb is now the broadcast connection. Its credentials were generated and saved. Restart the Reverb server and long-running PHP processes to apply the change everywhere.'));
         $this->dispatch('$refresh');
     }
 

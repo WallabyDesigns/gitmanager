@@ -76,8 +76,12 @@ class NodeRuntimePlugin implements ManagedPlugin
 
     public function update(): array
     {
-        // Re-installing overwrites the existing runtime.
-        return $this->nodeInstall->install();
+        $latest = $this->fetchLatestVersion();
+        if ($latest === null) {
+            return ['success' => false, 'message' => __('Could not determine the latest Node.js LTS version.')];
+        }
+
+        return $this->nodeInstall->install($latest);
     }
 
     public function uninstall(): array
@@ -92,7 +96,7 @@ class NodeRuntimePlugin implements ManagedPlugin
         }
 
         $installed = $this->installedVersion();
-        $latest    = $this->fetchLatestVersion();
+        $latest = $this->fetchLatestVersion();
 
         if ($installed === null || $latest === null) {
             return [];

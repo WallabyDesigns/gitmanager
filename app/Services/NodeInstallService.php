@@ -6,7 +6,7 @@ use Symfony\Component\Process\Process;
 
 class NodeInstallService
 {
-    // LTS version to install when Node is not found
+    // Fallback LTS version for first-time installation when no upstream version is requested.
     private const NODE_LTS_VERSION = '20.19.2';
 
     // Stored inside the app's own storage to avoid requiring root/sudo
@@ -67,13 +67,20 @@ class NodeInstallService
      * Download and extract the Node.js LTS binary into storage/node-runtime.
      * Returns ['success' => bool, 'message' => string].
      */
-    public function install(): array
+    public function install(?string $version = null): array
     {
-        if ($this->isWindows()) {
-            return $this->installWindows();
+        $version ??= self::NODE_LTS_VERSION;
+        $version = ltrim($version, 'v');
+
+        if (! preg_match('/^\d+\.\d+\.\d+$/', $version)) {
+            return ['success' => false, 'message' => __('Invalid Node.js version requested.')];
         }
 
-        return $this->installUnix();
+        if ($this->isWindows()) {
+            return $this->installWindows($version);
+        }
+
+        return $this->installUnix($version);
     }
 
     public function uninstall(): array
@@ -169,7 +176,7 @@ class NodeInstallService
         ];
     }
 
-    private function installUnix(): array
+    private function installUnix(string $version): array
     {
         $os = $this->unixOs();
         if ($os === null) {
@@ -177,15 +184,10 @@ class NodeInstallService
         }
 
         $arch = $this->unixArch();
-        $version = self::NODE_LTS_VERSION;
         $filename = "node-v{$version}-{$os}-{$arch}.tar.gz";
         $url = "https://nodejs.org/dist/v{$version}/{$filename}";
         $tmp = sys_get_temp_dir().DIRECTORY_SEPARATOR.$filename;
-        $dir = $this->installDir();
-
-        if (! @mkdir($dir, 0755, true) && ! is_dir($dir)) {
-            return ['success' => false, 'message' => 'Could not create install directory: '.$dir];
-        }
+        $staging = $this->stagingDir();
 
         // Download
         $download = $this->download($url, $tmp);
@@ -193,13 +195,18 @@ class NodeInstallService
             return $download;
         }
 
-        // Extract
+        if (! @mkdir($staging, 0755, true) && ! is_dir($staging)) {
+            return ['success' => false, 'message' => __('Could not create staging directory: :path', ['path' => $staging])];
+        }
+
+        // Extract into staging so an unsuccessful update cannot remove the current runtime.
         try {
-            $process = new Process(['tar', '-xzf', $tmp, '-C', $dir]);
+            $process = new Process(['tar', '-xzf', $tmp, '-C', $staging]);
             $process->setTimeout(120);
             $process->run();
         } catch (\Throwable $e) {
             @unlink($tmp);
+            $this->deleteDirectory($staging);
 
             return ['success' => false, 'message' => 'Extraction failed: '.$e->getMessage()];
         } finally {
@@ -207,7 +214,20 @@ class NodeInstallService
         }
 
         if (! $process->isSuccessful()) {
+            $this->deleteDirectory($staging);
+
             return ['success' => false, 'message' => 'tar extraction failed: '.trim($process->getErrorOutput())];
+        }
+
+        if (! is_file($staging.DIRECTORY_SEPARATOR."node-v{$version}-{$os}-{$arch}".DIRECTORY_SEPARATOR.'bin'.DIRECTORY_SEPARATOR.'node')) {
+            $this->deleteDirectory($staging);
+
+            return ['success' => false, 'message' => __('Node.js archive did not contain the expected binary.')];
+        }
+
+        $replace = $this->replaceInstallDirectory($staging);
+        if (! $replace['success']) {
+            return $replace;
         }
 
         $detected = $this->detect();
@@ -218,32 +238,32 @@ class NodeInstallService
         return ['success' => true, 'message' => "Node.js {$detected['version']} installed successfully (bundled)."];
     }
 
-    private function installWindows(): array
+    private function installWindows(string $version): array
     {
-        $version = self::NODE_LTS_VERSION;
         $arch = PHP_INT_SIZE === 8 ? 'x64' : 'x86';
         $filename = "node-v{$version}-win-{$arch}.zip";
         $url = "https://nodejs.org/dist/v{$version}/{$filename}";
         $tmp = sys_get_temp_dir().DIRECTORY_SEPARATOR.$filename;
-        $dir = $this->installDir();
-
-        if (! @mkdir($dir, 0755, true) && ! is_dir($dir)) {
-            return ['success' => false, 'message' => 'Could not create install directory: '.$dir];
-        }
+        $staging = $this->stagingDir();
 
         $download = $this->download($url, $tmp);
         if (! $download['success']) {
             return $download;
         }
 
+        if (! @mkdir($staging, 0755, true) && ! is_dir($staging)) {
+            return ['success' => false, 'message' => __('Could not create staging directory: :path', ['path' => $staging])];
+        }
+
         try {
             $process = new Process(['powershell', '-Command',
-                "Expand-Archive -Path '{$tmp}' -DestinationPath '{$dir}' -Force",
+                "Expand-Archive -Path '{$tmp}' -DestinationPath '{$staging}' -Force",
             ]);
             $process->setTimeout(120);
             $process->run();
         } catch (\Throwable $e) {
             @unlink($tmp);
+            $this->deleteDirectory($staging);
 
             return ['success' => false, 'message' => 'Extraction failed: '.$e->getMessage()];
         } finally {
@@ -251,20 +271,33 @@ class NodeInstallService
         }
 
         if (! $process->isSuccessful()) {
+            $this->deleteDirectory($staging);
+
             return ['success' => false, 'message' => 'Zip extraction failed: '.trim($process->getErrorOutput())];
         }
 
-        // Move contents of extracted folder up one level so node.exe sits directly in $dir
-        $extracted = glob($dir.DIRECTORY_SEPARATOR.'node-v*') ?: [];
+        // Move contents of extracted folder up one level so node.exe sits directly in the runtime directory.
+        $extracted = glob($staging.DIRECTORY_SEPARATOR.'node-v*') ?: [];
         if ($extracted !== []) {
             $inner = $extracted[0];
             foreach (scandir($inner) ?: [] as $entry) {
                 if ($entry === '.' || $entry === '..') {
                     continue;
                 }
-                @rename($inner.DIRECTORY_SEPARATOR.$entry, $dir.DIRECTORY_SEPARATOR.$entry);
+                @rename($inner.DIRECTORY_SEPARATOR.$entry, $staging.DIRECTORY_SEPARATOR.$entry);
             }
             @rmdir($inner);
+        }
+
+        if (! is_file($staging.DIRECTORY_SEPARATOR.'node.exe')) {
+            $this->deleteDirectory($staging);
+
+            return ['success' => false, 'message' => __('Node.js archive did not contain the expected binary.')];
+        }
+
+        $replace = $this->replaceInstallDirectory($staging);
+        if (! $replace['success']) {
+            return $replace;
         }
 
         $detected = $this->detect();
@@ -332,6 +365,39 @@ class NodeInstallService
     private function isWindows(): bool
     {
         return PHP_OS_FAMILY === 'Windows';
+    }
+
+    private function stagingDir(): string
+    {
+        return $this->installDir().'.staging.'.bin2hex(random_bytes(8));
+    }
+
+    /** @return array{success: bool, message?: string} */
+    private function replaceInstallDirectory(string $staging): array
+    {
+        $dir = $this->installDir();
+        $previous = $dir.'.previous.'.bin2hex(random_bytes(8));
+
+        if (is_dir($dir) && ! @rename($dir, $previous)) {
+            $this->deleteDirectory($staging);
+
+            return ['success' => false, 'message' => __('Could not replace the existing Node.js runtime. Stop Node.js processes and try again.')];
+        }
+
+        if (@rename($staging, $dir)) {
+            if (is_dir($previous)) {
+                $this->deleteDirectory($previous);
+            }
+
+            return ['success' => true];
+        }
+
+        if (is_dir($previous)) {
+            @rename($previous, $dir);
+        }
+        $this->deleteDirectory($staging);
+
+        return ['success' => false, 'message' => __('Could not activate the updated Node.js runtime.')];
     }
 
     private function deleteDirectory(string $dir): void

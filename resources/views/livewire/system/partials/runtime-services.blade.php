@@ -43,13 +43,13 @@
             @if ($reverbStatus['installed'])
                 <div class="text-xs text-slate-400">{{ __('Configuration') }}: <span class="{{ $reverbStatus['credentials_configured'] ? 'text-emerald-300' : 'text-amber-300' }}">{{ $reverbStatus['credentials_configured'] ? __('Ready') : __('Credentials required') }}</span></div>
                 @if (! $reverbStatus['configured'])
-                    <button type="button" wire:click="activateReverb" wire:loading.attr="disabled" class="px-3 py-2 text-xs rounded-md border border-emerald-500/40 text-emerald-200 hover:text-white inline-flex items-center"><x-loading-spinner target="activateReverb" />{{ __('Activate Reverb') }}</button>
+                    <button type="button" wire:click="activateReverb" wire:loading.attr="disabled" class="px-3 py-2 text-xs rounded-md border border-emerald-500/40 text-emerald-200 hover:text-white inline-flex items-center"><x-loading-spinner target="activateReverb" />{{ $reverbStatus['credentials_configured'] ? __('Activate Reverb') : __('Configure and Activate Reverb') }}</button>
                 @endif
                 @if (! $reverbStatus['credentials_configured'])
                     <a href="{{ route('system.environment') }}" class="inline-flex text-xs text-indigo-300 hover:text-indigo-200">{{ __('Open Environment Config') }}</a>
                 @endif
             @endif
-            <p class="text-xs text-slate-500">{{ __('Reverb will remain optional with polling as a fallback for shared hosting. Run php artisan reverb:start under a persistent process manager after activation.') }}</p>
+            <p class="text-xs text-slate-500">{{ __('Reverb generates its own credentials from your app URL when activated and remains optional with polling as a fallback. Run php artisan reverb:start under a persistent process manager after activation.') }}</p>
         </div>
 
         <div class="bg-slate-900 border border-slate-800 rounded-lg p-5 space-y-4">
