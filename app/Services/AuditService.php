@@ -209,9 +209,18 @@ class AuditService
         $openIssue->last_seen_at = now();
         $openIssue->save();
 
-        // A fix is still queued or running — let it finish before notifying.
-        if ($queueFix && $this->hasPendingFix($project, $tool)) {
-            return ['opened' => false, 'resolved' => false, 'notification' => null];
+        if ($queueFix) {
+            // A fix is still queued or running — let it finish before notifying.
+            if ($this->hasPendingFix($project, $tool)) {
+                return ['opened' => false, 'resolved' => false, 'notification' => null];
+            }
+
+            // Issue is still open after a previous attempt — retry the fix
+            // instead of only notifying, and hold notification until we know
+            // the outcome.
+            if ($this->queueFixForTool($project, $tool)) {
+                return ['opened' => false, 'resolved' => false, 'notification' => null];
+            }
         }
 
         // Cooldown: check if this specific issue was emailed recently.

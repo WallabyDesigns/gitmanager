@@ -854,7 +854,7 @@ trait ManagesRemoteDeployments
 
         $exclude = $this->ftpExcludePaths($project, $extraExcludePaths, $allowSqliteDatabaseSync);
         $whitelist = $this->ftpWhitelistPaths($project);
-        $ftpService = app(FtpService::class);
+        $ftpService = app(\App\Services\FtpService::class);
         if ($directFiles !== null) {
             $directFiles = $this->filterFtpDirectFiles($directFiles, $exclude, $whitelist);
             if ($directFiles === []) {
@@ -1044,7 +1044,7 @@ trait ManagesRemoteDeployments
                 $output[] = 'Npm: no lockfile found; using package.json.';
             }
         }
-        $remoteFiles = app(FtpService::class)->fetchRemoteFiles($project, array_merge($composerFiles, $npmFiles), $output);
+        $remoteFiles = app(\App\Services\FtpService::class)->fetchRemoteFiles($project, array_merge($composerFiles, $npmFiles), $output);
 
         $composerChanged = $this->manifestSetChanged('Composer', $composerFiles, $remoteFiles, $executionPath, $output);
         $npmChanged = $this->manifestSetChanged('Npm', $npmFiles, $remoteFiles, $executionPath, $output);

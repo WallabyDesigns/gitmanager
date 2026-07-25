@@ -366,7 +366,7 @@ class ActionCenterTest extends TestCase
         $this->actingAs($admin)
             ->get(route('system.licensing'))
             ->assertOk()
-            ->assertSee('Buy Enterprise');
+            ->assertSee('Get Enterprise');
     }
 
     private function mockEnterpriseEdition(): void

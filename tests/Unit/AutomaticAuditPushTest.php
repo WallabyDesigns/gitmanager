@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Models\AuditIssue;
 use App\Models\Deployment;
 use App\Models\Project;
 use App\Models\User;
@@ -66,5 +67,41 @@ class AutomaticAuditPushTest extends TestCase
         $this->assertSame('success', $deployment->fresh()->status);
         $this->assertStringContainsString('committed and pushed dependency changes', $deployment->fresh()->output_log);
         $this->assertStringNotContainsString('README.md', $deployment->fresh()->output_log);
+    }
+
+    public function test_audit_requeues_fix_for_an_issue_that_remains_open_after_a_previous_fix_attempt(): void
+    {
+        config()->set('gitmanager.deploy_queue.enabled', true);
+        $project = Project::factory()->create(['user_id' => User::factory()]);
+
+        // Issue was opened by an earlier audit and a fix already ran once,
+        // but the tool could not fully resolve it (remaining > 0).
+        AuditIssue::query()->create([
+            'project_id' => $project->id,
+            'tool' => 'npm',
+            'status' => 'open',
+            'summary' => 'Npm audit found vulnerabilities.',
+            'remaining_count' => 1,
+        ]);
+
+        $this->mock(DeploymentQueueService::class, function ($mock) use ($project): void {
+            $mock->shouldReceive('enqueue')->once()->with(
+                $project,
+                'npm_audit_fix',
+                ['reason' => 'audit_fix'],
+            );
+        });
+
+        $service = app(AuditService::class);
+        $method = new \ReflectionMethod($service, 'recordAuditIssue');
+        $method->setAccessible(true);
+
+        $method->invoke($service, $project, 'npm', [
+            'status' => 'success',
+            'remaining' => 1,
+            'found' => 2,
+            'fixed' => 1,
+            'summary' => 'Npm audit found vulnerabilities.',
+        ], true);
     }
 }

@@ -22,10 +22,10 @@ class ExampleTest extends TestCase
         $this->get('/')->assertRedirect('/login');
     }
 
-    public function test_root_redirects_authenticated_user_to_projects(): void
+    public function test_root_redirects_authenticated_user_to_dashboard(): void
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->get('/')->assertRedirect(route('projects.index'));
+        $this->actingAs($user)->get('/')->assertRedirect(route('dashboard'));
     }
 }
