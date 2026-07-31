@@ -1,6 +1,13 @@
 <IfModule mod_rewrite.c>
-    Options +SymLinksIfOwnerMatch
+    Options +SymLinksIfOwnerMatch -Indexes
     RewriteEngine On
+
+    # Block direct access to sensitive files and directories outside
+    # /public/. These paths exist on disk, so without this rule the
+    # RewriteCond ... !-f check below would skip the rewrite and Apache
+    # would serve them as-is (including .env, storage/ backups and logs,
+    # and .git internals) with no authentication at all.
+    RewriteRule ^(\.env(\..*)?|\.git(/.*)?|\.htaccess|storage(/.*)?|bootstrap(/.*)?|vendor(/.*)?|config(/.*)?|database(/.*)?|resources(/.*)?|routes(/.*)?|tests(/.*)?|node_modules(/.*)?|composer\.(json|lock)|package(-lock)?\.json|yarn\.lock|pnpm-lock\.yaml|artisan)$ - [F,L]
 
     RewriteCond %{REQUEST_URI} !^/public/
 

@@ -1282,9 +1282,6 @@ class DeploymentService
     private function ensureProjectHtaccess(Project $project, string $executionPath, array &$output): void
     {
         $projectType = trim((string) ($project->project_type ?? ''));
-        if ($projectType === 'laravel') {
-            return;
-        }
 
         if (! is_dir($executionPath)) {
             return;

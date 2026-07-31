@@ -60,11 +60,13 @@ Route::middleware(['auth', 'verified', EnsurePasswordChanged::class])->group(fun
     Route::get('/projects/{project}/edit', ProjectsEdit::class)->name('projects.edit');
     Route::get('/projects/{project}', ProjectsShow::class)->name('projects.show');
     Route::get('/users', UsersIndex::class)->middleware(EnsureAdminUser::class)->name('users.index');
-    Route::get('/recovery', [RecoveryController::class, 'index'])->name('recovery.index');
-    Route::post('/rebuild', [RecoveryController::class, 'rebuild'])->name('recovery.rebuild');
-    Route::post('/recovery/env-backup', [RecoveryController::class, 'createEnvBackup'])->name('recovery.env-backup.create');
-    Route::post('/recovery/env-backup/{filename}/restore', [RecoveryController::class, 'restoreEnvBackup'])->name('recovery.env-backup.restore');
-    Route::post('/recovery/env-backup/{filename}/delete', [RecoveryController::class, 'deleteEnvBackup'])->name('recovery.env-backup.delete');
+    Route::middleware(EnsureAdminUser::class)->group(function () {
+        Route::get('/recovery', [RecoveryController::class, 'index'])->name('recovery.index');
+        Route::post('/rebuild', [RecoveryController::class, 'rebuild'])->name('recovery.rebuild');
+        Route::post('/recovery/env-backup', [RecoveryController::class, 'createEnvBackup'])->name('recovery.env-backup.create');
+        Route::post('/recovery/env-backup/{filename}/restore', [RecoveryController::class, 'restoreEnvBackup'])->name('recovery.env-backup.restore');
+        Route::post('/recovery/env-backup/{filename}/delete', [RecoveryController::class, 'deleteEnvBackup'])->name('recovery.env-backup.delete');
+    });
 
     Route::get('/env/migrate', EnvMigration::class)->name('env.migrate');
 Route::middleware(EnsureAdminUser::class)->group(function () {

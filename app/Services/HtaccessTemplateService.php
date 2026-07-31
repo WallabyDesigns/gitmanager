@@ -14,8 +14,15 @@ class HtaccessTemplateService
         if ($projectType === 'laravel') {
             $lines = [
                 '<IfModule mod_rewrite.c>',
-                '    Options +SymLinksIfOwnerMatch',
+                '    Options +SymLinksIfOwnerMatch -Indexes',
                 '    RewriteEngine On',
+                '',
+                '    # Block direct access to sensitive files and directories outside',
+                '    # /public/. They exist on disk, so without this rule the',
+                '    # RewriteCond ... !-f check below would skip the rewrite and Apache',
+                '    # would serve them as-is (.env, storage/ backups and logs, .git',
+                '    # internals) with no authentication at all.',
+                '    RewriteRule ^(\\.env(\\..*)?|\\.git(/.*)?|\\.htaccess|storage(/.*)?|bootstrap(/.*)?|vendor(/.*)?|config(/.*)?|database(/.*)?|resources(/.*)?|routes(/.*)?|tests(/.*)?|node_modules(/.*)?|composer\\.(json|lock)|package(-lock)?\\.json|yarn\\.lock|pnpm-lock\\.yaml|artisan)$ - [F,L]',
                 '',
                 '    RewriteCond %{REQUEST_URI} !^/public/',
                 '',
@@ -40,6 +47,16 @@ class HtaccessTemplateService
             '<FilesMatch "(^\\.|\\.env|\\.git|composer\\.(json|lock)|package(-lock)?\\.json|yarn\\.lock|pnpm-lock\\.yaml)">',
             '    Require all denied',
             '</FilesMatch>',
+            '',
+            '<IfModule mod_rewrite.c>',
+            '    RewriteEngine On',
+            '',
+            '    # <FilesMatch> above only matches the requested file\'s basename, so',
+            '    # it never blocks sensitive directories (storage/, vendor/, .git/,',
+            '    # node_modules/) whose contents have ordinary-looking filenames.',
+            '    # Block those paths explicitly.',
+            '    RewriteRule ^(\\.git(/.*)?|storage(/.*)?|vendor(/.*)?|node_modules(/.*)?)$ - [F,L]',
+            '</IfModule>',
         ];
 
         if ($projectType === 'static') {
