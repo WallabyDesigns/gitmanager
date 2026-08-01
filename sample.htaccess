@@ -5,9 +5,21 @@
     # Block direct access to sensitive files and directories outside
     # /public/. These paths exist on disk, so without this rule the
     # RewriteCond ... !-f check below would skip the rewrite and Apache
-    # would serve them as-is (including .env, storage/ backups and logs,
-    # and .git internals) with no authentication at all.
-    RewriteRule ^(\.env(\..*)?|\.git(/.*)?|\.htaccess|storage(/.*)?|bootstrap(/.*)?|vendor(/.*)?|config(/.*)?|database(/.*)?|resources(/.*)?|routes(/.*)?|tests(/.*)?|node_modules(/.*)?|composer\.(json|lock)|package(-lock)?\.json|yarn\.lock|pnpm-lock\.yaml|artisan)$ - [F,L]
+    # would serve them as-is (including .env and .git internals) with no
+    # authentication at all. None of these have a legitimate counterpart
+    # under /public/, so they're always blocked.
+    RewriteRule ^(\.env(\..*)?|\.git(/.*)?|\.htaccess|bootstrap(/.*)?|config(/.*)?|database(/.*)?|resources(/.*)?|routes(/.*)?|tests(/.*)?|node_modules(/.*)?|composer\.(json|lock)|package(-lock)?\.json|yarn\.lock|pnpm-lock\.yaml|artisan)$ - [F,L]
+
+    # storage/ and vendor/ also back legitimate public-facing paths: the
+    # storage:link symlink (public/storage) and vendor:publish assets
+    # (public/vendor/...), both requested as /storage/... or /vendor/...
+    # and expected to fall through to the /public/ rewrite below. Only
+    # block them when the request resolves to a real file/directory at
+    # this level — the actual storage/ and vendor/ folders, not an asset
+    # that only exists once rewritten into /public/.
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^(storage(/.*)?|vendor(/.*)?)$ - [F,L]
 
     RewriteCond %{REQUEST_URI} !^/public/
 
