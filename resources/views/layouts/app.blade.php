@@ -101,7 +101,7 @@
                                 </svg>
                                 {{ __('Enterprise Feature') }}
                             </div>
-<h3 class="mt-3 text-lg font-semibold text-slate-100">{{ __('Unlock in Enterprise Edition') }}</h3>
+                        <h3 class="mt-3 text-lg font-semibold text-slate-100">{{ __('Unlock in Enterprise Edition') }}</h3>
                     </div>
                     <button type="button" @click="open = false" class="rounded-md p-2 text-slate-300 hover:text-slate-100" aria-label="{{ __('Close') }}">
                         <svg class="h-5 w-5" stroke="currentColor" fill="none" viewBox="0 0 24 24">

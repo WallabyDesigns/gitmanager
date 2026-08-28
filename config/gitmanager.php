@@ -23,6 +23,11 @@ return [
         'exclude_paths' => array_values(array_filter(array_map('trim', explode(',', env('GWM_SELF_UPDATE_EXCLUDE_PATHS', env('GPM_SELF_UPDATE_EXCLUDE_PATHS', 'docs')))))),
         'process_timeout' => env('GWM_SELF_UPDATE_PROCESS_TIMEOUT', env('GPM_SELF_UPDATE_PROCESS_TIMEOUT', env('GWM_PROCESS_TIMEOUT', env('GPM_PROCESS_TIMEOUT', 1800)))),
         'max_commits_per_run' => env('GWM_SELF_UPDATE_MAX_COMMITS_PER_RUN', env('GPM_SELF_UPDATE_MAX_COMMITS_PER_RUN', 1)),
+        // How many working-tree/untracked-file backups to keep per self-update
+        // run. Older backups are pruned automatically; anything beyond this
+        // requires a manual rollback (self-update itself rolls back via git,
+        // not from these backups).
+        'backup_retention' => env('GWM_SELF_UPDATE_BACKUP_RETENTION', env('GPM_SELF_UPDATE_BACKUP_RETENTION', 5)),
         'git_identity' => [
             'name' => env('GWM_SELF_UPDATE_GIT_NAME', 'Git Web Manager Updater'),
             'email' => env('GWM_SELF_UPDATE_GIT_EMAIL', 'updater@gitwebmanager.local'),

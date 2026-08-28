@@ -565,6 +565,96 @@ class SelfUpdateServiceTest extends TestCase
         $this->assertStringContainsString('Scheduler worker recovery scheduled after update', implode("\n", $output));
     }
 
+    public function test_prune_backup_directory_keeps_only_the_newest_entries(): void
+    {
+        config(['gitmanager.self_update.backup_retention' => 2]);
+
+        $base = storage_path('framework/testing/self-update-backups-'.Str::uuid());
+        File::ensureDirectoryExists($base);
+        $this->tempPaths[] = $base;
+
+        $oldest = $this->makeTimestampedBackupDir($base, '20260101_000000', -300);
+        $middle = $this->makeTimestampedBackupDir($base, '20260102_000000', -200);
+        $newest = $this->makeTimestampedBackupDir($base, '20260103_000000', -100);
+
+        $service = app(SelfUpdateService::class);
+        $method = new \ReflectionMethod($service, 'pruneBackupDirectory');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($service, $base, 2, false);
+
+        $this->assertSame(3, $result['total']);
+        $this->assertSame(1, $result['removed']);
+        $this->assertSame(2, $result['kept']);
+        $this->assertDirectoryDoesNotExist($oldest);
+        $this->assertDirectoryExists($middle);
+        $this->assertDirectoryExists($newest);
+    }
+
+    public function test_prune_backup_directory_dry_run_removes_nothing(): void
+    {
+        $base = storage_path('framework/testing/self-update-backups-'.Str::uuid());
+        File::ensureDirectoryExists($base);
+        $this->tempPaths[] = $base;
+
+        $first = $this->makeTimestampedBackupDir($base, '20260101_000000', -200);
+        $second = $this->makeTimestampedBackupDir($base, '20260102_000000', -100);
+
+        $service = app(SelfUpdateService::class);
+        $method = new \ReflectionMethod($service, 'pruneBackupDirectory');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($service, $base, 1, true);
+
+        $this->assertSame(1, $result['removed']);
+        $this->assertDirectoryExists($first);
+        $this->assertDirectoryExists($second);
+    }
+
+    public function test_backup_working_tree_prunes_older_backups_after_creating_a_new_one(): void
+    {
+        config(['gitmanager.self_update.backup_retention' => 1]);
+
+        $repoPath = storage_path('framework/testing/self-update-repo-'.Str::uuid());
+        File::ensureDirectoryExists($repoPath);
+        $this->tempPaths[] = $repoPath;
+        file_put_contents($repoPath.DIRECTORY_SEPARATOR.'app.txt', 'hello');
+
+        // This is the real backup directory self-update uses in production,
+        // so only clean up the specific entries this test creates rather
+        // than the whole shared directory.
+        $base = storage_path('app/self-update-backups');
+        File::ensureDirectoryExists($base);
+        $preExisting = glob($base.DIRECTORY_SEPARATOR.'*', GLOB_ONLYDIR) ?: [];
+        $stale = $this->makeTimestampedBackupDir($base, 'test-stale-'.Str::uuid(), -1000);
+
+        $service = app(SelfUpdateService::class);
+        $method = new \ReflectionMethod($service, 'backupWorkingTree');
+        $method->setAccessible(true);
+
+        try {
+            $output = [];
+            $newBackup = $method->invokeArgs($service, [$repoPath, &$output, false]);
+
+            $this->assertDirectoryDoesNotExist($stale);
+            $this->assertDirectoryExists($newBackup);
+        } finally {
+            $created = array_diff(glob($base.DIRECTORY_SEPARATOR.'*', GLOB_ONLYDIR) ?: [], $preExisting);
+            foreach ($created as $dir) {
+                File::deleteDirectory($dir);
+            }
+        }
+    }
+
+    private function makeTimestampedBackupDir(string $base, string $name, int $mtimeOffsetSeconds): string
+    {
+        $path = $base.DIRECTORY_SEPARATOR.$name;
+        File::ensureDirectoryExists($path);
+        touch($path, time() + $mtimeOffsetSeconds);
+
+        return $path;
+    }
+
     /**
      * @param  array<string, mixed>  $composer
      * @param  array<string, mixed>|null  $lock

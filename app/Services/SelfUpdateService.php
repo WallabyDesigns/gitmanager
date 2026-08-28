@@ -2082,6 +2082,8 @@ class SelfUpdateService
             $this->copyPath($source, $destination);
         }
 
+        $this->pruneBackupDirectory($base, $this->backupRetentionLimit());
+
         return $target;
     }
 
@@ -2533,7 +2535,63 @@ class SelfUpdateService
             copy($item->getPathname(), $destination);
         }
 
+        $this->pruneBackupDirectory($base, $this->backupRetentionLimit());
+
         return $target;
+    }
+
+    private function backupRetentionLimit(): int
+    {
+        return max(1, (int) config('gitmanager.self_update.backup_retention', 5));
+    }
+
+    /**
+     * Keep only the newest $keep backup subdirectories under $base, deleting
+     * the rest. Self-update never automatically rolls back from anything
+     * older than this — that requires a manual restore.
+     *
+     * @return array{path: string, total: int, removed: int, kept: int}
+     */
+    private function pruneBackupDirectory(string $base, int $keep, bool $dryRun = false): array
+    {
+        if (! is_dir($base)) {
+            return ['path' => $base, 'total' => 0, 'removed' => 0, 'kept' => 0];
+        }
+
+        $entries = glob($base.DIRECTORY_SEPARATOR.'*', GLOB_ONLYDIR) ?: [];
+        $total = count($entries);
+
+        if ($total <= $keep) {
+            return ['path' => $base, 'total' => $total, 'removed' => 0, 'kept' => $total];
+        }
+
+        usort($entries, fn (string $a, string $b): int => filemtime($a) <=> filemtime($b));
+        $toRemove = array_slice($entries, 0, $total - $keep);
+
+        if (! $dryRun) {
+            foreach ($toRemove as $dir) {
+                $this->deleteDirectory($dir);
+            }
+        }
+
+        return ['path' => $base, 'total' => $total, 'removed' => count($toRemove), 'kept' => $total - count($toRemove)];
+    }
+
+    /**
+     * Prune both self-update backup directories on demand (e.g. from a
+     * console command), using the same retention limit as automatic
+     * pruning after each new backup.
+     *
+     * @return array<string, array{path: string, total: int, removed: int, kept: int}>
+     */
+    public function pruneBackups(bool $dryRun = false): array
+    {
+        $keep = $this->backupRetentionLimit();
+
+        return [
+            'working_tree' => $this->pruneBackupDirectory(storage_path('app/self-update-backups'), $keep, $dryRun),
+            'untracked_files' => $this->pruneBackupDirectory(storage_path('app/self-update-untracked'), $keep, $dryRun),
+        ];
     }
 
     private function shouldExcludeBackupPath(string $relative, bool $includeDependencies, string $backupRootRelative): bool
