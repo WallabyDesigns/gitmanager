@@ -76,6 +76,8 @@
         ['label' => 'Composer', 'section' => 'Runtime Diagnostics', 'url' => route('system.diagnostics'), 'keys' => 'composer php packages dependency manager install'],
         ['label' => 'Python / pip', 'section' => 'Runtime Diagnostics', 'url' => route('system.diagnostics'), 'keys' => 'python pip runtime tool install binary'],
         ['label' => 'Node.js / npm', 'section' => 'Runtime Diagnostics', 'url' => route('system.diagnostics'), 'keys' => 'node nodejs npm javascript runtime install version path bundled app managed package'],
+        ['label' => 'Rust / Cargo', 'section' => 'Runtime Diagnostics', 'url' => route('system.diagnostics'), 'keys' => 'rust cargo rustc rustup runtime toolchain compiler install version'],
+        ['label' => 'Larust CLI', 'section' => 'Runtime Diagnostics', 'url' => route('system.diagnostics'), 'keys' => 'larust xr cli rust framework install update version'],
         // White Label
         ['label' => 'Brand Name', 'section' => 'White Label', 'url' => route('system.white-label'), 'keys' => 'brand name company white label custom title'],
         ['label' => 'Logo & Favicon', 'section' => 'White Label', 'url' => route('system.white-label'), 'keys' => 'logo favicon icon image brand upload custom'],

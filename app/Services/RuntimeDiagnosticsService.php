@@ -31,6 +31,8 @@ class RuntimeDiagnosticsService
             'composer' => $this->probe('composer', self::VERSION_FLAG, 'Composer'),
             'python'   => $this->probeFirstOf(['python3', 'python'], self::VERSION_FLAG, 'Python'),
             'pip'      => $this->probePip(),
+            'rustc'    => $this->probe('rustc', self::VERSION_FLAG, 'Rust'),
+            'cargo'    => $this->probe('cargo', self::VERSION_FLAG, 'Cargo', 'Required to build the Larust CLI.'),
         ];
     }
 
@@ -179,6 +181,9 @@ class RuntimeDiagnosticsService
             'pip3', 'pip' => $os === 'Windows'
                 ? 'python -m ensurepip --upgrade'
                 : 'apt install python3-pip',
+            'rustc', 'cargo' => $os === 'Windows'
+                ? 'winget install Rustlang.Rustup'
+                : "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh",
             default => "Install {$binary} via your system package manager",
         };
     }

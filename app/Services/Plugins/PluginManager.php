@@ -12,6 +12,7 @@ class PluginManager
         return [
             app(NodeRuntimePlugin::class),
             app(Pm2Plugin::class),
+            app(LarustPlugin::class),
         ];
     }
 

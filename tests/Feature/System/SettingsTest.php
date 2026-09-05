@@ -3,12 +3,15 @@
 namespace Tests\Feature\System;
 
 use App\Livewire\System\Settings as SystemSettings;
+use App\Models\Plugin;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\EditionService;
 use App\Services\EnvBackupService;
 use App\Services\EnvManagerService;
 use App\Services\LicenseService;
+use App\Services\Plugins\LarustPlugin;
+use App\Services\Plugins\PluginManager;
 use App\Services\SettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -95,6 +98,114 @@ class SettingsTest extends TestCase
 
         // The value must now be in the settings table.
         $this->assertFalse((bool) $settingsService->get('system.check_updates', true));
+    }
+
+    // -----------------------------------------------------------------------
+    // Larust CLI install/update/uninstall (Runtime Diagnostics page)
+    // -----------------------------------------------------------------------
+
+    public function test_install_larust_delegates_to_the_plugin_and_persists_the_record(): void
+    {
+        $admin = User::factory()->create(['id' => 1]);
+        $this->actingAs($admin);
+
+        $fake = new class extends LarustPlugin
+        {
+            public function install(): array
+            {
+                return ['success' => true, 'message' => 'Larust installed.'];
+            }
+
+            public function isInstalled(): bool
+            {
+                return true;
+            }
+
+            public function installedVersion(): ?string
+            {
+                return 'abc123';
+            }
+        };
+
+        $component = new SystemSettings;
+        $component->installLarust($fake, app(PluginManager::class));
+
+        $this->assertDatabaseHas('plugins', [
+            'slug' => 'larust',
+            'installed_version' => 'abc123',
+            'status' => Plugin::STATUS_INSTALLED,
+        ]);
+    }
+
+    public function test_update_larust_reports_failure_message_from_the_plugin(): void
+    {
+        $admin = User::factory()->create(['id' => 1]);
+        $this->actingAs($admin);
+
+        $fake = new class extends LarustPlugin
+        {
+            public function update(): array
+            {
+                return ['success' => false, 'message' => 'Rust/Cargo is unavailable.'];
+            }
+
+            public function isInstalled(): bool
+            {
+                return false;
+            }
+
+            public function installedVersion(): ?string
+            {
+                return null;
+            }
+        };
+
+        $component = new SystemSettings;
+        $component->updateLarust($fake, app(PluginManager::class));
+
+        $this->assertDatabaseHas('plugins', [
+            'slug' => 'larust',
+            'status' => Plugin::STATUS_NOT_INSTALLED,
+        ]);
+    }
+
+    public function test_uninstall_larust_delegates_to_the_plugin_and_clears_the_version(): void
+    {
+        $admin = User::factory()->create(['id' => 1]);
+        $this->actingAs($admin);
+
+        Plugin::create([
+            'slug' => 'larust',
+            'installed_version' => 'abc123',
+            'status' => Plugin::STATUS_INSTALLED,
+        ]);
+
+        $fake = new class extends LarustPlugin
+        {
+            public function uninstall(): array
+            {
+                return ['success' => true, 'message' => 'Managed Larust CLI removed.'];
+            }
+
+            public function isInstalled(): bool
+            {
+                return false;
+            }
+
+            public function installedVersion(): ?string
+            {
+                return null;
+            }
+        };
+
+        $component = new SystemSettings;
+        $component->uninstallLarust($fake, app(PluginManager::class));
+
+        $this->assertDatabaseHas('plugins', [
+            'slug' => 'larust',
+            'installed_version' => null,
+            'status' => Plugin::STATUS_NOT_INSTALLED,
+        ]);
     }
 
     // -----------------------------------------------------------------------

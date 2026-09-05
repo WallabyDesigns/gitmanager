@@ -11,6 +11,8 @@ use App\Services\EnvManagerService;
 use App\Services\LicenseService;
 use App\Services\LogCleanupService;
 use App\Services\NodeInstallService;
+use App\Services\Plugins\LarustPlugin;
+use App\Services\Plugins\PluginManager;
 use App\Services\RuntimeDiagnosticsService;
 use App\Services\SchedulerService;
 use App\Services\SettingsService;
@@ -184,16 +186,26 @@ class Settings extends Component
         $this->dispatch('notify', message: 'Security settings saved.');
     }
 
-    public function render(EditionService $edition, SchedulerService $scheduler, NodeInstallService $nodeInstall): View
+    public function render(EditionService $edition, SchedulerService $scheduler, NodeInstallService $nodeInstall, LarustPlugin $larust): View
     {
         $schedulerGraceSeconds = max(600, (int) config('gitmanager.scheduler.stale_seconds', 600));
 
         $settingsService = app(SettingsService::class);
 
+        $showDiagnostics = in_array($this->settingsSection, [self::SECTION_NODE, self::SECTION_DIAGNOSTICS], true);
+
         return view('livewire.system.settings', [
-            'nodeStatus' => in_array($this->settingsSection, [self::SECTION_NODE, self::SECTION_DIAGNOSTICS], true)
+            'nodeStatus' => $showDiagnostics
                 ? $nodeInstall->detect()
                 : ['found' => false, 'version' => null, 'source' => null, 'binary' => null],
+            'larustStatus' => $showDiagnostics
+                ? [
+                    'installed' => $larust->isInstalled(),
+                    'version' => $larust->installedVersion(),
+                    'binary' => $larust->binary(),
+                    'repository' => LarustPlugin::REPOSITORY,
+                ]
+                : null,
             'schedulerHealthy' => $scheduler->isHealthy($schedulerGraceSeconds),
             'lastHeartbeat' => $scheduler->lastHeartbeat(),
             'lastManualRun' => $scheduler->lastManualRun(),
@@ -306,6 +318,30 @@ class Settings extends Component
     {
         $result = $nodeInstall->uninstall();
         $this->dispatch('notify', message: $result['message']);
+        $this->dispatch('$refresh');
+    }
+
+    public function installLarust(LarustPlugin $larust, PluginManager $manager): void
+    {
+        $result = $larust->install();
+        $manager->refreshRecord($larust);
+        $this->dispatch('notify', type: $result['success'] ? 'success' : 'error', message: $result['message']);
+        $this->dispatch('$refresh');
+    }
+
+    public function updateLarust(LarustPlugin $larust, PluginManager $manager): void
+    {
+        $result = $larust->update();
+        $manager->refreshRecord($larust);
+        $this->dispatch('notify', type: $result['success'] ? 'success' : 'error', message: $result['message']);
+        $this->dispatch('$refresh');
+    }
+
+    public function uninstallLarust(LarustPlugin $larust, PluginManager $manager): void
+    {
+        $result = $larust->uninstall();
+        $manager->refreshRecord($larust);
+        $this->dispatch('notify', type: $result['success'] ? 'success' : 'error', message: $result['message']);
         $this->dispatch('$refresh');
     }
 

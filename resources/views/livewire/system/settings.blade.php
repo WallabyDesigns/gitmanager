@@ -389,6 +389,57 @@
                         </p>
                     </div>
 
+                    {{-- Larust CLI Status --}}
+                    @if ($larustStatus)
+                        <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6 space-y-4">
+                            <div class="flex items-center justify-between gap-3">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $larustStatus['installed'] ? 'bg-emerald-500/10 text-emerald-300' : 'bg-rose-500/10 text-rose-300' }}">
+                                            {{ $larustStatus['installed'] ? __('Detected') : __('Not found') }}
+                                        </span>
+                                        <h3 class="text-sm font-semibold text-slate-100">{{ __('Larust CLI') }}</h3>
+                                    </div>
+                                    @if ($larustStatus['installed'])
+                                        <div class="mt-2 text-sm text-slate-300 space-y-1">
+                                            <div>{{ __('Revision:') }} <span class="text-slate-100 font-mono">{{ $larustStatus['version'] ?? '—' }}</span></div>
+                                            <div class="text-xs text-slate-500 font-mono truncate">{{ $larustStatus['binary'] ?? '' }}</div>
+                                        </div>
+                                    @else
+                                        <p class="mt-1 text-sm text-slate-400">{{ __('The Larust xr CLI was not found. Install it below to enable local Larust deployments.') }}</p>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="flex flex-wrap gap-2 pt-1">
+                                @if (! $larustStatus['installed'])
+                                    <button type="button" wire:click="installLarust" class="px-3 py-2 text-xs rounded-md border border-emerald-500/40 text-emerald-200 hover:text-white inline-flex items-center gap-1.5">
+                                        <x-loading-spinner target="installLarust" />
+                                        {{ __('Install Larust') }}
+                                    </button>
+                                @else
+                                    <button type="button" wire:click="updateLarust" class="px-3 py-2 text-xs rounded-md border border-slate-700 text-slate-200 hover:text-white inline-flex items-center gap-1.5">
+                                        <x-loading-spinner target="updateLarust" />
+                                        {{ __('Update Larust') }}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        wire:click="uninstallLarust"
+                                        onclick="return confirm('{{ __('Remove the managed Larust CLI? Rust and application files will be kept.') }}')"
+                                        class="px-3 py-2 text-xs rounded-md border border-rose-500/40 text-rose-200 hover:text-white inline-flex items-center gap-1.5"
+                                    >
+                                        <x-loading-spinner target="uninstallLarust" />
+                                        {{ __('Remove Larust CLI') }}
+                                    </button>
+                                @endif
+                            </div>
+
+                            <p class="text-xs text-slate-500">
+                                {{ __('Larust is built from source via :cmd from :repo. This requires Rust/Cargo and a native compiler on this host — see the Rust status below. SSH deployment hosts need their own separate installation.', ['cmd' => 'cargo install', 'repo' => $larustStatus['repository']]) }}
+                            </p>
+                        </div>
+                    @endif
+
                     {{-- Running Processes (moved to dedicated page) --}}
                     <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6">
                         <div class="flex items-center justify-between gap-3">
