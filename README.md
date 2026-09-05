@@ -118,6 +118,14 @@ If any value in `.env` contains a `$`, wrap it in single quotes to avoid Compose
 - Scheduler for auto-deploy and security sync.
 - Node.js is optional. It is only needed when deploying projects that run npm commands. GWM can install a bundled Node.js LTS runtime automatically via the Runtime Diagnostics page in System Control Center — no system-level install required.
 
+## Larust Projects
+
+Select **Larust** as the project type (Enterprise, like Rust). New projects enable `cargo build --release` and `cargo test`, with Composer, npm, and automatic dependency updates disabled. Cargo and the app's native build dependencies must be installed on the host executing the build (the SSH host for SSH deployments).
+
+Set Local Path to your Larust application's directory containing `Cargo.toml`. For a framework workspace such as `E:\vsprojects\Larust`, use workspace commands (`cargo build --release --workspace` and `cargo test --workspace`) to build and test the framework; select an app package explicitly when deploying a web server. Local path dependencies must also exist on the deployment host.
+
+Configure your app's `.env` and Site URL. Health Check URL is blank by default because generated apps do not necessarily register `/up`; set it only when your app provides that route. Use an application deployment script for migrations (for example, `cargo run --release -- migrate` in a single-app package) and service restarts. GWM runs the configured build/test commands but does not automatically start a Larust server or run its migrations. Serve the release binary through your process supervisor and reverse proxy; FTP upload alone cannot start a Rust server.
+
 ## Permissions (Important)
 Git operations are performed by the web server user. For reliable updates, the PHP-FPM user should match the filesystem owner of the app and project directories. If they differ, git may fail to write to `.git/objects` or `.git/index`.
 

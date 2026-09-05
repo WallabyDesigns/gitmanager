@@ -21,6 +21,7 @@ trait InteractsWithProjectTypes
             'react',
             'python',
             'rust',
+            'larust',
             'container',
             'custom',
         ];
@@ -79,6 +80,13 @@ trait InteractsWithProjectTypes
                 'description' => 'Rust deployment flow with Cargo build and test defaults.',
                 'locked' => ! $isEnterprise,
                 'locked_message' => 'Rust projects are available in Enterprise Edition.',
+            ],
+            [
+                'value' => 'larust',
+                'label' => 'Larust',
+                'description' => 'Larust web apps with Cargo release builds and tests. Configure migrations and service restarts for your app.',
+                'locked' => ! $isEnterprise,
+                'locked_message' => 'Larust projects are available in Enterprise Edition.',
             ],
             [
                 'value' => 'container',
@@ -147,7 +155,7 @@ trait InteractsWithProjectTypes
 
     private function isPremiumProjectType(string $value): bool
     {
-        return in_array($value, ['nextjs', 'react', 'python', 'rust', 'custom'], true);
+        return in_array($value, ['nextjs', 'react', 'python', 'rust', 'larust', 'custom'], true);
     }
 
     private function projectTypeLabel(string $value): string
@@ -160,6 +168,7 @@ trait InteractsWithProjectTypes
             'react' => 'React App',
             'python' => 'Python',
             'rust' => 'Rust',
+            'larust' => 'Larust',
             'container' => 'Container',
             default => 'Custom',
         };

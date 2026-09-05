@@ -23,6 +23,7 @@
                         ['value' => 'react', 'label' => 'React App', 'locked' => true, 'locked_message' => 'React App projects are available in Enterprise Edition.'],
                         ['value' => 'python', 'label' => 'Python', 'locked' => true],
                         ['value' => 'rust', 'label' => 'Rust', 'locked' => true, 'locked_message' => 'Rust projects are available in Enterprise Edition.'],
+                        ['value' => 'larust', 'label' => 'Larust', 'locked' => true, 'locked_message' => 'Larust projects are available in Enterprise Edition.'],
                         ['value' => 'container', 'label' => 'Container', 'locked' => false],
                         ['value' => 'custom', 'label' => 'Custom', 'locked' => true, 'locked_message' => 'Custom projects are available in Enterprise Edition.'],
                     ];
@@ -82,6 +83,9 @@
             <x-input-label for="build_command" :value="__('Build Command')" />
             <x-text-input id="build_command" class="mt-1 block w-full" wire:model="form.build_command" />
             <x-input-error :messages="$errors->get('form.build_command')" class="mt-2" />
+            @if (($form['project_type'] ?? 'custom') === 'larust')
+                <p class="mt-1 text-xs text-slate-500">{{ __('Builds and tests require Cargo on the deployment host. Use the app directory containing Cargo.toml. Configure database migrations and restart your app service in your deployment script; the build does not start the web server.') }}</p>
+            @endif
         </div>
         <div>
             <x-input-label for="test_command" :value="__('Test Command')" />

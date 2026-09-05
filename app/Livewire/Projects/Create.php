@@ -588,7 +588,7 @@ class Create extends Component
                 'test_command' => 'pytest',
                 'allow_dependency_updates' => false,
             ],
-            'rust' => [
+            'rust', 'larust' => [
                 'health_url' => '',
                 'run_composer_install' => false,
                 'run_npm_install' => false,
