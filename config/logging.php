@@ -54,7 +54,7 @@ return [
 
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', (string) env('LOG_STACK', 'single')),
+            'channels' => explode(',', env('LOG_STACK', 'sized')),
             'ignore_exceptions' => false,
         ],
 
@@ -63,6 +63,25 @@ return [
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
+        ],
+
+        // Rotates storage/logs/laravel.log by size instead of by date, so a
+        // busy day (or a noisy uncaught-exception loop) can't fill the disk.
+        // Once the file exceeds 'max_bytes' it's shifted to .1, .2, ... up
+        // to 'keep' backups and a fresh log is started. Set LOG_KEEP_FILES=0
+        // to just delete on overflow instead of keeping backups.
+        'sized' => [
+            'driver' => 'custom',
+            'via' => \App\Logging\SizeRotatingLogger::class,
+            'path' => storage_path('logs/laravel.log'),
+            'max_bytes' => env('LOG_MAX_SIZE', 10 * 1024 * 1024),
+            'keep' => env('LOG_KEEP_FILES', 3),
+            'level' => env('LOG_LEVEL', 'debug'),
+            // Set LOG_ALERT_EMAIL to get emailed whenever a rotation actually
+            // happens (throttled by LOG_ALERT_COOLDOWN seconds) — a fast-filling
+            // log is usually a symptom of something erroring repeatedly.
+            'alert_email' => env('LOG_ALERT_EMAIL'),
+            'alert_cooldown' => env('LOG_ALERT_COOLDOWN', 3600),
         ],
 
         'daily' => [
