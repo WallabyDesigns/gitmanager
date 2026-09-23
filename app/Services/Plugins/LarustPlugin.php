@@ -85,8 +85,15 @@ class LarustPlugin implements ManagedPlugin
         if ($cargoHome !== '' && is_dir($cargoHome.DIRECTORY_SEPARATOR.'bin')) {
             $paths[] = $cargoHome.DIRECTORY_SEPARATOR.'bin';
         }
+        // PHP-FPM commonly has a much smaller environment than an interactive
+        // shell. Keep this in the plugin too (rather than relying on the
+        // inherited PATH) so GWM_PROCESS_PATH works for the installer.
+        $configuredPath = trim((string) config('gitmanager.process_path', ''), "\"' ");
+        if ($configuredPath !== '') {
+            $paths[] = $configuredPath;
+        }
         $paths[] = $env[$key] ?? '';
-        $env[$key] = implode(PATH_SEPARATOR, $paths);
+        $env[$key] = implode(PATH_SEPARATOR, array_filter($paths, static fn ($path) => $path !== ''));
 
         return $env;
     }
@@ -103,14 +110,12 @@ class LarustPlugin implements ManagedPlugin
             @set_time_limit(0);
             $env = getenv();
             $env = $this->environment(is_array($env) ? $env : []);
-            $key = array_key_exists('PATH', $env) ? 'PATH' : 'Path';
-            $extra = trim((string) config('gitmanager.process_path', ''), "\"' ");
-            if ($extra !== '') {
-                $env[$key] = $extra.PATH_SEPARATOR.($env[$key] ?? '');
-            }
             $cargo = Process::env($env)->timeout(15)->run(['cargo', '--version']);
             if (! $cargo->successful()) {
-                return ['success' => false, 'message' => 'Rust/Cargo is unavailable. Install Rust for the web server user and add its bin directory to GWM_PROCESS_PATH, then retry.'];
+                $detail = trim($cargo->errorOutput()."\n".$cargo->output());
+
+                return ['success' => false, 'message' => 'Rust/Cargo is unavailable to the web server user. Install Rust for that user, or add its cargo bin directory to GWM_PROCESS_PATH, then retry.'
+                    .($detail !== '' ? ' Details: '.substr($detail, -1000) : '')];
             }
             $revision = $this->fetchLatestVersion();
             if ($revision === null) {

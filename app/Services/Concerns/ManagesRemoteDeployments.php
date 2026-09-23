@@ -75,7 +75,7 @@ trait ManagesRemoteDeployments
                         }
 
                         if ($project->run_test_command && $project->test_command) {
-                            $this->runSshCommand($connection, $project->test_command, $output);
+                            $this->runSshCommand($connection, $this->remoteProjectCommand($project, $project->test_command), $output);
                         }
 
                         $this->maybeRunNextJsRuntimeOverSsh($project, $connection, $output);
@@ -157,7 +157,7 @@ trait ManagesRemoteDeployments
                 }
 
                 if ($project->run_test_command && $project->test_command) {
-                    $this->runSshCommand($connection, $project->test_command, $output);
+                    $this->runSshCommand($connection, $this->remoteProjectCommand($project, $project->test_command), $output);
                 }
 
                 $this->maybeRunNextJsRuntimeOverSsh($project, $connection, $output);
@@ -605,6 +605,22 @@ trait ManagesRemoteDeployments
         return 'if [ -f package-lock.json ]; then npm ci; else npm install; fi';
     }
 
+    /**
+     * SSH commands run in a non-login shell, which normally omits Rustup's
+     * cargo bin directory even when Rust is installed for the SSH user. Load
+     * its standard environment for Rust and Larust projects before invoking
+     * their configured build or test command.
+     */
+    private function remoteProjectCommand(Project $project, string $command): string
+    {
+        if (! in_array((string) $project->project_type, ['rust', 'larust'], true)) {
+            return $command;
+        }
+
+        return 'if [ -f "$HOME/.cargo/env" ]; then . "$HOME/.cargo/env"; '
+            .'else export PATH="$HOME/.cargo/bin:$PATH"; fi; '.$command;
+    }
+
     private function runSshBuildCommandWithNpmRecovery(Project $project, array $connection, array &$output): void
     {
         $command = trim((string) $project->build_command);
@@ -613,7 +629,7 @@ trait ManagesRemoteDeployments
         }
 
         try {
-            $this->runSshCommand($connection, $command, $output);
+            $this->runSshCommand($connection, $this->remoteProjectCommand($project, $command), $output);
         } catch (\Throwable $exception) {
             $manager = $this->detectBuildPackageManager($command);
             if (! $manager) {
@@ -628,7 +644,7 @@ trait ManagesRemoteDeployments
             $this->runSshCommand($connection, $this->remoteInstallCommandForManager($manager), $output);
             $output[] = 'Retrying '.$labelPrefix.' build command over SSH.';
             $this->maybeStreamOutput($output, true);
-            $this->runSshCommand($connection, $command, $output);
+            $this->runSshCommand($connection, $this->remoteProjectCommand($project, $command), $output);
         }
     }
 

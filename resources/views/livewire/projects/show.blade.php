@@ -62,6 +62,13 @@
                         class="px-3 py-2 text-sm rounded-md">
                         {{ __('Node.js') }}
                     </button>
+                    @if (in_array($project->project_type, ['rust', 'larust'], true))
+                        <button type="button" @click="tab = 'runtime-service'"
+                            :class="tab === 'runtime-service' ? 'bg-slate-100 text-slate-900' : 'border border-slate-700 text-slate-300'"
+                            class="px-3 py-2 text-sm rounded-md">
+                            {{ __('Service') }}
+                        </button>
+                    @endif
                     <button type="button" @click="tab = 'debug'"
                         :class="tab === 'debug' ? 'bg-slate-100 text-slate-900' : 'border border-slate-700 text-slate-300'"
                         class="px-3 py-2 text-sm rounded-md">
@@ -555,6 +562,13 @@
                     class="min-w-0 bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6">
                     @livewire('projects.node-process', ['project' => $project], key('node-process-' . $project->id))
                 </div>
+
+                @if (in_array($project->project_type, ['rust', 'larust'], true))
+                    <div x-show="tab === 'runtime-service'" x-cloak
+                        class="min-w-0 bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6">
+                        @livewire('projects.runtime-service', ['project' => $project], key('runtime-service-' . $project->id))
+                    </div>
+                @endif
 
                 <div x-show="tab === 'logs'" x-cloak
                     class="min-w-0 bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6 space-y-5">
