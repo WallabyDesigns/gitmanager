@@ -3,7 +3,7 @@
 
     $showBulkActions = $showBulkActions ?? false;
     $explicitProjectsTab = $projectsTab ?? null;
-    $tab = $explicitProjectsTab ?? (request()->routeIs('projects.create') ? 'create' : 'list');
+    $projectTab = $explicitProjectsTab ?? (request()->routeIs('projects.create') ? 'create' : 'list');
     $projectNavState = app(NavigationStateService::class)->projectsSidebarState(auth()->user());
     $isAdmin = (bool) ($projectNavState['isAdmin'] ?? false);
     $isEnterprise = (bool) ($projectNavState['isEnterprise'] ?? false);
@@ -18,25 +18,23 @@
 
 <div class="min-w-0">
     <div class="flex flex-wrap items-end justify-between gap-2 border-b border-slate-800">
-        <nav class="flex flex-wrap gap-1" aria-label="{{ __('Projects navigation') }}">
+        <nav data-gwm-project-tabs class="flex flex-wrap gap-1" aria-label="{{ __('Projects navigation') }}">
             <a href="{{ route('projects.index') }}"
-               class="px-3 py-2 text-sm border-b-2 -mb-px {{ $tab === 'list' && ! $isFtpRoute ? $activeTabClass : $idleTabClass }}">
+               @if (! $isFtpRoute) aria-current="page" @endif
+               class="px-3 py-2 text-sm border-b-2 -mb-px {{ ! $isFtpRoute ? $activeTabClass : $idleTabClass }}">
                 {{ __('Projects') }}
-            </a>
-            <a href="{{ route('projects.create') }}"
-               class="px-3 py-2 text-sm border-b-2 -mb-px {{ $tab === 'create' && ! $isFtpRoute ? $activeTabClass : $idleTabClass }}">
-                {{ __('Create Project') }}
             </a>
             @if ($isAdmin)
                 <a href="{{ route('ftp-accounts.index') }}"
+                   @if ($isFtpRoute) aria-current="page" @endif
                    class="px-3 py-2 text-sm border-b-2 -mb-px {{ $isFtpRoute ? $activeTabClass : $idleTabClass }}">
                     {{ __('Remote Access') }}
                 </a>
             @endif
         </nav>
 
-        @if ($showBulkActions && $tab === 'list' && ! $isFtpRoute)
-            <div class="flex flex-wrap items-center gap-2 pb-2">
+        <div class="flex flex-wrap items-center gap-2 pb-2">
+            @if ($showBulkActions && $projectTab === 'list' && ! $isFtpRoute)
                 <label class="block">
                     <span class="sr-only">{{ __('Search projects') }}</span>
                     <span class="gwm-system-search flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 transition-colors focus-within:border-indigo-400/60">
@@ -80,7 +78,14 @@
                         {{ __('Audit Projects') }}
                     </button>
                 @endif
-            </div>
-        @endif
+            @endif
+            @if ($isFtpRoute)
+                @if ($isAdmin)
+                    <button data-gwm-create type="button" wire:click="setTab('ftpcreate')" class="gwm-btn gwm-btn-primary">{{ __('Create Remote Access') }}</button>
+                @endif
+            @else
+                <a data-gwm-create href="{{ route('projects.create') }}" class="gwm-btn gwm-btn-primary">{{ __('Create Project') }}</a>
+            @endif
+        </div>
     </div>
 </div>

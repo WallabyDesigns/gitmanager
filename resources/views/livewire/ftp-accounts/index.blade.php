@@ -3,7 +3,9 @@
         <div class="space-y-6">
             @include('livewire.projects.partials.tabs', ['showSchedulerNotice' => false, 'projectsTab' => 'ftp-accounts'])
             <div class="space-y-6">
-                @include('livewire.ftp-accounts.partials.tabs')
+                @if ($tab === 'ftpcreate')
+                    <div><button type="button" wire:click="setTab('list')" class="gwm-btn border border-slate-700 text-slate-200">{{ __('Back to Remote Access') }}</button></div>
+                @endif
 
                 @if ($tab === 'ftpcreate')
                     <div class="bg-slate-900 shadow-sm sm:rounded-xl border border-slate-800 p-6 space-y-6">
