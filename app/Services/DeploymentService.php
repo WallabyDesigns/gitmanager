@@ -1237,8 +1237,12 @@ class DeploymentService
 
             $this->runProcess(['git', '-C', $repoPath, 'worktree', 'add', '--force', $stagePath, $hash], $output);
 
+            // Ignored environment files do not travel into a Git worktree.
+            // FTP recovery must happen before Composer scripts/build/test boot.
+            $this->prepareFtpStagingEnvironment($project, $repoPath, $stagePath, $output);
+
             $this->runWithSingleRetry(function () use ($project, $stagePath, &$output): void {
-                $this->laravelDeploymentCheckService->run($project, $stagePath, $output, false);
+                $this->laravelDeploymentCheckService->run($project, $stagePath, $output, $this->shouldUseFtpWorkspace($project));
                 if ($project->run_composer_install) {
                     $this->runComposerCommandWithFallback(
                         $stagePath,
@@ -1271,8 +1275,12 @@ class DeploymentService
 
             $output[] = 'Staged deployment checks passed.';
         } finally {
-            $this->runProcess(['git', '-C', $repoPath, 'worktree', 'remove', '--force', $stagePath], $output, null, false);
-            $this->deleteDirectory($stagePath);
+            try {
+                $this->runProcess(['git', '-C', $repoPath, 'worktree', 'remove', '--force', $stagePath], $output, null, false);
+            } finally {
+                // Attempt filesystem cleanup even if Git cannot be launched.
+                $this->deleteDirectory($stagePath);
+            }
         }
     }
 
@@ -1773,6 +1781,88 @@ class DeploymentService
     /**
      * @param  array<int, string>  $output
      */
+    private function prepareFtpStagingEnvironment(Project $project, string $repoPath, string $stagePath, array &$output): void
+    {
+        if (! $this->shouldUseFtpWorkspace($project)) {
+            return;
+        }
+
+        $stageEnv = $stagePath.DIRECTORY_SEPARATOR.'.env';
+        if (file_exists($stageEnv) || is_link($stageEnv)) {
+            return;
+        }
+
+        $workspaceEnv = $repoPath.DIRECTORY_SEPARATOR.'.env';
+        if (! file_exists($workspaceEnv) && ! is_link($workspaceEnv)) {
+            // Keep explicit setup configuration ahead of remote recovery.
+            $seedPath = app(ProjectSeedService::class)->seedPath($project, '.env');
+            $seed = is_file($seedPath) && ! is_link($seedPath) ? @file_get_contents($seedPath) : false;
+            if (is_string($seed) && trim($seed) !== '' && $this->writeMissingImportedFile($workspaceEnv, $seed, '.env', $output)) {
+                @unlink($seedPath);
+                $output[] = 'Applied .env seed from setup configuration.';
+            }
+            $this->applyRemoteFtpSeedsIfMissing($project, $repoPath, $output, ['.env']);
+        }
+
+        if (! is_file($workspaceEnv) || is_link($workspaceEnv)) {
+            $output[] = 'FTP staging .env is unavailable; normal deployment validation still applies.';
+
+            return;
+        }
+        $contents = @file_get_contents($workspaceEnv);
+        if ($contents === false || trim($contents) === '') {
+            $output[] = 'FTP workspace .env is unreadable or empty; it was not replaced.';
+
+            return;
+        }
+        if ($this->writeMissingImportedFile($stageEnv, $contents, '.env', $output)) {
+            $output[] = 'Prepared .env for FTP staging. Staging commands can access the configured production services.';
+        }
+    }
+
+    /** Create exclusively: an existing file, directory or symlink always wins. */
+    private function writeMissingImportedFile(string $target, string $contents, string $file, array &$output): bool
+    {
+        if (file_exists($target) || is_link($target)) {
+            return false;
+        }
+        $previousMask = umask($file === '.env' ? 0077 : 0002);
+        try {
+            $handle = @fopen($target, 'xb');
+        } finally {
+            umask($previousMask);
+        }
+        if ($handle === false) {
+            $output[] = 'Unable to create missing '.$file.'; an existing target was not overwritten.';
+
+            return false;
+        }
+
+        $written = 0;
+        $length = strlen($contents);
+        try {
+            while ($written < $length) {
+                $count = @fwrite($handle, substr($contents, $written));
+                if ($count === false || $count === 0) {
+                    break;
+                }
+                $written += $count;
+            }
+            $complete = $written === $length && @fflush($handle);
+        } finally {
+            fclose($handle);
+        }
+        if (! $complete) {
+            @unlink($target);
+            $output[] = 'Unable to import complete '.$file.'; partial local copy removed.';
+
+            return false;
+        }
+        @chmod($target, $file === '.env' ? 0600 : 0664);
+
+        return true;
+    }
+
     private function applyProjectSeeds(Project $project, string $executionPath, array &$output): void
     {
         $root = $this->findLaravelRoot($executionPath) ?? $executionPath;
@@ -1789,15 +1879,16 @@ class DeploymentService
     /**
      * @param  array<int, string>  $output
      */
-    private function applyRemoteFtpSeedsIfMissing(Project $project, string $root, array &$output): void
+    private function applyRemoteFtpSeedsIfMissing(Project $project, string $root, array &$output, array $files = ['.env', '.htaccess', 'public/.htaccess']): void
     {
         if (! $this->shouldUseFtpWorkspace($project)) {
             return;
         }
 
         $missing = [];
-        foreach (['.env', '.htaccess', 'public/.htaccess'] as $file) {
-            if (! is_file($root.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $file))) {
+        foreach ($files as $file) {
+            $target = $root.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $file);
+            if (! file_exists($target) && ! is_link($target)) {
                 $missing[] = $file;
             }
         }
@@ -1808,15 +1899,20 @@ class DeploymentService
 
         try {
             $remoteFiles = app(FtpService::class)->fetchRemoteFiles($project, $missing, $output);
-        } catch (\Throwable $exception) {
-            $output[] = 'FTP seed import skipped: '.$exception->getMessage();
+        } catch (\Throwable) {
+            $output[] = 'FTP seed import skipped: remote files could not be retrieved.';
 
             return;
         }
 
         foreach ($missing as $file) {
             $contents = $remoteFiles[$file] ?? null;
-            if ($contents === null) {
+            if (! is_string($contents)) {
+                continue;
+            }
+            if ($file === '.env' && trim($contents) === '') {
+                $output[] = 'Remote .env is empty; no local copy was imported.';
+
                 continue;
             }
 
@@ -1828,13 +1924,10 @@ class DeploymentService
                 continue;
             }
 
-            if (@file_put_contents($target, $contents) === false) {
-                $output[] = 'Unable to import remote '.$file.' into FTP workspace.';
-
+            if (! $this->writeMissingImportedFile($target, $contents, $file, $output)) {
                 continue;
             }
 
-            @chmod($target, 0664);
             $output[] = 'Imported remote '.$file.' into FTP workspace.';
         }
     }
