@@ -110,12 +110,14 @@
                                 @php
                                     $ftpClass = match ($testStatus) {
                                         'ok' => 'gwm-status-success',
-                                        'warning' => 'gwm-status-warning',
+                                        'warning', 'pending' => 'gwm-status-warning',
                                         default => 'gwm-status-danger',
                                     };
                                 @endphp
-                                <span class="px-2 py-1 rounded-full text-xs uppercase tracking-wide {{ $ftpClass }}">{{ $testStatus }}</span>
-                                <span class="text-xs text-slate-400">{{ $testMessage }}</span>
+                                <span @if ($ftpTestToken) wire:poll.2s="checkFtpTestResult" @endif class="inline-flex items-center gap-2">
+                                    <span class="px-2 py-1 rounded-full text-xs uppercase tracking-wide {{ $ftpClass }}">{{ $testStatus }}</span>
+                                    <span class="text-xs text-slate-400">{{ $testMessage }}</span>
+                                </span>
                             @endif
                             @if ($sshTestStatus)
                                 @php

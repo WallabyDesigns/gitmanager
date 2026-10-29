@@ -11,9 +11,16 @@ class FtpService
     /**
      * @var array{host: string, port: int, username: string, password: string, ssl: bool, passive: bool, timeout: int, rootPath: string}|null
      */
+    /** Synchronous tests run behind Cloudflare (~100s limit), so keep every wait short. */
+    public const SYNC_TEST_TIMEOUT_SECONDS = 10;
+
     private ?array $syncContext = null;
 
     private ?string $lastDataChannelError = null;
+
+    private float $testStartedAt = 0.0;
+
+    private int $testBudgetSeconds = self::SYNC_TEST_TIMEOUT_SECONDS * 5;
 
     /**
      * @return array{status: string, message: string}
@@ -43,8 +50,13 @@ class FtpService
         bool $ssl,
         bool $passive,
         int $timeout,
-        ?string $rootPath
+        ?string $rootPath,
+        int $maxWaitSeconds = self::SYNC_TEST_TIMEOUT_SECONDS
     ): array {
+        $timeout = min($timeout, $maxWaitSeconds);
+        $this->testBudgetSeconds = $maxWaitSeconds * 5;
+        $this->testStartedAt = microtime(true);
+
         if (! $this->ftpAvailable($ssl)) {
             return [
                 'status' => 'error',
@@ -753,6 +765,10 @@ class FtpService
 
         $first = null;
         foreach ($attempts as [$mode, $usePasvAddress, $note]) {
+            if ($first !== null && (microtime(true) - $this->testStartedAt) > $this->testBudgetSeconds) {
+                break;
+            }
+
             @ftp_pasv($connection, $mode);
             @ftp_set_option($connection, FTP_USEPASVADDRESS, $usePasvAddress);
 

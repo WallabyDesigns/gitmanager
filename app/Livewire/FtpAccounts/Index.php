@@ -2,12 +2,16 @@
 
 namespace App\Livewire\FtpAccounts;
 
+use App\Jobs\TestFtpConnection;
 use App\Models\FtpAccount;
 use App\Models\Project;
 use App\Services\FtpService;
 use App\Services\SshService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Str;
 use Livewire\Component;
 
 class Index extends Component
@@ -33,6 +37,12 @@ class Index extends Component
     public ?string $sshTestSignature = null;
 
     public bool $ftpTestRan = false;
+
+    public ?string $ftpTestToken = null;
+
+    public ?int $ftpTestQueuedAt = null;
+
+    private const FTP_TEST_PENDING_LIMIT_SECONDS = 240;
 
     public bool $sshTestRan = false;
 
@@ -86,6 +96,8 @@ class Index extends Component
         $this->sshTestSignature = $account->ssh_test_signature;
         $this->ftpTestRan = false;
         $this->sshTestRan = false;
+        $this->ftpTestToken = null;
+        $this->ftpTestQueuedAt = null;
         $this->tab = 'ftpcreate';
     }
 
@@ -160,22 +172,57 @@ class Index extends Component
             return;
         }
 
-        $result = app(FtpService::class)->testConnection(
+        $this->ftpTestToken = (string) Str::uuid();
+        $this->ftpTestQueuedAt = time();
+        $this->ftpTestSignature = $this->computeFtpSignature($data, $password);
+        $this->ftpTestRan = false;
+        $this->testStatus = 'pending';
+        $this->testMessage = 'Testing in the background...';
+
+        TestFtpConnection::dispatch(
+            $this->ftpTestToken,
             $data['host'],
             (int) ($data['port'] ?? 21),
             $data['username'],
-            $password,
+            Crypt::encryptString($password),
             ($data['encryption'] ?? 'explicit') !== 'none',
             (bool) ($data['passive'] ?? true),
             (int) ($data['timeout'] ?? 30),
             $data['root_path'] ?? null
         );
+    }
 
-        $this->testStatus = $result['status'] ?? 'error';
-        $this->testMessage = $result['message'] ?? 'Unable to test FTP connection.';
-        $this->ftpTestSignature = $this->computeFtpSignature($data, $password);
+    /**
+     * Polled by the view while a background FTP test is pending.
+     */
+    public function checkFtpTestResult(): void
+    {
+        if (! $this->ftpTestToken) {
+            return;
+        }
+
+        $result = Cache::get(TestFtpConnection::resultKey($this->ftpTestToken));
+
+        if ($result === null) {
+            if (time() - (int) $this->ftpTestQueuedAt > self::FTP_TEST_PENDING_LIMIT_SECONDS) {
+                $this->finishFtpTest('error', 'The FTP test did not complete. Check that the queue worker (php artisan queue:work) is running.');
+            }
+
+            return;
+        }
+
+        $this->finishFtpTest($result['status'] ?? 'error', $result['message'] ?? 'Unable to test FTP connection.');
+    }
+
+    private function finishFtpTest(string $status, string $message): void
+    {
+        Cache::forget(TestFtpConnection::resultKey((string) $this->ftpTestToken));
+        $this->ftpTestToken = null;
+        $this->ftpTestQueuedAt = null;
+        $this->testStatus = $status;
+        $this->testMessage = $message;
         $this->ftpTestRan = true;
-        $this->persistAccessTestResult('ftp', $this->testStatus, $this->testMessage);
+        $this->persistAccessTestResult('ftp', $status, $message);
     }
 
     private function resetForm(): void
@@ -203,6 +250,8 @@ class Index extends Component
         $this->sshTestSignature = null;
         $this->ftpTestRan = false;
         $this->sshTestRan = false;
+        $this->ftpTestToken = null;
+        $this->ftpTestQueuedAt = null;
     }
 
     private function rules(): array
@@ -264,6 +313,8 @@ class Index extends Component
         $this->testMessage = null;
         $this->ftpTestSignature = null;
         $this->ftpTestRan = false;
+        $this->ftpTestToken = null;
+        $this->ftpTestQueuedAt = null;
 
         $validated = $this->validate($this->sshTestRules());
         $data = $validated['form'];
