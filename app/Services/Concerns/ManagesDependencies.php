@@ -371,6 +371,17 @@ trait ManagesDependencies
         }, false, $syncFtp, $resolveAuditIssues);
     }
 
+    public function hasCargo(Project $project): bool
+    {
+        try {
+            $repoPath = $this->resolveRepoPath($project);
+
+            return is_file($repoPath.DIRECTORY_SEPARATOR.'Cargo.toml');
+        } catch (\Throwable $exception) {
+            return false;
+        }
+    }
+
     /**
      * @return array<string, array<string, mixed>>
      */
@@ -388,7 +399,104 @@ trait ManagesDependencies
             $results['npm'] = $this->runNpmAuditFlow($project, $user, $autoFix);
         }
 
+        if ($this->hasCargo($project)) {
+            $results['cargo'] = $this->runCargoAuditFlow($project, $user);
+        }
+
         return $results;
+    }
+
+    /**
+     * Scan only: cargo-audit has no automatic fix, so issues go straight to notification.
+     *
+     * @return array<string, mixed>
+     */
+    private function runCargoAuditFlow(Project $project, ?User $user): array
+    {
+        $deployment = $this->cargoAudit($project, $user);
+        $base = [
+            'tool' => 'cargo',
+            'status' => $deployment->status,
+            'found' => null,
+            'fixed' => null,
+            'remaining' => null,
+            'severity' => null,
+            'summary' => 'Cargo audit failed.',
+            'fix_summary' => null,
+            'fix_applied' => false,
+            'deployment_ids' => [$deployment->id],
+        ];
+
+        if ($deployment->status === 'failed') {
+            return $base;
+        }
+
+        $count = $this->parseCargoAuditLog($deployment->output_log);
+        if ($count === null) {
+            return $base;
+        }
+
+        return array_merge($base, [
+            'found' => $count,
+            'remaining' => $count,
+            'summary' => match (true) {
+                $count === 0 => 'Cargo audit found no vulnerabilities.',
+                $count === 1 => 'Cargo audit found 1 vulnerability.',
+                default => "Cargo audit found {$count} vulnerabilities.",
+            },
+        ]);
+    }
+
+    public function cargoAudit(Project $project, ?User $user = null): Deployment
+    {
+        $deployment = $this->runMaintenanceAction($project, $user, 'cargo_audit', function (string $path, array &$output) use ($project): void {
+            if ($this->shouldUseFtpWorkspace($project)) {
+                if (! $this->refreshFtpManifestFiles($project, $path, ['Cargo.toml', 'Cargo.lock'], $output, true, true)) {
+                    throw new \RuntimeException('Unable to refresh FTP Cargo files before audit.');
+                }
+            }
+
+            if (! is_file($path.DIRECTORY_SEPARATOR.'Cargo.lock')) {
+                throw new \RuntimeException('Cargo.lock was not found in: '.$path.'. Commit a Cargo.lock (run cargo generate-lockfile) so cargo audit can scan it.');
+            }
+
+            $this->logStep($output, 'Cargo audit', $path, 'cargo audit --json');
+            $process = $this->runProjectProcess(['cargo', 'audit', '--json'], $output, $path, false);
+            $exitCode = $process->getExitCode() ?? 1;
+            $text = implode("\n", $output);
+
+            if (str_contains($text, 'no such command') && str_contains($text, 'audit')) {
+                throw new \RuntimeException('cargo-audit is not installed on this host. Install it with: cargo install cargo-audit --locked');
+            }
+
+            // Exit 0 = clean, 1 = vulnerabilities found OR an error; only the JSON report tells them apart.
+            if ($exitCode !== 0 && $this->parseCargoAuditLog($text) === null) {
+                throw new \RuntimeException($this->resourceExhausted($text)
+                    ? 'Cargo audit could not start because the host is out of process/thread capacity.'
+                    : 'Cargo audit failed.');
+            }
+        }, false, false, false);
+
+        if ($deployment->status === 'success' && ($this->parseCargoAuditLog($deployment->output_log) ?? 0) > 0) {
+            $deployment->status = 'warning';
+            $deployment->save();
+        }
+
+        return $deployment;
+    }
+
+    private function parseCargoAuditLog(?string $log): ?int
+    {
+        $json = $this->extractJsonObject((string) $log);
+        $count = is_array($json) ? ($json['vulnerabilities']['count'] ?? null) : null;
+
+        if (is_numeric($count)) {
+            return (int) $count;
+        }
+
+        $list = is_array($json) ? ($json['vulnerabilities']['list'] ?? null) : null;
+
+        return is_array($list) ? count($list) : null;
     }
 
     /**
@@ -899,6 +1007,8 @@ trait ManagesDependencies
                 'npm-shrinkwrap.json',
                 'pnpm-lock.yaml',
                 'yarn.lock',
+                'Cargo.toml',
+                'Cargo.lock',
             ], $output, true, true);
         } catch (\Throwable $exception) {
             // Individual audit actions will surface connection or filesystem errors.

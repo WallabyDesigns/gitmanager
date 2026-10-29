@@ -75,7 +75,7 @@ class Index extends Component
             'ssh_key_path' => $account->ssh_key_path,
             'root_path' => $account->root_path,
             'passive' => (bool) $account->passive,
-            'ssl' => (bool) $account->ssl,
+            'encryption' => $account->ftpEncryption(),
             'timeout' => $account->timeout ?? 30,
         ];
         $this->testStatus = $account->ftp_test_status;
@@ -93,6 +93,7 @@ class Index extends Component
     {
         $validated = $this->validate($this->rules());
         $data = $validated['form'];
+        $data['ssl'] = $data['encryption'] !== 'none';
         $password = $data['password'] ?? '';
         unset($data['password']);
 
@@ -164,7 +165,7 @@ class Index extends Component
             (int) ($data['port'] ?? 21),
             $data['username'],
             $password,
-            (bool) ($data['ssl'] ?? false),
+            ($data['encryption'] ?? 'explicit') !== 'none',
             (bool) ($data['passive'] ?? true),
             (int) ($data['timeout'] ?? 30),
             $data['root_path'] ?? null
@@ -191,7 +192,7 @@ class Index extends Component
             'ssh_key_path' => '',
             'root_path' => '',
             'passive' => true,
-            'ssl' => true,
+            'encryption' => 'explicit',
             'timeout' => 30,
         ];
         $this->testStatus = null;
@@ -221,7 +222,7 @@ class Index extends Component
             'form.ssh_key_path' => ['nullable', 'string', 'max:255'],
             'form.root_path' => ['nullable', 'string', 'max:255'],
             'form.passive' => ['boolean'],
-            'form.ssl' => ['boolean'],
+            'form.encryption' => ['required', 'in:none,explicit'],
             'form.timeout' => ['nullable', 'integer', 'min:5', 'max:120'],
         ];
     }
@@ -239,7 +240,7 @@ class Index extends Component
             ],
             'form.root_path' => ['nullable', 'string', 'max:255'],
             'form.passive' => ['boolean'],
-            'form.ssl' => ['boolean'],
+            'form.encryption' => ['required', 'in:none,explicit'],
             'form.timeout' => ['nullable', 'integer', 'min:5', 'max:120'],
         ];
     }
@@ -389,7 +390,7 @@ class Index extends Component
             (int) ($data['port'] ?? 21),
             $data['username'],
             $password,
-            (bool) ($data['ssl'] ?? false),
+            ($data['encryption'] ?? 'explicit') !== 'none',
             (bool) ($data['passive'] ?? true),
             (int) ($data['timeout'] ?? 30),
             $data['root_path'] ?? null

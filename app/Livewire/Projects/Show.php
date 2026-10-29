@@ -359,6 +359,7 @@ class Show extends Component
             'npm_install' => 'Npm Install',
             'npm_update' => 'Npm Update',
             'npm_audit' => 'Npm Audit',
+            'cargo_audit' => 'Cargo Audit',
             'npm_audit_fix' => 'Npm Audit Fix',
             'npm_audit_fix_force' => 'Npm Audit Fix (Force)',
             'audit_project' => 'Project Audit',

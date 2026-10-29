@@ -417,6 +417,7 @@ class DependencyActions extends Component
             'npm_install' => 'Npm install',
             'npm_update' => 'Npm update',
             'npm_audit' => 'Npm audit',
+            'cargo_audit' => 'Cargo audit',
             'npm_audit_fix' => 'Npm audit fix',
             'npm_audit_fix_force' => 'Npm audit fix (force)',
             'custom_command' => 'Custom command',

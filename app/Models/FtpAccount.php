@@ -19,6 +19,7 @@ class FtpAccount extends Model
         'root_path',
         'passive',
         'ssl',
+        'encryption',
         'timeout',
         'ftp_test_status',
         'ftp_test_message',
@@ -77,11 +78,25 @@ class FtpAccount extends Model
             'password_signature' => $passwordSignature,
             'root_path' => $this->root_path,
             'passive' => (bool) $this->passive,
-            'ssl' => (bool) $this->ssl,
+            'encryption' => $this->ftpEncryption(),
             'timeout' => (int) ($this->timeout ?? 30),
         ];
 
         return hash('sha256', json_encode($payload));
+    }
+
+    /**
+     * Resolved FTP encryption mode: 'none' or 'explicit'. Falls back to the
+     * legacy ssl flag for records created before the encryption column existed.
+     */
+    public function ftpEncryption(): string
+    {
+        $encryption = (string) ($this->encryption ?? '');
+        if (in_array($encryption, ['none', 'explicit'], true)) {
+            return $encryption;
+        }
+
+        return $this->ssl ? 'explicit' : 'none';
     }
 
     public function currentSshTestSignature(): string

@@ -703,6 +703,10 @@ class DeploymentQueueService
                     $deployment = $service->composerAudit($project, $user);
                     $markFailed = $deployment->status === 'failed';
                     break;
+                case 'cargo_audit':
+                    $deployment = $service->cargoAudit($project, $user);
+                    $markFailed = $deployment->status === 'failed';
+                    break;
                 case 'npm_install':
                     $deployment = $service->npmInstall($project, $user);
                     $markFailed = $deployment->status === 'failed';

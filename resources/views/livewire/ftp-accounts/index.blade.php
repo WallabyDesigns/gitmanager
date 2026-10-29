@@ -70,10 +70,14 @@
                         </div>
 
                         <div class="grid gap-4 sm:grid-cols-3">
-                            <label class="flex items-center gap-2 text-sm text-slate-300">
-                                <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.ssl" />
-                                {{ __('Use FTPS (SSL)') }}
-                            </label>
+                            <div>
+                                <x-input-label for="ftp_encryption" :value="__('Encryption')" />
+                                <select id="ftp_encryption" wire:model.live="form.encryption" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:ring-indigo-500 text-sm">
+                                    <option value="explicit">{{ __('Explicit TLS (FTPS, AUTH TLS)') }}</option>
+                                    <option value="none">{{ __('None (plain FTP)') }}</option>
+                                </select>
+                                <x-input-error :messages="$errors->get('form.encryption')" class="mt-2" />
+                            </div>
                             <label class="flex items-center gap-2 text-sm text-slate-300">
                                 <input type="checkbox" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" wire:model.live="form.passive" />
                                 {{ __('Passive mode') }}
@@ -140,8 +144,8 @@
                                                 $ftpNeedsTest = $account->ftpNeedsTest();
                                                 $sshNeedsTest = $account->sshNeedsTest();
                                             @endphp
-                                            <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $account->ssl ? 'bg-emerald-500/10 text-emerald-300' : 'bg-amber-500/10 text-amber-300' }}">
-                                                {{ $account->ssl ? 'FTPS' : 'FTP' }}
+                                            <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full {{ $account->ftpEncryption() === 'explicit' ? 'bg-emerald-500/10 text-emerald-300' : 'bg-amber-500/10 text-amber-300' }}">
+                                                {{ $account->ftpEncryption() === 'explicit' ? 'FTPS' : 'FTP' }}
                                             </span>
                                             @if ($account->passive)
                                                 <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-slate-800 text-slate-300">{{ __('Passive') }}</span>

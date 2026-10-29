@@ -122,6 +122,52 @@ class DependencyAuditIssueResolutionTest extends TestCase
         }
     }
 
+    public function test_cargo_audit_log_parser_counts_vulnerabilities_from_json_report(): void
+    {
+        $clean = "Cargo audit (path: /app)\n\$ cargo audit --json\n".json_encode([
+            'vulnerabilities' => ['found' => false, 'count' => 0, 'list' => []],
+        ]);
+        $dirty = json_encode([
+            'vulnerabilities' => ['found' => true, 'count' => 2, 'list' => [['advisory' => ['id' => 'RUSTSEC-2024-0001']], ['advisory' => ['id' => 'RUSTSEC-2024-0002']]]],
+        ]);
+
+        $this->assertSame(0, $this->parseCargoLog($clean));
+        $this->assertSame(2, $this->parseCargoLog($dirty));
+    }
+
+    public function test_cargo_audit_log_parser_returns_null_for_non_report_output(): void
+    {
+        $this->assertNull($this->parseCargoLog(''));
+        $this->assertNull($this->parseCargoLog("error: no such command: `audit`"));
+    }
+
+    public function test_cargo_audit_failure_is_not_recorded_as_a_vulnerability_result(): void
+    {
+        $project = Project::factory()->create(['user_id' => User::factory()]);
+        $service = $this->partialMock(DeploymentService::class, function ($mock) use ($project) {
+            $deployment = new \App\Models\Deployment(['project_id' => $project->id, 'action' => 'cargo_audit', 'status' => 'failed']);
+            $deployment->id = 1;
+            $mock->shouldReceive('cargoAudit')->once()->andReturn($deployment);
+        });
+
+        $method = new \ReflectionMethod(DeploymentService::class, 'runCargoAuditFlow');
+        $method->setAccessible(true);
+        $result = $method->invoke($service, $project, null);
+
+        $this->assertSame('cargo', $result['tool']);
+        $this->assertSame('failed', $result['status']);
+        $this->assertNull($result['remaining']);
+    }
+
+    private function parseCargoLog(string $log): ?int
+    {
+        $service = app(DeploymentService::class);
+        $method = new \ReflectionMethod($service, 'parseCargoAuditLog');
+        $method->setAccessible(true);
+
+        return $method->invoke($service, $log);
+    }
+
     /**
      * @param  array<int, string>  $output
      */

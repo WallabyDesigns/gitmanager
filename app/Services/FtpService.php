@@ -23,7 +23,7 @@ class FtpService
             $account->port ?? 21,
             $account->username,
             $account->getDecryptedPassword(),
-            (bool) $account->ssl,
+            $account->ftpEncryption() === 'explicit',
             (bool) $account->passive,
             (int) ($account->timeout ?? 30),
             $rootPath ?: $account->root_path
@@ -54,13 +54,19 @@ class FtpService
 
         $connection = $this->connect($host, $port, $ssl, $timeout);
         if (! $connection) {
-            return ['status' => 'error', 'message' => 'Unable to connect to the FTP server.'];
+            return ['status' => 'error', 'message' => $this->describeConnectFailure($host, $port, $ssl, $timeout)];
         }
 
         if (! @ftp_login($connection, $username, $password)) {
+            $lastError = error_get_last()['message'] ?? '';
             $this->safeClose($connection);
 
-            return ['status' => 'error', 'message' => 'FTP login failed. Check username/password.'];
+            return [
+                'status' => 'error',
+                'message' => 'FTP login failed. Check username/password'
+                    .($ssl ? ', or try setting Encryption to None if the server does not support explicit TLS.' : '.')
+                    .($lastError !== '' ? ' PHP reported: '.$lastError : ''),
+            ];
         }
 
         @ftp_pasv($connection, $passive);
@@ -103,14 +109,14 @@ class FtpService
             return;
         }
 
-        if (! $this->ftpAvailable((bool) $account->ssl)) {
+        if (! $this->ftpAvailable($account->ftpEncryption() === 'explicit')) {
             return;
         }
 
         $connection = $this->connect(
             $account->host,
             (int) ($account->port ?? 21),
-            (bool) $account->ssl,
+            $account->ftpEncryption() === 'explicit',
             (int) ($account->timeout ?? 30)
         );
 
@@ -183,7 +189,7 @@ class FtpService
             throw new \RuntimeException('Remote Root Path is required for FTP sync. Set it on the project or selected remote access record.');
         }
 
-        if (! $this->ftpAvailable((bool) $account->ssl)) {
+        if (! $this->ftpAvailable($account->ftpEncryption() === 'explicit')) {
             throw new \RuntimeException('FTP extension not available for this PHP installation.');
         }
 
@@ -192,7 +198,7 @@ class FtpService
             'port' => (int) ($account->port ?? 21),
             'username' => $account->username,
             'password' => $account->getDecryptedPassword(),
-            'ssl' => (bool) $account->ssl,
+            'ssl' => $account->ftpEncryption() === 'explicit',
             'passive' => (bool) $account->passive,
             'timeout' => (int) ($account->timeout ?? 30),
             'rootPath' => $this->normalizeRemotePath($rootPath),
@@ -246,7 +252,7 @@ class FtpService
             throw new \RuntimeException('Remote Root Path is required for FTP sync. Set it on the project or selected remote access record.');
         }
 
-        if (! $this->ftpAvailable((bool) $account->ssl)) {
+        if (! $this->ftpAvailable($account->ftpEncryption() === 'explicit')) {
             throw new \RuntimeException('FTP extension not available for this PHP installation.');
         }
 
@@ -286,7 +292,7 @@ class FtpService
             'port' => (int) ($account->port ?? 21),
             'username' => $account->username,
             'password' => $account->getDecryptedPassword(),
-            'ssl' => (bool) $account->ssl,
+            'ssl' => $account->ftpEncryption() === 'explicit',
             'passive' => (bool) $account->passive,
             'timeout' => (int) ($account->timeout ?? 30),
             'rootPath' => $this->normalizeRemotePath($rootPath),
@@ -360,7 +366,7 @@ class FtpService
             return [];
         }
 
-        if (! $this->ftpAvailable((bool) $account->ssl)) {
+        if (! $this->ftpAvailable($account->ftpEncryption() === 'explicit')) {
             $output[] = 'FTP-only pipeline skipped: FTP extension not available for this PHP installation.';
 
             return [];
@@ -374,7 +380,7 @@ class FtpService
         $connection = $this->connect(
             $account->host,
             (int) ($account->port ?? 21),
-            (bool) $account->ssl,
+            $account->ftpEncryption() === 'explicit',
             (int) ($account->timeout ?? 30)
         );
 
@@ -548,24 +554,45 @@ class FtpService
     private function connect(string $host, int $port, bool $ssl, int $timeout): mixed
     {
         if ($ssl && function_exists('ftp_ssl_connect')) {
-            $connection = @ftp_ssl_connect($host, $port, $timeout);
-            if ($connection && function_exists('ftp_set_option')) {
-                @ftp_set_option($connection, FTP_TIMEOUT_SEC, $timeout);
-            }
-
-            return $connection;
+            return $this->configureConnection(@ftp_ssl_connect($host, $port, $timeout), $timeout);
         }
 
         if (function_exists('ftp_connect')) {
-            $connection = @ftp_connect($host, $port, $timeout);
-            if ($connection && function_exists('ftp_set_option')) {
-                @ftp_set_option($connection, FTP_TIMEOUT_SEC, $timeout);
-            }
-
-            return $connection;
+            return $this->configureConnection(@ftp_connect($host, $port, $timeout), $timeout);
         }
 
         return false;
+    }
+
+    private function configureConnection(mixed $connection, int $timeout): mixed
+    {
+        if ($connection && function_exists('ftp_set_option')) {
+            @ftp_set_option($connection, FTP_TIMEOUT_SEC, $timeout);
+            // Many hosts (NAT, shared hosting, proxies) advertise an internal or
+            // wrong IP in the PASV reply, which makes the data channel time out.
+            // Ignore the advertised address and reuse the control-connection host.
+            @ftp_set_option($connection, FTP_USEPASVADDRESS, false);
+        }
+
+        return $connection;
+    }
+
+    private function describeConnectFailure(string $host, int $port, bool $ssl, int $timeout): string
+    {
+        $lastError = error_get_last()['message'] ?? '';
+        $detail = $lastError !== '' ? ' PHP reported: '.$lastError : '';
+
+        return sprintf(
+            'Unable to connect to %s:%d (%s, %ds timeout). The server may be blocking or rate-limiting this host, '
+            .'a firewall may be dropping port %d, or the %s handshake failed.%s',
+            $host,
+            $port,
+            $ssl ? 'explicit TLS' : 'plain FTP',
+            $timeout,
+            $port,
+            $ssl ? 'TLS' : 'FTP',
+            $detail
+        );
     }
 
     /**
