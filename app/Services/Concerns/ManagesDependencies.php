@@ -460,21 +460,32 @@ trait ManagesDependencies
                 throw new \RuntimeException('Cargo.lock was not found in: '.$path.'. Commit a Cargo.lock (run cargo generate-lockfile) so cargo audit can scan it.');
             }
 
-            $this->logStep($output, 'Cargo audit', $path, 'cargo audit --json');
-            $process = $this->runProjectProcess(['cargo', 'audit', '--json'], $output, $path, false);
+            $command = $this->cargoAuditCommand();
+            $this->logStep($output, 'Cargo audit', $path, implode(' ', $command));
+            $process = $this->runProjectProcess($command, $output, $path, false);
             $exitCode = $process->getExitCode() ?? 1;
-            $text = implode("\n", $output);
 
-            if (str_contains($text, 'no such command') && str_contains($text, 'audit')) {
-                throw new \RuntimeException('cargo-audit is not installed on this host. Install it with: cargo install cargo-audit --locked');
+            // Parse stdout directly: $output is split into chunks and re-joined with
+            // newlines, which corrupts large JSON reports (the ones that list vulnerabilities).
+            $report = $process->getOutput();
+            $errorText = trim($process->getErrorOutput());
+            $text = $report."\n".$errorText;
+
+            if ($exitCode === 127 || (str_contains($errorText, 'no such command') && str_contains($errorText, 'audit'))
+                || str_contains($errorText, 'No such file or directory') || str_contains($errorText, 'not found')) {
+                throw new \RuntimeException('cargo-audit is not installed for the web/queue user. Install the cargo-audit binary (https://github.com/rustsec/rustsec/releases) on PATH, or run: cargo install cargo-audit --locked');
             }
 
             // Exit 0 = clean, 1 = vulnerabilities found OR an error; only the JSON report tells them apart.
-            if ($exitCode !== 0 && $this->parseCargoAuditLog($text) === null) {
+            if ($exitCode !== 0 && $this->parseCargoAuditLog($report) === null) {
+                $tail = implode("\n", array_slice(array_filter(explode("\n", $errorText)), -5));
                 throw new \RuntimeException($this->resourceExhausted($text)
                     ? 'Cargo audit could not start because the host is out of process/thread capacity.'
-                    : 'Cargo audit failed.');
+                    : 'Cargo audit failed (exit '.$exitCode.')'.($tail !== '' ? ': '.$tail : '.'));
             }
+
+            // Make the stored log parseable regardless of how $output was chunked.
+            $output[] = $report;
         }, false, false, false);
 
         if ($deployment->status === 'success' && ($this->parseCargoAuditLog($deployment->output_log) ?? 0) > 0) {
@@ -483,6 +494,32 @@ trait ManagesDependencies
         }
 
         return $deployment;
+    }
+
+    /**
+     * Prefer the standalone cargo-audit binary (no Rust toolchain needed) and keep
+     * the advisory database in storage/, which the web/queue user can always write
+     * (their HOME, and so ~/.cargo, often is not writable).
+     *
+     * @return array<int, string>
+     */
+    private function cargoAuditCommand(): array
+    {
+        $db = storage_path('app/cargo-advisory-db');
+        if (! is_dir($db)) {
+            @mkdir($db, 0775, true);
+        }
+
+        $standalone = $this->resolveBinaryFromPath('cargo-audit');
+        foreach (['/usr/local/bin/cargo-audit', '/root/.cargo/bin/cargo-audit', '/usr/local/cargo/bin/cargo-audit'] as $candidate) {
+            if ($standalone === null && is_file($candidate) && is_executable($candidate)) {
+                $standalone = $candidate;
+            }
+        }
+
+        return $standalone !== null
+            ? [$standalone, 'audit', '--db', $db, '--json']
+            : ['cargo', 'audit', '--db', $db, '--json'];
     }
 
     private function parseCargoAuditLog(?string $log): ?int
