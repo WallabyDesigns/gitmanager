@@ -13,6 +13,8 @@ class FtpService
      */
     private ?array $syncContext = null;
 
+    private ?string $lastDataChannelError = null;
+
     /**
      * @return array{status: string, message: string}
      */
@@ -79,7 +81,7 @@ class FtpService
         }
 
         $effectivePath = (string) (@ftp_pwd($connection) ?: '.');
-        $writeTest = $this->testDirectoryWrite($connection, $effectivePath);
+        $writeTest = $this->testDirectoryWriteWithFallbacks($connection, $effectivePath, $passive);
         if ($writeTest['status'] !== 'ok' && $configuredRootPath === '') {
             $writeTest['message'] .= ' Tip: set a writable FTP Root Path (for example /public_html).';
         }
@@ -731,6 +733,47 @@ class FtpService
         }
 
         return $result;
+    }
+
+    /**
+     * Data-channel (upload) failures are usually passive-mode problems: the server
+     * advertises an unreachable PASV address, or needs the opposite mode. Try the
+     * configured mode first, then the alternatives, and report which one worked.
+     *
+     * @param  resource|Connection  $connection
+     * @return array{status: string, message: string}
+     */
+    private function testDirectoryWriteWithFallbacks($connection, string $displayPath, bool $passive): array
+    {
+        $attempts = [
+            [$passive, false, null],
+            [$passive, true, 'using the server-advertised passive address'],
+            [! $passive, false, 'with passive mode '.(! $passive ? 'on' : 'off')],
+        ];
+
+        $first = null;
+        foreach ($attempts as [$mode, $usePasvAddress, $note]) {
+            @ftp_pasv($connection, $mode);
+            @ftp_set_option($connection, FTP_USEPASVADDRESS, $usePasvAddress);
+
+            $result = $this->testDirectoryWrite($connection, $displayPath);
+            if ($result['status'] === 'ok') {
+                if ($note !== null) {
+                    $result['message'] .= ' Uploads only worked '.$note.'; update the Passive setting on this record accordingly.';
+                }
+
+                return $result;
+            }
+
+            $first ??= $result;
+        }
+
+        @ftp_pasv($connection, $passive);
+        $first['message'] .= ' All passive/active variants failed'
+            .($this->lastDataChannelError ? ' (PHP: '.$this->lastDataChannelError.')' : '')
+            .'. The data channel is likely blocked: check that the host allows this server\'s IP and its passive port range, or that explicit TLS session reuse is not required (try Encryption: None).';
+
+        return $first;
     }
 
     /**
@@ -1412,7 +1455,9 @@ class FtpService
         }
 
         file_put_contents($temp, 'gwm');
+        error_clear_last();
         $success = @ftp_put($connection, $remote, $temp, FTP_BINARY);
+        $this->lastDataChannelError = $success ? null : (error_get_last()['message'] ?? null);
         @unlink($temp);
 
         if (! $success) {
