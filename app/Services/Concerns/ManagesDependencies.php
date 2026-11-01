@@ -6,6 +6,7 @@ use App\Models\Deployment;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\FtpService;
+use App\Services\Plugins\CargoAuditPlugin;
 use App\Support\ConsoleOutput;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Exception\ProcessTimedOutException;
@@ -400,7 +401,9 @@ trait ManagesDependencies
         }
 
         if ($this->hasCargo($project)) {
-            $results['cargo'] = $this->runCargoAuditFlow($project, $user);
+            $results['cargo'] = $this->cargoAuditBinary() === null
+                ? $this->cargoAuditUnavailableResult()
+                : $this->runCargoAuditFlow($project, $user);
         }
 
         return $results;
@@ -510,16 +513,48 @@ trait ManagesDependencies
             @mkdir($db, 0775, true);
         }
 
-        $standalone = $this->resolveBinaryFromPath('cargo-audit');
-        foreach (['/usr/local/bin/cargo-audit', '/root/.cargo/bin/cargo-audit', '/usr/local/cargo/bin/cargo-audit'] as $candidate) {
-            if ($standalone === null && is_file($candidate) && is_executable($candidate)) {
-                $standalone = $candidate;
-            }
-        }
+        $standalone = $this->cargoAuditBinary();
 
         return $standalone !== null
             ? [$standalone, 'audit', '--db', $db, '--json']
             : ['cargo', 'audit', '--db', $db, '--json'];
+    }
+
+    /**
+     * Standalone cargo-audit binary: plugin-managed install, PATH, then common install dirs.
+     */
+    private function cargoAuditBinary(): ?string
+    {
+        $binary = app(CargoAuditPlugin::class)->binaryPath() ?? $this->resolveBinaryFromPath('cargo-audit');
+        foreach (['/usr/local/bin/cargo-audit', '/root/.cargo/bin/cargo-audit', '/usr/local/cargo/bin/cargo-audit'] as $candidate) {
+            if ($binary === null && is_file($candidate) && is_executable($candidate)) {
+                $binary = $candidate;
+            }
+        }
+
+        return $binary;
+    }
+
+    /**
+     * Scheduled audits must not fail (and re-alert every hour) just because the
+     * scanner was never installed; report that as a skipped result instead.
+     *
+     * @return array<string, mixed>
+     */
+    private function cargoAuditUnavailableResult(): array
+    {
+        return [
+            'tool' => 'cargo',
+            'status' => 'skipped',
+            'found' => null,
+            'fixed' => null,
+            'remaining' => null,
+            'severity' => null,
+            'summary' => 'Cargo audit skipped: cargo-audit is not installed. Install the Rust Toolchain and Cargo Audit plugins from System > Plugins.',
+            'fix_summary' => null,
+            'fix_applied' => false,
+            'deployment_ids' => [],
+        ];
     }
 
     private function parseCargoAuditLog(?string $log): ?int

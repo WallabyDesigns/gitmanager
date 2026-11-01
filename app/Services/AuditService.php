@@ -168,7 +168,7 @@ class AuditService
      */
     private function recordAuditIssue(Project $project, string $tool, array $result, bool $queueFix = true): array
     {
-        if ((string) ($result['status'] ?? '') === 'failed') {
+        if (in_array((string) ($result['status'] ?? ''), ['failed', 'skipped'], true)) {
             return ['opened' => false, 'resolved' => false, 'notification' => null];
         }
 

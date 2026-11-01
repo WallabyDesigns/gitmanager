@@ -13,6 +13,8 @@ class PluginManager
             app(NodeRuntimePlugin::class),
             app(Pm2Plugin::class),
             app(LarustPlugin::class),
+            app(RustToolchainPlugin::class),
+            app(CargoAuditPlugin::class),
         ];
     }
 
