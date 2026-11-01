@@ -402,7 +402,7 @@
                                     </div>
                                     @if ($larustStatus['installed'])
                                         <div class="mt-2 text-sm text-slate-300 space-y-1">
-                                            <div>{{ __('Revision:') }} <span class="text-slate-100 font-mono">{{ $larustStatus['version'] ?? '—' }}</span></div>
+                                            <div>{{ __('Version:') }} <span class="text-slate-100 font-mono">{{ $larustStatus['version'] ?? '—' }}</span></div>
                                             <div class="text-xs text-slate-500 font-mono truncate">{{ $larustStatus['binary'] ?? '' }}</div>
                                         </div>
                                     @else

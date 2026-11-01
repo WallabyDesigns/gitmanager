@@ -71,6 +71,16 @@ class RustToolchainPlugin implements ManagedPlugin
         ];
     }
 
+    public function managedBinDir(): string
+    {
+        return $this->cargoHome().DIRECTORY_SEPARATOR.'bin';
+    }
+
+    public function hasManagedToolchain(): bool
+    {
+        return is_file($this->managedBinDir().DIRECTORY_SEPARATOR.'cargo');
+    }
+
     public function isInstalled(): bool
     {
         return $this->binaryPath() !== null;

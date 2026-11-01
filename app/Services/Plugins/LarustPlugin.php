@@ -11,6 +11,10 @@ class LarustPlugin implements ManagedPlugin
 {
     public const REPOSITORY = 'https://github.com/WallabyDesigns/Larust';
 
+    public const CRATE = 'larust-cli';
+
+    private const CRATES_API = 'https://crates.io/api/v1/crates/';
+
     public function slug(): string
     {
         return 'larust';
@@ -23,7 +27,7 @@ class LarustPlugin implements ManagedPlugin
 
     public function description(): string
     {
-        return 'Install the Larust xr CLI from GitHub for local deployments. Requires Rust/Cargo and a native compiler on this host. SSH hosts need a separate installation.';
+        return 'Install the Larust xr CLI from crates.io for local deployments. Requires Rust/Cargo (see the Rust Toolchain plugin) and a native compiler on this host. SSH hosts need a separate installation.';
     }
 
     public function category(): string
@@ -46,24 +50,36 @@ class LarustPlugin implements ManagedPlugin
         return is_file($this->binary()) && is_executable($this->binary());
     }
 
+    /**
+     * Semver of the installed crate. Installs made before the switch to
+     * crates.io only recorded a git revision; report those as "git-<sha>" so
+     * they show as outdated and get replaced on update.
+     */
     public function installedVersion(): ?string
     {
         if (! $this->isInstalled()) {
             return null;
         }
 
+        $version = @file_get_contents($this->installDir().'/version');
+        if (is_string($version) && preg_match('/^\d+\.\d+\.\d+\S*$/', trim($version))) {
+            return trim($version);
+        }
+
         $revision = @file_get_contents($this->installDir().'/revision');
 
-        return is_string($revision) && preg_match('/^[a-f0-9]{40}$/', trim($revision)) ? trim($revision) : null;
+        return is_string($revision) && preg_match('/^[a-f0-9]{40}$/', trim($revision)) ? 'git-'.substr(trim($revision), 0, 7) : null;
     }
 
     public function fetchLatestVersion(): ?string
     {
         try {
-            $response = Http::timeout(15)->acceptJson()->get('https://api.github.com/repos/WallabyDesigns/Larust/commits/HEAD');
-            $revision = $response->json('sha');
+            $response = Http::timeout(15)->acceptJson()
+                ->withHeaders(['User-Agent' => 'git-web-manager'])
+                ->get(self::CRATES_API.self::CRATE);
+            $version = $response->json('crate.max_stable_version');
 
-            return $response->successful() && is_string($revision) && preg_match('/^[a-f0-9]{40}$/', $revision) ? $revision : null;
+            return $response->successful() && is_string($version) && preg_match('/^\d+\.\d+\.\d+$/', $version) ? $version : null;
         } catch (\Throwable) {
             return null;
         }
@@ -74,6 +90,11 @@ class LarustPlugin implements ManagedPlugin
     {
         $key = array_key_exists('PATH', $env) ? 'PATH' : (array_key_exists('Path', $env) ? 'Path' : 'PATH');
         $paths = [];
+        $rust = app(RustToolchainPlugin::class);
+        if ($rust->hasManagedToolchain()) {
+            $env = array_merge($env, array_diff_key($rust->processEnv(), ['PATH' => true]));
+            $paths[] = $rust->managedBinDir();
+        }
         if ($this->isInstalled()) {
             $paths[] = dirname($this->binary());
         }
@@ -117,15 +138,14 @@ class LarustPlugin implements ManagedPlugin
                 return ['success' => false, 'message' => 'Rust/Cargo is unavailable to the web server user. Install Rust for that user, or add its cargo bin directory to GWM_PROCESS_PATH, then retry.'
                     .($detail !== '' ? ' Details: '.substr($detail, -1000) : '')];
             }
-            $revision = $this->fetchLatestVersion();
-            if ($revision === null) {
-                return ['success' => false, 'message' => 'Could not resolve the latest Larust revision from GitHub.'];
-            }
+            // Pin to the latest published version when crates.io answers; otherwise let cargo resolve it.
+            $version = $this->fetchLatestVersion();
             File::ensureDirectoryExists($this->installDir());
-            $result = Process::env($env)->timeout(3600)->run([
-                'cargo', 'install', '--git', self::REPOSITORY, '--rev', $revision,
-                '--locked', '--root', $this->installDir(), '--force', 'larust-cli',
-            ]);
+            $result = Process::env($env)->timeout(3600)->run(array_merge(
+                ['cargo', 'install', self::CRATE],
+                $version !== null ? ['--version', $version] : [],
+                ['--locked', '--root', $this->installDir(), '--force']
+            ));
             if (! $result->successful()) {
                 return ['success' => false, 'message' => 'Larust build failed: '.substr(trim($result->errorOutput()."\n".$result->output()), -8000)];
             }
@@ -133,9 +153,14 @@ class LarustPlugin implements ManagedPlugin
             if (! $this->isInstalled() || ! $probe->successful()) {
                 return ['success' => false, 'message' => 'Larust compiled, but the installed xr binary could not run: '.$probe->errorOutput()];
             }
-            if (file_put_contents($this->installDir().'/revision', $revision) === false) {
-                throw new \RuntimeException('Could not record the installed Larust revision.');
+            $installed = $version;
+            if ($installed === null && preg_match('/(\d+\.\d+\.\d+)/', $probe->output(), $m)) {
+                $installed = $m[1];
             }
+            if ($installed === null || file_put_contents($this->installDir().'/version', $installed) === false) {
+                throw new \RuntimeException('Could not record the installed Larust version.');
+            }
+            @unlink($this->installDir().'/revision');
 
             return ['success' => true, 'message' => 'Larust installed. The xr CLI is available to local deployment commands.'];
         } catch (\Throwable $e) {
